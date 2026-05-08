@@ -80,7 +80,7 @@ Manages all roadmap state and localStorage persistence:
 
 Hydration: on client mount, reads all keys from `localStorage`. Falls back to `SAMPLE_ROADMAP.phases` if no phases are stored.
 
-**TODO(backend):** Replace the initial `SAMPLE_ROADMAP.phases` fallback with a `getRoadmap()` call once auth and roadmap IDs exist. The localStorage layer can remain as optimistic state.
+**TODO(backend):** Replace the initial `SAMPLE_ROADMAP.phases` fallback with a `getRoadmap(roadmapId)` call once the save/join flow assigns a server roadmap ID. Auth is not required for this step — a roadmap ID from a save or invite context is sufficient. The localStorage layer remains as optimistic cache throughout.
 
 ### ThemeContext (`context/ThemeContext.tsx`)
 
@@ -200,14 +200,24 @@ Responsive rules live at the bottom of the owning file, not in a shared breakpoi
 
 ## Backend integration checklist
 
-When a backend is available, these are the integration steps in order:
+The MVP does not require user accounts. The first backend milestone is: save a local roadmap to a server, get back a roadmap ID, then unlock secure invite links from that ID. Accounts/auth are optional and come later.
 
-1. **Auth** — Add session provider; wire `displayName` from auth token rather than wizard input
-2. **Roadmap CRUD** — Replace `localStorage` init in `RoadmapContext` with `getRoadmap(id)` call; keep localStorage as optimistic cache
-3. **Save to server** — `SaveToServerModal.onConfirm` should call `createRoadmap()` or `updateRoadmap()` and store the returned `id`
-4. **Share links** — `createShareLink()` returns a real URL; wire `ShareModal` copy button to that URL
-5. **Join flow** — `joinRoadmap(token, displayName)` validates the invite token; redirect to `/workspace` on success
-6. **Export (Markdown/PDF)** — These require server-side rendering; replace the "requires backend" toast with a real call to `exportRoadmap(phases, format)` once the endpoint exists
-7. **Real-time** — Add WebSocket/SSE subscription in `RoadmapContext` to receive remote phase/task updates; merge with local optimistic state
+When a backend is available, integrate in this order:
+
+1. **Save to server** — `SaveToServerModal.onConfirm` calls `createRoadmap()` (or `updateRoadmap()` if the roadmap already has a server ID). The server returns a roadmap ID. Store it in `RoadmapContext` and persist to `localStorage`. This is the only prerequisite for everything else.
+
+2. **Store server roadmap ID** — Add `roadmapId: string | null` to `RoadmapContext`. Replace the `SAMPLE_ROADMAP.phases` fallback in the context init with `getRoadmap(roadmapId)` when an ID is present. `localStorage` stays as optimistic cache throughout — it is not removed.
+
+3. **Share links** — Once a roadmap has a server ID, `getShareLinks(roadmapId)` returns real signed URLs. Wire `ShareModal` to use them. Wire the Regenerate and Revoke buttons to `regenerateShareLink()` and `revokeShareLink()` in the service layer. No accounts needed — links are scoped by token, not by user identity.
+
+4. **Join flow** — `joinRoadmap(token, displayName)` on the server validates the invite token and returns the roadmap ID and granted role. On success, store the roadmap ID in context and redirect to `/workspace` or `/shared` based on role. The display name entered on `/join` is the only identity required — no account needed.
+
+5. **Roadmap CRUD** — Wire `addPhase`, `addTask`, `updateTaskDone`, and `reorderPhases` through the service layer. Optimistic updates stay in `RoadmapContext`; the service call confirms with the server.
+
+6. **Export (Markdown/PDF)** — Replace the "requires backend" toast in `IOModal` with a real call to `exportRoadmap(phases, format)` once the server endpoint exists. JSON export stays client-side.
+
+7. **Accounts/auth (optional, later)** — If persistent identity across devices is desired, add a session layer after the above steps are working. Wire `displayName` from the session rather than the wizard. This is not required for MVP — invite-link identity is sufficient.
+
+8. **Real-time collaboration (later)** — Add WebSocket/SSE subscription in `RoadmapContext` to receive remote phase/task updates and merge with local optimistic state.
 
 All integration points are already marked in `roadmap.service.ts` with `// TODO(backend):` comments.

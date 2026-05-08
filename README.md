@@ -40,6 +40,8 @@ pnpm build
 
 All commands run against `apps/web` via the root `package.json` scripts.
 
+The frontend works fully without a backend. When backend integration begins, copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_API_URL` to point at the API server. Until then, no `.env.local` is needed.
+
 ---
 
 ## Routes

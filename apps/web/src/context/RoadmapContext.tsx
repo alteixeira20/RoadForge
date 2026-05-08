@@ -23,7 +23,7 @@ const RoadmapContext = createContext<RoadmapContextValue | null>(null)
 export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [displayName, setDisplayNameState] = useState('')
   const [roadmapName, setRoadmapNameState] = useState('v1.0 Public Launch')
-  // TODO(backend): replace with getRoadmap() call once auth + IDs exist.
+  // TODO(backend): replace with getRoadmap(roadmapId) once the save/join flow assigns a server roadmap ID.
   const [phases, setPhasesState] = useState<Phase[]>(SAMPLE_ROADMAP.phases)
   const [saved, setSavedState] = useState(false)
 
