@@ -252,7 +252,7 @@ export async function joinRoadmap(
   token: string,
   displayName?: string,
   password?: string,
-): Promise<{ roadmapId: string; role: string }> {
+): Promise<{ roadmapId: string; role: string; sessionToken: string; participantId: string }> {
   const body: Record<string, unknown> = { token }
   if (displayName) body.display_name = displayName
   if (password) body.password = password
@@ -260,7 +260,12 @@ export async function joinRoadmap(
     method: 'POST',
     body: JSON.stringify(body),
   })
-  return { roadmapId: data.roadmap_id, role: data.role }
+  return {
+    roadmapId: data.roadmap_id,
+    role: data.role,
+    sessionToken: data.session_token,
+    participantId: data.participant_id,
+  }
 }
 
 // ─── Phase mutations (future) ──────────────────────────────────────────────────
