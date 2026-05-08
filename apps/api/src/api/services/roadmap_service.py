@@ -357,12 +357,15 @@ async def join_roadmap(db: AsyncSession, payload: JoinRoadmapRequest) -> JoinRoa
     now = datetime.now(timezone.utc)
     share_link.last_used_at = now
 
+    _role_defaults = {"owner": "Guest Owner", "editor": "Guest Editor", "viewer": "Guest Viewer"}
+    display_name = payload.display_name or _role_defaults.get(share_link.role, "Guest")
+
     # Raw session token is held only in this local variable and the response body.
     session_token = generate_token("sess_")
     participant = Participant(
         id=generate_id("pt_"),
         roadmap_id=roadmap.id,
-        display_name=payload.display_name,
+        display_name=display_name,
         role=share_link.role,
         session_token_hash=hash_token(session_token),
     )
@@ -372,7 +375,7 @@ async def join_roadmap(db: AsyncSession, payload: JoinRoadmapRequest) -> JoinRoa
         id=generate_id("al_"),
         roadmap_id=roadmap.id,
         participant_id=participant.id,
-        actor_name=payload.display_name,
+        actor_name=display_name,
         action="participant.joined",
         entity_type="participant",
         entity_id=participant.id,

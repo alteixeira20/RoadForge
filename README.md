@@ -111,13 +111,13 @@ curl -s -X POST http://localhost:7878/api/roadmaps \
 **Join a roadmap via invite link** (`POST /api/roadmaps/join` — validates token, creates participant, returns a one-time session token):
 
 ```bash
-# Open roadmap (no password):
+# display_name is optional; omit it for a role-based default ("Guest Editor", etc.)
 curl -s -X POST http://localhost:7878/api/roadmaps/join \
   -H 'Content-Type: application/json' \
-  -d '{"token":"<raw_token>","display_name":"Jordan"}' \
+  -d '{"token":"<raw_token>"}' \
   | python3 -m json.tool
 
-# Password-protected roadmap:
+# With display name and password (password required when roadmap has one set):
 curl -s -X POST http://localhost:7878/api/roadmaps/join \
   -H 'Content-Type: application/json' \
   -d '{"token":"<raw_token>","display_name":"Jordan","password":"secret123"}' \

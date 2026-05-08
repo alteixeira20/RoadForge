@@ -95,16 +95,16 @@ class ShareLinkResponse(BaseModel):
 
 class JoinRoadmapRequest(BaseModel):
     token: str = Field(min_length=8)
-    display_name: str = Field(min_length=1, max_length=128)
+    display_name: str | None = Field(default=None, max_length=128)
     password: str | None = None
 
-    @field_validator("display_name")
+    @field_validator("display_name", mode="before")
     @classmethod
-    def strip_display_name(cls, v: str) -> str:
-        stripped = v.strip()
-        if not stripped:
-            raise ValueError("display_name must not be blank")
-        return stripped
+    def _normalize_display_name(cls, v: object) -> object:
+        if isinstance(v, str):
+            stripped = v.strip()
+            return stripped if stripped else None
+        return v
 
     @field_validator("password", mode="before")
     @classmethod
