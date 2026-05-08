@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Roadforge Design System — entry point
+   CSS is split by concern into src/styles/*.css
+   Import order matters for cascade — do not reorder.
+   ============================================================ */
+
+@import '../styles/tokens.css';
+@import '../styles/base.css';
+@import '../styles/ui.css';
+@import '../styles/site.css';
+@import '../styles/workspace.css';
+@import '../styles/modals.css';
+@import '../styles/join.css';

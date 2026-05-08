@@ -1,0 +1,66 @@
+/* ─── Design tokens ────────────────────────────────────────────────────────── */
+
+:root {
+  /* Dark theme — primary */
+  --bg: #0e0e10;
+  --bg-2: #141417;
+  --bg-3: #1a1a1e;
+  --bg-inset: #0a0a0c;
+  --panel: #16161a;
+  --border: #25252b;
+  --border-strong: #2f2f36;
+  --border-faint: #1d1d22;
+  --ink: #ededea;
+  --ink-2: #b8b6b0;
+  --ink-3: #8a877f;
+  --ink-4: #5a5852;
+  --ember: #d97442;
+  --ember-2: #b8582a;
+  --molten: #ec8a4a;
+  --copper: #c97553;
+  --lava-glow: rgba(217, 116, 66, 0.16);
+  --lava-glow-2: rgba(245, 133, 63, 0.30);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-lg: 0 32px 80px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.5);
+  --shadow-ember: 0 0 0 1px rgba(217,116,66,0.20), 0 12px 40px rgba(217,116,66,0.16);
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Font families — variables set by next/font in layout.tsx */
+  --font-sans: var(--font-lexend, 'Lexend'), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: var(--font-lexend, 'Lexend'), serif;
+  --font-mono: var(--font-jetbrains-mono, 'JetBrains Mono'), ui-monospace, Menlo, monospace;
+
+  --container: 1120px;
+  --header-h: 76px;
+}
+
+[data-theme="light"] {
+  --bg: #f5f1ea;
+  --bg-2: #ede8de;
+  --bg-3: #e3ddd0;
+  --bg-inset: #efeae0;
+  --panel: #faf6ee;
+  --border: #d8d1c2;
+  --border-strong: #beb6a4;
+  --border-faint: #e2dccd;
+  --ink: #1c1a16;
+  --ink-2: #4d4942;
+  --ink-3: #7c776c;
+  --ink-4: #a8a298;
+  --ember: #b8582a;
+  --ember-2: #9a481f;
+  --molten: #c4612d;
+  --copper: #a85a3a;
+  --lava-glow: rgba(184, 88, 42, 0.10);
+  --lava-glow-2: rgba(184, 88, 42, 0.20);
+  --shadow-sm: 0 1px 2px rgba(60,40,20,0.05);
+  --shadow-md: 0 8px 24px rgba(60,40,20,0.08), 0 1px 2px rgba(60,40,20,0.06);
+  --shadow-lg: 0 32px 80px rgba(60,40,20,0.18), 0 2px 8px rgba(60,40,20,0.08);
+  --shadow-ember: 0 0 0 1px rgba(184,88,42,0.20), 0 12px 40px rgba(184,88,42,0.10);
+}

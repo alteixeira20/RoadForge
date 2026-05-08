@@ -1,0 +1,123 @@
+/* ─── Shared UI primitives ─────────────────────────────────────────────────── */
+
+/* ─── Buttons ──────────────────────────────────────────────────────────────── */
+.btn {
+  height: 44px;
+  padding: 0 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  transition: background 160ms, border-color 160ms, transform 160ms, box-shadow 160ms;
+}
+.btn:hover { background: var(--bg-3); border-color: var(--border-strong); }
+.btn:active { transform: translateY(1px); }
+.btn.sm { height: 36px; padding: 0 14px; font-size: 14px; }
+.btn.lg { height: 52px; padding: 0 22px; font-size: 16px; border-radius: 12px; }
+
+.btn.primary {
+  background: linear-gradient(180deg, var(--molten) 0%, var(--ember-2) 100%);
+  border-color: var(--ember-2);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 8px 24px rgba(217,116,66,0.30);
+}
+.btn.primary:hover { filter: brightness(1.06); }
+[data-theme="light"] .btn.primary { color: #fff; }
+
+.btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+.btn.ghost:hover { background: var(--bg-2); color: var(--ink); }
+
+.iconbtn {
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--ink-2);
+  transition: all 160ms;
+}
+.iconbtn:hover { background: var(--bg-2); border-color: var(--border); color: var(--ink); }
+
+/* ─── Brand ────────────────────────────────────────────────────────────────── */
+.brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-weight: 600; font-size: 17px;
+  letter-spacing: -0.015em;
+}
+.brand .mark {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: linear-gradient(180deg, #2a2018 0%, #161114 100%);
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  position: relative;
+  overflow: hidden;
+}
+.brand .mark::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 115%, var(--molten) 0%, transparent 58%);
+  opacity: 0.95;
+}
+.brand .mark svg { position: relative; z-index: 1; }
+
+/* ─── Theme toggle ─────────────────────────────────────────────────────────── */
+.theme-toggle {
+  display: inline-flex;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  height: 36px;
+}
+.theme-toggle button {
+  width: 30px; height: 28px;
+  border: none; background: transparent;
+  border-radius: 999px;
+  display: grid; place-items: center;
+  color: var(--ink-3);
+  transition: all 200ms;
+}
+.theme-toggle button.active {
+  background: var(--bg-3);
+  color: var(--ember);
+  box-shadow: 0 0 0 1px var(--border-strong) inset;
+}
+
+/* ─── Toast ────────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-3);
+  border: 1px solid var(--border-strong);
+  color: var(--ink);
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 14.5px;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: var(--shadow-md);
+  z-index: 200;
+  animation: toastIn 280ms cubic-bezier(.2,.8,.2,1);
+}
+.toast .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 8px var(--ember); }
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ─── Avatar ───────────────────────────────────────────────────────────────── */
+.avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, #2c2520, #1a1410);
+  border: 1px solid var(--border-strong);
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+}

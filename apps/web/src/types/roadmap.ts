@@ -1,0 +1,72 @@
+// ─── Domain models ────────────────────────────────────────────────────────────
+// These types describe the core Roadforge data model.
+// The backend should expose a JSON API that conforms to these shapes.
+
+export type PhaseStatus = 'done' | 'active' | 'next' | 'future'
+export type WorkspaceMode = 'owner' | 'viewer'
+export type ExportFormat = 'json' | 'markdown' | 'pdf' | 'agent-bundle'
+export type ShareRole = 'owner' | 'editor' | 'viewer'
+export type Theme = 'dark' | 'light'
+
+export interface Task {
+  id: string
+  title: string
+  done: boolean
+  next?: boolean
+  est?: string
+  tags?: string[]
+  /** IDs of tasks this task depends on */
+  deps?: string[]
+  desc?: string
+}
+
+export interface Phase {
+  id: string
+  /** Zero-padded ordinal, e.g. "01" */
+  num: string
+  name: string
+  /** CSS color string used as the phase accent */
+  color: string
+  status: PhaseStatus
+  /** 0–100 */
+  progress: number
+  tasks: Task[]
+}
+
+export interface Project {
+  id: string
+  name: string
+}
+
+export interface RoadmapMeta {
+  id: string
+  name: string
+}
+
+export interface Roadmap {
+  project: Project
+  roadmap: RoadmapMeta
+  phases: Phase[]
+}
+
+// ─── Collaboration / sharing ───────────────────────────────────────────────────
+
+export interface ShareLink {
+  id: string
+  role: ShareRole
+  /** Icon name for the UI */
+  icon: string
+  desc: string
+  url: string
+  recommended?: boolean
+}
+
+// ─── Import / Export ───────────────────────────────────────────────────────────
+
+export interface ExportOption {
+  id: ExportFormat
+  icon: string
+  name: string
+  badge?: string
+  desc: string
+}
