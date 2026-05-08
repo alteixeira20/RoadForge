@@ -45,13 +45,13 @@ apps/web/src/
 
 ## Hard rules — do not do these unless explicitly instructed
 
-- Do not modify `frontend-example/` — it is a read-only reference export
 - Do not add backend, database, or auth code
 - Do not add WebSocket or real-time collaboration infrastructure
 - Do not create API routes (`app/api/`)
 - Do not redesign the UI or rename CSS classes
 - Do not install packages without explicit instruction
 - Do not commit or create branches without explicit instruction
+- Do not reintroduce historical generated exports (e.g. single-file HTML/JSX exports from design tools)
 
 ## Backend integration points
 

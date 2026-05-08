@@ -106,6 +106,5 @@ roadforge/
 │           ├── services/      # Service layer with TODO(backend) stubs
 │           ├── styles/        # CSS files (split by concern)
 │           └── types/         # TypeScript types
-├── frontend-example/         # Read-only reference export — do not edit
 └── docs/                     # Architecture documentation
 ```

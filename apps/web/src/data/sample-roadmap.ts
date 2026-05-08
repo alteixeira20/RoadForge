@@ -1,7 +1,6 @@
 import type { Roadmap, ShareLink, ExportOption } from '@/types/roadmap'
 
 // ─── Sample roadmap data ───────────────────────────────────────────────────────
-// Mirrors frontend-example/data.js.
 // TODO(backend): Replace with GET /api/roadmaps/:id
 
 export const SAMPLE_ROADMAP: Roadmap = {
