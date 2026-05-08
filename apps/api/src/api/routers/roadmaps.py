@@ -6,6 +6,8 @@ from api.database import get_db
 from api.schemas.roadmap import (
     CreateRoadmapRequest,
     CreateRoadmapResponse,
+    JoinRoadmapRequest,
+    JoinRoadmapResponse,
     RoadmapResponse,
     ShareLinkResponse,
     ShareRole,
@@ -15,6 +17,7 @@ from api.services.roadmap_service import (
     create_roadmap,
     get_roadmap,
     get_share_links,
+    join_roadmap,
     revoke_share_link,
     rotate_share_link,
     update_roadmap,
@@ -30,6 +33,14 @@ async def post_roadmap(
 ) -> CreateRoadmapResponse:
     settings = get_settings()
     return await create_roadmap(db, payload, settings.web_base_url)
+
+
+@router.post("/join", response_model=JoinRoadmapResponse)
+async def post_join(
+    payload: JoinRoadmapRequest,
+    db: AsyncSession = Depends(get_db),
+) -> JoinRoadmapResponse:
+    return await join_roadmap(db, payload)
 
 
 @router.get("/{roadmap_id}", response_model=RoadmapResponse)
