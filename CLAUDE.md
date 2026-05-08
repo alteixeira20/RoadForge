@@ -93,3 +93,44 @@ pnpm build        # All 5 routes must build statically
 ```
 
 Visual smoke test after CSS changes: homepage hero, workspace modals, theme toggle, join page, viewer mode.
+
+---
+
+## Backend (`apps/api`)
+
+The backend is a FastAPI app (Python 3.12) under `apps/api/`. It is not connected to the frontend yet.
+
+### Structure
+
+```
+apps/api/
+├── pyproject.toml         # PEP 621 metadata + dependencies
+├── Dockerfile             # python:3.12-slim + uv, exposes :7878
+├── alembic.ini            # Alembic config (script_location = alembic/)
+├── alembic/env.py         # Async-compatible migration runner
+├── alembic/versions/      # One file per migration; empty until domain models are added
+└── src/api/
+    ├── main.py            # FastAPI app factory (importable as api.main:app)
+    ├── config.py          # Settings via pydantic-settings (reads env)
+    ├── database.py        # Async engine + get_db() dependency
+    ├── middleware/cors.py  # CORS setup
+    ├── routers/health.py  # GET /api/health
+    └── schemas/common.py  # HealthResponse
+```
+
+### Hard rules for backend — do not do these unless explicitly instructed
+
+- Do not add user accounts, sessions, or auth tokens
+- Do not add WebSockets or real-time collaboration
+- Do not create domain endpoints (roadmaps, share links, join) until explicitly requested
+- Do not wire `apps/web` service stubs to real HTTP calls until explicitly requested
+- Do not install packages without explicit instruction
+
+### Backend validation commands
+
+```bash
+docker compose up --build api postgres   # Start API + Postgres
+curl http://localhost:7878/api/health    # Must return {"status":"ok","version":"0.1.0"}
+docker compose logs --tail=40 api        # Check for startup errors
+docker compose down                      # Stop
+```

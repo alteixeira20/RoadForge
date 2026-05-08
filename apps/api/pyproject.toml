@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "roadforge-api"
+version = "0.1.0"
+description = "RoadForge backend API — FastAPI + PostgreSQL"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "python-dotenv>=1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/api"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/", "alembic/", "alembic.ini"]

@@ -1,0 +1,22 @@
+from fastapi import FastAPI
+
+from api.config import get_settings
+from api.middleware.cors import add_cors
+from api.routers import health
+
+
+def create_app() -> FastAPI:
+    settings = get_settings()
+    app = FastAPI(
+        title=settings.app_name,
+        version=settings.app_version,
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
+    )
+    add_cors(app)
+    app.include_router(health.router, prefix="/api")
+    return app
+
+
+app = create_app()

@@ -11,15 +11,21 @@ A structured roadmap tool for indie hackers and small teams. Break your release 
 | Layer | Technology |
 |---|---|
 | Workspace | pnpm workspace |
-| Framework | Next.js 15 App Router |
-| Language | TypeScript 5 |
+| Frontend framework | Next.js 15 App Router |
+| Frontend language | TypeScript 5 |
 | Styling | Tailwind CSS v3 + CSS custom properties |
 | Fonts | Lexend (display/body) + JetBrains Mono (mono) via `next/font` |
-| Persistence | `localStorage` (client-side only) |
+| Client persistence | `localStorage` (local-first, kept as optimistic cache when backend is live) |
+| Backend framework | FastAPI (Python 3.12) |
+| Backend language | Python 3.12 |
+| Database | PostgreSQL 16 |
+| ORM | SQLAlchemy 2.x (async) + asyncpg |
+| Migrations | Alembic |
+| Container | Docker Compose |
 
 ---
 
-## Local development
+## Frontend local development
 
 ```bash
 # Install dependencies (from repo root)
@@ -41,6 +47,35 @@ pnpm build
 All commands run against `apps/web` via the root `package.json` scripts.
 
 The frontend works fully without a backend. When backend integration begins, copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_API_URL` to point at the API server. Until then, no `.env.local` is needed.
+
+---
+
+## Backend local development
+
+Requires Docker and Docker Compose.
+
+```bash
+# Start PostgreSQL + API (builds the image on first run)
+docker compose up --build api postgres
+
+# Confirm the API is running
+curl http://localhost:7878/api/health
+# Expected: {"status":"ok","version":"0.1.0"}
+
+# Interactive API docs (when running)
+open http://localhost:7878/api/docs
+
+# Stop and remove containers (data volume is preserved)
+docker compose down
+```
+
+**Note:** Roadmap endpoints are not implemented yet. Only `GET /api/health` is available in this slice. Backend CRUD endpoints are the next planned milestone.
+
+To run Alembic migrations once domain models are added:
+
+```bash
+docker compose exec api alembic upgrade head
+```
 
 ---
 
