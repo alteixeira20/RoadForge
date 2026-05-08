@@ -69,7 +69,7 @@ open http://localhost:7878/api/docs
 docker compose down
 ```
 
-**Note:** Roadmap endpoints are not implemented yet. Only `GET /api/health` is available in this slice. Backend CRUD endpoints are the next planned milestone.
+**Note:** Roadmap endpoints are not implemented yet. Only `GET /api/health` is available in this slice. Backend CRUD endpoints are the next planned milestone. Docker maps Postgres to `localhost:5433` by default to avoid conflicts with a host Postgres on 5432.
 
 To run Alembic migrations once domain models are added:
 

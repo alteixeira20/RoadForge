@@ -13,6 +13,8 @@ from alembic import context
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from api.config import get_settings  # noqa: E402
+from api.models.base import Base  # noqa: E402
+import api.models.roadmap  # noqa: E402, F401 — registers models against Base.metadata
 
 config = context.config
 
@@ -24,8 +26,7 @@ if config.config_file_name is not None:
 settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
-# target_metadata will be set to Base.metadata once ORM models are defined.
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
