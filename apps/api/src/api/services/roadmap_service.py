@@ -17,6 +17,7 @@ from api.schemas.roadmap import (
     UpdateRoadmapRequest,
 )
 from api.services.id_service import generate_id
+from api.services.password_service import hash_password, verify_password
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
 
@@ -49,6 +50,8 @@ async def create_roadmap(
         owner_display_name=payload.owner_display_name,
         snapshot_json={"phases": [p.model_dump(exclude_none=True) for p in payload.phases]},
         schema_version="1.0",
+        is_password_enabled=bool(payload.password),
+        password_hash=hash_password(payload.password) if payload.password else None,
     )
     db.add(roadmap)
 
@@ -344,6 +347,12 @@ async def join_roadmap(db: AsyncSession, payload: JoinRoadmapRequest) -> JoinRoa
     roadmap = rm_result.scalar_one_or_none()
     if roadmap is None:
         raise HTTPException(status_code=401, detail="Invalid or expired invite token")
+
+    if roadmap.is_password_enabled:
+        pw = payload.password
+        ph = roadmap.password_hash
+        if not pw or not ph or not verify_password(pw, ph):
+            raise HTTPException(status_code=401, detail="Invalid invite token or password")
 
     now = datetime.now(timezone.utc)
     share_link.last_used_at = now

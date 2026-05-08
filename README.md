@@ -99,13 +99,28 @@ curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID | python3 -m json.tool
 curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links | python3 -m json.tool
 ```
 
+**Create a password-protected roadmap** (`POST /api/roadmaps` with `password` field — joiners must supply the password):
+
+```bash
+curl -s -X POST http://localhost:7878/api/roadmaps \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Protected Roadmap","owner_display_name":"Alex","password":"secret123","phases":[]}' \
+  | python3 -m json.tool
+```
+
 **Join a roadmap via invite link** (`POST /api/roadmaps/join` — validates token, creates participant, returns a one-time session token):
 
 ```bash
-# Capture the editor invite URL from a POST /api/roadmaps response, then join:
+# Open roadmap (no password):
 curl -s -X POST http://localhost:7878/api/roadmaps/join \
   -H 'Content-Type: application/json' \
-  -d '{"token":"<raw_token_from_share_link_url>","display_name":"Jordan"}' \
+  -d '{"token":"<raw_token>","display_name":"Jordan"}' \
+  | python3 -m json.tool
+
+# Password-protected roadmap:
+curl -s -X POST http://localhost:7878/api/roadmaps/join \
+  -H 'Content-Type: application/json' \
+  -d '{"token":"<raw_token>","display_name":"Jordan","password":"secret123"}' \
   | python3 -m json.tool
 ```
 

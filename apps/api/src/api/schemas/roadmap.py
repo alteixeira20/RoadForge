@@ -46,6 +46,15 @@ class CreateRoadmapRequest(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     owner_display_name: str = Field(min_length=1, max_length=128)
     phases: list[PhaseDTO] = []
+    password: str | None = Field(default=None, min_length=6)
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def _normalize_password(cls, v: object) -> object:
+        if isinstance(v, str):
+            stripped = v.strip()
+            return stripped if stripped else None
+        return v
 
 
 class UpdateRoadmapRequest(BaseModel):
@@ -87,6 +96,7 @@ class ShareLinkResponse(BaseModel):
 class JoinRoadmapRequest(BaseModel):
     token: str = Field(min_length=8)
     display_name: str = Field(min_length=1, max_length=128)
+    password: str | None = None
 
     @field_validator("display_name")
     @classmethod
@@ -95,6 +105,14 @@ class JoinRoadmapRequest(BaseModel):
         if not stripped:
             raise ValueError("display_name must not be blank")
         return stripped
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def _normalize_password(cls, v: object) -> object:
+        if isinstance(v, str):
+            stripped = v.strip()
+            return stripped if stripped else None
+        return v
 
 
 class JoinRoadmapResponse(BaseModel):
