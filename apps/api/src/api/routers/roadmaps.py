@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
@@ -8,9 +8,17 @@ from api.schemas.roadmap import (
     CreateRoadmapResponse,
     RoadmapResponse,
     ShareLinkResponse,
+    ShareRole,
     UpdateRoadmapRequest,
 )
-from api.services.roadmap_service import create_roadmap, get_roadmap, get_share_links, update_roadmap
+from api.services.roadmap_service import (
+    create_roadmap,
+    get_roadmap,
+    get_share_links,
+    revoke_share_link,
+    rotate_share_link,
+    update_roadmap,
+)
 
 router = APIRouter(tags=["roadmaps"])
 
@@ -47,3 +55,26 @@ async def fetch_share_links(
     db: AsyncSession = Depends(get_db),
 ) -> list[ShareLinkResponse]:
     return await get_share_links(db, roadmap_id)
+
+
+@router.post(
+    "/{roadmap_id}/share-links/{role}/rotate",
+    response_model=ShareLinkResponse,
+)
+async def post_rotate_share_link(
+    roadmap_id: str,
+    role: ShareRole,
+    db: AsyncSession = Depends(get_db),
+) -> ShareLinkResponse:
+    settings = get_settings()
+    return await rotate_share_link(db, roadmap_id, role, settings.web_base_url)
+
+
+@router.delete("/{roadmap_id}/share-links/{role}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_share_link(
+    roadmap_id: str,
+    role: ShareRole,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    await revoke_share_link(db, roadmap_id, role)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

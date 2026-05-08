@@ -11,6 +11,7 @@ from api.schemas.roadmap import (
     PhaseDTO,
     RoadmapResponse,
     ShareLinkResponse,
+    ShareRole,
     UpdateRoadmapRequest,
 )
 from api.services.id_service import generate_id
@@ -218,3 +219,99 @@ async def get_share_links(db: AsyncSession, roadmap_id: str) -> list[ShareLinkRe
         )
         for sl in links
     ]
+
+
+async def rotate_share_link(
+    db: AsyncSession,
+    roadmap_id: str,
+    role: ShareRole,
+    web_base_url: str,
+) -> ShareLinkResponse:
+    await _fetch_active_roadmap(db, roadmap_id)
+
+    result = await db.execute(
+        select(ShareLink).where(
+            ShareLink.roadmap_id == roadmap_id,
+            ShareLink.role == role,
+        )
+    )
+    share_link = result.scalar_one_or_none()
+
+    now = datetime.now(timezone.utc)
+    raw_token = generate_token(_SHARE_PREFIXES[role])
+
+    if share_link is None:
+        share_link = ShareLink(
+            id=generate_id("sl_"),
+            roadmap_id=roadmap_id,
+            role=role,
+            token_hash=hash_token(raw_token),
+            token_prefix=make_token_prefix(raw_token),
+            is_active=True,
+            rotated_at=now,
+        )
+        db.add(share_link)
+    else:
+        share_link.token_hash = hash_token(raw_token)
+        share_link.token_prefix = make_token_prefix(raw_token)
+        share_link.is_active = True
+        share_link.rotated_at = now
+        share_link.last_used_at = None
+
+    db.add(ActivityLog(
+        id=generate_id("al_"),
+        roadmap_id=roadmap_id,
+        participant_id=None,
+        actor_name=None,
+        action="share_link.rotated",
+        entity_type="share_link",
+        entity_id=share_link.id,
+        metadata_json={"role": role},
+    ))
+
+    await db.commit()
+    await db.refresh(share_link)
+
+    return ShareLinkResponse(
+        id=share_link.id,
+        role=share_link.role,  # type: ignore[arg-type]
+        token_prefix=share_link.token_prefix,
+        url=f"{web_base_url}/join?token={raw_token}",
+        is_active=True,
+        created_at=share_link.created_at,
+        rotated_at=share_link.rotated_at,
+    )
+
+
+async def revoke_share_link(
+    db: AsyncSession,
+    roadmap_id: str,
+    role: ShareRole,
+) -> None:
+    await _fetch_active_roadmap(db, roadmap_id)
+
+    result = await db.execute(
+        select(ShareLink).where(
+            ShareLink.roadmap_id == roadmap_id,
+            ShareLink.role == role,
+            ShareLink.is_active.is_(True),
+        )
+    )
+    share_link = result.scalar_one_or_none()
+    if share_link is None:
+        raise HTTPException(status_code=404, detail="Share link not found")
+
+    share_link.is_active = False
+
+    db.add(ActivityLog(
+        id=generate_id("al_"),
+        roadmap_id=roadmap_id,
+        participant_id=None,
+        actor_name=None,
+        action="share_link.revoked",
+        entity_type="share_link",
+        entity_id=share_link.id,
+        metadata_json={"role": role},
+    ))
+
+    await db.commit()

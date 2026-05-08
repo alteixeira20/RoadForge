@@ -99,6 +99,19 @@ curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID | python3 -m json.tool
 curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links | python3 -m json.tool
 ```
 
+**Rotate a share link** (`POST /api/roadmaps/{id}/share-links/{role}/rotate` — generates a new token; returns the join URL containing the raw token):
+
+```bash
+curl -s -X POST http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links/editor/rotate \
+  | python3 -m json.tool
+```
+
+**Revoke a share link** (`DELETE /api/roadmaps/{id}/share-links/{role}` — soft-deactivates; returns 204 No Content):
+
+```bash
+curl -i -X DELETE http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links/viewer
+```
+
 **Update a roadmap** (`PUT /api/roadmaps/{id}` — name and/or phases, partial update, full snapshot replacement for phases):
 
 ```bash
