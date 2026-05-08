@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
-import { MOCK_SHARE_LINKS } from '@/data/sample-roadmap'
+import { MOCK_SHARE_LINKS, SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { regenerateShareLink, revokeShareLink } from '@/services/roadmap.service'
+import { useRoadmap } from '@/context/RoadmapContext'
 import type { IconName } from '@/components/ui/Icon'
 
 interface ShareModalProps {
@@ -14,6 +15,8 @@ interface ShareModalProps {
 }
 
 export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
+  const { serverRoadmapId } = useRoadmap()
+  const roadmapId = serverRoadmapId ?? SAMPLE_ROADMAP.roadmap.id
   const [copied, setCopied] = useState<string | null>(null)
 
   const copy = (id: string, url: string) => {
@@ -24,8 +27,8 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
 
   const handleRegenerate = async (linkId: string) => {
     try {
-      // TODO(backend): passes the real roadmap ID once available in context.
-      await regenerateShareLink('rm-v1', linkId)
+      // TODO(backend): regenerateShareLink will return a new signed URL to replace the displayed one.
+      await regenerateShareLink(roadmapId, linkId)
     } catch {
       onToast('Regenerate requires backend')
     }
@@ -33,8 +36,8 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
 
   const handleRevoke = async (linkId: string) => {
     try {
-      // TODO(backend): passes the real roadmap ID once available in context.
-      await revokeShareLink('rm-v1', linkId)
+      // TODO(backend): revokeShareLink will invalidate the token server-side.
+      await revokeShareLink(roadmapId, linkId)
     } catch {
       onToast('Revoke requires backend')
     }

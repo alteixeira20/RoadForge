@@ -15,6 +15,9 @@ interface RoadmapContextValue {
   /** Whether the roadmap has been "saved to server" (mocked). */
   saved: boolean
   setSaved: (saved: boolean) => void
+  /** Server-side roadmap record ID. Null until the roadmap has been saved to the server. */
+  serverRoadmapId: string | null
+  setServerRoadmapId: (id: string | null) => void
   resetToSample: () => void
 }
 
@@ -23,9 +26,10 @@ const RoadmapContext = createContext<RoadmapContextValue | null>(null)
 export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [displayName, setDisplayNameState] = useState('')
   const [roadmapName, setRoadmapNameState] = useState('v1.0 Public Launch')
-  // TODO(backend): replace with getRoadmap(roadmapId) once the save/join flow assigns a server roadmap ID.
+  // TODO(backend): replace with getRoadmap(serverRoadmapId) once an ID is available in context.
   const [phases, setPhasesState] = useState<Phase[]>(SAMPLE_ROADMAP.phases)
   const [saved, setSavedState] = useState(false)
+  const [serverRoadmapId, setServerRoadmapIdState] = useState<string | null>(null)
 
   // Hydrate from localStorage once on client mount
   useEffect(() => {
@@ -39,6 +43,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     if (storedPhases !== null) setPhasesState(storedPhases)
 
     setSavedState(storage.getSaved())
+    const storedServerId = storage.getServerRoadmapId()
+    if (storedServerId !== null) setServerRoadmapIdState(storedServerId)
   }, [])
 
   const setDisplayName = useCallback((name: string) => {
@@ -61,17 +67,23 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     storage.setSaved(s)
   }, [])
 
+  const setServerRoadmapId = useCallback((id: string | null) => {
+    setServerRoadmapIdState(id)
+    storage.setServerRoadmapId(id)
+  }, [])
+
   const resetToSample = useCallback(() => {
     storage.clearAll()
     setDisplayNameState('')
     setRoadmapNameState('v1.0 Public Launch')
     setPhasesState(SAMPLE_ROADMAP.phases)
     setSavedState(false)
+    setServerRoadmapIdState(null)
   }, [])
 
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, resetToSample }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, resetToSample }}
     >
       {children}
     </RoadmapContext.Provider>

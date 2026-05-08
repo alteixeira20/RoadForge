@@ -23,7 +23,7 @@ interface WorkspaceProps {
 }
 
 export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
-  const { displayName, roadmapName, phases, setPhases, saved, setSaved } = useRoadmap()
+  const { displayName, roadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId } = useRoadmap()
   const readOnly = mode === 'viewer'
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>('RF-05')
@@ -113,11 +113,17 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         onCloseIO={closeIO}
         onConfirmSave={async () => {
           closeSave()
-          // TODO(backend): SAMPLE_ROADMAP.roadmap.id is a placeholder until the save
-          // flow returns a real server roadmap ID and stores it in context.
-          await saveToServer(SAMPLE_ROADMAP.roadmap.id)
-          setSaved(true)
-          showToast('Saved · collaboration enabled')
+          try {
+            // TODO(backend): replace with createRoadmap() on first save; updateRoadmap() on subsequent saves.
+            await saveToServer(serverRoadmapId ?? SAMPLE_ROADMAP.roadmap.id)
+            if (!serverRoadmapId) {
+              setServerRoadmapId(SAMPLE_ROADMAP.roadmap.id)
+            }
+            setSaved(true)
+            showToast('Saved · collaboration enabled')
+          } catch {
+            showToast('Save failed — try again')
+          }
         }}
         onToast={showToast}
       />

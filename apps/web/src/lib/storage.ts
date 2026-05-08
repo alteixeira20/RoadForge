@@ -7,6 +7,7 @@ const KEYS = {
   roadmapName: 'rf:roadmapName',
   phases: 'rf:phases',
   saved: 'rf:saved',
+  serverRoadmapId: 'rf:serverRoadmapId',
 } as const
 
 function get(key: string): string | null {
@@ -79,6 +80,17 @@ export const storage = {
   },
   setSaved(saved: boolean): void {
     set(KEYS.saved, String(saved))
+  },
+
+  getServerRoadmapId(): string | null {
+    return get(KEYS.serverRoadmapId)
+  },
+  setServerRoadmapId(id: string | null): void {
+    if (!id) {
+      remove(KEYS.serverRoadmapId)
+    } else {
+      set(KEYS.serverRoadmapId, id)
+    }
   },
 
   clearAll(): void {

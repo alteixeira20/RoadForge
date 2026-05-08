@@ -76,11 +76,15 @@ Manages all roadmap state and localStorage persistence:
 | `roadmapName` | `string` | `rf:roadmapName` |
 | `phases` | `Phase[]` | `rf:phases` |
 | `saved` | `boolean` | `rf:saved` |
+| `serverRoadmapId` | `string \| null` | `rf:serverRoadmapId` |
+| `setServerRoadmapId` | `(id: string \| null) => void` | — |
 | `resetToSample()` | `() => void` | clears all rf:* keys |
 
 Hydration: on client mount, reads all keys from `localStorage`. Falls back to `SAMPLE_ROADMAP.phases` if no phases are stored.
 
-**TODO(backend):** Replace the initial `SAMPLE_ROADMAP.phases` fallback with a `getRoadmap(roadmapId)` call once the save/join flow assigns a server roadmap ID. Auth is not required for this step — a roadmap ID from a save or invite context is sufficient. The localStorage layer remains as optimistic cache throughout.
+`serverRoadmapId` is the frontend's handle to the server-side roadmap record. It is `null` until the roadmap is saved for the first time (or joined via invite). It is persisted to `rf:serverRoadmapId` and cleared by `resetToSample()`.
+
+**TODO(backend):** Replace the initial `SAMPLE_ROADMAP.phases` fallback with a `getRoadmap(serverRoadmapId)` call when `serverRoadmapId` is non-null. Auth is not required for this step — a roadmap ID from a save or invite context is sufficient. The localStorage layer remains as optimistic cache throughout.
 
 ### ThemeContext (`context/ThemeContext.tsx`)
 
@@ -116,6 +120,7 @@ All localStorage access goes through `src/lib/storage.ts`. Never call `localStor
 | `rf:roadmapName` | `string` | `'v1.0 Public Launch'` |
 | `rf:phases` | `Phase[]` (JSON) | `SAMPLE_ROADMAP.phases` |
 | `rf:saved` | `boolean` (string) | `false` |
+| `rf:serverRoadmapId` | `string` (server ID) | absent (key not set until first save) |
 
 ### Safety guarantees
 
