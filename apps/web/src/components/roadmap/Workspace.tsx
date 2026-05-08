@@ -13,8 +13,7 @@ import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
-import { saveToServer } from '@/services/roadmap.service'
-import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
+import { createRoadmap, saveToServer } from '@/services/roadmap.service'
 import type { WorkspaceMode } from '@/types/roadmap'
 
 interface WorkspaceProps {
@@ -23,7 +22,7 @@ interface WorkspaceProps {
 }
 
 export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
-  const { displayName, roadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId } = useRoadmap()
+  const { displayName, roadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, setSessionToken, setRole } = useRoadmap()
   const readOnly = mode === 'viewer'
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>('RF-05')
@@ -114,15 +113,25 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         onConfirmSave={async () => {
           closeSave()
           try {
-            // TODO(backend): replace with createRoadmap() on first save; updateRoadmap() on subsequent saves.
-            await saveToServer(serverRoadmapId ?? SAMPLE_ROADMAP.roadmap.id)
             if (!serverRoadmapId) {
-              setServerRoadmapId(SAMPLE_ROADMAP.roadmap.id)
+              // First save: create the roadmap on the server.
+              // TODO(password): pass password once SaveToServerModal has a password field.
+              const { roadmap, ownerSessionToken } = await createRoadmap(
+                roadmapName,
+                displayName || 'Owner',
+                phases,
+              )
+              setServerRoadmapId(roadmap.roadmap.id)
+              setSessionToken(ownerSessionToken)
+              setRole('owner')
+            } else {
+              // Subsequent save: push latest snapshot.
+              await saveToServer(serverRoadmapId, roadmapName, phases)
             }
             setSaved(true)
             showToast('Saved · collaboration enabled')
           } catch {
-            showToast('Save failed — try again')
+            showToast('Save failed — check backend connection')
           }
         }}
         onToast={showToast}

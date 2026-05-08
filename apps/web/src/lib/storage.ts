@@ -1,5 +1,4 @@
-import type { Phase } from '@/types/roadmap'
-import type { Theme } from '@/types/roadmap'
+import type { Phase, ShareRole, Theme } from '@/types/roadmap'
 
 const KEYS = {
   theme: 'rf:theme',
@@ -8,6 +7,9 @@ const KEYS = {
   phases: 'rf:phases',
   saved: 'rf:saved',
   serverRoadmapId: 'rf:serverRoadmapId',
+  sessionToken: 'rf:sessionToken',
+  participantId: 'rf:participantId',
+  role: 'rf:role',
 } as const
 
 function get(key: string): string | null {
@@ -86,11 +88,33 @@ export const storage = {
     return get(KEYS.serverRoadmapId)
   },
   setServerRoadmapId(id: string | null): void {
-    if (!id) {
-      remove(KEYS.serverRoadmapId)
-    } else {
-      set(KEYS.serverRoadmapId, id)
-    }
+    if (!id) remove(KEYS.serverRoadmapId)
+    else set(KEYS.serverRoadmapId, id)
+  },
+
+  getSessionToken(): string | null {
+    return get(KEYS.sessionToken)
+  },
+  setSessionToken(value: string | null): void {
+    if (!value) remove(KEYS.sessionToken)
+    else set(KEYS.sessionToken, value)
+  },
+
+  getParticipantId(): string | null {
+    return get(KEYS.participantId)
+  },
+  setParticipantId(value: string | null): void {
+    if (!value) remove(KEYS.participantId)
+    else set(KEYS.participantId, value)
+  },
+
+  getRole(): ShareRole | null {
+    const v = get(KEYS.role)
+    return v === 'owner' || v === 'editor' || v === 'viewer' ? v : null
+  },
+  setRole(value: ShareRole | null): void {
+    if (!value) remove(KEYS.role)
+    else set(KEYS.role, value)
   },
 
   clearAll(): void {

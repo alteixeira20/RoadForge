@@ -114,14 +114,14 @@ export async function createRoadmap(
   ownerDisplayName: string,
   phases: Phase[] = [],
   password?: string,
-): Promise<Roadmap> {
+): Promise<{ roadmap: Roadmap; ownerSessionToken: string }> {
   const body: Record<string, unknown> = { name, owner_display_name: ownerDisplayName, phases }
   if (password) body.password = password
   const data = await requestJson<ApiCreateRoadmapResponse>('/api/roadmaps', {
     method: 'POST',
     body: JSON.stringify(body),
   })
-  return toRoadmap(data)
+  return { roadmap: toRoadmap(data), ownerSessionToken: data.owner_session_token }
 }
 
 /**

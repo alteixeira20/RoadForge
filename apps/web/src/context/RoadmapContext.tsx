@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import type { Phase } from '@/types/roadmap'
+import type { Phase, ShareRole } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage } from '@/lib/storage'
 
@@ -18,6 +18,15 @@ interface RoadmapContextValue {
   /** Server-side roadmap record ID. Null until the roadmap has been saved to the server. */
   serverRoadmapId: string | null
   setServerRoadmapId: (id: string | null) => void
+  /** Session token returned by createRoadmap or join. Null until first server save. */
+  sessionToken: string | null
+  setSessionToken: (value: string | null) => void
+  /** Participant ID returned by join. Null for the owner flow (create). */
+  participantId: string | null
+  setParticipantId: (value: string | null) => void
+  /** Collaboration role for this session. */
+  role: ShareRole | null
+  setRole: (value: ShareRole | null) => void
   resetToSample: () => void
 }
 
@@ -30,6 +39,9 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [phases, setPhasesState] = useState<Phase[]>(SAMPLE_ROADMAP.phases)
   const [saved, setSavedState] = useState(false)
   const [serverRoadmapId, setServerRoadmapIdState] = useState<string | null>(null)
+  const [sessionToken, setSessionTokenState] = useState<string | null>(null)
+  const [participantId, setParticipantIdState] = useState<string | null>(null)
+  const [role, setRoleState] = useState<ShareRole | null>(null)
 
   // Hydrate from localStorage once on client mount
   useEffect(() => {
@@ -45,6 +57,12 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setSavedState(storage.getSaved())
     const storedServerId = storage.getServerRoadmapId()
     if (storedServerId !== null) setServerRoadmapIdState(storedServerId)
+    const storedSessionToken = storage.getSessionToken()
+    if (storedSessionToken !== null) setSessionTokenState(storedSessionToken)
+    const storedParticipantId = storage.getParticipantId()
+    if (storedParticipantId !== null) setParticipantIdState(storedParticipantId)
+    const storedRole = storage.getRole()
+    if (storedRole !== null) setRoleState(storedRole)
   }, [])
 
   const setDisplayName = useCallback((name: string) => {
@@ -72,6 +90,21 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     storage.setServerRoadmapId(id)
   }, [])
 
+  const setSessionToken = useCallback((value: string | null) => {
+    setSessionTokenState(value)
+    storage.setSessionToken(value)
+  }, [])
+
+  const setParticipantId = useCallback((value: string | null) => {
+    setParticipantIdState(value)
+    storage.setParticipantId(value)
+  }, [])
+
+  const setRole = useCallback((value: ShareRole | null) => {
+    setRoleState(value)
+    storage.setRole(value)
+  }, [])
+
   const resetToSample = useCallback(() => {
     storage.clearAll()
     setDisplayNameState('')
@@ -79,11 +112,14 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setPhasesState(SAMPLE_ROADMAP.phases)
     setSavedState(false)
     setServerRoadmapIdState(null)
+    setSessionTokenState(null)
+    setParticipantIdState(null)
+    setRoleState(null)
   }, [])
 
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, resetToSample }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, resetToSample }}
     >
       {children}
     </RoadmapContext.Provider>
