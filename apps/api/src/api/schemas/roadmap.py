@@ -106,6 +106,22 @@ class JoinRoadmapResponse(BaseModel):
     participant_id: str
 
 
+# ─── Create roadmap response ──────────────────────────────────────────────────
+
+
+class CreateRoadmapResponse(BaseModel):
+    id: str
+    name: str
+    owner_display_name: str
+    schema_version: str
+    phases: list[PhaseDTO]
+    created_at: datetime
+    updated_at: datetime
+    share_links: list[ShareLinkResponse]
+    # Opaque session token for the owner participant; shown once, never stored raw.
+    owner_session_token: str
+
+
 # ─── Activity log ─────────────────────────────────────────────────────────────
 
 

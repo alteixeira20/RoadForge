@@ -77,6 +77,15 @@ To run Alembic migrations once domain models are added:
 docker compose exec api alembic upgrade head
 ```
 
+**Create a roadmap** (`POST /api/roadmaps` — returns share links and owner session token):
+
+```bash
+curl -s -X POST http://localhost:7878/api/roadmaps \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"v1.0 Launch","owner_display_name":"Ada","phases":[]}' \
+  | python3 -m json.tool
+```
+
 ---
 
 ## Routes

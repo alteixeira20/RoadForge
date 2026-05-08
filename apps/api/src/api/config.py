@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(
         default=["http://localhost:3000", "http://localhost:3001"],
     )
+    # Base URL of the Next.js frontend — used to build invite link join URLs.
+    web_base_url: str = Field(default="http://localhost:3000", alias="ROADFORGE_WEB_BASE_URL")
 
 
 @lru_cache

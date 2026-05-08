@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from api.config import get_settings
 from api.middleware.cors import add_cors
-from api.routers import health
+from api.routers import health, roadmaps
 
 
 def create_app() -> FastAPI:
@@ -16,6 +16,7 @@ def create_app() -> FastAPI:
     )
     add_cors(app)
     app.include_router(health.router, prefix="/api")
+    app.include_router(roadmaps.router, prefix="/api/roadmaps")
     return app
 
 

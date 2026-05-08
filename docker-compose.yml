@@ -24,6 +24,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-roadforge}:${POSTGRES_PASSWORD:-roadforge_dev}@postgres:5432/${POSTGRES_DB:-roadforge}
       ROADFORGE_ENVIRONMENT: ${ROADFORGE_ENVIRONMENT:-development}
+      ROADFORGE_WEB_BASE_URL: ${ROADFORGE_WEB_BASE_URL:-http://localhost:3000}
     depends_on:
       postgres:
         condition: service_healthy
