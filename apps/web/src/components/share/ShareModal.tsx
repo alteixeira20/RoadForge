@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
-import { MOCK_SHARE_LINKS, SAMPLE_ROADMAP } from '@/data/sample-roadmap'
-import { regenerateShareLink, revokeShareLink } from '@/services/roadmap.service'
+import { MOCK_SHARE_LINKS } from '@/data/sample-roadmap'
+import { getShareLinks, regenerateShareLink, revokeShareLink } from '@/services/roadmap.service'
 import { useRoadmap } from '@/context/RoadmapContext'
+import type { ShareLink } from '@/types/roadmap'
 import type { IconName } from '@/components/ui/Icon'
 
 interface ShareModalProps {
@@ -16,30 +17,53 @@ interface ShareModalProps {
 
 export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
   const { serverRoadmapId } = useRoadmap()
-  const roadmapId = serverRoadmapId ?? SAMPLE_ROADMAP.roadmap.id
+  const [links, setLinks] = useState<ShareLink[]>([])
+  const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
 
-  const copy = (id: string, url: string) => {
+  useEffect(() => {
+    if (!open) return
+    if (!serverRoadmapId) {
+      setLinks(MOCK_SHARE_LINKS)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    getShareLinks(serverRoadmapId)
+      .then((data) => { if (!cancelled) setLinks(data) })
+      .catch(() => { if (!cancelled) onToast('Could not load share links') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+    // onToast identity is not stable (no useCallback in useToastState); omitting
+    // it is safe because its behaviour never changes, only its reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, serverRoadmapId])
+
+  const copy = (role: string, url: string) => {
     if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {})
-    setCopied(id)
+    setCopied(role)
     setTimeout(() => setCopied(null), 1600)
   }
 
-  const handleRegenerate = async (linkId: string) => {
+  const handleRegenerate = async (role: string) => {
+    if (!serverRoadmapId) return
     try {
-      // TODO(backend): regenerateShareLink will return a new signed URL to replace the displayed one.
-      await regenerateShareLink(roadmapId, linkId)
+      const updated = await regenerateShareLink(serverRoadmapId, role)
+      setLinks((prev) => prev.map((l) => (l.role === role ? updated : l)))
+      onToast('New link generated — copy it now')
     } catch {
-      onToast('Regenerate requires backend')
+      onToast('Could not rotate link')
     }
   }
 
-  const handleRevoke = async (linkId: string) => {
+  const handleRevoke = async (role: string) => {
+    if (!serverRoadmapId) return
     try {
-      // TODO(backend): revokeShareLink will invalidate the token server-side.
-      await revokeShareLink(roadmapId, linkId)
+      await revokeShareLink(serverRoadmapId, role)
+      setLinks((prev) => prev.filter((l) => l.role !== role))
+      onToast('Link revoked')
     } catch {
-      onToast('Revoke requires backend')
+      onToast('Could not revoke link')
     }
   }
 
@@ -64,51 +88,63 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       }
     >
       <div className="share-list">
-        {MOCK_SHARE_LINKS.map((link) => (
-          <div key={link.id} className={`share-row ${link.recommended ? 'recommended' : ''}`}>
-            <div className="ic">
-              <Icon name={link.icon as IconName} size={16} />
-            </div>
-            <div className="meta">
-              <div className="h">
-                {link.role === 'owner'
-                  ? 'Owner'
-                  : link.role === 'editor'
-                  ? 'Editor invite'
-                  : 'Viewer (read-only)'}
-                {link.recommended && (
-                  <span className="badge ember">Recommended</span>
-                )}
+        {loading && (
+          <div style={{ padding: '12px 0', color: 'var(--ink-4)', fontSize: 13 }}>
+            Loading share links…
+          </div>
+        )}
+        {!loading &&
+          links.map((link) => (
+            <div key={link.role} className={`share-row ${link.recommended ? 'recommended' : ''}`}>
+              <div className="ic">
+                <Icon name={link.icon as IconName} size={16} />
               </div>
-              <div className="d">{link.desc}</div>
-            </div>
-            <div className="link-line">
-              <code>{link.url}</code>
-              <button
-                className={`copy ${copied === link.id ? 'copied' : ''}`}
-                onClick={() => copy(link.id, link.url)}
-              >
-                {copied === link.id ? (
+              <div className="meta">
+                <div className="h">
+                  {link.role === 'owner'
+                    ? 'Owner'
+                    : link.role === 'editor'
+                    ? 'Editor invite'
+                    : 'Viewer (read-only)'}
+                  {link.recommended && <span className="badge ember">Recommended</span>}
+                </div>
+                <div className="d">{link.desc}</div>
+              </div>
+              <div className="link-line">
+                {link.url ? (
                   <>
-                    <Icon name="check" size={13} /> Copied
+                    <code>{link.url}</code>
+                    <button
+                      className={`copy ${copied === link.role ? 'copied' : ''}`}
+                      onClick={() => copy(link.role, link.url)}
+                    >
+                      {copied === link.role ? (
+                        <>
+                          <Icon name="check" size={13} /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="link" size={13} /> Copy
+                        </>
+                      )}
+                    </button>
                   </>
                 ) : (
-                  <>
-                    <Icon name="link" size={13} /> Copy
-                  </>
+                  <span style={{ fontSize: 12, color: 'var(--ink-4)', fontStyle: 'italic' }}>
+                    Rotate to generate a copyable link
+                  </span>
                 )}
-              </button>
+              </div>
+              <div className="actions">
+                <button className="mini" onClick={() => handleRegenerate(link.role)}>
+                  <Icon name="link" size={12} /> Regenerate
+                </button>
+                <button className="mini" onClick={() => handleRevoke(link.role)}>
+                  <Icon name="x" size={12} /> Revoke
+                </button>
+              </div>
             </div>
-            <div className="actions">
-              <button className="mini" onClick={() => handleRegenerate(link.id)}>
-                <Icon name="link" size={12} /> Regenerate
-              </button>
-              <button className="mini" onClick={() => handleRevoke(link.id)}>
-                <Icon name="x" size={12} /> Revoke
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
       </div>
     </Modal>
   )
