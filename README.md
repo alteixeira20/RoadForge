@@ -80,10 +80,23 @@ docker compose exec api alembic upgrade head
 **Create a roadmap** (`POST /api/roadmaps` — returns share links and owner session token):
 
 ```bash
-curl -s -X POST http://localhost:7878/api/roadmaps \
+ROADMAP_ID=$(curl -s -X POST http://localhost:7878/api/roadmaps \
   -H 'Content-Type: application/json' \
   -d '{"name":"v1.0 Launch","owner_display_name":"Ada","phases":[]}' \
-  | python3 -m json.tool
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+echo "Created: $ROADMAP_ID"
+```
+
+**Fetch a roadmap** (`GET /api/roadmaps/{id}`):
+
+```bash
+curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID | python3 -m json.tool
+```
+
+**Fetch share links** (`GET /api/roadmaps/{id}/share-links` — `url` is null; raw tokens are not stored):
+
+```bash
+curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links | python3 -m json.tool
 ```
 
 ---

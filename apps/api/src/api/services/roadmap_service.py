@@ -1,11 +1,15 @@
 from datetime import datetime, timezone
 
+from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
 from api.schemas.roadmap import (
     CreateRoadmapRequest,
     CreateRoadmapResponse,
+    PhaseDTO,
+    RoadmapResponse,
     ShareLinkResponse,
 )
 from api.services.id_service import generate_id
@@ -112,3 +116,52 @@ async def create_roadmap(
         share_links=share_links_out,
         owner_session_token=owner_session_token,
     )
+
+
+_ROLE_ORDER: dict[str, int] = {"owner": 0, "editor": 1, "viewer": 2}
+
+
+async def get_roadmap(db: AsyncSession, roadmap_id: str) -> RoadmapResponse:
+    result = await db.execute(
+        select(Roadmap).where(Roadmap.id == roadmap_id, Roadmap.deleted_at.is_(None))
+    )
+    roadmap = result.scalar_one_or_none()
+    if roadmap is None:
+        raise HTTPException(status_code=404, detail="Roadmap not found")
+    phases = [PhaseDTO(**p) for p in roadmap.snapshot_json.get("phases", [])]
+    return RoadmapResponse(
+        id=roadmap.id,
+        name=roadmap.name,
+        owner_display_name=roadmap.owner_display_name,
+        schema_version=roadmap.schema_version,
+        phases=phases,
+        created_at=roadmap.created_at,
+        updated_at=roadmap.updated_at,
+    )
+
+
+async def get_share_links(db: AsyncSession, roadmap_id: str) -> list[ShareLinkResponse]:
+    exists = await db.execute(
+        select(Roadmap.id).where(Roadmap.id == roadmap_id, Roadmap.deleted_at.is_(None))
+    )
+    if exists.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Roadmap not found")
+    result = await db.execute(
+        select(ShareLink).where(
+            ShareLink.roadmap_id == roadmap_id,
+            ShareLink.is_active.is_(True),
+        )
+    )
+    links = sorted(result.scalars().all(), key=lambda sl: _ROLE_ORDER.get(sl.role, 99))
+    return [
+        ShareLinkResponse(
+            id=sl.id,
+            role=sl.role,  # type: ignore[arg-type]
+            token_prefix=sl.token_prefix,
+            url=None,
+            is_active=sl.is_active,
+            created_at=sl.created_at,
+            rotated_at=sl.rotated_at,
+        )
+        for sl in links
+    ]
