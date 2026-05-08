@@ -32,7 +32,7 @@ export function WorkspaceModals({
         onClose={onCloseSave}
         onConfirm={onConfirmSave}
       />
-      <ShareModal open={showShare} onClose={onCloseShare} />
+      <ShareModal open={showShare} onClose={onCloseShare} onToast={onToast} />
       <IOModal open={showIO} onClose={onCloseIO} onToast={onToast} />
     </>
   )

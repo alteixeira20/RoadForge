@@ -5,16 +5,31 @@ import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/Icon'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useRoadmap } from '@/context/RoadmapContext'
+import { joinRoadmap } from '@/services/roadmap.service'
+
+// TODO(backend): read the real invite token from URL search params once the
+// share-link system is wired (e.g. /join?token=ed_2bD7…XqL).
+const MOCK_TOKEN = 'demo-invite-token'
 
 export function JoinPage() {
   const router = useRouter()
   const { setDisplayName } = useRoadmap()
   const [name, setName] = useState('')
+  const [joining, setJoining] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleJoin = () => {
-    if (!name.trim()) return
-    setDisplayName(name.trim())
-    router.push('/shared')
+  const handleJoin = async () => {
+    if (!name.trim() || joining) return
+    setJoining(true)
+    setError(null)
+    try {
+      const { role } = await joinRoadmap(MOCK_TOKEN, name.trim())
+      setDisplayName(name.trim())
+      router.push(role === 'viewer' ? '/shared' : '/workspace')
+    } catch {
+      setError('Could not join — the invite link may be invalid or expired.')
+      setJoining(false)
+    }
   }
 
   const handleCreateOwn = () => {
@@ -78,6 +93,15 @@ export function JoinPage() {
           </span>
         </div>
 
+        {error && (
+          <div className="note-line" style={{ borderColor: 'rgba(217,116,66,0.40)' }}>
+            <span className="ic">
+              <Icon name="x" size={14} />
+            </span>
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="note-line">
           <span className="ic">
             <Icon name="lock" size={14} />
@@ -91,11 +115,11 @@ export function JoinPage() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button
             className="btn primary lg"
-            disabled={!name.trim()}
-            style={{ flex: 1, opacity: name.trim() ? 1 : 0.5 }}
+            disabled={!name.trim() || joining}
+            style={{ flex: 1, opacity: name.trim() && !joining ? 1 : 0.5 }}
             onClick={handleJoin}
           >
-            Join roadmap <Icon name="arrow-right" size={15} stroke="#fff" />
+            {joining ? 'Joining…' : <>Join roadmap <Icon name="arrow-right" size={15} stroke="#fff" /></>}
           </button>
           <button className="btn lg" onClick={handleCreateOwn}>
             Create your own

@@ -4,15 +4,40 @@ import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
 import { MOCK_SHARE_LINKS } from '@/data/sample-roadmap'
+import { regenerateShareLink, revokeShareLink } from '@/services/roadmap.service'
 import type { IconName } from '@/components/ui/Icon'
 
-export function ShareModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+interface ShareModalProps {
+  open: boolean
+  onClose: () => void
+  onToast: (msg: string) => void
+}
+
+export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
   const [copied, setCopied] = useState<string | null>(null)
 
   const copy = (id: string, url: string) => {
     if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {})
     setCopied(id)
     setTimeout(() => setCopied(null), 1600)
+  }
+
+  const handleRegenerate = async (linkId: string) => {
+    try {
+      // TODO(backend): passes the real roadmap ID once available in context.
+      await regenerateShareLink('rm-v1', linkId)
+    } catch {
+      onToast('Regenerate requires backend')
+    }
+  }
+
+  const handleRevoke = async (linkId: string) => {
+    try {
+      // TODO(backend): passes the real roadmap ID once available in context.
+      await revokeShareLink('rm-v1', linkId)
+    } catch {
+      onToast('Revoke requires backend')
+    }
   }
 
   return (
@@ -72,10 +97,10 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
               </button>
             </div>
             <div className="actions">
-              <button className="mini">
+              <button className="mini" onClick={() => handleRegenerate(link.id)}>
                 <Icon name="link" size={12} /> Regenerate
               </button>
-              <button className="mini">
+              <button className="mini" onClick={() => handleRevoke(link.id)}>
                 <Icon name="x" size={12} /> Revoke
               </button>
             </div>

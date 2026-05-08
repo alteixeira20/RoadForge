@@ -13,6 +13,8 @@ import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
+import { saveToServer } from '@/services/roadmap.service'
+import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import type { WorkspaceMode } from '@/types/roadmap'
 
 interface WorkspaceProps {
@@ -109,9 +111,12 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         onCloseSave={closeSave}
         onCloseShare={closeShare}
         onCloseIO={closeIO}
-        onConfirmSave={() => {
-          setSaved(true)
+        onConfirmSave={async () => {
           closeSave()
+          // TODO(backend): SAMPLE_ROADMAP.roadmap.id is a placeholder until the save
+          // flow returns a real server roadmap ID and stores it in context.
+          await saveToServer(SAMPLE_ROADMAP.roadmap.id)
+          setSaved(true)
           showToast('Saved · collaboration enabled')
         }}
         onToast={showToast}
