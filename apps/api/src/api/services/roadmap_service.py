@@ -11,6 +11,7 @@ from api.schemas.roadmap import (
     PhaseDTO,
     RoadmapResponse,
     ShareLinkResponse,
+    UpdateRoadmapRequest,
 )
 from api.services.id_service import generate_id
 from api.services.token_service import generate_token, hash_token
@@ -121,14 +122,11 @@ async def create_roadmap(
 _ROLE_ORDER: dict[str, int] = {"owner": 0, "editor": 1, "viewer": 2}
 
 
-async def get_roadmap(db: AsyncSession, roadmap_id: str) -> RoadmapResponse:
-    result = await db.execute(
-        select(Roadmap).where(Roadmap.id == roadmap_id, Roadmap.deleted_at.is_(None))
-    )
-    roadmap = result.scalar_one_or_none()
-    if roadmap is None:
-        raise HTTPException(status_code=404, detail="Roadmap not found")
-    phases = [PhaseDTO(**p) for p in roadmap.snapshot_json.get("phases", [])]
+def _phases_from_snapshot(snapshot_json: dict) -> list[PhaseDTO]:
+    return [PhaseDTO(**p) for p in snapshot_json.get("phases", [])]
+
+
+def _roadmap_response(roadmap: Roadmap, phases: list[PhaseDTO]) -> RoadmapResponse:
     return RoadmapResponse(
         id=roadmap.id,
         name=roadmap.name,
@@ -138,6 +136,61 @@ async def get_roadmap(db: AsyncSession, roadmap_id: str) -> RoadmapResponse:
         created_at=roadmap.created_at,
         updated_at=roadmap.updated_at,
     )
+
+
+async def _fetch_active_roadmap(db: AsyncSession, roadmap_id: str) -> Roadmap:
+    result = await db.execute(
+        select(Roadmap).where(Roadmap.id == roadmap_id, Roadmap.deleted_at.is_(None))
+    )
+    roadmap = result.scalar_one_or_none()
+    if roadmap is None:
+        raise HTTPException(status_code=404, detail="Roadmap not found")
+    return roadmap
+
+
+async def get_roadmap(db: AsyncSession, roadmap_id: str) -> RoadmapResponse:
+    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+
+
+async def update_roadmap(
+    db: AsyncSession,
+    roadmap_id: str,
+    payload: UpdateRoadmapRequest,
+) -> RoadmapResponse:
+    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+
+    before_json: dict = {}
+    after_json: dict = {}
+
+    if payload.name is not None and payload.name != roadmap.name:
+        before_json["name"] = roadmap.name
+        after_json["name"] = payload.name
+        roadmap.name = payload.name
+
+    if payload.phases is not None:
+        before_json["phase_count"] = len(roadmap.snapshot_json.get("phases", []))
+        after_json["phase_count"] = len(payload.phases)
+        roadmap.snapshot_json = {
+            "phases": [p.model_dump(exclude_none=True) for p in payload.phases]
+        }
+
+    db.add(ActivityLog(
+        id=generate_id("al_"),
+        roadmap_id=roadmap_id,
+        participant_id=None,
+        actor_name=None,
+        action="roadmap.updated",
+        entity_type="roadmap",
+        entity_id=roadmap_id,
+        before_json=before_json or None,
+        after_json=after_json or None,
+    ))
+
+    await db.commit()
+    await db.refresh(roadmap)
+
+    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
 
 
 async def get_share_links(db: AsyncSession, roadmap_id: str) -> list[ShareLinkResponse]:

@@ -8,8 +8,9 @@ from api.schemas.roadmap import (
     CreateRoadmapResponse,
     RoadmapResponse,
     ShareLinkResponse,
+    UpdateRoadmapRequest,
 )
-from api.services.roadmap_service import create_roadmap, get_roadmap, get_share_links
+from api.services.roadmap_service import create_roadmap, get_roadmap, get_share_links, update_roadmap
 
 router = APIRouter(tags=["roadmaps"])
 
@@ -29,6 +30,15 @@ async def fetch_roadmap(
     db: AsyncSession = Depends(get_db),
 ) -> RoadmapResponse:
     return await get_roadmap(db, roadmap_id)
+
+
+@router.put("/{roadmap_id}", response_model=RoadmapResponse)
+async def put_roadmap(
+    roadmap_id: str,
+    payload: UpdateRoadmapRequest,
+    db: AsyncSession = Depends(get_db),
+) -> RoadmapResponse:
+    return await update_roadmap(db, roadmap_id, payload)
 
 
 @router.get("/{roadmap_id}/share-links", response_model=list[ShareLinkResponse])

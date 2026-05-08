@@ -99,6 +99,15 @@ curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID | python3 -m json.tool
 curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links | python3 -m json.tool
 ```
 
+**Update a roadmap** (`PUT /api/roadmaps/{id}` — name and/or phases, partial update, full snapshot replacement for phases):
+
+```bash
+curl -s -X PUT http://localhost:7878/api/roadmaps/$ROADMAP_ID \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Updated Name","phases":[{"id":"p1","num":"01","name":"Foundation","color":"#d97442","status":"active","progress":0,"tasks":[]}]}' \
+  | python3 -m json.tool
+```
+
 ---
 
 ## Routes
