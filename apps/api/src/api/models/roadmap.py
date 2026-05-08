@@ -89,7 +89,8 @@ class Participant(Base):
     display_name: Mapped[str] = mapped_column(sa.Text, nullable=False)
     role: Mapped[str] = mapped_column(sa.String(16), nullable=False)
     # SHA-256 hex digest of the session token returned to the client.
-    session_token_hash: Mapped[str] = mapped_column(sa.Text, nullable=False, unique=True)
+    # Uniqueness enforced by uq_participants_session_token_hash in __table_args__.
+    session_token_hash: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
     )
@@ -102,8 +103,8 @@ class Participant(Base):
 
     __table_args__ = (
         sa.CheckConstraint("role IN ('owner', 'editor', 'viewer')", name="ck_participant_role"),
+        sa.UniqueConstraint("session_token_hash", name="uq_participants_session_token_hash"),
         sa.Index("ix_participants_roadmap_id", "roadmap_id"),
-        sa.Index("ix_participants_session_token_hash", "session_token_hash", unique=True),
     )
 
 

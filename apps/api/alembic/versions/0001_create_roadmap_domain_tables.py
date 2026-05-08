@@ -105,9 +105,7 @@ def upgrade() -> None:
         sa.UniqueConstraint("session_token_hash", name="uq_participants_session_token_hash"),
     )
     op.create_index("ix_participants_roadmap_id", "participants", ["roadmap_id"])
-    op.create_index(
-        "ix_participants_session_token_hash", "participants", ["session_token_hash"], unique=True
-    )
+    # session_token_hash uniqueness is covered by uq_participants_session_token_hash constraint above.
 
     # ── activity_logs ─────────────────────────────────────────────────────────
     op.create_table(
@@ -150,7 +148,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_activity_logs_roadmap_created", table_name="activity_logs")
     op.drop_table("activity_logs")
-    op.drop_index("ix_participants_session_token_hash", table_name="participants")
     op.drop_index("ix_participants_roadmap_id", table_name="participants")
     op.drop_table("participants")
     op.drop_index("ix_share_links_roadmap_id", table_name="share_links")
