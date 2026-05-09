@@ -70,6 +70,17 @@ The backend verifies the token hash and validates the participant's role before 
 
 ---
 
+## Realtime sync and locks
+
+RoadForge uses Server-Sent Events (SSE) for real-time collaboration.
+
+- **Sync:** When a participant saves a roadmap, all other connected participants receive a `roadmap.updated` event and automatically re-fetch the latest state.
+- **Tickets:** SSE connections do not send long-lived session tokens in the URL. Instead, they use 30-second single-use tickets obtained via a Bearer-authenticated POST request.
+- **Soft Locks:** To prevent edit collisions, RoadForge uses in-memory "soft locks" (30s TTL). When a user expands a task, the frontend acquires a lock. Other users see the task as "Editing by X" and have their inputs disabled.
+- **Concurrency:** `PUT` requests use optimistic concurrency control. If the roadmap has been updated on the server since the client last fetched it, the save is rejected with a `409 Conflict`.
+
+---
+
 ## What is intentionally not present
 
 | Feature | Decision |

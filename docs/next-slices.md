@@ -22,9 +22,9 @@ Optional password input added to `SaveToServerModal.tsx`. Passes through `Worksp
 
 ---
 
-## D. End-to-end bugfix pass
+## D. ✅ Real-time collaboration MVP — Done
 
-Run the full `docs/mvp-test-plan.md` in a clean browser profile and fix any issues found. Treat each bug as a mini-slice.
+SSE-based update broadcast, short-lived ticket auth, and in-memory soft locks (30s TTL). Optimistic concurrency control via `last_updated_at` on PUT.
 
 ---
 
@@ -37,7 +37,13 @@ Remaining items:
 
 ---
 
-## F. Optional email verification code
+## F. End-to-end bugfix pass
+
+Run the full `docs/mvp-test-plan.md` in a clean browser profile and fix any issues found. Treat each bug as a mini-slice.
+
+---
+
+## G. Optional email verification code
 
 **Scope (high-level only — do not implement without explicit instruction):**
 - Owner enables email verification on a roadmap.
@@ -80,3 +86,13 @@ Would require:
 - WebSocket infrastructure (likely FastAPI `WebSocket` endpoints)
 - Operational transform or CRDT for conflict resolution
 - Frontend state sync layer
+
+## UI icon polish
+
+Replace the current custom icon implementation with `lucide-react` while preserving the existing `Icon` component API.
+
+Rules:
+- Keep imports centralized in `components/ui/Icon.tsx`.
+- Do not import Lucide icons directly across feature components.
+- Map existing icon names to Lucide equivalents.
+- Keep icon sizing/stroke behavior compatible with the current UI.

@@ -286,6 +286,59 @@ interface Phase {
 
 ---
 
+## Realtime and Locking (SSE)
+
+Realtime sync uses Server-Sent Events (SSE). To connect, a client must first obtain a short-lived ticket.
+
+### POST /api/roadmaps/{roadmap_id}/events/ticket
+
+Request a ticket to open an SSE stream.
+**Requires:** `Authorization: Bearer <session_token>`.
+
+**Response 200:**
+```json
+{
+  "ticket": "cryptographic_random_ticket",
+  "expires_in": 30
+}
+```
+
+### GET /api/roadmaps/{roadmap_id}/events?ticket={ticket}
+
+Open the SSE event stream. Validates and consumes the ticket.
+**Authentication:** Query parameter `ticket`.
+
+**Events:**
+- `roadmap.updated` — `{ "roadmap_id": "...", "updated_at": "...", "participant_id": "..." }`
+- `lock.acquired` — `{ "roadmap_id": "...", "target": "...", "participant_id": "...", "display_name": "..." }`
+- `lock.released` — `{ "roadmap_id": "...", "target": "...", "participant_id": "..." }`
+
+---
+
+## Soft Locks
+
+In-memory locks to prevent edit collisions. Targets are generic strings (e.g., `task:RF-01`).
+
+### POST /api/roadmaps/{roadmap_id}/locks
+
+Acquire or refresh a lock.
+**Requires:** `Authorization: Bearer <session_token>` with owner or editor role.
+
+**Request:**
+```json
+{ "target": "task:RF-01" }
+```
+
+**Response 200:** Lock info.
+**Response 409:** Target is locked by another participant.
+
+### DELETE /api/roadmaps/{roadmap_id}/locks/{target}
+
+Release a lock. Only the owner of the lock can release it.
+**Requires:** `Authorization: Bearer <session_token>`.
+
+---
+
 ## Error format
 
 All errors follow FastAPI's default shape:
@@ -326,6 +379,8 @@ Public endpoints (no token required): `POST /api/roadmaps`, `POST /api/roadmaps/
 ## Security notes
 
 - **Session tokens enforced** — write endpoints verify `Authorization: Bearer` against hashed token in the database. Missing or invalid token returns 401; wrong role returns 403.
+- **Short-lived tickets** — SSE connections use 30-second tickets to avoid exposing long-lived session tokens in URLs.
+- **Optimistic Concurrency** — `PUT /api/roadmaps/{id}` accepts `last_updated_at`. Returns 409 if the database has a newer version.
 - **Raw tokens never stored** — only SHA-256 hex digests are in the database. Even a full DB dump does not expose working invite tokens.
 - **Passwords hashed** — PBKDF2-SHA256, 260,000 iterations, 16-byte random salt per password. Compared with `hmac.compare_digest`.
 - **Body size limit** — requests larger than 512 KB are rejected with 413 before parsing.

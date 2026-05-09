@@ -204,6 +204,37 @@ docker compose exec postgres psql -U roadforge -d roadforge -c "SELECT action, a
 
 ---
 
+## 15. Test real-time collaboration (two-browser flow)
+
+1. **Browser A (Owner):** Open a roadmap.
+2. **Browser B (Editor):** Join the same roadmap via invite link.
+3. **Presence:** Confirm Browser B sees "Owner is online" or similar if implemented (currently signaled via locks).
+4. **Soft Lock:**
+   - **Browser A:** Expand Task RF-01.
+   - **Browser B:** Confirm Task RF-01 shows "[Owner Name] is editing" and the checkbox is disabled.
+   - **Browser A:** Collapse Task RF-01.
+   - **Browser B:** Confirm the lock badge disappears and Task RF-01 is editable again.
+5. **Real-time Sync:**
+   - **Browser B:** Toggle Task RF-02 to 'done' and click **Save**.
+   - **Browser A:** Confirm Task RF-02 checkmark appears automatically without refresh.
+6. **Optimistic Concurrency:**
+   - **Browser A:** Open Task RF-03 detail.
+   - **Browser B:** Open Task RF-03 detail (acquire lock if not already held by A).
+   - **Browser B:** Make a change and click **Save**.
+   - **Browser A:** Attempt to click **Save**.
+   - **Expected:** Toast "This roadmap changed elsewhere — reload before saving".
+
+---
+
+## 16. Test idle behavior
+
+1. **Browser B:** Hide the tab or switch to another window for > 60 seconds.
+2. **Browser A:** Make a change and click **Save**.
+3. **Browser B:** Return to the tab.
+4. **Expected:** Browser B should automatically re-fetch the latest roadmap state (or reconnect SSE and then re-fetch).
+
+---
+
 ## Validation checklist
 
 - [ ] Roadmap creates and saves to backend
