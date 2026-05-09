@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import type { Phase, ShareRole } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage } from '@/lib/storage'
-import { getRoadmap } from '@/services/roadmap.service'
+import { getRoadmap, getEventTicket, subscribeToRoadmapEvents, getLocks } from '@/services/roadmap.service'
 
 interface RoadmapContextValue {
   displayName: string
@@ -31,6 +31,11 @@ interface RoadmapContextValue {
   /** Display name of the roadmap owner (loaded from server). Null until fetched. */
   ownerDisplayName: string | null
   setOwnerDisplayName: (value: string | null) => void
+  /** Last updated timestamp from server. */
+  updatedAt: string | null
+  setUpdatedAt: (value: string | null) => void
+  /** Active soft locks for collaboration. */
+  locks: Record<string, { participantId: string; displayName: string }>
   resetToSample: () => void
 }
 
@@ -46,6 +51,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [participantId, setParticipantIdState] = useState<string | null>(null)
   const [role, setRoleState] = useState<ShareRole | null>(null)
   const [ownerDisplayName, setOwnerDisplayNameState] = useState<string | null>(null)
+  const [updatedAt, setUpdatedAtState] = useState<string | null>(null)
+  const [locks, setLocks] = useState<Record<string, { participantId: string; displayName: string }>>({})
 
   // Hydrate from localStorage once on client mount, then re-sync from server if an ID is available.
   useEffect(() => {
@@ -65,6 +72,9 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     const storedOwnerDisplayName = storage.getOwnerDisplayName()
     if (storedOwnerDisplayName !== null) setOwnerDisplayNameState(storedOwnerDisplayName)
 
+    const storedUpdatedAt = storage.getUpdatedAt()
+    if (storedUpdatedAt !== null) setUpdatedAtState(storedUpdatedAt)
+
     const storedServerId = storage.getServerRoadmapId()
     if (storedServerId !== null) {
       setServerRoadmapIdState(storedServerId)
@@ -75,6 +85,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
           setPhasesState(loaded.phases)
           setOwnerDisplayNameState(loaded.ownerDisplayName)
           storage.setOwnerDisplayName(loaded.ownerDisplayName)
+          setUpdatedAtState(loaded.updatedAt)
+          storage.setUpdatedAt(loaded.updatedAt)
           setSavedState(true)
         })
         .catch(() => {
@@ -91,6 +103,81 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
     return () => { cancelled = true }
   }, [])
+
+  // ─── Realtime subscription ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!serverRoadmapId || !sessionToken) return
+    if (typeof document === 'undefined') return
+
+    let unsubscribe: (() => void) | null = null
+    let hiddenAt: number | null = null
+
+    const startSync = async () => {
+      try {
+        // Initial fetch of active locks
+        const activeLocks = await getLocks(serverRoadmapId, sessionToken)
+        const lockMap: Record<string, { participantId: string; displayName: string }> = {}
+        for (const l of activeLocks) {
+          lockMap[l.target] = { participantId: l.participant_id, displayName: l.display_name }
+        }
+        setLocks(lockMap)
+
+        // Get ticket and open SSE
+        const { ticket } = await getEventTicket(serverRoadmapId, sessionToken)
+        unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, ticket, {
+          onUpdated: (payload) => {
+            if (payload.participant_id === participantId) return
+            // Background refresh on remote update
+            getRoadmap(serverRoadmapId).then((loaded) => {
+              setRoadmapNameState(loaded.roadmap.name)
+              setPhasesState(loaded.phases)
+              setOwnerDisplayNameState(loaded.ownerDisplayName)
+              setUpdatedAtState(loaded.updatedAt)
+              storage.setUpdatedAt(loaded.updatedAt)
+            })
+          },
+          onLockAcquired: (payload) => {
+            setLocks((prev) => ({
+              ...prev,
+              [payload.target]: { participantId: payload.participant_id, displayName: payload.display_name },
+            }))
+          },
+          onLockReleased: (payload) => {
+            setLocks((prev) => {
+              const next = { ...prev }
+              delete next[payload.target]
+              return next
+            })
+          },
+        })
+      } catch (err) {
+        console.error('Realtime sync failed', err)
+      }
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const now = Date.now()
+        // Reconnect if hidden for more than 60 seconds
+        if (hiddenAt && now - hiddenAt > 60_000) {
+          if (unsubscribe) unsubscribe()
+          startSync()
+        }
+        hiddenAt = null
+      } else {
+        hiddenAt = Date.now()
+      }
+    }
+
+    startSync()
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      if (unsubscribe) unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [serverRoadmapId, sessionToken, participantId])
 
   const setDisplayName = useCallback((name: string) => {
     setDisplayNameState(name)
@@ -137,6 +224,11 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     storage.setOwnerDisplayName(value)
   }, [])
 
+  const setUpdatedAt = useCallback((value: string | null) => {
+    setUpdatedAtState(value)
+    storage.setUpdatedAt(value)
+  }, [])
+
   const resetToSample = useCallback(() => {
     storage.clearAll()
     setDisplayNameState('')
@@ -148,11 +240,13 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setParticipantIdState(null)
     setRoleState(null)
     setOwnerDisplayNameState(null)
+    setUpdatedAtState(null)
+    setLocks({})
   }, [])
 
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, ownerDisplayName, setOwnerDisplayName, resetToSample }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, resetToSample }}
     >
       {children}
     </RoadmapContext.Provider>

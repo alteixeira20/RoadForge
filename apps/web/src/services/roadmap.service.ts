@@ -81,6 +81,21 @@ interface ApiJoinResponse {
   participant_id: string
 }
 
+export interface ApiLockResponse {
+  roadmap_id: string
+  target: string
+  participant_id: string
+  display_name: string
+  expires_at: string
+}
+
+export interface RealtimeHandlers {
+  onUpdated?: (payload: { roadmap_id: string; updated_at: string; participant_id: string }) => void
+  onLockAcquired?: (payload: { roadmap_id: string; target: string; participant_id: string; display_name: string }) => void
+  onLockReleased?: (payload: { roadmap_id: string; target: string; participant_id: string }) => void
+  onError?: (err: Event) => void
+}
+
 // ─── Mappers ───────────────────────────────────────────────────────────────────
 
 function toRoadmap(r: ApiRoadmapResponse): Roadmap {
@@ -89,6 +104,7 @@ function toRoadmap(r: ApiRoadmapResponse): Roadmap {
     roadmap: { id: r.id, name: r.name },
     phases: r.phases,
     ownerDisplayName: r.owner_display_name,
+    updatedAt: r.updated_at,
   }
 }
 
@@ -163,15 +179,129 @@ export async function saveToServer(
   name?: string,
   phases?: Phase[],
   sessionToken?: string,
-): Promise<void> {
+  lastUpdatedAt?: string,
+): Promise<ApiRoadmapResponse> {
   const body: Record<string, unknown> = {}
   if (name !== undefined) body.name = name
   if (phases !== undefined) body.phases = phases
-  await requestJson<void>(`/api/roadmaps/${roadmapId}`, {
+  if (lastUpdatedAt !== undefined) body.last_updated_at = lastUpdatedAt
+  return await requestJson<ApiRoadmapResponse>(`/api/roadmaps/${roadmapId}`, {
     method: 'PUT',
     body: JSON.stringify(body),
   }, sessionToken)
 }
+
+// ─── Realtime / SSE ────────────────────────────────────────────────────────────
+
+/**
+ * Request a short-lived ticket to open an SSE stream.
+ */
+export async function getEventTicket(
+  roadmapId: string,
+  sessionToken: string,
+): Promise<{ ticket: string; expires_in: number }> {
+  return await requestJson<{ ticket: string; expires_in: number }>(
+    `/api/roadmaps/${roadmapId}/events/ticket`,
+    { method: 'POST' },
+    sessionToken,
+  )
+}
+
+/**
+ * Subscribe to roadmap events via SSE.
+ * Returns a function to unsubscribe (close the stream).
+ */
+export function subscribeToRoadmapEvents(
+  roadmapId: string,
+  ticket: string,
+  handlers: RealtimeHandlers,
+): () => void {
+  const url = `${API_BASE_URL}/api/roadmaps/${roadmapId}/events?ticket=${ticket}`
+  const es = new EventSource(url)
+
+  es.addEventListener('roadmap.updated', (e) => {
+    try {
+      const data = JSON.parse(e.data)
+      handlers.onUpdated?.(data)
+    } catch (err) {
+      console.error('Failed to parse roadmap.updated event', err)
+    }
+  })
+
+  es.addEventListener('lock.acquired', (e) => {
+    try {
+      const data = JSON.parse(e.data)
+      handlers.onLockAcquired?.(data)
+    } catch (err) {
+      console.error('Failed to parse lock.acquired event', err)
+    }
+  })
+
+  es.addEventListener('lock.released', (e) => {
+    try {
+      const data = JSON.parse(e.data)
+      handlers.onLockReleased?.(data)
+    } catch (err) {
+      console.error('Failed to parse lock.released event', err)
+    }
+  })
+
+  es.onerror = (err) => {
+    handlers.onError?.(err)
+  }
+
+  return () => es.close()
+}
+
+// ─── Soft locks ────────────────────────────────────────────────────────────────
+
+/**
+ * Acquire or refresh a lock on a target.
+ */
+export async function acquireLock(
+  roadmapId: string,
+  target: string,
+  sessionToken: string,
+): Promise<ApiLockResponse> {
+  return await requestJson<ApiLockResponse>(
+    `/api/roadmaps/${roadmapId}/locks`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ target }),
+    },
+    sessionToken,
+  )
+}
+
+/**
+ * Explicitly release a lock.
+ */
+export async function releaseLock(
+  roadmapId: string,
+  target: string,
+  sessionToken: string,
+): Promise<void> {
+  await requestJson<void>(
+    `/api/roadmaps/${roadmapId}/locks/${target}`,
+    { method: 'DELETE' },
+    sessionToken,
+  )
+}
+
+/**
+ * Fetch all active locks for a roadmap.
+ */
+export async function getLocks(
+  roadmapId: string,
+  sessionToken: string,
+): Promise<ApiLockResponse[]> {
+  return await requestJson<ApiLockResponse[]>(
+    `/api/roadmaps/${roadmapId}/locks`,
+    {},
+    sessionToken,
+  )
+}
+
 
 // ─── Share links ───────────────────────────────────────────────────────────────
 

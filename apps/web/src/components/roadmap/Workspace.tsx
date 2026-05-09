@@ -36,6 +36,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setRole,
     ownerDisplayName,
     setOwnerDisplayName,
+    updatedAt,
+    setUpdatedAt,
   } = useRoadmap()
   const readOnly = mode === 'viewer'
 
@@ -76,20 +78,28 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         setSessionToken(ownerSessionToken)
         setRole('owner')
         setOwnerDisplayName(roadmap.ownerDisplayName)
+        setUpdatedAt(roadmap.updatedAt)
       } else {
         if (!sessionToken) {
           showToast('Session expired — rejoin from the invite link')
           return
         }
-        await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken)
+        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt || undefined)
+        setUpdatedAt(data.updated_at)
       }
       setSaved(true)
       showToast('Saved · collaboration enabled')
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('401')) showToast('Session expired — rejoin from the invite link')
-      else if (msg.includes('403')) showToast('You do not have permission for this action')
-      else showToast('Save failed — check backend connection')
+      if (msg.includes('409')) {
+        showToast('This roadmap changed elsewhere — reload before saving')
+      } else if (msg.includes('401')) {
+        showToast('Session expired — rejoin from the invite link')
+      } else if (msg.includes('403')) {
+        showToast('You do not have permission for this action')
+      } else {
+        showToast('Save failed — check backend connection')
+      }
     }
   }
 

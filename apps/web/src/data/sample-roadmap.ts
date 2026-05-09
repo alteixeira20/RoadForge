@@ -7,6 +7,7 @@ export const SAMPLE_ROADMAP: Roadmap = {
   project: { id: 'rfg', name: 'Roadforge' },
   roadmap: { id: 'rm-v1', name: 'Roadforge — v1.0 Public Launch' },
   ownerDisplayName: '',
+  updatedAt: new Date().toISOString(),
   phases: [
     {
       id: 'p1',

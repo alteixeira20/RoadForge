@@ -48,6 +48,7 @@ export interface Roadmap {
   roadmap: RoadmapMeta
   phases: Phase[]
   ownerDisplayName: string
+  updatedAt: string
 }
 
 // ─── Collaboration / sharing ───────────────────────────────────────────────────

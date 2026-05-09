@@ -11,6 +11,7 @@ const KEYS = {
   participantId: 'rf:participantId',
   role: 'rf:role',
   ownerDisplayName: 'rf:ownerDisplayName',
+  updatedAt: 'rf:updatedAt',
 } as const
 
 function get(key: string): string | null {
@@ -124,6 +125,14 @@ export const storage = {
   setOwnerDisplayName(value: string | null): void {
     if (!value) remove(KEYS.ownerDisplayName)
     else set(KEYS.ownerDisplayName, value)
+  },
+
+  getUpdatedAt(): string | null {
+    return get(KEYS.updatedAt)
+  },
+  setUpdatedAt(value: string | null): void {
+    if (!value) remove(KEYS.updatedAt)
+    else set(KEYS.updatedAt, value)
   },
 
   clearAll(): void {

@@ -1,8 +1,9 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import { useEffect, type CSSProperties } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
+import { acquireLock, releaseLock } from '@/services/roadmap.service'
 import type { Task } from '@/types/roadmap'
 
 interface TaskRowProps {
@@ -15,7 +16,49 @@ interface TaskRowProps {
 }
 
 export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck }: TaskRowProps) {
-  const { displayName } = useRoadmap()
+  const {
+    displayName,
+    locks,
+    serverRoadmapId,
+    sessionToken,
+    participantId,
+  } = useRoadmap()
+
+  const target = `task:${task.id}`
+  const lock = locks[target]
+  const isLockedByMe = lock?.participantId === participantId
+  const isLockedByOther = lock && !isLockedByMe
+  const effectivelyReadOnly = readOnly || isLockedByOther
+
+  // ─── Lock lifecycle ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!expanded || readOnly || !serverRoadmapId || !sessionToken) return
+
+    let interval: ReturnType<typeof setInterval> | null = null
+
+    const tryAcquire = async () => {
+      try {
+        await acquireLock(serverRoadmapId, target, sessionToken)
+      } catch (err) {
+        console.error('Failed to acquire lock', err)
+      }
+    }
+
+    tryAcquire()
+    // Refresh lock every 20s (TTL is 30s)
+    interval = setInterval(tryAcquire, 20_000)
+
+    return () => {
+      if (interval) clearInterval(interval)
+      releaseLock(serverRoadmapId, target, sessionToken).catch(() => {
+        // Silently fail on release (TTL will handle it)
+      })
+    }
+  }, [expanded, readOnly, serverRoadmapId, sessionToken, target])
+
+  // ─── Rendering ───────────────────────────────────────────────────────────────
+
   const ownerInitials = displayName
     ? displayName.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')
     : '?'
@@ -27,7 +70,7 @@ export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck 
 
   const blockedBy = depTasks.filter((d) => !d.done)
 
-  const checkStyle: CSSProperties = readOnly
+  const checkStyle: CSSProperties = effectivelyReadOnly
     ? { cursor: 'not-allowed', opacity: 0.6 }
     : {}
 
@@ -38,6 +81,7 @@ export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck 
         expanded ? 'expanded' : '',
         task.done ? 'done' : '',
         task.next ? 'next' : '',
+        isLockedByOther ? 'locked' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -52,10 +96,15 @@ export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck 
           style={checkStyle}
           onClick={(e) => {
             e.stopPropagation()
-            if (!readOnly) onCheck(task.id)
+            if (!effectivelyReadOnly) onCheck(task.id)
           }}
         />
         <div className="title">{task.title}</div>
+        {isLockedByOther && (
+          <span className="meta-pill" style={{ color: 'var(--ink-3)', background: 'var(--ink-6)' }}>
+            <Icon name="shield" size={11} /> {lock.displayName} is editing
+          </span>
+        )}
         {task.next && !task.done && <span className="next-pip">Next</span>}
         {blockedBy.length > 0 && (
           <span className="meta-pill blocked">⊘ Blocked</span>
@@ -114,7 +163,7 @@ export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck 
             </div>
           )}
 
-          {!readOnly && (
+          {!effectivelyReadOnly && (
             <div className="actions">
               <button className="btn sm">
                 <Icon name="plus" size={13} /> Add subtask
