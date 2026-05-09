@@ -11,7 +11,7 @@ interface WorkspaceModalsProps {
   onCloseSave: () => void
   onCloseShare: () => void
   onCloseIO: () => void
-  onConfirmSave: () => void
+  onConfirmSave: (password?: string) => void
   onToast: (msg: string) => void
 }
 

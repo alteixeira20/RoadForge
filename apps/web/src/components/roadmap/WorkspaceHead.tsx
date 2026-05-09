@@ -8,6 +8,7 @@ interface WorkspaceHeadProps {
   totalTasks: number
   phaseCount: number
   saved: boolean
+  nextReadyCount: number
 }
 
 export function WorkspaceHead({
@@ -16,6 +17,7 @@ export function WorkspaceHead({
   totalTasks,
   phaseCount,
   saved,
+  nextReadyCount,
 }: WorkspaceHeadProps) {
   return (
     <div className="workspace-head">
@@ -26,12 +28,15 @@ export function WorkspaceHead({
           <Icon name="circle-check" size={14} /> {totalDone} of {totalTasks} done
         </span>
         <span>{phaseCount} phases</span>
-        <span className="ember">
-          <Icon name="flame" size={14} stroke="var(--ember)" /> 1 task ready next
-        </span>
+        {nextReadyCount > 0 && (
+          <span className="ember">
+            <Icon name="flame" size={14} stroke="var(--ember)" /> {nextReadyCount}{' '}
+            {nextReadyCount === 1 ? 'task' : 'tasks'} ready next
+          </span>
+        )}
         {saved && (
           <span>
-            <Icon name="users" size={14} /> 2 collaborators
+            <Icon name="users" size={14} /> Collaboration enabled
           </span>
         )}
       </div>

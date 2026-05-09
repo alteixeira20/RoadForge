@@ -1,15 +1,34 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
 
 interface SaveToServerModalProps {
   open: boolean
   onClose: () => void
-  onConfirm: () => void
+  onConfirm: (password?: string) => void
 }
 
 export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModalProps) {
+  const [password, setPassword] = useState('')
+  const [pwError, setPwError] = useState('')
+
+  useEffect(() => {
+    if (!open) {
+      setPassword('')
+      setPwError('')
+    }
+  }, [open])
+
+  const handleConfirm = () => {
+    if (password && password.length < 6) {
+      setPwError('Password must be at least 6 characters.')
+      return
+    }
+    onConfirm(password || undefined)
+  }
+
   return (
     <Modal
       open={open}
@@ -23,7 +42,7 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
             Stay local
           </button>
           <span className="spacer" />
-          <button className="btn primary" onClick={onConfirm}>
+          <button className="btn primary" onClick={handleConfirm}>
             Save and enable collaboration{' '}
             <Icon name="arrow-right" size={15} stroke="#fff" />
           </button>
@@ -84,7 +103,36 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
         </span>
       </div>
 
-      <div className="note-line">
+      <div style={{ marginTop: 20 }}>
+        <label
+          htmlFor="rm-pw"
+          style={{ fontSize: 13, color: 'var(--ink-3)', display: 'block', marginBottom: 6 }}
+        >
+          Password (optional)
+        </label>
+        <input
+          id="rm-pw"
+          className="input"
+          type="password"
+          placeholder="Protect with a password — min 6 characters"
+          value={password}
+          onChange={(e) => { setPassword(e.target.value); if (pwError) setPwError('') }}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleConfirm() }}
+          maxLength={128}
+          autoComplete="new-password"
+        />
+        {pwError ? (
+          <span style={{ fontSize: 12, color: 'var(--ember)', marginTop: 4, display: 'block' }}>
+            {pwError}
+          </span>
+        ) : (
+          <span style={{ fontSize: 12, color: 'var(--ink-4)', marginTop: 4, display: 'block' }}>
+            Anyone joining with an invite link will also need this password.
+          </span>
+        )}
+      </div>
+
+      <div className="note-line" style={{ marginTop: 16 }}>
         <span className="ic">
           <Icon name="shield" size={14} />
         </span>

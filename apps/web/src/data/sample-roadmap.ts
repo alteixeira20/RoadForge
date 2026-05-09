@@ -6,6 +6,7 @@ import type { Roadmap, ShareLink, ExportOption } from '@/types/roadmap'
 export const SAMPLE_ROADMAP: Roadmap = {
   project: { id: 'rfg', name: 'Roadforge' },
   roadmap: { id: 'rm-v1', name: 'Roadforge — v1.0 Public Launch' },
+  ownerDisplayName: '',
   phases: [
     {
       id: 'p1',
@@ -197,7 +198,7 @@ export const SAMPLE_ROADMAP: Roadmap = {
 }
 
 // ─── Mock share links ──────────────────────────────────────────────────────────
-// TODO(backend): Replace with GET /api/roadmaps/:id/share-links
+// Fallback displayed in ShareModal before the roadmap is saved to the server.
 
 export const MOCK_SHARE_LINKS: ShareLink[] = [
   {

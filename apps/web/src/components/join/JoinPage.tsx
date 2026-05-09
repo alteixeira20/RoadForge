@@ -20,6 +20,7 @@ export function JoinPage() {
     setRole,
     setRoadmapName,
     setPhases,
+    setOwnerDisplayName,
   } = useRoadmap()
 
   const [name, setName] = useState('')
@@ -75,6 +76,7 @@ export function JoinPage() {
         const roadmap = await getRoadmap(roadmapId)
         setRoadmapName(roadmap.roadmap.name)
         setPhases(roadmap.phases)
+        setOwnerDisplayName(roadmap.ownerDisplayName)
       } catch {
         // non-fatal — workspace will show whatever's cached
       }

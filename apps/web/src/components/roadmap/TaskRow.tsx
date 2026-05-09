@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react'
 import { Icon } from '@/components/ui/Icon'
+import { useRoadmap } from '@/context/RoadmapContext'
 import type { Task } from '@/types/roadmap'
 
 interface TaskRowProps {
@@ -14,6 +15,12 @@ interface TaskRowProps {
 }
 
 export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck }: TaskRowProps) {
+  const { displayName } = useRoadmap()
+  const ownerInitials = displayName
+    ? displayName.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')
+    : '?'
+  const ownerLabel = displayName || 'You'
+
   const depTasks = (task.deps ?? [])
     .map((id) => allTasks.find((t) => t.id === id))
     .filter((t): t is Task => t !== undefined)
@@ -69,9 +76,9 @@ export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck 
             <div className="label">Owner</div>
             <div className="value" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <span className="avatar" style={{ width: 20, height: 20, fontSize: 10 }}>
-                YO
+                {ownerInitials}
               </span>{' '}
-              You
+              {ownerLabel}
             </div>
             {(task.tags ?? []).length > 0 && (
               <>

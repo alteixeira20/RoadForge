@@ -22,31 +22,60 @@ interface WorkspaceProps {
 }
 
 export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
-  const { displayName, roadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, setRole } = useRoadmap()
+  const {
+    displayName,
+    roadmapName,
+    phases,
+    setPhases,
+    saved,
+    setSaved,
+    serverRoadmapId,
+    setServerRoadmapId,
+    sessionToken,
+    setSessionToken,
+    setRole,
+    ownerDisplayName,
+    setOwnerDisplayName,
+  } = useRoadmap()
   const readOnly = mode === 'viewer'
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>('RF-05')
   const { openPhases, togglePhase, allOpen, collapseAll, expandAll } = usePhaseCollapse(phases)
   const { searchQuery, setSearchQuery, filteredPhases } = usePhaseSearch(phases)
   const { toast, showToast } = useToastState()
-  const { showSave, showShare, showIO, openSave, openShare, openIO, closeSave, closeShare, closeIO } = useWorkspaceModals()
+  const {
+    showSave,
+    showShare,
+    showIO,
+    openSave,
+    openShare,
+    openIO,
+    closeSave,
+    closeShare,
+    closeIO,
+  } = useWorkspaceModals()
 
   const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
   const totalDone = allTasks.filter((t) => t.done).length
+  const nextReadyCount = allTasks.filter((t) => t.next && !t.done).length
 
-  const onToggleTask = (id: string) =>
-    setExpandedTaskId((prev) => (prev === id ? null : id))
+  const onToggleTask = (id: string) => setExpandedTaskId((prev) => (prev === id ? null : id))
 
-  const handleConfirmSave = async () => {
+  const handleConfirmSave = async (password?: string) => {
     closeSave()
     try {
       if (!serverRoadmapId) {
         // First save: no bearer token needed — create returns a new owner session.
-        // TODO(password): pass password once SaveToServerModal has a password field.
-        const { roadmap, ownerSessionToken } = await createRoadmap(roadmapName, displayName || 'Owner', phases)
+        const { roadmap, ownerSessionToken } = await createRoadmap(
+          roadmapName,
+          displayName || 'Owner',
+          phases,
+          password,
+        )
         setServerRoadmapId(roadmap.roadmap.id)
         setSessionToken(ownerSessionToken)
         setRole('owner')
+        setOwnerDisplayName(roadmap.ownerDisplayName)
       } else {
         if (!sessionToken) {
           showToast('Session expired — rejoin from the invite link')
@@ -93,8 +122,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             <Icon name="circle" size={11} /> Viewer
           </span>
           <span className="who">
-            You&apos;re viewing <b>{roadmapName}</b> as a read-only guest. Owner:{' '}
-            <b>Ada Lovelace</b>.
+            You&apos;re viewing <b>{roadmapName}</b> as a read-only guest.
+            {ownerDisplayName && <> Owner: <b>{ownerDisplayName}</b>.</>}
           </span>
           <span className="spacer" />
           <button className="btn sm" onClick={onCreateOwn}>
@@ -110,6 +139,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           totalTasks={allTasks.length}
           phaseCount={phases.length}
           saved={saved}
+          nextReadyCount={nextReadyCount}
         />
         <WorkspaceToolbar
           searchQuery={searchQuery}

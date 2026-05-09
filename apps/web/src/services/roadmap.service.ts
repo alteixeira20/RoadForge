@@ -88,6 +88,7 @@ function toRoadmap(r: ApiRoadmapResponse): Roadmap {
     project: { id: r.id, name: r.name },
     roadmap: { id: r.id, name: r.name },
     phases: r.phases,
+    ownerDisplayName: r.owner_display_name,
   }
 }
 

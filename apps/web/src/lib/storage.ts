@@ -10,6 +10,7 @@ const KEYS = {
   sessionToken: 'rf:sessionToken',
   participantId: 'rf:participantId',
   role: 'rf:role',
+  ownerDisplayName: 'rf:ownerDisplayName',
 } as const
 
 function get(key: string): string | null {
@@ -115,6 +116,14 @@ export const storage = {
   setRole(value: ShareRole | null): void {
     if (!value) remove(KEYS.role)
     else set(KEYS.role, value)
+  },
+
+  getOwnerDisplayName(): string | null {
+    return get(KEYS.ownerDisplayName)
+  },
+  setOwnerDisplayName(value: string | null): void {
+    if (!value) remove(KEYS.ownerDisplayName)
+    else set(KEYS.ownerDisplayName, value)
   },
 
   clearAll(): void {

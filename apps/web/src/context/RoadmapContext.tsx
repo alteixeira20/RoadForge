@@ -28,6 +28,9 @@ interface RoadmapContextValue {
   /** Collaboration role for this session. */
   role: ShareRole | null
   setRole: (value: ShareRole | null) => void
+  /** Display name of the roadmap owner (loaded from server). Null until fetched. */
+  ownerDisplayName: string | null
+  setOwnerDisplayName: (value: string | null) => void
   resetToSample: () => void
 }
 
@@ -42,6 +45,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [sessionToken, setSessionTokenState] = useState<string | null>(null)
   const [participantId, setParticipantIdState] = useState<string | null>(null)
   const [role, setRoleState] = useState<ShareRole | null>(null)
+  const [ownerDisplayName, setOwnerDisplayNameState] = useState<string | null>(null)
 
   // Hydrate from localStorage once on client mount, then re-sync from server if an ID is available.
   useEffect(() => {
@@ -58,6 +62,9 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
     setSavedState(storage.getSaved())
 
+    const storedOwnerDisplayName = storage.getOwnerDisplayName()
+    if (storedOwnerDisplayName !== null) setOwnerDisplayNameState(storedOwnerDisplayName)
+
     const storedServerId = storage.getServerRoadmapId()
     if (storedServerId !== null) {
       setServerRoadmapIdState(storedServerId)
@@ -66,6 +73,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
           if (cancelled) return
           setRoadmapNameState(loaded.roadmap.name)
           setPhasesState(loaded.phases)
+          setOwnerDisplayNameState(loaded.ownerDisplayName)
+          storage.setOwnerDisplayName(loaded.ownerDisplayName)
           setSavedState(true)
         })
         .catch(() => {
@@ -123,6 +132,11 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     storage.setRole(value)
   }, [])
 
+  const setOwnerDisplayName = useCallback((value: string | null) => {
+    setOwnerDisplayNameState(value)
+    storage.setOwnerDisplayName(value)
+  }, [])
+
   const resetToSample = useCallback(() => {
     storage.clearAll()
     setDisplayNameState('')
@@ -133,11 +147,12 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setSessionTokenState(null)
     setParticipantIdState(null)
     setRoleState(null)
+    setOwnerDisplayNameState(null)
   }, [])
 
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, resetToSample }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, ownerDisplayName, setOwnerDisplayName, resetToSample }}
     >
       {children}
     </RoadmapContext.Provider>
