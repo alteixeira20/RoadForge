@@ -1,8 +1,23 @@
-# Roadforge
+# RoadForge
 
-A structured roadmap tool for indie hackers and small teams. Break your release into phases, track task dependencies, and share a read-only view with stakeholders.
+A structured roadmap planning tool for indie hackers and small teams. Break a release into phases, track task dependencies, and share access via private invite links. No accounts required.
 
-**Status:** Frontend-only, backend-ready foundation. All UI is functional locally. No auth, database, or real-time collaboration yet.
+**Current status:** Local MVP candidate. Core create/save/share/join flow is wired for manual testing. Security and UX hardening are still in progress.
+
+---
+
+## Access model
+
+RoadForge is accountless. There are no logins, user records, or dashboards.
+
+- **Create** — owner saves a roadmap, receives a session token and three role-specific share links.
+- **Share** — send an invite link to collaborators. Links are role-scoped (owner / editor / viewer) and revocable.
+- **Join** — visitor opens the link, optionally enters a display name, and receives a session token for that role.
+- **Password gate** — roadmaps can optionally require a password before a join token is issued. Password gates are currently available through the API; the Save UI does not expose password setup yet.
+- **Display name** — optional, used only as a collaboration label. Blank joins get a role-based default ("Guest Editor", etc.).
+- **Session token** — stored in `localStorage` after create or join. Session tokens are stored locally after create/join and will be used by protected endpoints in a later authorization slice.
+
+Nothing is emailed. Nothing is verified. The invite link is the durable access handle.
 
 ---
 
@@ -10,189 +25,154 @@ A structured roadmap tool for indie hackers and small teams. Break your release 
 
 | Layer | Technology |
 |---|---|
-| Workspace | pnpm workspace |
-| Frontend framework | Next.js 15 App Router |
-| Frontend language | TypeScript 5 |
+| Monorepo | pnpm workspace |
+| Frontend | Next.js 15 App Router, TypeScript 5 |
 | Styling | Tailwind CSS v3 + CSS custom properties |
-| Fonts | Lexend (display/body) + JetBrains Mono (mono) via `next/font` |
-| Client persistence | `localStorage` (local-first, kept as optimistic cache when backend is live) |
-| Backend framework | FastAPI (Python 3.12) |
-| Backend language | Python 3.12 |
+| Client persistence | `localStorage` (local-first, optimistic cache) |
+| Backend | FastAPI, Python 3.12 |
 | Database | PostgreSQL 16 |
-| ORM | SQLAlchemy 2.x (async) + asyncpg |
-| Migrations | Alembic |
+| ORM / migrations | SQLAlchemy 2.x async + asyncpg + Alembic |
 | Container | Docker Compose |
 
 ---
 
-## Frontend local development
+## Local development setup
+
+### Prerequisites
+
+- Node.js 20+, pnpm 9+
+- Docker + Docker Compose (backend only)
+
+### 1. Install frontend dependencies
 
 ```bash
-# Install dependencies (from repo root)
 pnpm install
-
-# Run dev server
-pnpm dev
-
-# Type check
-pnpm typecheck
-
-# Lint
-pnpm lint
-
-# Build
-pnpm build
 ```
 
-All commands run against `apps/web` via the root `package.json` scripts.
+### 2. Configure environment
 
-The frontend works fully without a backend. When backend integration begins, copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_API_URL` to point at the API server. Until then, no `.env.local` is needed.
+```bash
+cp .env.example .env.local
+# Edit .env.local if needed — defaults point at localhost:7878
+```
+
+### 3. Start the backend
+
+```bash
+docker compose up --build api postgres
+```
+
+Postgres is exposed on `localhost:5433` (not 5432) to avoid conflicts with a host Postgres instance.
+
+### 4. Start the frontend
+
+```bash
+pnpm dev
+# http://localhost:3000
+```
+
+The frontend works without the backend running — it falls back to local state. Backend calls only happen after "Save to server" is confirmed.
 
 ---
 
-## Backend local development
-
-Requires Docker and Docker Compose.
+## Frontend commands
 
 ```bash
-# Start PostgreSQL + API (builds the image on first run)
+pnpm dev          # Dev server
+pnpm build        # Production build (all 5 routes must build statically)
+pnpm lint         # ESLint — must pass with no warnings
+pnpm typecheck    # tsc --noEmit — must pass with 0 errors
+```
+
+---
+
+## Backend commands
+
+```bash
+# Start API + Postgres
 docker compose up --build api postgres
 
-# Confirm the API is running
+# Confirm health
 curl http://localhost:7878/api/health
-# Expected: {"status":"ok","version":"0.1.0"}
+# → {"status":"ok","version":"0.1.0"}
 
-# Interactive API docs (when running)
+# Interactive docs
 open http://localhost:7878/api/docs
 
-# Stop and remove containers (data volume is preserved)
+# Run migrations (after adding new models)
+docker compose exec api alembic upgrade head
+
+# View API logs
+docker compose logs --tail=40 api
+
+# Stop
 docker compose down
 ```
 
-**Note:** Roadmap endpoints are not implemented yet. Only `GET /api/health` is available in this slice. Backend CRUD endpoints are the next planned milestone. Docker maps Postgres to `localhost:5433` by default to avoid conflicts with a host Postgres on 5432.
-
-To run Alembic migrations once domain models are added:
-
-```bash
-docker compose exec api alembic upgrade head
-```
-
-**Create a roadmap** (`POST /api/roadmaps` — returns share links and owner session token):
-
-```bash
-ROADMAP_ID=$(curl -s -X POST http://localhost:7878/api/roadmaps \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"v1.0 Launch","owner_display_name":"Ada","phases":[]}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
-echo "Created: $ROADMAP_ID"
-```
-
-**Fetch a roadmap** (`GET /api/roadmaps/{id}`):
-
-```bash
-curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID | python3 -m json.tool
-```
-
-**Fetch share links** (`GET /api/roadmaps/{id}/share-links` — `url` is null; raw tokens are not stored):
-
-```bash
-curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links | python3 -m json.tool
-```
-
-**Create a password-protected roadmap** (`POST /api/roadmaps` with `password` field — joiners must supply the password):
-
-```bash
-curl -s -X POST http://localhost:7878/api/roadmaps \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Protected Roadmap","owner_display_name":"Alex","password":"secret123","phases":[]}' \
-  | python3 -m json.tool
-```
-
-**Join a roadmap via invite link** (`POST /api/roadmaps/join` — validates token, creates participant, returns a one-time session token):
-
-```bash
-# display_name is optional; omit it for a role-based default ("Guest Editor", etc.)
-curl -s -X POST http://localhost:7878/api/roadmaps/join \
-  -H 'Content-Type: application/json' \
-  -d '{"token":"<raw_token>"}' \
-  | python3 -m json.tool
-
-# With display name and password (password required when roadmap has one set):
-curl -s -X POST http://localhost:7878/api/roadmaps/join \
-  -H 'Content-Type: application/json' \
-  -d '{"token":"<raw_token>","display_name":"Jordan","password":"secret123"}' \
-  | python3 -m json.tool
-```
-
-**Rotate a share link** (`POST /api/roadmaps/{id}/share-links/{role}/rotate` — generates a new token; returns the join URL containing the raw token):
-
-```bash
-curl -s -X POST http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links/editor/rotate \
-  | python3 -m json.tool
-```
-
-**Revoke a share link** (`DELETE /api/roadmaps/{id}/share-links/{role}` — soft-deactivates; returns 204 No Content):
-
-```bash
-curl -i -X DELETE http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links/viewer
-```
-
-**Update a roadmap** (`PUT /api/roadmaps/{id}` — name and/or phases, partial update, full snapshot replacement for phases):
-
-```bash
-curl -s -X PUT http://localhost:7878/api/roadmaps/$ROADMAP_ID \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Updated Name","phases":[{"id":"p1","num":"01","name":"Foundation","color":"#d97442","status":"active","progress":0,"tasks":[]}]}' \
-  | python3 -m json.tool
-```
-
 ---
 
-## Routes
+## Environment variables
 
-| Route | Component | Description |
+Defined in `.env.example`. Copy to `.env.local` for local overrides.
+
+| Variable | Default | Used by |
 |---|---|---|
-| `/` | `Homepage` | Marketing page with hero, how-it-works, features |
-| `/workspace` | `Workspace` (owner mode) | Editable roadmap view |
-| `/shared` | `Workspace` (viewer mode) | Read-only roadmap view with viewer banner |
-| `/join` | `JoinPage` | Accept a share-link invite (mocked) |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:7878` | Frontend — base URL for all API calls |
+| `DATABASE_URL` | `postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge` | Alembic / host-side scripts |
+| `POSTGRES_DB` | `roadforge` | Docker Compose |
+| `POSTGRES_USER` | `roadforge` | Docker Compose |
+| `POSTGRES_PASSWORD` | `roadforge_dev` | Docker Compose |
+| `ROADFORGE_ENVIRONMENT` | `development` | Backend — log verbosity, SQL echo |
+| `ROADFORGE_WEB_BASE_URL` | `http://localhost:3000` | Backend — builds `/join?token=…` URLs |
 
 ---
 
-## What works locally
+## Manual MVP test flow
 
-- **Local persistence** — Display name, roadmap name, phases/tasks, saved status, and theme are persisted to `localStorage`. State survives page refresh.
-- **Theme persistence** — Dark/light mode preference is saved and restored on load.
-- **JSON export** — Downloads the current roadmap as `roadmap.json` using the Blob API.
-- **JSON import** — Pick a Roadforge JSON file from disk; validates shape, updates state and `localStorage`.
-- **Reset** — "Reset to sample roadmap" in the IO modal clears `localStorage` and restores the built-in sample data.
-- **Task completion** — Check/uncheck tasks; progress bar and done count update live.
-- **Phase collapse** — Expand/collapse individual phases or all at once.
-- **Search** — Filter tasks across all phases by title, ID, or tag.
-- **Wizard** — 4-step create flow collects display name and roadmap title.
+Quick path:
+1. `docker compose up --build api postgres` + `pnpm dev`
+2. Open `http://localhost:3000`, complete wizard, click **Save to server**
+3. Open Share modal — rotate editor link, copy the URL
+4. Open a private browser window, paste the URL — join without a name
+5. Confirm editor is routed to `/workspace`, viewer to `/shared`
 
 ---
 
-## What is mocked
+## Backend API summary
 
-| Feature | Status |
-|---|---|
-| Save to server | Modal shown, no HTTP call |
-| Share links | URL shown, no server-side storage |
-| Join via link | Form shown, no token validation |
-| Markdown export | Toasts "requires backend" |
-| PDF export | Toasts "requires backend" |
-| Agent bundle export | Toasts "requires backend" |
-| Markdown import | Toasts "requires backend" |
-| Real-time collaboration | No WebSocket infrastructure |
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/health` | Health check |
+| `POST` | `/api/roadmaps` | Create roadmap, returns share links + owner session token |
+| `GET` | `/api/roadmaps/{id}` | Fetch roadmap and phases |
+| `PUT` | `/api/roadmaps/{id}` | Update name and/or phases (full snapshot replace) |
+| `GET` | `/api/roadmaps/{id}/share-links` | List active share links (url is null — tokens not re-exposed) |
+| `POST` | `/api/roadmaps/{id}/share-links/{role}/rotate` | Generate new token for role, returns join URL |
+| `DELETE` | `/api/roadmaps/{id}/share-links/{role}` | Revoke share link (soft-deactivate) |
+| `POST` | `/api/roadmaps/join` | Accept invite token, create participant, return session token |
 
 ---
 
-## Backend integration
+## Frontend routes
 
-When a backend is ready, integration points are marked with `// TODO(backend):` throughout `apps/web/src/services/roadmap.service.ts`. Each function has a corresponding HTTP comment describing the expected endpoint.
+| Route | Component | Notes |
+|---|---|---|
+| `/` | `Homepage` / `Workspace` | Wizard on first visit; workspace after |
+| `/workspace` | `Workspace` (owner mode) | Editable, save/share controls |
+| `/shared` | `Workspace` (viewer mode) | Read-only with viewer banner |
+| `/join` | `JoinPage` | Reads `?token=`, optional name + password |
 
-See [`docs/frontend-foundation.md`](docs/frontend-foundation.md) for the full architecture reference.
+---
+
+## Current limitations / deferred features
+
+- **Session tokens not yet enforced** — stored after create/join but not yet sent as bearer tokens on write requests. The backend accepts all requests without authorization for now.
+- **No password field in Save flow** — password gates are supported by the backend; the Save UI does not expose setup yet.
+- **Markdown/PDF export** — requires backend; currently shows a toast.
+- **Real-time collaboration** — no WebSocket infrastructure; changes are not pushed to other participants.
+- **Activity log UI** — the backend logs all events; there is no frontend view yet.
+- **Email verification** — not implemented. Planned as an optional future security layer.
+- **Deployment hardening** — rate limiting, HTTPS enforcement, and bearer authorization are pending before any public deployment.
 
 ---
 
@@ -201,16 +181,30 @@ See [`docs/frontend-foundation.md`](docs/frontend-foundation.md) for the full ar
 ```
 roadforge/
 ├── apps/
-│   └── web/                  # Next.js app (the real frontend)
+│   ├── api/                  # FastAPI backend
+│   │   ├── alembic/          # Migrations
+│   │   └── src/api/
+│   │       ├── models/       # SQLAlchemy ORM models
+│   │       ├── routers/      # Route handlers
+│   │       ├── schemas/      # Pydantic request/response models
+│   │       └── services/     # Business logic
+│   └── web/                  # Next.js frontend
 │       └── src/
-│           ├── app/           # Next.js App Router routes
-│           ├── components/    # UI components by feature
-│           ├── context/       # React contexts (Roadmap, Theme)
-│           ├── data/          # Sample data and export options
-│           ├── hooks/         # Custom hooks
-│           ├── lib/           # Utilities (storage.ts)
-│           ├── services/      # Service layer with TODO(backend) stubs
-│           ├── styles/        # CSS files (split by concern)
-│           └── types/         # TypeScript types
-└── docs/                     # Architecture documentation
+│           ├── app/          # App Router routes
+│           ├── components/   # UI components by feature
+│           ├── context/      # RoadmapContext, ThemeContext
+│           ├── hooks/        # Custom hooks
+│           ├── lib/          # storage.ts (localStorage helpers)
+│           ├── services/     # roadmap.service.ts (all HTTP calls)
+│           ├── styles/       # CSS split by concern
+│           └── types/        # TypeScript types
+└── docs/                     # Architecture and API documentation
 ```
+
+---
+
+## Development disclosure
+
+RoadForge is a human-directed project developed with assistance from coding tools.
+
+These tools were used for implementation planning, code drafting, refactoring support, and documentation drafts. Final product direction, code review, testing, and acceptance remain human-controlled.
