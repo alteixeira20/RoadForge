@@ -33,3 +33,6 @@ yarn-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Local agent handoff (not for commit)
+.agent-handoff/

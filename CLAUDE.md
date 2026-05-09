@@ -1,8 +1,10 @@
-# Roadforge — Claude Code guidance
+# RoadForge — Claude Code guidance
 
-## Project purpose
+## What RoadForge is
 
-Roadforge is a structured roadmap tool (frontend-only foundation). The codebase is a clean, backend-ready Next.js 15 app with full UI, local persistence, and service stubs ready for HTTP wiring.
+An accountless, self-hostable, local-first roadmap planning tool. Users create roadmaps without registering. Access is controlled by private invite links (one per role). Session tokens stored in `localStorage` identify participants. No accounts. No login. No user dashboard.
+
+RoadForge has a Next.js frontend and a FastAPI/PostgreSQL backend. The MVP flow is partially wired and is being hardened before the first public demo.
 
 ## Stack
 
@@ -11,14 +13,21 @@ Roadforge is a structured roadmap tool (frontend-only foundation). The codebase 
 - **TypeScript 5** — strict mode, path alias `@/` maps to `src/`
 - **Tailwind CSS v3** — utility classes available; most styling is in `src/styles/*.css`
 - **Fonts** — Lexend + JetBrains Mono loaded via `next/font/google` in `layout.tsx`
+- **FastAPI** — Python 3.12 backend under `apps/api/`
+- **PostgreSQL 16** — via Docker Compose (host port 5433, internal port 5432)
 
 ## Commands (run from repo root)
 
 ```bash
 pnpm dev          # Start dev server (apps/web)
-pnpm build        # Production build
-pnpm lint         # ESLint
-pnpm typecheck    # tsc --noEmit
+pnpm build        # Production build — all 5 routes must build statically
+pnpm lint         # ESLint — must pass with no warnings
+pnpm typecheck    # tsc --noEmit — must pass with 0 errors
+
+docker compose up --build api postgres   # Start API + Postgres
+curl http://localhost:7878/api/health    # Confirm API running
+docker compose logs --tail=40 api        # Check for errors
+docker compose down                      # Stop
 ```
 
 ## Folder structure
@@ -28,7 +37,7 @@ apps/web/src/
 ├── app/            # Routes: /, /workspace, /shared, /join
 ├── components/     # UI components, grouped by feature
 │   ├── home/       # Homepage sections
-│   ├── join/       # Join page
+│   ├── join/       # JoinPage
 │   ├── layout/     # AppHeader, SiteHeader, SiteFooter
 │   ├── roadmap/    # Workspace, Phase, TaskRow, sub-components
 │   ├── share/      # SaveToServerModal, ShareModal, IOModal
@@ -37,34 +46,94 @@ apps/web/src/
 ├── context/        # RoadmapContext, ThemeContext
 ├── data/           # sample-roadmap.ts, EXPORT_OPTIONS
 ├── hooks/          # useWorkspaceModals, usePhaseCollapse, usePhaseSearch, useToastState
-├── lib/            # storage.ts (localStorage helpers)
-├── services/       # roadmap.service.ts (all TODO(backend) stubs)
+├── lib/            # storage.ts (localStorage helpers), roadmap-validation.ts (import validation)
+├── services/       # roadmap.service.ts (all HTTP calls live here)
 ├── styles/         # CSS split: tokens, base, ui, site, workspace, modals, join
 └── types/          # roadmap.ts, ui.ts
 ```
 
 ## Hard rules — do not do these unless explicitly instructed
 
-- Do not add backend, database, or auth code
+- Do not add user accounts, login, sessions, or auth tokens
 - Do not add WebSocket or real-time collaboration infrastructure
 - Do not create API routes (`app/api/`)
 - Do not redesign the UI or rename CSS classes
 - Do not install packages without explicit instruction
 - Do not commit or create branches without explicit instruction
-- Do not reintroduce historical generated exports (e.g. single-file HTML/JSX exports from design tools)
+- Do not call `fetch()` anywhere except `apps/web/src/services/roadmap.service.ts`
+- Do not call `localStorage` directly in components — use `apps/web/src/lib/storage.ts`
+- Do not add email verification or email-based flows (deferred feature)
 
-## Backend integration points
+## Working style
 
-All backend integration is deferred to `apps/web/src/services/roadmap.service.ts`. Every function has a `// TODO(backend): HTTP <method> <endpoint>` comment. When a backend exists, replace the stub bodies with real `fetch()` calls. Do not move business logic out of the service layer.
+- Implement one slice at a time. If a request spans multiple concerns, ask to split.
+- No speculative features. Implement exactly what is asked, nothing more.
+- Run `pnpm lint && pnpm typecheck && pnpm build` after every code change. Fix any errors before reporting done.
+- Match the slice size to what was requested: a bug fix does not need surrounding cleanup.
 
-The `localStorage` persistence in `lib/storage.ts` and the contexts should remain — they serve as optimistic local state even when a backend is present.
+## Backend route list (source of truth)
+
+```
+GET    /api/health
+POST   /api/roadmaps                                   create roadmap
+POST   /api/roadmaps/join                              accept invite token
+GET    /api/roadmaps/{roadmap_id}                      fetch roadmap + phases
+PUT    /api/roadmaps/{roadmap_id}                      update name and/or phases
+GET    /api/roadmaps/{roadmap_id}/share-links          list active share links
+POST   /api/roadmaps/{roadmap_id}/share-links/{role}/rotate   rotate link token
+DELETE /api/roadmaps/{roadmap_id}/share-links/{role}          revoke share link
+```
+
+All business logic lives in `apps/api/src/api/services/roadmap_service.py`. Route handlers in `routers/roadmaps.py` are thin wrappers. Note: `/join` must be registered before `/{roadmap_id}` in the router to avoid path capture.
+
+## Frontend wiring state (as of current MVP)
+
+| Feature | Status |
+|---|---|
+| Create roadmap → POST /api/roadmaps | Wired |
+| Save phases → PUT /api/roadmaps/{id} | Wired |
+| Share modal — load links → GET /api/roadmaps/{id}/share-links | Wired |
+| Share modal — rotate → POST …/share-links/{role}/rotate | Wired |
+| Share modal — revoke → DELETE …/share-links/{role} | Wired |
+| Join page — POST /api/roadmaps/join | Wired |
+| Join page — hydrate roadmap → GET /api/roadmaps/{id} | Wired (non-fatal) |
+| Reload server roadmap on app refresh → GET /api/roadmaps/{id} | Wired (non-fatal) |
+| Password field in Save/Settings flow | Not implemented |
+| Session token sent as bearer on requests | Not implemented |
+| Markdown/PDF export | Not implemented (toasts) |
+
+## Service layer conventions
+
+`apps/web/src/services/roadmap.service.ts` is the only file that calls `fetch()`. Every exported function maps to one backend endpoint. The `requestJson<T>` helper handles `Content-Type`, status codes, and error detail extraction. 204 responses return `undefined`. Non-2xx responses throw `Error("API {status}: {detail}")`.
+
+## Context and storage conventions
+
+- `RoadmapContext` owns: `displayName`, `roadmapName`, `phases`, `saved`, `serverRoadmapId`, `sessionToken`, `participantId`, `role`
+- `ThemeContext` owns: `theme`
+- All context setters call the matching `storage.*` helper to persist
+- `storage.ts` is SSR-safe (`typeof window` guard) and parse-safe (try/catch)
+- `clearAll()` clears every key — used by `resetToSample`
+
+## localStorage keys
+
+```
+rf:theme
+rf:displayName
+rf:roadmapName
+rf:phases
+rf:saved
+rf:serverRoadmapId
+rf:sessionToken
+rf:participantId
+rf:role
+```
 
 ## CSS conventions
 
 - CSS is in `src/styles/*.css`, imported in cascade order via `app/globals.css`
 - Do not convert CSS to Tailwind utility classes
 - Do not rename existing CSS classes
-- Keep responsive rules at the bottom of the owning file, not in a separate file
+- Keep responsive rules at the bottom of the owning file
 - Design tokens (custom properties) live in `styles/tokens.css` only
 
 ## Coding conventions
@@ -72,65 +141,64 @@ The `localStorage` persistence in `lib/storage.ts` and the contexts should remai
 - `'use client'` at top of any component using hooks, browser APIs, or event handlers
 - Server components (no directive) for pure layout/static components
 - Custom hooks live in `src/hooks/`, named `use*.ts`
-- All localStorage access goes through `src/lib/storage.ts` — never call `localStorage` directly in components
-- Context providers: `RoadmapContext` owns roadmap state + persistence; `ThemeContext` owns theme + persistence
-- The service layer (`roadmap.service.ts`) is the only place that should reference HTTP endpoints
+- `useSearchParams()` requires a `<Suspense>` boundary in the parent route file for static builds
+
+## Naming conventions
+
+- React components and context/provider files: PascalCase — `Workspace.tsx`, `ShareModal.tsx`, `RoadmapContext.tsx`
+- Non-component TypeScript modules: kebab-case — `sample-roadmap.ts`, `roadmap-validation.ts`
+- Custom hooks: camelCase with `use` prefix — `useWorkspaceModals.ts`
+- Backend Python modules: snake_case — `roadmap_service.py`, `token_service.py`
+- Do not mix styles: `roadmapService.ts` and `RoadmapValidation.ts` are wrong
 
 ## Local-first behavior — preserve this
 
-- `storage.ts` is SSR-safe (`typeof window` guard) and JSON-error-safe (try/catch)
-- `RoadmapContext` hydrates from localStorage on mount, falls back to `SAMPLE_ROADMAP`
-- `ThemeContext` reads from localStorage on mount, persists on change
-- JSON export uses the Blob API + `<a>` download — no server needed
-- JSON import uses `FileReader` + shape validation — no server needed
+- The frontend works fully without the backend running
+- `RoadmapContext` falls back to `SAMPLE_ROADMAP` when no localStorage state exists
+- Backend calls happen only after user-initiated actions (Save, Share rotate/revoke, Join)
+- JSON export/import run entirely client-side
 
-## Validation after changes
-
-```bash
-pnpm lint         # Must pass with no warnings
-pnpm typecheck    # Must pass with 0 errors
-pnpm build        # All 5 routes must build statically
-```
-
-Visual smoke test after CSS changes: homepage hero, workspace modals, theme toggle, join page, viewer mode.
-
----
-
-## Backend (`apps/api`)
-
-The backend is a FastAPI app (Python 3.12) under `apps/api/`. It is not connected to the frontend yet.
-
-### Structure
+## Backend structure
 
 ```
 apps/api/
-├── pyproject.toml         # PEP 621 metadata + dependencies
-├── Dockerfile             # python:3.12-slim + uv, exposes :7878
-├── alembic.ini            # Alembic config (script_location = alembic/)
-├── alembic/env.py         # Async-compatible migration runner
-├── alembic/versions/      # One file per migration; empty until domain models are added
+├── pyproject.toml
+├── Dockerfile
+├── alembic.ini
+├── alembic/
+│   ├── env.py
+│   └── versions/
 └── src/api/
-    ├── main.py            # FastAPI app factory (importable as api.main:app)
-    ├── config.py          # Settings via pydantic-settings (reads env)
-    ├── database.py        # Async engine + get_db() dependency
-    ├── middleware/cors.py  # CORS setup
-    ├── routers/health.py  # GET /api/health
-    └── schemas/common.py  # HealthResponse
+    ├── main.py
+    ├── config.py
+    ├── database.py
+    ├── middleware/
+    │   ├── cors.py
+    │   └── body_limit.py        # ASGI 413 guard (Content-Length > 512 KB)
+    ├── models/roadmap.py        # Roadmap, ShareLink, Participant, ActivityLog
+    ├── routers/
+    │   ├── health.py
+    │   └── roadmaps.py
+    ├── schemas/
+    │   ├── roadmap.py           # Pydantic request/response models
+    │   ├── limits.py            # Shared validation constants
+    │   └── validators.py        # Text cleaning helpers (clean_required_text, etc.)
+    └── services/
+        ├── id_service.py        # generate_id(prefix)
+        ├── token_service.py     # generate_token, hash_token, token_prefix
+        ├── password_service.py  # hash_password, verify_password (PBKDF2-SHA256)
+        └── roadmap_service.py   # All business logic
 ```
 
-### Hard rules for backend — do not do these unless explicitly instructed
+## Hard rules for backend — do not do these unless explicitly instructed
 
-- Do not add user accounts, sessions, or auth tokens
+- Do not add user accounts, email, or authentication middleware
 - Do not add WebSockets or real-time collaboration
-- Do not create domain endpoints (roadmaps, share links, join) until explicitly requested
-- Do not wire `apps/web` service stubs to real HTTP calls until explicitly requested
 - Do not install packages without explicit instruction
 
-### Backend validation commands
+## Commit hygiene
 
-```bash
-docker compose up --build api postgres   # Start API + Postgres
-curl http://localhost:7878/api/health    # Must return {"status":"ok","version":"0.1.0"}
-docker compose logs --tail=40 api        # Check for startup errors
-docker compose down                      # Stop
-```
+- Do not commit unless the user explicitly asks
+- Run lint + typecheck + build before any commit
+- One slice per commit
+- Commit message: present-tense imperative, ≤ 72 chars subject line
