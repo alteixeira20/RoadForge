@@ -1,0 +1,25 @@
+"""
+Shared validation constants for request payloads.
+
+Centralised here so schemas and middleware refer to the same values.
+"""
+
+REQUEST_BODY_MAX_BYTES = 512 * 1024  # 512 KB
+
+ROADMAP_NAME_MAX = 120
+DISPLAY_NAME_MAX = 128
+PHASES_MAX = 50
+TASKS_PER_PHASE_MAX = 200
+TASK_TITLE_MAX = 160
+TASK_DESC_MAX = 2_000
+TASK_EST_MAX = 64
+TASK_TAGS_MAX = 20
+TASK_DEPS_MAX = 50
+TAG_MAX = 40
+ID_MAX = 80
+PHASE_NAME_MAX = 120
+PHASE_NUM_MAX = 12
+PHASE_COLOR_MAX = 64
+PASSWORD_MIN = 6
+PASSWORD_MAX = 128
+TOKEN_MAX = 256

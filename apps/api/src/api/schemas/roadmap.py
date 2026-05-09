@@ -3,7 +3,28 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from api.schemas.limits import (
+    DISPLAY_NAME_MAX,
+    ID_MAX,
+    PASSWORD_MAX,
+    PASSWORD_MIN,
+    PHASE_COLOR_MAX,
+    PHASE_NAME_MAX,
+    PHASE_NUM_MAX,
+    PHASES_MAX,
+    ROADMAP_NAME_MAX,
+    TAG_MAX,
+    TASK_DEPS_MAX,
+    TASK_DESC_MAX,
+    TASK_EST_MAX,
+    TASK_TAGS_MAX,
+    TASK_TITLE_MAX,
+    TASKS_PER_PHASE_MAX,
+    TOKEN_MAX,
+)
+from api.schemas.validators import clean_optional_text, clean_required_text
 
 # ─── Shared enums ─────────────────────────────────────────────────────────────
 
@@ -14,24 +35,67 @@ PhaseStatus = Literal["done", "active", "next", "future"]
 
 
 class TaskDTO(BaseModel):
-    id: str
-    title: str
+    id: str = Field(max_length=ID_MAX)
+    title: str = Field(max_length=TASK_TITLE_MAX)
     done: bool
     next: bool | None = None
-    est: str | None = None
-    tags: list[str] | None = None
-    deps: list[str] | None = None
-    desc: str | None = None
+    est: str | None = Field(default=None, max_length=TASK_EST_MAX)
+    tags: list[str] | None = Field(default=None, max_length=TASK_TAGS_MAX)
+    deps: list[str] | None = Field(default=None, max_length=TASK_DEPS_MAX)
+    desc: str | None = Field(default=None, max_length=TASK_DESC_MAX)
+
+    @field_validator("id", "title", mode="before")
+    @classmethod
+    def _validate_required(cls, v: object, info) -> object:
+        if not isinstance(v, str):
+            return v
+        limits = {"id": ID_MAX, "title": TASK_TITLE_MAX}
+        return clean_required_text(v, info.field_name, limits[info.field_name])
+
+    @field_validator("est", "desc", mode="before")
+    @classmethod
+    def _validate_optional(cls, v: object, info) -> object:
+        if not isinstance(v, (str, type(None))):
+            return v
+        limits = {"est": TASK_EST_MAX, "desc": TASK_DESC_MAX}
+        return clean_optional_text(v, info.field_name, limits[info.field_name])
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _validate_tags(cls, v: object) -> object:
+        if not isinstance(v, list):
+            return v
+        return [clean_required_text(s, "tag", TAG_MAX) if isinstance(s, str) else s for s in v]
+
+    @field_validator("deps", mode="before")
+    @classmethod
+    def _validate_deps(cls, v: object) -> object:
+        if not isinstance(v, list):
+            return v
+        return [clean_required_text(s, "dep", ID_MAX) if isinstance(s, str) else s for s in v]
 
 
 class PhaseDTO(BaseModel):
-    id: str
-    num: str
-    name: str
-    color: str
+    id: str = Field(max_length=ID_MAX)
+    num: str = Field(max_length=PHASE_NUM_MAX)
+    name: str = Field(max_length=PHASE_NAME_MAX)
+    color: str = Field(max_length=PHASE_COLOR_MAX)
     status: PhaseStatus
     progress: int = Field(ge=0, le=100)
-    tasks: list[TaskDTO] = []
+    tasks: list[TaskDTO] = Field(default=[], max_length=TASKS_PER_PHASE_MAX)
+
+    @field_validator("id", "num", "name", "color", mode="before")
+    @classmethod
+    def _validate_required(cls, v: object, info) -> object:
+        if not isinstance(v, str):
+            return v
+        limits = {
+            "id": ID_MAX,
+            "num": PHASE_NUM_MAX,
+            "name": PHASE_NAME_MAX,
+            "color": PHASE_COLOR_MAX,
+        }
+        return clean_required_text(v, info.field_name, limits[info.field_name])
 
 
 class RoadmapSnapshotDTO(BaseModel):
@@ -43,23 +107,48 @@ class RoadmapSnapshotDTO(BaseModel):
 
 
 class CreateRoadmapRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
-    owner_display_name: str = Field(min_length=1, max_length=128)
-    phases: list[PhaseDTO] = []
-    password: str | None = Field(default=None, min_length=6)
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=ROADMAP_NAME_MAX)
+    owner_display_name: str = Field(min_length=1, max_length=DISPLAY_NAME_MAX)
+    phases: list[PhaseDTO] = Field(default=[], max_length=PHASES_MAX)
+    password: str | None = Field(default=None, min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)
+
+    @field_validator("name", "owner_display_name", mode="before")
+    @classmethod
+    def _validate_required(cls, v: object, info) -> object:
+        if not isinstance(v, str):
+            return v
+        limits = {"name": ROADMAP_NAME_MAX, "owner_display_name": DISPLAY_NAME_MAX}
+        return clean_required_text(v, info.field_name, limits[info.field_name])
 
     @field_validator("password", mode="before")
     @classmethod
     def _normalize_password(cls, v: object) -> object:
-        if isinstance(v, str):
-            stripped = v.strip()
-            return stripped if stripped else None
-        return v
+        # Passwords are hashed; skip suspicious-text check to avoid rejecting
+        # passwords that happen to contain fragment strings.
+        if not isinstance(v, str):
+            return v
+        stripped = v.strip()
+        if not stripped:
+            return None
+        if len(stripped) > PASSWORD_MAX:
+            raise ValueError(f"password exceeds {PASSWORD_MAX} characters")
+        return stripped
 
 
 class UpdateRoadmapRequest(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=255)
-    phases: list[PhaseDTO] | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, max_length=ROADMAP_NAME_MAX)
+    phases: list[PhaseDTO] | None = Field(default=None, max_length=PHASES_MAX)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _validate_name(cls, v: object) -> object:
+        if not isinstance(v, str):
+            return v
+        return clean_required_text(v, "name", ROADMAP_NAME_MAX)
 
 
 # ─── Roadmap responses ────────────────────────────────────────────────────────
@@ -94,25 +183,31 @@ class ShareLinkResponse(BaseModel):
 
 
 class JoinRoadmapRequest(BaseModel):
-    token: str = Field(min_length=8)
-    display_name: str | None = Field(default=None, max_length=128)
-    password: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=8, max_length=TOKEN_MAX)
+    display_name: str | None = Field(default=None, max_length=DISPLAY_NAME_MAX)
+    password: str | None = Field(default=None, max_length=PASSWORD_MAX)
 
     @field_validator("display_name", mode="before")
     @classmethod
-    def _normalize_display_name(cls, v: object) -> object:
-        if isinstance(v, str):
-            stripped = v.strip()
-            return stripped if stripped else None
-        return v
+    def _validate_display_name(cls, v: object) -> object:
+        if not isinstance(v, str):
+            return v
+        return clean_optional_text(v, "display_name", DISPLAY_NAME_MAX)
 
     @field_validator("password", mode="before")
     @classmethod
     def _normalize_password(cls, v: object) -> object:
-        if isinstance(v, str):
-            stripped = v.strip()
-            return stripped if stripped else None
-        return v
+        # Passwords are hashed; skip suspicious-text check.
+        if not isinstance(v, str):
+            return v
+        stripped = v.strip()
+        if not stripped:
+            return None
+        if len(stripped) > PASSWORD_MAX:
+            raise ValueError(f"password exceeds {PASSWORD_MAX} characters")
+        return stripped
 
 
 class JoinRoadmapResponse(BaseModel):

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from api.config import get_settings
+from api.middleware.body_limit import add_body_limit
 from api.middleware.cors import add_cors
 from api.routers import health, roadmaps
 
@@ -15,6 +16,7 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json",
     )
     add_cors(app)
+    add_body_limit(app)
     app.include_router(health.router, prefix="/api")
     app.include_router(roadmaps.router, prefix="/api/roadmaps")
     return app
