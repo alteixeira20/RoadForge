@@ -43,35 +43,67 @@ Nothing is emailed. Nothing is verified. The invite link is the durable access h
 - Node.js 20+, pnpm 9+
 - Docker + Docker Compose (backend only)
 
-### 1. Install frontend dependencies
+### Quick Start (Makefile)
+
+The repository includes a `Makefile` for common development tasks:
+
+```bash
+make help           # List all available commands
+make manual-start   # Reset backend (Docker), run migrations, and check health
+make dev            # Run Next.js frontend
+```
+
+### Manual Setup
+
+#### 1. Install frontend dependencies
 
 ```bash
 pnpm install
 ```
 
-### 2. Configure environment
+#### 2. Configure environment
 
 ```bash
 cp .env.example .env.local
 # Edit .env.local if needed — defaults point at localhost:7878
 ```
 
-### 3. Start the backend
+#### 3. Start the backend
 
 ```bash
-docker compose up --build api postgres
+make api-up
+# or: docker compose up --build postgres api
 ```
 
 Postgres is exposed on `localhost:5433` (not 5432) to avoid conflicts with a host Postgres instance.
 
-### 4. Start the frontend
+#### 4. Start the frontend
 
 ```bash
-pnpm dev
+make dev
+# or: pnpm dev
 # http://localhost:3000
 ```
 
 The frontend works without the backend running — it falls back to local state. Backend calls only happen after "Save to server" is confirmed.
+
+---
+
+## Makefile targets
+
+| Target | Description |
+|---|---|
+| `make install` | Install frontend dependencies (`pnpm install`) |
+| `make dev` | Run Next.js frontend in development mode |
+| `make check` | Run linting, typechecking, and production build |
+| `make api-up` | Start Postgres and FastAPI in Docker |
+| `make api-down` | Stop backend services |
+| `make api-reset` | Complete backend reset: down, up, migrate, health |
+| `make api-migrate` | Run database migrations |
+| `make api-health` | Check if backend is reachable |
+| `make manual-start` | Shortcut to reset backend and prepare for testing |
+| `make logs-api` | Tail API logs (last 80 lines) |
+| `make logs-db` | Tail Postgres logs (last 80 lines) |
 
 ---
 
