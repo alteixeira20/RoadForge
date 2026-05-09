@@ -15,10 +15,17 @@ const API_BASE_URL = (
 
 // ─── HTTP helper ───────────────────────────────────────────────────────────────
 
-async function requestJson<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function requestJson<T>(
+  path: string,
+  options: RequestInit = {},
+  sessionToken?: string,
+): Promise<T> {
   const headers: Record<string, string> = {}
   if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json'
+  }
+  if (sessionToken) {
+    headers['Authorization'] = `Bearer ${sessionToken}`
   }
   const res = await fetch(API_BASE_URL + path, {
     ...options,
@@ -154,6 +161,7 @@ export async function saveToServer(
   roadmapId: string,
   name?: string,
   phases?: Phase[],
+  sessionToken?: string,
 ): Promise<void> {
   const body: Record<string, unknown> = {}
   if (name !== undefined) body.name = name
@@ -161,7 +169,7 @@ export async function saveToServer(
   await requestJson<void>(`/api/roadmaps/${roadmapId}`, {
     method: 'PUT',
     body: JSON.stringify(body),
-  })
+  }, sessionToken)
 }
 
 // ─── Share links ───────────────────────────────────────────────────────────────
@@ -184,10 +192,12 @@ export async function getShareLinks(roadmapId: string): Promise<ShareLink[]> {
 export async function regenerateShareLink(
   roadmapId: string,
   role: string,
+  sessionToken?: string,
 ): Promise<ShareLink> {
   const data = await requestJson<ApiShareLinkResponse>(
     `/api/roadmaps/${roadmapId}/share-links/${role}/rotate`,
     { method: 'POST' },
+    sessionToken,
   )
   return toShareLink(data)
 }
@@ -198,10 +208,12 @@ export async function regenerateShareLink(
 export async function revokeShareLink(
   roadmapId: string,
   role: string,
+  sessionToken?: string,
 ): Promise<void> {
   await requestJson<void>(
     `/api/roadmaps/${roadmapId}/share-links/${role}`,
     { method: 'DELETE' },
+    sessionToken,
   )
 }
 

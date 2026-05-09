@@ -163,6 +163,7 @@ async def update_roadmap(
     db: AsyncSession,
     roadmap_id: str,
     payload: UpdateRoadmapRequest,
+    participant: Participant | None = None,
 ) -> RoadmapResponse:
     roadmap = await _fetch_active_roadmap(db, roadmap_id)
 
@@ -184,8 +185,8 @@ async def update_roadmap(
     db.add(ActivityLog(
         id=generate_id("al_"),
         roadmap_id=roadmap_id,
-        participant_id=None,
-        actor_name=None,
+        participant_id=participant.id if participant else None,
+        actor_name=participant.display_name if participant else None,
         action="roadmap.updated",
         entity_type="roadmap",
         entity_id=roadmap_id,
@@ -231,6 +232,7 @@ async def rotate_share_link(
     roadmap_id: str,
     role: ShareRole,
     web_base_url: str,
+    participant: Participant | None = None,
 ) -> ShareLinkResponse:
     await _fetch_active_roadmap(db, roadmap_id)
 
@@ -266,8 +268,8 @@ async def rotate_share_link(
     db.add(ActivityLog(
         id=generate_id("al_"),
         roadmap_id=roadmap_id,
-        participant_id=None,
-        actor_name=None,
+        participant_id=participant.id if participant else None,
+        actor_name=participant.display_name if participant else None,
         action="share_link.rotated",
         entity_type="share_link",
         entity_id=share_link.id,
@@ -292,6 +294,7 @@ async def revoke_share_link(
     db: AsyncSession,
     roadmap_id: str,
     role: ShareRole,
+    participant: Participant | None = None,
 ) -> None:
     await _fetch_active_roadmap(db, roadmap_id)
 
@@ -311,8 +314,8 @@ async def revoke_share_link(
     db.add(ActivityLog(
         id=generate_id("al_"),
         roadmap_id=roadmap_id,
-        participant_id=None,
-        actor_name=None,
+        participant_id=participant.id if participant else None,
+        actor_name=participant.display_name if participant else None,
         action="share_link.revoked",
         entity_type="share_link",
         entity_id=share_link.id,

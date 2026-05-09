@@ -22,7 +22,7 @@ interface WorkspaceProps {
 }
 
 export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
-  const { displayName, roadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, setSessionToken, setRole } = useRoadmap()
+  const { displayName, roadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, setRole } = useRoadmap()
   const readOnly = mode === 'viewer'
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>('RF-05')
@@ -36,6 +36,33 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const onToggleTask = (id: string) =>
     setExpandedTaskId((prev) => (prev === id ? null : id))
+
+  const handleConfirmSave = async () => {
+    closeSave()
+    try {
+      if (!serverRoadmapId) {
+        // First save: no bearer token needed — create returns a new owner session.
+        // TODO(password): pass password once SaveToServerModal has a password field.
+        const { roadmap, ownerSessionToken } = await createRoadmap(roadmapName, displayName || 'Owner', phases)
+        setServerRoadmapId(roadmap.roadmap.id)
+        setSessionToken(ownerSessionToken)
+        setRole('owner')
+      } else {
+        if (!sessionToken) {
+          showToast('Session expired — rejoin from the invite link')
+          return
+        }
+        await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken)
+      }
+      setSaved(true)
+      showToast('Saved · collaboration enabled')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('401')) showToast('Session expired — rejoin from the invite link')
+      else if (msg.includes('403')) showToast('You do not have permission for this action')
+      else showToast('Save failed — check backend connection')
+    }
+  }
 
   const onCheckTask = (id: string) => {
     if (readOnly) return
@@ -110,30 +137,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         onCloseSave={closeSave}
         onCloseShare={closeShare}
         onCloseIO={closeIO}
-        onConfirmSave={async () => {
-          closeSave()
-          try {
-            if (!serverRoadmapId) {
-              // First save: create the roadmap on the server.
-              // TODO(password): pass password once SaveToServerModal has a password field.
-              const { roadmap, ownerSessionToken } = await createRoadmap(
-                roadmapName,
-                displayName || 'Owner',
-                phases,
-              )
-              setServerRoadmapId(roadmap.roadmap.id)
-              setSessionToken(ownerSessionToken)
-              setRole('owner')
-            } else {
-              // Subsequent save: push latest snapshot.
-              await saveToServer(serverRoadmapId, roadmapName, phases)
-            }
-            setSaved(true)
-            showToast('Saved · collaboration enabled')
-          } catch {
-            showToast('Save failed — check backend connection')
-          }
-        }}
+        onConfirmSave={handleConfirmSave}
         onToast={showToast}
       />
 

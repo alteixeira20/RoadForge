@@ -16,7 +16,7 @@ interface ShareModalProps {
 }
 
 export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
-  const { serverRoadmapId } = useRoadmap()
+  const { serverRoadmapId, sessionToken } = useRoadmap()
   const [links, setLinks] = useState<ShareLink[]>([])
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
@@ -47,23 +47,37 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
 
   const handleRegenerate = async (role: string) => {
     if (!serverRoadmapId) return
+    if (!sessionToken) {
+      onToast('Session expired — rejoin from the invite link')
+      return
+    }
     try {
-      const updated = await regenerateShareLink(serverRoadmapId, role)
+      const updated = await regenerateShareLink(serverRoadmapId, role, sessionToken)
       setLinks((prev) => prev.map((l) => (l.role === role ? updated : l)))
       onToast('New link generated — copy it now')
-    } catch {
-      onToast('Could not rotate link')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('401')) onToast('Session expired — rejoin from the invite link')
+      else if (msg.includes('403')) onToast('You do not have permission for this action')
+      else onToast('Could not rotate link')
     }
   }
 
   const handleRevoke = async (role: string) => {
     if (!serverRoadmapId) return
+    if (!sessionToken) {
+      onToast('Session expired — rejoin from the invite link')
+      return
+    }
     try {
-      await revokeShareLink(serverRoadmapId, role)
+      await revokeShareLink(serverRoadmapId, role, sessionToken)
       setLinks((prev) => prev.filter((l) => l.role !== role))
       onToast('Link revoked')
-    } catch {
-      onToast('Could not revoke link')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('401')) onToast('Session expired — rejoin from the invite link')
+      else if (msg.includes('403')) onToast('You do not have permission for this action')
+      else onToast('Could not revoke link')
     }
   }
 

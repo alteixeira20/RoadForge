@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Header, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
@@ -13,6 +13,7 @@ from api.schemas.roadmap import (
     ShareRole,
     UpdateRoadmapRequest,
 )
+from api.services.auth_service import require_participant
 from api.services.roadmap_service import (
     create_roadmap,
     get_roadmap,
@@ -24,6 +25,9 @@ from api.services.roadmap_service import (
 )
 
 router = APIRouter(tags=["roadmaps"])
+
+_OWNER_EDITOR = {"owner", "editor"}
+_OWNER_ONLY = {"owner"}
 
 
 @router.post("", response_model=CreateRoadmapResponse, status_code=status.HTTP_201_CREATED)
@@ -56,8 +60,10 @@ async def put_roadmap(
     roadmap_id: str,
     payload: UpdateRoadmapRequest,
     db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    return await update_roadmap(db, roadmap_id, payload)
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
+    return await update_roadmap(db, roadmap_id, payload, participant)
 
 
 @router.get("/{roadmap_id}/share-links", response_model=list[ShareLinkResponse])
@@ -76,9 +82,11 @@ async def post_rotate_share_link(
     roadmap_id: str,
     role: ShareRole,
     db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
 ) -> ShareLinkResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
     settings = get_settings()
-    return await rotate_share_link(db, roadmap_id, role, settings.web_base_url)
+    return await rotate_share_link(db, roadmap_id, role, settings.web_base_url, participant)
 
 
 @router.delete("/{roadmap_id}/share-links/{role}", status_code=status.HTTP_204_NO_CONTENT)
@@ -86,6 +94,8 @@ async def delete_share_link(
     roadmap_id: str,
     role: ShareRole,
     db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
 ) -> Response:
-    await revoke_share_link(db, roadmap_id, role)
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await revoke_share_link(db, roadmap_id, role, participant)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
