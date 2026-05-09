@@ -16,6 +16,7 @@ from api.schemas.roadmap import (
     ShareRole,
     UpdateRoadmapRequest,
 )
+from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.password_service import hash_password, verify_password
 from api.services.token_service import generate_token, hash_token
@@ -167,6 +168,13 @@ async def update_roadmap(
 ) -> RoadmapResponse:
     roadmap = await _fetch_active_roadmap(db, roadmap_id)
 
+    # ── Concurrency check ─────────────────────────────────────────────────────
+    if payload.last_updated_at:
+        # DB updated_at might have more precision than the client's version,
+        # so we check if the DB is strictly newer.
+        if roadmap.updated_at > payload.last_updated_at:
+            raise HTTPException(status_code=409, detail="Roadmap changed elsewhere")
+
     before_json: dict = {}
     after_json: dict = {}
 
@@ -196,6 +204,17 @@ async def update_roadmap(
 
     await db.commit()
     await db.refresh(roadmap)
+
+    # ── Realtime broadcast ────────────────────────────────────────────────────
+    await event_bus.publish(Event(
+        roadmap_id=roadmap_id,
+        action="roadmap.updated",
+        payload={
+            "roadmap_id": roadmap_id,
+            "updated_at": roadmap.updated_at.isoformat(),
+            "participant_id": participant.id if participant else None,
+        }
+    ))
 
     return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
 

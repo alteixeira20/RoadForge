@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Header, Response, status
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
@@ -6,14 +8,19 @@ from api.database import get_db
 from api.schemas.roadmap import (
     CreateRoadmapRequest,
     CreateRoadmapResponse,
+    EventTicketResponse,
     JoinRoadmapRequest,
     JoinRoadmapResponse,
+    LockRequest,
+    LockResponse,
     RoadmapResponse,
     ShareLinkResponse,
     ShareRole,
     UpdateRoadmapRequest,
 )
 from api.services.auth_service import require_participant
+from api.services.event_bus import event_bus
+from api.services.lock_service import lock_service
 from api.services.roadmap_service import (
     create_roadmap,
     get_roadmap,
@@ -23,6 +30,7 @@ from api.services.roadmap_service import (
     rotate_share_link,
     update_roadmap,
 )
+from api.services.ticket_service import ticket_service
 
 router = APIRouter(tags=["roadmaps"])
 
@@ -99,3 +107,91 @@ async def delete_share_link(
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
     await revoke_share_link(db, roadmap_id, role, participant)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{roadmap_id}/events/ticket", response_model=EventTicketResponse)
+async def post_event_ticket(
+    roadmap_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> EventTicketResponse:
+    # All roles (owner, editor, viewer) can subscribe to events.
+    participant = await require_participant(db, roadmap_id, authorization, {"owner", "editor", "viewer"})
+    ticket = ticket_service.create_ticket(roadmap_id, participant.id)
+    return EventTicketResponse(ticket=ticket, expires_in=30)
+
+
+@router.get("/{roadmap_id}/events")
+async def get_events(
+    roadmap_id: str,
+    ticket: str = Query(...),
+):
+    participant_id = ticket_service.consume_ticket(ticket, roadmap_id)
+    if not participant_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired event ticket")
+
+    return StreamingResponse(
+        event_bus.stream(roadmap_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable buffering for Nginx
+        },
+    )
+
+
+@router.post("/{roadmap_id}/locks", response_model=LockResponse)
+async def post_lock(
+    roadmap_id: str,
+    payload: LockRequest,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> LockResponse:
+    participant = await require_participant(db, roadmap_id, authorization, {"owner", "editor"})
+    lock = await lock_service.acquire_lock(
+        roadmap_id, payload.target, participant.id, participant.display_name
+    )
+    if not lock:
+        raise HTTPException(status_code=409, detail="Target is locked by another participant")
+    
+    return LockResponse(
+        roadmap_id=lock.roadmap_id,
+        target=lock.target,
+        participant_id=lock.participant_id,
+        display_name=lock.display_name,
+        expires_at=datetime.fromtimestamp(lock.expires_at, timezone.utc),
+    )
+
+
+@router.delete("/{roadmap_id}/locks/{target}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_lock(
+    roadmap_id: str,
+    target: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> Response:
+    participant = await require_participant(db, roadmap_id, authorization, {"owner", "editor"})
+    await lock_service.release_lock(roadmap_id, target, participant.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{roadmap_id}/locks", response_model=list[LockResponse])
+async def get_locks(
+    roadmap_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> list[LockResponse]:
+    # Viewer can see locks too
+    await require_participant(db, roadmap_id, authorization, {"owner", "editor", "viewer"})
+    locks = lock_service.get_locks_for_roadmap(roadmap_id)
+    return [
+        LockResponse(
+            roadmap_id=l.roadmap_id,
+            target=l.target,
+            participant_id=l.participant_id,
+            display_name=l.display_name,
+            expires_at=datetime.fromtimestamp(l.expires_at, timezone.utc),
+        )
+        for l in locks
+    ]

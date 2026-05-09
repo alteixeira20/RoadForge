@@ -142,6 +142,7 @@ class UpdateRoadmapRequest(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=ROADMAP_NAME_MAX)
     phases: list[PhaseDTO] | None = Field(default=None, max_length=PHASES_MAX)
+    last_updated_at: datetime | None = None
 
     @field_validator("name", mode="before")
     @classmethod
@@ -233,6 +234,24 @@ class CreateRoadmapResponse(BaseModel):
     share_links: list[ShareLinkResponse]
     # Opaque session token for the owner participant; shown once, never stored raw.
     owner_session_token: str
+
+
+class EventTicketResponse(BaseModel):
+    ticket: str
+    expires_in: int
+
+
+class LockRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    target: str = Field(min_length=1, max_length=160, pattern=r"^[a-zA-Z0-9:\-_.]+$")
+
+
+class LockResponse(BaseModel):
+    roadmap_id: str
+    target: str
+    participant_id: str
+    display_name: str
+    expires_at: datetime
 
 
 # ─── Activity log ─────────────────────────────────────────────────────────────
