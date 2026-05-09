@@ -9,9 +9,6 @@ Design:
   token) used in the ShareModal UI and logs for identification without exposing
   the secret.
 - Comparison uses hmac.compare_digest to resist timing attacks.
-
-Password hashing is not implemented yet; it will use bcrypt when the password-
-gate feature is added.
 """
 
 import hashlib

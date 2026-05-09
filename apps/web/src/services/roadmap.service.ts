@@ -107,7 +107,6 @@ function toShareLink(r: ApiShareLinkResponse): ShareLink {
 
 /**
  * Create a new roadmap on the server.
- * TODO(backend): POST /api/roadmaps
  */
 export async function createRoadmap(
   name: string,
@@ -126,7 +125,6 @@ export async function createRoadmap(
 
 /**
  * Load a roadmap by ID.
- * TODO(backend): GET /api/roadmaps/:id
  */
 export async function getRoadmap(id: string): Promise<Roadmap> {
   const data = await requestJson<ApiRoadmapResponse>(`/api/roadmaps/${id}`)
@@ -151,7 +149,6 @@ export async function updateTaskDone(
 
 /**
  * Push a local roadmap snapshot to the server (full snapshot replace for phases).
- * TODO(backend): PUT /api/roadmaps/:id
  */
 export async function saveToServer(
   roadmapId: string,
@@ -172,7 +169,6 @@ export async function saveToServer(
 /**
  * Fetch all active share links for a roadmap.
  * url is empty string when null — raw tokens are not re-exposed after creation.
- * TODO(backend): GET /api/roadmaps/:id/share-links
  */
 export async function getShareLinks(roadmapId: string): Promise<ShareLink[]> {
   const data = await requestJson<ApiShareLinkResponse[]>(
@@ -184,7 +180,6 @@ export async function getShareLinks(roadmapId: string): Promise<ShareLink[]> {
 /**
  * Rotate a share link for the given role. Returns the link with the new join URL
  * (the raw token is only available in this response).
- * TODO(backend): POST /api/roadmaps/:id/share-links/:role/rotate
  */
 export async function regenerateShareLink(
   roadmapId: string,
@@ -199,7 +194,6 @@ export async function regenerateShareLink(
 
 /**
  * Revoke a share link so it can no longer be used to join.
- * TODO(backend): DELETE /api/roadmaps/:id/share-links/:role
  */
 export async function revokeShareLink(
   roadmapId: string,
@@ -246,7 +240,6 @@ export async function importRoadmap(
  * Accept a share-link invite and join the roadmap.
  * display_name is optional — backend assigns a role-based default if omitted.
  * password is required when the roadmap has password protection enabled.
- * TODO(backend): POST /api/roadmaps/join
  */
 export async function joinRoadmap(
   token: string,

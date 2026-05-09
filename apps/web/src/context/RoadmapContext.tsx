@@ -13,7 +13,7 @@ interface RoadmapContextValue {
   setRoadmapName: (name: string) => void
   phases: Phase[]
   setPhases: (phases: Phase[]) => void
-  /** Whether the roadmap has been "saved to server" (mocked). */
+  /** Whether the roadmap has been saved to the server. */
   saved: boolean
   setSaved: (saved: boolean) => void
   /** Server-side roadmap record ID. Null until the roadmap has been saved to the server. */

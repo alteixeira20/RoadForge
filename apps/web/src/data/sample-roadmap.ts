@@ -1,7 +1,7 @@
 import type { Roadmap, ShareLink, ExportOption } from '@/types/roadmap'
 
 // ─── Sample roadmap data ───────────────────────────────────────────────────────
-// TODO(backend): Replace with GET /api/roadmaps/:id
+// Fallback used when no server roadmap is available (no serverRoadmapId in storage).
 
 export const SAMPLE_ROADMAP: Roadmap = {
   project: { id: 'rfg', name: 'Roadforge' },
