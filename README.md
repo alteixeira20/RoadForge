@@ -13,9 +13,9 @@ RoadForge is accountless. There are no logins, user records, or dashboards.
 - **Create** — owner saves a roadmap, receives a session token and three role-specific share links.
 - **Share** — send an invite link to collaborators. Links are role-scoped (owner / editor / viewer) and revocable.
 - **Join** — visitor opens the link, optionally enters a display name, and receives a session token for that role.
-- **Password gate** — roadmaps can optionally require a password before a join token is issued. Password gates are currently available through the API; the Save UI does not expose password setup yet.
+- **Password gate** — roadmaps can optionally require a password before a join token is issued.
+- **Session token** — stored in `localStorage` after create or join and sent as a Bearer token for authorized actions.
 - **Display name** — optional, used only as a collaboration label. Blank joins get a role-based default ("Guest Editor", etc.).
-- **Session token** — stored in `localStorage` after create or join. Session tokens are stored locally after create/join and will be used by protected endpoints in a later authorization slice.
 
 Nothing is emailed. Nothing is verified. The invite link is the durable access handle.
 
@@ -166,8 +166,6 @@ Quick path:
 
 ## Current limitations / deferred features
 
-- **Session tokens not yet enforced** — stored after create/join but not yet sent as bearer tokens on write requests. The backend accepts all requests without authorization for now.
-- **No password field in Save flow** — password gates are supported by the backend; the Save UI does not expose setup yet.
 - **Markdown/PDF export** — requires backend; currently shows a toast.
 - **Real-time collaboration** — no WebSocket infrastructure; changes are not pushed to other participants.
 - **Activity log UI** — the backend logs all events; there is no frontend view yet.
