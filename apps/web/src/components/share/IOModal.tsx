@@ -7,8 +7,8 @@ import { EXPORT_OPTIONS } from '@/data/sample-roadmap'
 import { exportRoadmap } from '@/services/roadmap.service'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { storage } from '@/lib/storage'
+import { validateImportedPhases, IMPORT_MAX_BYTES } from '@/lib/roadmap-validation'
 import type { IconName } from '@/components/ui/Icon'
-import type { Phase } from '@/types/roadmap'
 
 interface IOModalProps {
   open: boolean
@@ -17,15 +17,6 @@ interface IOModalProps {
 }
 
 type Tab = 'export' | 'import'
-
-function isValidPhaseArray(v: unknown): v is Phase[] {
-  return (
-    Array.isArray(v) &&
-    v.length > 0 &&
-    typeof (v[0] as Phase)?.id === 'string' &&
-    Array.isArray((v[0] as Phase)?.tasks)
-  )
-}
 
 export function IOModal({ open, onClose, onToast }: IOModalProps) {
   const [tab, setTab] = useState<Tab>('export')
@@ -60,21 +51,23 @@ export function IOModal({ open, onClose, onToast }: IOModalProps) {
     const file = e.target.files?.[0]
     if (!file) return
 
+    if (file.size > IMPORT_MAX_BYTES) {
+      onToast('Import failed — file is too large')
+      e.target.value = ''
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (ev) => {
       try {
         const parsed = JSON.parse(ev.target?.result as string)
-        const incoming = parsed?.phases ?? parsed
-        if (!isValidPhaseArray(incoming)) {
-          onToast('Invalid file — expected a Roadforge JSON export')
-          return
-        }
-        setPhases(incoming)
-        storage.setPhases(incoming)
+        const validated = validateImportedPhases(parsed)
+        setPhases(validated)
+        storage.setPhases(validated)
         onToast('Roadmap imported from JSON')
         onClose()
       } catch {
-        onToast('Could not parse file — is it valid JSON?')
+        onToast('Import failed — invalid roadmap file')
       }
     }
     reader.readAsText(file)
