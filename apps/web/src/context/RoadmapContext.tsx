@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import type { Phase, ShareRole } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage } from '@/lib/storage'
+import { getRoadmap } from '@/services/roadmap.service'
 
 interface RoadmapContextValue {
   displayName: string
@@ -35,7 +36,6 @@ const RoadmapContext = createContext<RoadmapContextValue | null>(null)
 export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [displayName, setDisplayNameState] = useState('')
   const [roadmapName, setRoadmapNameState] = useState('v1.0 Public Launch')
-  // TODO(backend): replace with getRoadmap(serverRoadmapId) once an ID is available in context.
   const [phases, setPhasesState] = useState<Phase[]>(SAMPLE_ROADMAP.phases)
   const [saved, setSavedState] = useState(false)
   const [serverRoadmapId, setServerRoadmapIdState] = useState<string | null>(null)
@@ -43,8 +43,10 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [participantId, setParticipantIdState] = useState<string | null>(null)
   const [role, setRoleState] = useState<ShareRole | null>(null)
 
-  // Hydrate from localStorage once on client mount
+  // Hydrate from localStorage once on client mount, then re-sync from server if an ID is available.
   useEffect(() => {
+    let cancelled = false
+
     const storedDisplayName = storage.getDisplayName()
     if (storedDisplayName !== null) setDisplayNameState(storedDisplayName)
 
@@ -55,14 +57,30 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     if (storedPhases !== null) setPhasesState(storedPhases)
 
     setSavedState(storage.getSaved())
+
     const storedServerId = storage.getServerRoadmapId()
-    if (storedServerId !== null) setServerRoadmapIdState(storedServerId)
+    if (storedServerId !== null) {
+      setServerRoadmapIdState(storedServerId)
+      getRoadmap(storedServerId)
+        .then((loaded) => {
+          if (cancelled) return
+          setRoadmapNameState(loaded.roadmap.name)
+          setPhasesState(loaded.phases)
+          setSavedState(true)
+        })
+        .catch(() => {
+          // Backend offline or roadmap gone — keep localStorage state, no crash.
+        })
+    }
+
     const storedSessionToken = storage.getSessionToken()
     if (storedSessionToken !== null) setSessionTokenState(storedSessionToken)
     const storedParticipantId = storage.getParticipantId()
     if (storedParticipantId !== null) setParticipantIdState(storedParticipantId)
     const storedRole = storage.getRole()
     if (storedRole !== null) setRoleState(storedRole)
+
+    return () => { cancelled = true }
   }, [])
 
   const setDisplayName = useCallback((name: string) => {
