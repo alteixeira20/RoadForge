@@ -45,17 +45,19 @@ Nothing is emailed. Nothing is verified. The invite link is the durable access h
 
 ### Quick Start (Makefile)
 
-The repository includes a `Makefile` for common development tasks:
+The repository includes a `Makefile` for full background lifecycle management:
 
 ```bash
 make help           # List all available commands
-make manual-start   # Reset backend (Docker), run migrations, and check health
-make dev            # Run Next.js frontend
+make start          # Start everything (API in Docker, Web in background)
+make status         # Check what is running
+make logs           # Follow all logs (API + Web)
+make stop           # Stop everything
 ```
 
-### Manual Setup
+### Manual Setup (Foreground)
 
-#### 1. Install frontend dependencies
+#### 1. Install dependencies
 
 ```bash
 pnpm install
@@ -65,27 +67,34 @@ pnpm install
 
 ```bash
 cp .env.example .env.local
-# Edit .env.local if needed — defaults point at localhost:7878
 ```
 
 #### 3. Start the backend
 
 ```bash
 make api-up
-# or: docker compose up --build postgres api
+# or: docker compose up --build -d postgres api
 ```
-
-Postgres is exposed on `localhost:5433` (not 5432) to avoid conflicts with a host Postgres instance.
 
 #### 4. Start the frontend
 
 ```bash
 make dev
 # or: pnpm dev
-# http://localhost:3000
 ```
 
-The frontend works without the backend running — it falls back to local state. Backend calls only happen after "Save to server" is confirmed.
+---
+
+## Production hardening
+
+Before self-hosting or releasing RoadForge publicly:
+
+- **Do not expose `make dev`** — always run a production build (`pnpm build`) and start the production server (`pnpm --filter web start`).
+- **Use a reverse proxy** — terminate TLS (HTTPS) at a proxy like Caddy or Nginx.
+- **Enable HSTS** — configure HTTP Strict Transport Security at the proxy level.
+- **Configure proxy logs** — invite tokens appear in URLs; ensure your proxy is configured not to log full query strings if possible, or restrict log access.
+- **Run security audits** — regularly run `make audit` and address high-severity vulnerabilities.
+- **CSP required** — a strict Content Security Policy is deferred in the current MVP but should be implemented before any multi-user public deployment.
 
 ---
 
@@ -93,17 +102,23 @@ The frontend works without the backend running — it falls back to local state.
 
 | Target | Description |
 |---|---|
-| `make install` | Install frontend dependencies (`pnpm install`) |
-| `make dev` | Run Next.js frontend in development mode |
+| `make start` | Start all services (API in Docker, Web in background) |
+| `make stop` | Stop all services |
+| `make restart` | Stop and then start all services |
+| `make status` | Show status of all services |
+| `make logs` | Follow all logs (API, Postgres, Web) |
+| `make reset` | Destructive reset: wipe DB and start fresh |
 | `make check` | Run linting, typechecking, and production build |
+| `make audit` | Run dependency security audit |
+| `make audit-prod` | Run dependency security audit (production only) |
+| `make dev` | Run Next.js frontend in the foreground (standard dev) |
 | `make api-up` | Start Postgres and FastAPI in Docker |
 | `make api-down` | Stop backend services |
-| `make api-reset` | Complete backend reset: down, up, migrate, health |
 | `make api-migrate` | Run database migrations |
 | `make api-health` | Check if backend is reachable |
-| `make manual-start` | Shortcut to reset backend and prepare for testing |
-| `make logs-api` | Tail API logs (last 80 lines) |
-| `make logs-db` | Tail Postgres logs (last 80 lines) |
+| `make web-start` | Start frontend in the background |
+| `make web-stop` | Stop background frontend process |
+| `make logs-web` | Follow Web logs specifically |
 
 ---
 

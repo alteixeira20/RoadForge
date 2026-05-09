@@ -112,6 +112,8 @@ This adds a second factor without requiring accounts. It is purely opt-in per ro
 
 - **Opaque IDs** — Roadmap IDs are opaque (`rm_` prefix + random) but not secret. Access to data requires an active session or a valid invite token.
 - **No rate limiting** — brute-force on invite tokens is not throttled.
-- **No HTTPS enforcement** — the Docker setup serves plain HTTP. Production deployment needs TLS termination.
-- **Tokens in URLs** — invite tokens appear in the URL query string and may be logged by proxies or browsers. This is acceptable for a local-first tool but warrants a warning in production docs.
+- **No HTTPS enforcement** — the Docker setup serves plain HTTP. Production deployment must terminate TLS at a reverse proxy and configure HSTS.
+- **Tokens in URLs** — invite tokens appear in the URL query string and may be logged by proxies or browsers. Self-hosters should configure reverse proxy logs to exclude query strings or strictly control log access.
 - **Soft deletes only** — `Roadmap.deleted_at` is set on delete; no hard purge yet.
+- **No development server exposure** — `next dev` (or `make dev`) should never be exposed publicly. Use a production build for hosting.
+- **Content Security Policy** — RoadForge currently lacks a CSP. Implementing a strict CSP is a critical requirement before public open-source release to protect `localStorage` tokens.
