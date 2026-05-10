@@ -17,6 +17,8 @@ interface PhaseListProps {
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void
+  onReorderTasks: (phaseId: string, taskIds: string[]) => void
+  onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
   hasCycle: (taskId: string, depId: string) => boolean
 }
 
@@ -33,6 +35,8 @@ export function PhaseList({
   onAddSubtask,
   onLinkDependency,
   onUnlinkDependency,
+  onReorderTasks,
+  onReorderSubtasks,
   hasCycle,
 }: PhaseListProps) {
   return (
@@ -51,6 +55,8 @@ export function PhaseList({
             onAddSubtask={onAddSubtask}
             onLinkDependency={onLinkDependency}
             onUnlinkDependency={onUnlinkDependency}
+            onReorderTasks={onReorderTasks}
+            onReorderSubtasks={onReorderSubtasks}
             hasCycle={hasCycle}
             allTasks={allTasks}
             readOnly={readOnly}

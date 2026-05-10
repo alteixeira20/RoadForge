@@ -19,6 +19,7 @@ interface TaskRowProps {
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void
+  onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
   hasCycle: (taskId: string, depId: string) => boolean
   isNested?: boolean
 }
@@ -65,6 +66,7 @@ export function TaskRow({
   onAddSubtask,
   onLinkDependency,
   onUnlinkDependency,
+  onReorderSubtasks,
   hasCycle,
   isNested = false,
 }: TaskRowProps) {
@@ -174,6 +176,66 @@ export function TaskRow({
     ? { cursor: 'not-allowed', opacity: 0.6 }
     : {}
 
+  // ─── Subtask Reordering ──────────────────────────────────────────────────
+
+  const handleSubtaskDragStart = (e: React.DragEvent, sid: string) => {
+    if (readOnly) return
+    e.stopPropagation()
+    e.dataTransfer.setData('subtaskId', sid)
+    e.dataTransfer.setData('parentId', task.id)
+    e.dataTransfer.effectAllowed = 'move'
+    
+    const el = e.currentTarget as HTMLElement
+    el.classList.add('dragging')
+  }
+
+  const handleSubtaskDragEnd = (e: React.DragEvent) => {
+    const el = e.currentTarget as HTMLElement
+    el.classList.remove('dragging')
+  }
+
+  const handleSubtaskDragOver = (e: React.DragEvent) => {
+    if (readOnly) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    
+    const el = e.currentTarget as HTMLElement
+    el.classList.add('drag-over')
+  }
+
+  const handleSubtaskDragLeave = (e: React.DragEvent) => {
+    const el = e.currentTarget as HTMLElement
+    el.classList.remove('drag-over')
+  }
+
+  const handleSubtaskDrop = (e: React.DragEvent, targetId: string) => {
+    if (readOnly) return
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const el = e.currentTarget as HTMLElement
+    el.classList.remove('drag-over')
+
+    const draggedId = e.dataTransfer.getData('subtaskId')
+    const sourceParentId = e.dataTransfer.getData('parentId')
+
+    if (sourceParentId !== task.id) return
+    if (draggedId === targetId) return
+
+    const sids = subtasks.map(s => s.id)
+    const oldIdx = sids.indexOf(draggedId)
+    const newIdx = sids.indexOf(targetId)
+
+    if (oldIdx === -1 || newIdx === -1) return
+
+    const newOrder = [...sids]
+    newOrder.splice(oldIdx, 1)
+    newOrder.splice(newIdx, 0, draggedId)
+
+    onReorderSubtasks(task.id, newOrder)
+  }
+
   return (
     <div
       id={`task-${task.id}`}
@@ -189,6 +251,11 @@ export function TaskRow({
         .join(' ')}
     >
       <div className="task-row">
+        {!readOnly && (
+          <div className="drag-handle" title="Drag to reorder">
+            <Icon name="grip" size={14} />
+          </div>
+        )}
         <div
           className="check"
           style={checkStyle}
@@ -207,7 +274,7 @@ export function TaskRow({
         {blockedBy.length > 0 && (
           <span className="meta-pill blocked">⊘ Blocked</span>
         )}
-        {task.est && blockedBy.length === 0 && (
+        {task.est && blockedBy.length === 0 && !isNested && (
           <span className="meta-pill">{task.est}</span>
         )}
         <span className="id">{task.id}</span>
@@ -227,30 +294,27 @@ export function TaskRow({
 
       {expanded && (
         <div className="task-detail" onClick={(e) => e.stopPropagation()}>
-          {!effectivelyReadOnly && !isEditing && (
-            <button className="edit-trigger" onClick={handleStartEdit} title="Edit task">
-              <Icon name="pencil" size={14} />
-            </button>
-          )}
-
           {isEditing ? (
             <div className="edit-form">
               <div className="field">
                 <label>Title</label>
                 <input
+                  autoFocus
                   value={editDraft.title || ''}
                   onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })}
                   placeholder="Task title..."
                 />
               </div>
-              <div className="field">
-                <label>Estimate</label>
-                <input
-                  value={editDraft.est || ''}
-                  onChange={(e) => setEditDraft({ ...editDraft, est: e.target.value })}
-                  placeholder="e.g. 2d, 5h..."
-                />
-              </div>
+              {!isNested && (
+                <div className="field">
+                  <label>Estimate</label>
+                  <input
+                    value={editDraft.est || ''}
+                    onChange={(e) => setEditDraft({ ...editDraft, est: e.target.value })}
+                    placeholder="e.g. 2d, 5h..."
+                  />
+                </div>
+              )}
               <div className="field full">
                 <label>Description</label>
                 <textarea
@@ -278,8 +342,12 @@ export function TaskRow({
               {task.desc && <div className="desc">{task.desc}</div>}
 
               <div className="grid">
-                <div className="label">Estimate</div>
-                <div className="value">{task.est ?? '—'}</div>
+                {!isNested && (
+                  <>
+                    <div className="label">Estimate</div>
+                    <div className="value">{task.est ?? '—'}</div>
+                  </>
+                )}
                 <div className="label">Owner</div>
                 <div className="value" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   <span className="avatar" style={{ width: 20, height: 20, fontSize: 10 }}>
@@ -300,100 +368,117 @@ export function TaskRow({
                   </>
                 )}
               </div>
-            </>
-          )}
 
-          {depTasks.length > 0 && (
-            <div className="section">
-              <div className="section-label">Depends on</div>
-              <div className="deps">
-                {depTasks.map((d) => (
-                  <div key={d.id} className="dep-row" onClick={() => navigateToTask(d.id)}>
-                    <Icon
-                      name={d.done ? 'circle-check' : 'circle'}
-                      size={14}
-                      stroke={d.done ? 'var(--ink-3)' : 'var(--ember)'}
-                    />
-                    <span className="title">{d.title}</span>
-                    <span className="did">{d.id}</span>
-                    <span className={`dst ${d.done ? 'done' : 'ready'}`}>
-                      {d.done ? 'done' : 'ready'}
-                    </span>
-                    {!effectivelyReadOnly && (
-                      <button
-                        className="btn-remove"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onUnlinkDependency(task.id, d.id)
-                        }}
-                        title="Unlink dependency"
-                      >
-                        <Icon name="x" size={12} />
-                      </button>
-                    )}
+              {depTasks.length > 0 && (
+                <div className="section">
+                  <div className="section-label">Depends on</div>
+                  <div className="deps">
+                    {depTasks.map((d) => (
+                      <div key={d.id} className="dep-row" onClick={() => navigateToTask(d.id)}>
+                        <Icon
+                          name={d.done ? 'circle-check' : 'circle'}
+                          size={14}
+                          stroke={d.done ? 'var(--ink-3)' : 'var(--ember)'}
+                        />
+                        <span className="title">{d.title}</span>
+                        <span className="did">{d.id}</span>
+                        <span className={`dst ${d.done ? 'done' : 'ready'}`}>
+                          {d.done ? 'done' : 'ready'}
+                        </span>
+                        {!effectivelyReadOnly && (
+                          <button
+                            className="btn-remove"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onUnlinkDependency(task.id, d.id)
+                            }}
+                            title="Unlink dependency"
+                          >
+                            <Icon name="x" size={12} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {subtasks.length > 0 && (
-            <div className="section">
-              <div className="section-label">Subtasks</div>
-              <div className="subtasks">
-                {subtasks.map((st) => (
-                  <TaskRow
-                    key={st.id}
-                    task={st}
-                    allTasks={allTasks}
-                    expanded={expandedTaskId === st.id}
-                    expandedTaskId={expandedTaskId}
-                    readOnly={readOnly}
-                    onToggle={onToggle}
-                    onCheck={onCheck}
-                    onUpdateTask={onUpdateTask}
-                    onAddSubtask={onAddSubtask}
-                    onLinkDependency={onLinkDependency}
-                    onUnlinkDependency={onUnlinkDependency}
-                    hasCycle={hasCycle}
-                    isNested
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+              {subtasks.length > 0 && (
+                <div className="section">
+                  <div className="section-label">Subtasks</div>
+                  <div className="subtasks">
+                    {subtasks.map((st) => (
+                      <div
+                        key={st.id}
+                        draggable={!readOnly}
+                        onDragStart={(e) => handleSubtaskDragStart(e, st.id)}
+                        onDragEnd={handleSubtaskDragEnd}
+                        onDragOver={handleSubtaskDragOver}
+                        onDragLeave={handleSubtaskDragLeave}
+                        onDrop={(e) => handleSubtaskDrop(e, st.id)}
+                        className="draggable-task-wrapper"
+                      >
+                        <TaskRow
+                          task={st}
+                          allTasks={allTasks}
+                          expanded={expandedTaskId === st.id}
+                          expandedTaskId={expandedTaskId}
+                          readOnly={readOnly}
+                          onToggle={onToggle}
+                          onCheck={onCheck}
+                          onUpdateTask={onUpdateTask}
+                          onAddSubtask={onAddSubtask}
+                          onLinkDependency={onLinkDependency}
+                          onUnlinkDependency={onUnlinkDependency}
+                          onReorderSubtasks={onReorderSubtasks}
+                          hasCycle={hasCycle}
+                          isNested
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {!effectivelyReadOnly && !isEditing && (
-            <>
-              {showSubtaskForm ? (
-                <SubtaskForm
-                  onAdd={(title) => {
-                    onAddSubtask(task.id, title)
-                    setShowSubtaskForm(false)
-                  }}
-                  onCancel={() => setShowSubtaskForm(false)}
-                />
-              ) : showDepPicker ? (
-                <DependencyPicker
-                  currentTask={task}
-                  allTasks={allTasks}
-                  hasCycle={hasCycle}
-                  onLink={(depId) => {
-                    onLinkDependency(task.id, depId)
-                    setShowDepPicker(false)
-                  }}
-                  onCancel={() => setShowDepPicker(false)}
-                />
-              ) : (
-                <div className="actions">
-                  {!task.parentId && (
-                    <button className="btn sm" onClick={() => setShowSubtaskForm(true)}>
-                      <Icon name="plus" size={13} /> Add subtask
-                    </button>
+              {!effectivelyReadOnly && (
+                <div className="task-actions-footer">
+                  {showSubtaskForm ? (
+                    <SubtaskForm
+                      onAdd={(title) => {
+                        onAddSubtask(task.id, title)
+                        setShowSubtaskForm(false)
+                      }}
+                      onCancel={() => setShowSubtaskForm(false)}
+                    />
+                  ) : showDepPicker ? (
+                    <DependencyPicker
+                      currentTask={task}
+                      allTasks={allTasks}
+                      hasCycle={hasCycle}
+                      onLink={(depId) => {
+                        onLinkDependency(task.id, depId)
+                        setShowDepPicker(false)
+                      }}
+                      onCancel={() => setShowDepPicker(false)}
+                    />
+                  ) : (
+                    <div className="actions">
+                      {!isNested && (
+                        <button className="btn sm" onClick={() => setShowSubtaskForm(true)}>
+                          <Icon name="plus" size={13} /> Add subtask
+                        </button>
+                      )}
+                      {!isNested && (
+                        <button className="btn sm" onClick={() => setShowDepPicker(true)}>
+                          <Icon name="link" size={13} /> Link dependency
+                        </button>
+                      )}
+                      <span className="spacer" />
+                      <button className="iconbtn" onClick={handleStartEdit} title="Edit task">
+                        <Icon name="pencil" size={14} />
+                      </button>
+                    </div>
                   )}
-                  <button className="btn sm" onClick={() => setShowDepPicker(true)}>
-                    <Icon name="link" size={13} /> Link dependency
-                  </button>
                 </div>
               )}
             </>

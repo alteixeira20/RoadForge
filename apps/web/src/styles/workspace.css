@@ -330,110 +330,104 @@
 .task-detail {
   padding: 4px 22px 22px 56px;
   display: flex; flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   animation: detailIn 240ms cubic-bezier(.2,.8,.2,1);
 }
 @keyframes detailIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
 .task-detail .desc {
-  font-size: 15px;
+  font-size: 14.5px;
   color: var(--ink-2);
-  line-height: 1.6;
+  line-height: 1.5;
   text-wrap: pretty;
+  margin-bottom: 4px;
 }
 .task-detail .grid {
   display: grid;
-  grid-template-columns: 90px 1fr;
-  row-gap: 10px;
+  grid-template-columns: 80px 1fr;
+  row-gap: 8px;
   column-gap: 14px;
-  font-size: 14px;
+  font-size: 13.5px;
 }
-.task-detail .grid .label { color: var(--ink-3); font-size: 13px; }
+.task-detail .grid .label { color: var(--ink-4); font-weight: 500; }
 .task-detail .grid .value { color: var(--ink-2); }
-.task-detail .deps { display: flex; flex-direction: column; gap: 6px; }
-.task-detail .dep-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px;
-  background: var(--bg-inset);
-  border: 1px solid var(--border-faint);
-  border-radius: 8px;
-  font-size: 14px;
+
+.task-actions-footer {
+  margin-top: 12px;
+  display: flex; align-items: center;
 }
-.task-detail .dep-row .did {
-  font-family: var(--font-mono);
-  font-size: 12px;
+
+.task-detail .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; flex: 1; }
+
+/* ─── Drag & Drop ─────────────────────────────────────────────────────────── */
+
+.drag-handle {
+  width: 24px; height: 32px;
+  display: grid; place-items: center;
   color: var(--ink-4);
+  cursor: grab;
+  margin-left: -12px;
+  opacity: 0;
+  transition: opacity 160ms;
 }
-.task-detail .dep-row .dst {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--ink-3);
-}
-.task-detail .dep-row .dst.ready { color: var(--ember); }
-.task-detail .dep-row .dst.done { color: var(--ink-3); }
-.task-detail .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.task-row:hover .drag-handle { opacity: 1; }
+.drag-handle:active { cursor: grabbing; }
+
+.draggable-task-wrapper { transition: transform 200ms cubic-bezier(.2,.8,.2,1); }
+.draggable-task-wrapper.dragging { opacity: 0.4; filter: grayscale(1); }
+.draggable-task-wrapper.drag-over { border-top: 2px solid var(--ember); }
 
 /* ─── Task Detail Enhancements ────────────────────────────────────────────── */
 
 .task-detail { position: relative; }
 
-.edit-trigger {
-  position: absolute; top: 0; right: 22px;
-  width: 32px; height: 32px;
-  display: grid; place-items: center;
-  color: var(--ink-4);
-  background: transparent;
-  border-radius: 8px;
-  transition: all 160ms;
-}
-.edit-trigger:hover { color: var(--ember); background: var(--bg); }
-
-.section { margin-top: 16px; }
+.section { margin-top: 12px; }
 .section-label {
-  font-size: 12px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.05em;
-  color: var(--ink-3); margin-bottom: 10px;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-4); margin-bottom: 8px;
 }
 
 .subtasks {
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column;
   padding-left: 12px;
   border-left: 2px solid var(--border-faint);
-  margin-left: -4px;
+  margin-left: -2px;
 }
 .task.nested { border-bottom: none; background: transparent; }
-.task.nested .task-row { padding: 8px 12px; }
-.task.nested .task-detail { padding-left: 44px; padding-bottom: 12px; }
+.task.nested .task-row { padding: 6px 12px; min-height: 40px; }
+.task.nested .task-detail { padding-left: 48px; padding-bottom: 8px; gap: 10px; }
+.task.nested .task-row .title { font-size: 14.5px; }
 
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag-pill {
   display: inline-flex; align-items: center;
-  padding: 2px 8px; border-radius: 4px;
-  font-size: 11.5px; font-weight: 500;
-  background: color-mix(in srgb, var(--tag-bg, var(--ink-4)), transparent 85%);
+  padding: 1.5px 7px; border-radius: 4px;
+  font-size: 11px; font-weight: 500;
+  background: color-mix(in srgb, var(--tag-bg, var(--ink-4)), transparent 88%);
   color: var(--tag-bg, var(--ink-2));
-  border: 1px solid color-mix(in srgb, var(--tag-bg, var(--ink-4)), transparent 70%);
+  border: 1px solid color-mix(in srgb, var(--tag-bg, var(--ink-4)), transparent 75%);
 }
 
 /* ─── Edit Form ────────────────────────────────────────────────────────────── */
 
 .edit-form {
-  display: flex; flex-direction: column; gap: 14px;
-  padding: 16px; background: var(--bg);
-  border: 1px solid var(--border); border-radius: 12px;
-  margin-bottom: 8px;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 14px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: var(--shadow-sm);
 }
-.edit-form .field { display: flex; flex-direction: column; gap: 6px; }
-.edit-form label { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.edit-form .field { display: flex; flex-direction: column; gap: 4px; }
+.edit-form label { font-size: 11px; font-weight: 600; color: var(--ink-4); text-transform: uppercase; }
 .edit-form input, .edit-form textarea {
-  padding: 8px 12px; background: var(--bg-2);
-  border: 1px solid var(--border); border-radius: 8px;
-  font-size: 14px; color: var(--ink); outline: none;
+  padding: 8px 10px; background: var(--bg-2);
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13.5px; color: var(--ink); outline: none;
 }
-.edit-form input:focus, .edit-form textarea:focus { border-color: var(--ember); }
+.edit-form input:focus, .edit-form textarea:focus { border-color: var(--ember); background: var(--bg); }
 .edit-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
 
 /* ─── Animations & Polish ─────────────────────────────────────────────────── */
@@ -444,9 +438,20 @@
 }
 .highlight-flash { animation: highlightFlash 2s ease-out; }
 
-.dep-row { cursor: pointer; transition: all 120ms; }
+.dep-row { cursor: pointer; transition: all 120ms; flex: 1; }
 .dep-row:hover { background: var(--bg); border-color: var(--border); }
 .dep-row .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.iconbtn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  color: var(--ink-4);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition: all 160ms;
+}
+.iconbtn:hover { color: var(--ember); background: var(--bg-3); border-color: var(--border); }
 
 /* ─── Task Action Forms ────────────────────────────────────────────────────── */
 .task-action-form {

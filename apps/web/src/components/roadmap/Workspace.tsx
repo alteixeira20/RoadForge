@@ -244,6 +244,61 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setSaved(false)
   }
 
+  const handleReorderTasks = (phaseId: string, taskIds: string[]) => {
+    if (readOnly) return
+    setPhases(
+      phases.map((p) => {
+        if (p.id !== phaseId) return p
+        // Reconstruct the tasks array based on the new order of top-level tasks,
+        // but preserve the subtasks correctly under their parents.
+        // Actually, since tasks are flat in the phase.tasks array, reordering
+        // top-level tasks means we move the parent AND its following subtasks as a block.
+        
+        const orderedTasks: Task[] = []
+        taskIds.forEach(tid => {
+          const parent = p.tasks.find(t => t.id === tid)
+          if (parent) {
+            orderedTasks.push(parent)
+            // Add all its subtasks immediately after it
+            const subtasks = p.tasks.filter(t => t.parentId === tid)
+            orderedTasks.push(...subtasks)
+          }
+        })
+        
+        // Add any subtasks whose parents weren't in taskIds (shouldn't happen)
+        // or top-level tasks that were missed.
+        const handledIds = new Set(orderedTasks.map(t => t.id))
+        const remainingTasks = p.tasks.filter(t => !handledIds.has(t.id))
+        
+        return { ...p, tasks: [...orderedTasks, ...remainingTasks] }
+      }),
+    )
+    setSaved(false)
+  }
+
+  const handleReorderSubtasks = (parentId: string, subtaskIds: string[]) => {
+    if (readOnly) return
+    setPhases(
+      phases.map((p) => {
+        const hasParent = p.tasks.some(t => t.id === parentId)
+        if (!hasParent) return p
+
+        const otherTasks = p.tasks.filter(t => t.parentId !== parentId)
+        const orderedSubtasks = subtaskIds
+          .map(sid => p.tasks.find(t => t.id === sid))
+          .filter((t): t is Task => !!t)
+        
+        // We need to re-insert the subtasks after the parent in the flat array
+        const parentIdx = otherTasks.findIndex(t => t.id === parentId)
+        const newTasks = [...otherTasks]
+        newTasks.splice(parentIdx + 1, 0, ...orderedSubtasks)
+        
+        return { ...p, tasks: newTasks }
+      }),
+    )
+    setSaved(false)
+  }
+
   return (
     <div className="app-shell">
       <AppHeader
@@ -302,6 +357,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onAddSubtask={handleAddSubtask}
           onLinkDependency={handleLinkDependency}
           onUnlinkDependency={handleUnlinkDependency}
+          onReorderTasks={handleReorderTasks}
+          onReorderSubtasks={handleReorderSubtasks}
           hasCycle={hasCycle}
         />
       </div>

@@ -15,8 +15,8 @@ This is a manual step-by-step test of the full create → save → share → joi
 ## Setup
 
 ```bash
-# Terminal 1 — backend
-docker compose up --build api postgres
+# Terminal 1 — clean start
+make reset
 
 # Wait for:
 # api_1  | INFO: Application startup complete.
@@ -25,6 +25,7 @@ docker compose up --build api postgres
 pnpm dev
 
 # Confirm both are running:
+make status
 curl http://localhost:7878/api/health
 # → {"status":"ok","version":"0.1.0"}
 ```
@@ -41,11 +42,12 @@ curl http://localhost:7878/api/health
 
 ---
 
-## 2. Save to backend
+## 2. Save to backend (with password)
 
-1. Click **Save** (or **Save to server**) in the app header.
-2. Confirm the save modal appears. Click confirm.
-3. Toast: "Saved · collaboration enabled".
+1. Click **Save** in the app header.
+2. In the Save modal, enter a password (e.g. `pass123`) in the optional password field.
+3. Click confirm.
+4. Toast: "Saved · collaboration enabled".
 
 **Check localStorage (`F12 → Application → Local Storage → localhost:3000`):**
 - `rf:saved` = `true`
@@ -53,20 +55,13 @@ curl http://localhost:7878/api/health
 - `rf:sessionToken` = a string starting with `sess_`
 - `rf:role` = `owner`
 
-**Check backend:**
-```bash
-ROADMAP_ID=$(node -e "console.log(localStorage['rf:serverRoadmapId'])" 2>/dev/null || echo "check browser")
-# Or copy from localStorage in DevTools, then:
-curl http://localhost:7878/api/roadmaps/<rm_id> | python3 -m json.tool
-```
-
 ---
 
 ## 3. Refresh page
 
 1. Refresh `http://localhost:3000`.
 
-**Expected behavior:** On refresh, the app hydrates immediately from `localStorage`. If `rf:serverRoadmapId` exists, `RoadmapContext` also calls `GET /api/roadmaps/{id}` in the background and replaces roadmap name, phases, and `ownerDisplayName` with the server snapshot. If the backend request fails, the app keeps the cached local state.
+**Expected behavior:** On refresh, the app hydrates immediately from `localStorage`. `RoadmapContext` also calls `GET /api/roadmaps/{id}` in the background and replaces roadmap name, phases, and `ownerDisplayName` with the server snapshot.
 
 ---
 
@@ -74,54 +69,37 @@ curl http://localhost:7878/api/roadmaps/<rm_id> | python3 -m json.tool
 
 1. Click **Share** in the app header.
 2. Confirm the modal loads three share links: Owner, Editor invite, Viewer (read-only).
-3. All three show "Rotate to generate a copyable link" (url is null from the API).
+3. All three show "Rotate to generate a copyable link".
 
 ---
 
-## 5. Rotate editor link
+## 5. Rotate and copy links
 
 1. Click **Regenerate** on the Editor row.
-2. Confirm the editor row now shows a copyable URL starting with `http://localhost:3000/join?token=ed_`.
-3. Toast: "New link generated — copy it now".
-4. Click **Copy** on the editor row.
-5. Confirm "Copied" state appears briefly.
+2. Confirm the editor row shows a copyable URL. Copy it.
+3. Click **Regenerate** on the Viewer row. Copy the viewer link.
 
 ---
 
-## 6. Rotate viewer link
+## 6. Join as Viewer (Private Window)
 
-1. Click **Regenerate** on the Viewer row.
-2. Confirm a viewer URL appears: `http://localhost:3000/join?token=vi_`.
-3. Copy the viewer link for use in the next step.
-
----
-
-## 7. Join as viewer (private window, no display name)
-
-1. Open a private/incognito browser window.
+1. Open a private browser window.
 2. Paste the viewer join URL.
-3. Leave the display name field blank.
-4. Click **Open roadmap**.
+3. Leave display name blank. Click **Open roadmap**.
 
 **Expected:**
-- No password prompt (no password was set).
+- Password prompt appears (since we set one in Step 2).
+- Enter `pass123` and click **Open roadmap**.
 - Routed to `/shared` (viewer mode).
 - Read-only banner visible.
-- Roadmap name matches.
-
-**Check localStorage in private window:**
-- `rf:serverRoadmapId` — matches the roadmap ID
-- `rf:role` = `viewer`
-- `rf:sessionToken` = a `sess_` string
-- `rf:participantId` = a `pt_` string
 
 ---
 
-## 8. Join as editor (private window, with display name)
+## 7. Join as Editor (Private Window)
 
-1. Open another private window (or clear the previous one's storage).
+1. Open another private window.
 2. Paste the editor join URL.
-3. Enter a display name, e.g. "Jordan".
+3. Enter display name "Jordan" and password `pass123`.
 4. Click **Open roadmap**.
 
 **Expected:**
@@ -131,121 +109,55 @@ curl http://localhost:7878/api/roadmaps/<rm_id> | python3 -m json.tool
 
 ---
 
-## 9. Test authorization (bearer tokens)
+## 8. Real-time collaboration (Two-browser flow)
 
-1. **Owner:** Confirm you can rotate/revoke links in the main window.
-2. **Editor:** In the editor private window, confirm that clicking "Save" (if you've made changes) succeeds. Confirm you cannot see "Share" or management tools reserved for the owner (if any are implemented).
+1. **Browser A (Owner):** Open a task (expand Task RF-01).
+2. **Browser B (Editor):** Confirm Task RF-01 shows "Owner is editing" and the checkbox is disabled.
+3. **Browser A:** Collapse the task.
+4. **Browser B:** Confirm the lock badge disappears and task is editable.
+5. **Browser B:** Toggle a task to 'done' and click **Save**.
+6. **Browser A:** Confirm the task checkmark updates automatically (SSE sync).
+
+---
+
+## 9. Test Optimistic Concurrency (Conflict)
+
+1. **Browser A:** Open a task detail.
+2. **Browser B:** Open the same task detail (acquire lock).
+3. **Browser B:** Make a change and click **Save**.
+4. **Browser A:** Attempt to click **Save**.
+
+**Expected:** Toast "This roadmap changed elsewhere — reload before saving" (409 Conflict).
+
+---
+
+## 10. Test link revocation
+
+1. **Browser A (Owner):** Open Share modal and click **Revoke** on the Viewer row.
+2. **Toast:** "Link revoked".
+3. **Verification:** In a new private window, attempt to join with the old viewer URL.
+
+**Expected:** Error: "This invite link is invalid or has expired."
+
+---
+
+## 11. Verify authorization (Bearer tokens)
+
+1. **Editor:** Confirm you can edit and save tasks.
+2. **Editor:** Confirm you cannot see "Share" or management tools reserved for the owner.
 3. **Viewer:** Confirm you cannot edit tasks or see management tools.
-
----
-
-## 10. Test invalid token
-
-1. In a private window, navigate to `http://localhost:3000/join?token=ed_fakefakefake`.
-2. Click **Open roadmap**.
-
-**Expected:** Error message: "This invite link is invalid or has expired."
-
----
-
-## 11. Test missing token
-
-1. Navigate to `http://localhost:3000/join` (no `?token=` param).
-
-**Expected:** "Invalid invite link" screen with "Go home" button.
-
----
-
-## 12. Revoke viewer link
-
-1. Back in the main browser (owner session).
-2. Open Share modal.
-3. Click **Revoke** on the Viewer row.
-4. Toast: "Link revoked".
-5. Viewer row disappears from the list.
-
----
-
-## 13. Confirm revoked link fails
-
-1. In a private window, paste the viewer join URL from step 6.
-2. Click **Open roadmap**.
-
-**Expected:** Error message: "This invite link is invalid or has expired."
-
----
-
-## 14. Test password-protected roadmap (UI flow)
-
-1. Clear your local storage and start a new roadmap.
-2. Click **Save to server**.
-3. In the save modal, enter a password (e.g. `pass123`) in the optional password field.
-4. Click **Confirm**.
-5. Copy an editor join link from the Share modal.
-6. Open the editor URL in a private window.
-7. Click **Open roadmap** without a password.
-
-**Expected:** Error: "This roadmap requires a password." Password field appears.
-
-8. Enter `pass123` and click **Open roadmap** again.
-
-**Expected:** Routed to `/workspace`.
-
----
-
-## 14. Verify database rows (optional)
-
-```bash
-docker compose exec postgres psql -U roadforge -d roadforge -c "SELECT id, name FROM roadmaps;"
-docker compose exec postgres psql -U roadforge -d roadforge -c "SELECT id, role, is_active FROM share_links;"
-docker compose exec postgres psql -U roadforge -d roadforge -c "SELECT id, role, display_name FROM participants;"
-docker compose exec postgres psql -U roadforge -d roadforge -c "SELECT action, actor_name FROM activity_logs ORDER BY created_at;"
-```
-
----
-
-## 15. Test real-time collaboration (two-browser flow)
-
-1. **Browser A (Owner):** Open a roadmap.
-2. **Browser B (Editor):** Join the same roadmap via invite link.
-3. **Presence:** Confirm Browser B sees "Owner is online" or similar if implemented (currently signaled via locks).
-4. **Soft Lock:**
-   - **Browser A:** Expand Task RF-01.
-   - **Browser B:** Confirm Task RF-01 shows "[Owner Name] is editing" and the checkbox is disabled.
-   - **Browser A:** Collapse Task RF-01.
-   - **Browser B:** Confirm the lock badge disappears and Task RF-01 is editable again.
-5. **Real-time Sync:**
-   - **Browser B:** Toggle Task RF-02 to 'done' and click **Save**.
-   - **Browser A:** Confirm Task RF-02 checkmark appears automatically without refresh.
-6. **Optimistic Concurrency:**
-   - **Browser A:** Open Task RF-03 detail.
-   - **Browser B:** Open Task RF-03 detail (acquire lock if not already held by A).
-   - **Browser B:** Make a change and click **Save**.
-   - **Browser A:** Attempt to click **Save**.
-   - **Expected:** Toast "This roadmap changed elsewhere — reload before saving".
-
----
-
-## 16. Test idle behavior
-
-1. **Browser B:** Hide the tab or switch to another window for > 60 seconds.
-2. **Browser A:** Make a change and click **Save**.
-3. **Browser B:** Return to the tab.
-4. **Expected:** Browser B should automatically re-fetch the latest roadmap state (or reconnect SSE and then re-fetch).
 
 ---
 
 ## Validation checklist
 
-- [ ] Roadmap creates and saves to backend
-- [ ] `rf:serverRoadmapId`, `rf:sessionToken`, `rf:role` in localStorage after save
-- [ ] Share modal loads links from backend
-- [ ] Rotate returns a copyable URL
-- [ ] Viewer join routes to `/shared`
+- [ ] `make reset` starts clean
+- [ ] Roadmap saves with password
+- [ ] `rf:sessionToken` stored in localStorage
+- [ ] Share modal generates valid links
+- [ ] Viewer join routes to `/shared` after password gate
 - [ ] Editor join routes to `/workspace`
-- [ ] Missing display name uses role default (check participants table)
-- [ ] Invalid token shows error, does not crash
-- [ ] Missing token shows invalid link screen
-- [ ] Revoke removes link from share modal
-- [ ] Revoked token returns error on join attempt
-- [ ] Password-protected join prompts for password on first attempt
+- [ ] Real-time SSE sync updates checkbox without refresh
+- [ ] Soft lock prevents editing while another participant has task open
+- [ ] 409 Conflict toast appears on stale save
+- [ ] Revoke invalidates the link immediately

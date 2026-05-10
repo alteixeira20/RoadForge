@@ -30,6 +30,7 @@ export type IconName =
   | 'activity'
   | 'pencil'
   | 'chevron-up'
+  | 'grip'
 
 export interface IconProps {
   name: IconName
@@ -105,6 +106,17 @@ export function Icon({ name, size = 16, stroke = 'currentColor', strokeWidth = 1
       return (
         <svg {...s}>
           <path d="m18 15-6-6-6 6" />
+        </svg>
+      )
+    case 'grip':
+      return (
+        <svg {...s}>
+          <circle cx="9" cy="5" r="1" fill="currentColor" stroke="none" />
+          <circle cx="9" cy="12" r="1" fill="currentColor" stroke="none" />
+          <circle cx="9" cy="19" r="1" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="5" r="1" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="12" r="1" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="19" r="1" fill="currentColor" stroke="none" />
         </svg>
       )
     case 'moon':

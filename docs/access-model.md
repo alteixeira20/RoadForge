@@ -66,7 +66,7 @@ The token is:
 - `POST /api/roadmaps/{id}/share-links/{role}/rotate` — requires **owner** role.
 - `DELETE /api/roadmaps/{id}/share-links/{role}` — requires **owner** role.
 
-The backend verifies the token hash and validates the participant's role before processing the request.
+The backend verifies the token hash and validates the participant's role before processing the request. **This enforcement is active on all protected write endpoints.**
 
 ---
 
@@ -76,7 +76,7 @@ RoadForge uses Server-Sent Events (SSE) for real-time collaboration.
 
 - **Sync:** When a participant saves a roadmap, all other connected participants receive a `roadmap.updated` event and automatically re-fetch the latest state.
 - **Tickets:** SSE connections do not send long-lived session tokens in the URL. Instead, they use 30-second single-use tickets obtained via a Bearer-authenticated POST request.
-- **Soft Locks:** To prevent edit collisions, RoadForge uses in-memory "soft locks" (30s TTL). When a user expands a task, the frontend acquires a lock. Other users see the task as "Editing by X" and have their inputs disabled.
+- **Soft Locks:** To prevent edit collisions, RoadForge uses in-memory "soft locks" (30s TTL). When a user expands a task, the frontend acquires a lock. Other users see the task as "Editing by X" and have their inputs disabled. Locks are stored in-memory on a single backend instance and are not shared across distributed nodes.
 - **Concurrency:** `PUT` requests use optimistic concurrency control. If the roadmap has been updated on the server since the client last fetched it, the save is rejected with a `409 Conflict`.
 
 ---
@@ -113,7 +113,7 @@ This adds a second factor without requiring accounts. It is purely opt-in per ro
 - **Opaque IDs** — Roadmap IDs are opaque (`rm_` prefix + random) but not secret. Access to data requires an active session or a valid invite token.
 - **No rate limiting** — brute-force on invite tokens is not throttled.
 - **No HTTPS enforcement** — the Docker setup serves plain HTTP. Production deployment must terminate TLS at a reverse proxy and configure HSTS.
-- **Tokens in URLs** — invite tokens appear in the URL query string and may be logged by proxies or browsers. Self-hosters should configure reverse proxy logs to exclude query strings or strictly control log access.
+- **Tokens in URLs** — invite tokens appear in the URL query string and will be logged by proxies or browsers. Self-hosters should configure reverse proxy logs to exclude query strings or strictly control log access.
 - **Soft deletes only** — `Roadmap.deleted_at` is set on delete; no hard purge yet.
 - **No development server exposure** — `next dev` (or `make dev`) should never be exposed publicly. Use a production build for hosting.
 - **Content Security Policy** — RoadForge currently lacks a CSP. Implementing a strict CSP is a critical requirement before public open-source release to protect `localStorage` tokens.

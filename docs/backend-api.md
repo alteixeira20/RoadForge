@@ -337,6 +337,21 @@ Acquire or refresh a lock.
 Release a lock. Only the owner of the lock can release it.
 **Requires:** `Authorization: Bearer <session_token>`.
 
+### GET /api/roadmaps/{roadmap_id}/locks
+
+List all active locks for a roadmap.
+**Response 200:** Array of `LockResponse` objects.
+```json
+[
+  {
+    "target": "task:RF-01",
+    "participant_id": "pt_def456",
+    "display_name": "Jordan",
+    "expires_at": "2026-05-08T12:00:30Z"
+  }
+]
+```
+
 ---
 
 ## Error format

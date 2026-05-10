@@ -2,7 +2,7 @@
 
 A structured roadmap planning tool for indie hackers and small teams. Break a release into phases, track task dependencies, and share access via private invite links. No accounts required.
 
-**Current status:** Local MVP candidate. Core create/save/share/join flow is wired for manual testing. Security and UX hardening are still in progress.
+**Current status:** v0.1 manual-testing candidate. Core create/save/share/join flow is wired, and realtime collaboration (SSE) is active. Security and UX hardening are still in progress.
 
 ---
 
@@ -21,6 +21,17 @@ Nothing is emailed. Nothing is verified. The invite link is the durable access h
 
 ---
 
+## Security audit note
+
+RoadForge is built with a security-first mindset, but is currently in a pre-production state.
+
+- **High/Critical Gate:** `pnpm audit --audit-level high` passes with zero vulnerabilities.
+- **PostCSS Advisory:** A moderate vulnerability (`GHSA-qx2v-qp2m-jg93`) is reported in plain `pnpm audit` due to an internal dependency of Next.js 15.
+- **Mitigation:** Direct `postcss` used by the web app is pinned to `8.5.14` (patched). RoadForge does not generate user-controlled CSS in style tags.
+- **Status:** Overrides, `pnpm patch`, and Next.js 16 were evaluated and did not safely resolve this upstream dependency issue. We are tracking this and will update Next.js once a clean patch is available.
+
+---
+
 ## Stack
 
 | Layer | Technology |
@@ -29,6 +40,7 @@ Nothing is emailed. Nothing is verified. The invite link is the durable access h
 | Frontend | Next.js 15 App Router, TypeScript 5 |
 | Styling | Tailwind CSS v3 + CSS custom properties |
 | Client persistence | `localStorage` (local-first, optimistic cache) |
+| Realtime | Server-Sent Events (SSE) + In-memory task locks |
 | Backend | FastAPI, Python 3.12 |
 | Database | PostgreSQL 16 |
 | ORM / migrations | SQLAlchemy 2.x async + asyncpg + Alembic |
@@ -53,34 +65,6 @@ make start          # Start everything (API in Docker, Web in background)
 make status         # Check what is running
 make logs           # Follow all logs (API + Web)
 make stop           # Stop everything
-```
-
-### Manual Setup (Foreground)
-
-#### 1. Install dependencies
-
-```bash
-pnpm install
-```
-
-#### 2. Configure environment
-
-```bash
-cp .env.example .env.local
-```
-
-#### 3. Start the backend
-
-```bash
-make api-up
-# or: docker compose up --build -d postgres api
-```
-
-#### 4. Start the frontend
-
-```bash
-make dev
-# or: pnpm dev
 ```
 
 ---
@@ -214,10 +198,9 @@ Quick path:
 ## Current limitations / deferred features
 
 - **Markdown/PDF export** — requires backend; currently shows a toast.
-- **Real-time collaboration** — no WebSocket infrastructure; changes are not pushed to other participants.
 - **Activity log UI** — the backend logs all events; there is no frontend view yet.
 - **Email verification** — not implemented. Planned as an optional future security layer.
-- **Deployment hardening** — rate limiting, HTTPS enforcement, and bearer authorization are pending before any public deployment.
+- **Deployment hardening** — rate limiting, HTTPS enforcement, and CSP are pending before public production-ready deployment.
 
 ---
 
