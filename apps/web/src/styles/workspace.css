@@ -372,24 +372,40 @@
   cursor: grab;
   margin-left: -12px;
   opacity: 0;
-  transition: opacity 160ms;
+  transition: all 160ms;
+  touch-action: none; /* Prevent scrolling while dragging */
 }
 .task-row:hover .drag-handle { opacity: 1; }
-.drag-handle:active { cursor: grabbing; }
+.drag-handle:active, .draggable-task-wrapper.dragging .drag-handle {
+  cursor: grabbing;
+  color: var(--ember);
+}
 
 .draggable-task-wrapper { 
-  transition: transform 200ms cubic-bezier(.2,.8,.2,1); 
-  border-top: 2px solid transparent;
-  border-bottom: 2px solid transparent;
+  transition: transform 0ms; /* No transition while dragging to prevent lag */
 }
-.draggable-task-wrapper.dragging { opacity: 0.4; filter: grayscale(1); }
-.draggable-task-wrapper.drag-over { border-top-color: var(--ember); }
+.draggable-task-wrapper.dragging {
+  opacity: 0.8;
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+  position: relative;
+  background: var(--bg);
+  border-radius: 8px;
+}
+
+.drop-indicator {
+  height: 2px;
+  background: var(--ember);
+  margin: -1px 0; /* overlap borders */
+  position: relative;
+  z-index: 5;
+}
 
 /* ─── Task Detail Enhancements ────────────────────────────────────────────── */
 
 .task-detail { position: relative; }
 
-.section { margin-top: 12px; }
+.task-detail-section { margin-top: 12px; }
 .section-label {
   font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.08em;
@@ -443,9 +459,32 @@
 }
 .highlight-flash { animation: highlightFlash 2s ease-out; }
 
-.dep-row { cursor: pointer; transition: all 120ms; }
+.task-detail .deps { display: flex; flex-direction: column; gap: 6px; }
+.dep-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 120ms;
+}
 .dep-row:hover { background: var(--bg); border-color: var(--border); }
 .dep-row .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dep-row .did {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-4);
+}
+.dep-row .dst {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.dep-row .dst.ready { color: var(--ember); }
+.dep-row .dst.done { color: var(--ink-3); }
 
 .iconbtn {
   width: 32px; height: 32px;

@@ -2,6 +2,7 @@
 
 import { Icon } from '@/components/ui/Icon'
 import { TaskRow } from './TaskRow'
+import { useTaskReorder } from '@/hooks/useTaskReorder'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 import type { ForgeStyle } from '@/types/ui'
 
@@ -61,63 +62,23 @@ export function Phase({
 
   // Only render top-level tasks in the main phase list
   const topLevelTasks = phase.tasks.filter((t) => !t.parentId)
+  const taskIds = topLevelTasks.map((t) => t.id)
+
+  const isAnyTaskInPhaseExpanded = expandedTaskId !== null && phase.tasks.some(t => t.id === expandedTaskId)
 
   // ─── Drag & Drop Reordering ──────────────────────────────────────────────
 
-  const handleDragStart = (e: React.DragEvent, taskId: string) => {
-    if (readOnly) return
-    e.dataTransfer.setData('taskId', taskId)
-    e.dataTransfer.setData('phaseId', phase.id)
-    e.dataTransfer.effectAllowed = 'move'
-    
-    // Add a class for styling
-    const el = e.currentTarget as HTMLElement
-    el.classList.add('dragging')
-  }
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    const el = e.currentTarget as HTMLElement
-    el.classList.remove('dragging')
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    if (readOnly) return
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    
-    const el = e.currentTarget as HTMLElement
-    el.classList.add('drag-over')
-  }
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    const el = e.currentTarget as HTMLElement
-    el.classList.remove('drag-over')
-  }
-
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    if (readOnly) return
-    e.preventDefault()
-    const el = e.currentTarget as HTMLElement
-    el.classList.remove('drag-over')
-
-    const draggedId = e.dataTransfer.getData('taskId')
-    const sourcePhaseId = e.dataTransfer.getData('phaseId')
-
-    if (sourcePhaseId !== phase.id) return // No cross-phase dragging yet
-    if (draggedId === targetId) return
-
-    const taskIds = topLevelTasks.map(t => t.id)
-    const oldIdx = taskIds.indexOf(draggedId)
-    const newIdx = taskIds.indexOf(targetId)
-
-    if (oldIdx === -1 || newIdx === -1) return
-
-    const newOrder = [...taskIds]
-    newOrder.splice(oldIdx, 1)
-    newOrder.splice(newIdx, 0, draggedId)
-
+  const handleReorderTasks = (newOrder: string[]) => {
     onReorderTasks(phase.id, newOrder)
   }
+
+  const { dragState, handlePointerDown, handlePointerMove, handlePointerUp } = useTaskReorder({
+    taskIds,
+    onReorder: handleReorderTasks,
+    readOnly,
+  })
+
+  const { isDragging, draggedId, visualDropSlot, translateY } = dragState
 
   return (
     <div
@@ -149,41 +110,49 @@ export function Phase({
 
       {isOpen && (
         <div className="phase-body">
-          {topLevelTasks.map((t) => {
+          {isDragging && draggedId !== null && visualDropSlot === 0 && (
+            <div className="drop-indicator" />
+          )}
+          {topLevelTasks.map((t, index) => {
             const isExpanded = expandedTaskId === t.id
+            const isBeingDragged = isDragging && draggedId === t.id
+            
+            const isDropTarget = isDragging && visualDropSlot === index + 1
+
             return (
-              <div
-                key={t.id}
-                draggable={!readOnly && !isExpanded}
-                onDragStart={(e) => {
-                  const target = e.target as HTMLElement
-                  if (!target.closest('.drag-handle')) {
-                    e.preventDefault()
-                    return
-                  }
-                  handleDragStart(e, t.id)
-                }}
-                onDragEnd={handleDragEnd}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, t.id)}
-                className="draggable-task-wrapper"
-              >
-                <TaskRow
-                  task={t}
-                  allTasks={allTasks}
-                  expanded={isExpanded}
-                  expandedTaskId={expandedTaskId}
-                  readOnly={readOnly}
-                  onToggle={onToggleTask}
-                  onCheck={onCheckTask}
-                  onUpdateTask={onUpdateTask}
-                  onAddSubtask={onAddSubtask}
-                  onLinkDependency={onLinkDependency}
-                  onUnlinkDependency={onUnlinkDependency}
-                  onReorderSubtasks={onReorderSubtasks}
-                  hasCycle={hasCycle}
-                />
+              <div key={t.id}>
+                <div
+                  className={[
+                    'draggable-task-wrapper',
+                    isBeingDragged ? 'dragging' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  style={isBeingDragged ? { transform: `translateY(${translateY}px)` } : undefined}
+                  onPointerDown={(e) => {
+                    if (!isExpanded && !isAnyTaskInPhaseExpanded) handlePointerDown(e, t.id, index)
+                  }}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                >
+                  <TaskRow
+                    task={t}
+                    allTasks={allTasks}
+                    expanded={isExpanded}
+                    expandedTaskId={expandedTaskId}
+                    readOnly={readOnly}
+                    dragDisabled={isAnyTaskInPhaseExpanded}
+                    onToggle={onToggleTask}
+                    onCheck={onCheckTask}
+                    onUpdateTask={onUpdateTask}
+                    onAddSubtask={onAddSubtask}
+                    onLinkDependency={onLinkDependency}
+                    onUnlinkDependency={onUnlinkDependency}
+                    onReorderSubtasks={onReorderSubtasks}
+                    hasCycle={hasCycle}
+                  />
+                </div>
+                {isDropTarget && !isBeingDragged && <div className="drop-indicator" />}
               </div>
             )
           })}

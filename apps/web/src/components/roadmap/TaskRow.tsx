@@ -22,6 +22,7 @@ interface TaskRowProps {
   onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
   hasCycle: (taskId: string, depId: string) => boolean
   isNested?: boolean
+  dragDisabled?: boolean
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -69,6 +70,7 @@ export function TaskRow({
   onReorderSubtasks,
   hasCycle,
   isNested = false,
+  dragDisabled = false,
 }: TaskRowProps) {
   const {
     displayName,
@@ -177,65 +179,9 @@ export function TaskRow({
     : {}
 
   // ─── Subtask Reordering ──────────────────────────────────────────────────
-
-  const handleSubtaskDragStart = (e: React.DragEvent, sid: string) => {
-    if (readOnly) return
-    e.stopPropagation()
-    e.dataTransfer.setData('subtaskId', sid)
-    e.dataTransfer.setData('parentId', task.id)
-    e.dataTransfer.effectAllowed = 'move'
-    
-    const el = e.currentTarget as HTMLElement
-    el.classList.add('dragging')
-  }
-
-  const handleSubtaskDragEnd = (e: React.DragEvent) => {
-    const el = e.currentTarget as HTMLElement
-    el.classList.remove('dragging')
-  }
-
-  const handleSubtaskDragOver = (e: React.DragEvent) => {
-    if (readOnly) return
-    e.preventDefault()
-    e.stopPropagation()
-    e.dataTransfer.dropEffect = 'move'
-    
-    const el = e.currentTarget as HTMLElement
-    el.classList.add('drag-over')
-  }
-
-  const handleSubtaskDragLeave = (e: React.DragEvent) => {
-    const el = e.currentTarget as HTMLElement
-    el.classList.remove('drag-over')
-  }
-
-  const handleSubtaskDrop = (e: React.DragEvent, targetId: string) => {
-    if (readOnly) return
-    e.preventDefault()
-    e.stopPropagation()
-    
-    const el = e.currentTarget as HTMLElement
-    el.classList.remove('drag-over')
-
-    const draggedId = e.dataTransfer.getData('subtaskId')
-    const sourceParentId = e.dataTransfer.getData('parentId')
-
-    if (sourceParentId !== task.id) return
-    if (draggedId === targetId) return
-
-    const sids = subtasks.map(s => s.id)
-    const oldIdx = sids.indexOf(draggedId)
-    const newIdx = sids.indexOf(targetId)
-
-    if (oldIdx === -1 || newIdx === -1) return
-
-    const newOrder = [...sids]
-    newOrder.splice(oldIdx, 1)
-    newOrder.splice(newIdx, 0, draggedId)
-
-    onReorderSubtasks(task.id, newOrder)
-  }
-
+  // Subtask reordering is disabled in this slice to preserve simplicity.
+  // It can be implemented using useTaskReorder in a future slice if needed.
+  
   return (
     <div
       id={`task-${task.id}`}
@@ -251,7 +197,7 @@ export function TaskRow({
         .join(' ')}
     >
       <div className="task-row">
-        {!effectivelyReadOnly && !expanded && (
+        {!effectivelyReadOnly && !expanded && !dragDisabled && (
           <div className="drag-handle" title="Drag to reorder">
             <Icon name="grip" size={14} />
           </div>
@@ -370,7 +316,7 @@ export function TaskRow({
               </div>
 
               {depTasks.length > 0 && (
-                <div className="section">
+                <div className="task-detail-section">
                   <div className="section-label">Depends on</div>
                   <div className="deps">
                     {depTasks.map((d) => (
@@ -404,7 +350,7 @@ export function TaskRow({
               )}
 
               {subtasks.length > 0 && (
-                <div className="section">
+                <div className="task-detail-section">
                   <div className="section-label">Subtasks</div>
                   <div className="subtasks">
                     {subtasks.map((st) => {
@@ -412,19 +358,6 @@ export function TaskRow({
                       return (
                         <div
                           key={st.id}
-                          draggable={!readOnly && !isStExpanded}
-                          onDragStart={(e) => {
-                            const target = e.target as HTMLElement
-                            if (!target.closest('.drag-handle')) {
-                              e.preventDefault()
-                              return
-                            }
-                            handleSubtaskDragStart(e, st.id)
-                          }}
-                          onDragEnd={handleSubtaskDragEnd}
-                          onDragOver={handleSubtaskDragOver}
-                          onDragLeave={handleSubtaskDragLeave}
-                          onDrop={(e) => handleSubtaskDrop(e, st.id)}
                           className="draggable-task-wrapper"
                         >
                           <TaskRow
