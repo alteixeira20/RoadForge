@@ -14,7 +14,7 @@ import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { createRoadmap, saveToServer } from '@/services/roadmap.service'
-import type { WorkspaceMode } from '@/types/roadmap'
+import type { WorkspaceMode, Task } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -113,6 +113,108 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     )
   }
 
+  // ─── Task Mutations ──────────────────────────────────────────────────────────
+
+  const generateTaskId = (allTasks: Task[]): string => {
+    const rfIds = allTasks
+      .map((t) => t.id)
+      .filter((id) => id.startsWith('RF-'))
+      .map((id) => parseInt(id.replace('RF-', ''), 10))
+      .filter((n) => !isNaN(n))
+
+    if (rfIds.length === 0) return `TASK-${Date.now().toString().slice(-6)}`
+
+    const nextId = Math.max(...rfIds) + 1
+    return `RF-${nextId.toString().padStart(2, '0')}`
+  }
+
+  const hasCycle = (taskId: string, depId: string): boolean => {
+    const taskMap = new Map(allTasks.map((t) => [t.id, t]))
+    const visited = new Set<string>()
+
+    const isReachable = (startId: string, targetId: string): boolean => {
+      if (startId === targetId) return true
+      if (visited.has(startId)) return false
+      visited.add(startId)
+
+      const task = taskMap.get(startId)
+      if (!task?.deps) return false
+
+      for (const d of task.deps) {
+        if (isReachable(d, targetId)) return true
+      }
+      return false
+    }
+
+    return isReachable(depId, taskId)
+  }
+
+  const handleAddSubtask = (parentId: string, title: string) => {
+    if (readOnly) return
+    const parent = allTasks.find((t) => t.id === parentId)
+    if (!parent) return
+
+    const newId = generateTaskId(allTasks)
+    const newSubtask: Task = {
+      id: newId,
+      title,
+      done: false,
+      next: false,
+      tags: ['subtask'],
+      deps: [],
+      desc: `Subtask of ${parent.id} — ${parent.title}`,
+    }
+
+    setPhases(
+      phases.map((p) => {
+        const parentIdx = p.tasks.findIndex((t) => t.id === parentId)
+        if (parentIdx === -1) return p
+
+        const newTasks = [...p.tasks]
+        newTasks.splice(parentIdx + 1, 0, newSubtask)
+        return { ...p, tasks: newTasks }
+      }),
+    )
+
+    setSaved(false)
+    setExpandedTaskId(newId)
+  }
+
+  const handleLinkDependency = (taskId: string, depId: string) => {
+    if (readOnly) return
+    if (hasCycle(taskId, depId)) {
+      showToast('Circular dependency detected')
+      return
+    }
+
+    setPhases(
+      phases.map((p) => ({
+        ...p,
+        tasks: p.tasks.map((t) => {
+          if (t.id !== taskId) return t
+          const deps = Array.from(new Set([...(t.deps || []), depId]))
+          return { ...t, deps }
+        }),
+      })),
+    )
+    setSaved(false)
+  }
+
+  const handleUnlinkDependency = (taskId: string, depId: string) => {
+    if (readOnly) return
+    setPhases(
+      phases.map((p) => ({
+        ...p,
+        tasks: p.tasks.map((t) => {
+          if (t.id !== taskId) return t
+          const deps = (t.deps || []).filter((id) => id !== depId)
+          return { ...t, deps }
+        }),
+      })),
+    )
+    setSaved(false)
+  }
+
   return (
     <div className="app-shell">
       <AppHeader
@@ -167,6 +269,10 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onTogglePhase={togglePhase}
           onToggleTask={onToggleTask}
           onCheckTask={onCheckTask}
+          onAddSubtask={handleAddSubtask}
+          onLinkDependency={handleLinkDependency}
+          onUnlinkDependency={handleUnlinkDependency}
+          hasCycle={hasCycle}
         />
       </div>
 

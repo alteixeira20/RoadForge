@@ -363,6 +363,86 @@
 .task-detail .dep-row .dst.done { color: var(--ink-3); }
 .task-detail .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* ─── Task Action Forms ────────────────────────────────────────────────────── */
+.task-action-form {
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
+  border-radius: 10px;
+  display: flex; flex-direction: column; gap: 12px;
+  animation: detailIn 200ms ease-out;
+}
+
+.task-action-form .form-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14.5px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 160ms;
+}
+.task-action-form .form-input:focus { border-color: var(--ember); }
+
+.task-action-form .search-wrap {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 12px;
+  height: 38px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink-3);
+}
+.task-action-form .form-input-clean {
+  flex: 1; border: none; background: transparent; outline: none;
+  font-size: 14px; color: var(--ink);
+}
+
+.task-list-mini {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+  padding-right: 4px;
+}
+.task-list-mini::-webkit-scrollbar { width: 4px; }
+.task-list-mini::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
+
+.task-option {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 120ms;
+}
+.task-option:hover { background: var(--bg-2); border-color: var(--border-faint); }
+.task-option .tid { font-family: var(--font-mono); font-size: 11px; color: var(--ink-4); width: 48px; }
+.task-option .tt { font-size: 13.5px; color: var(--ink-2); flex: 1; }
+
+.task-action-form .empty-state {
+  padding: 24px; text-align: center; font-size: 13px; color: var(--ink-4);
+}
+
+.form-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+
+.dep-row .btn-remove {
+  display: grid; place-items: center;
+  width: 24px; height: 24px;
+  margin-left: 4px;
+  color: var(--ink-4);
+  background: transparent;
+  border-radius: 4px;
+  opacity: 0;
+  transition: all 160ms;
+}
+.dep-row:hover .btn-remove { opacity: 1; }
+.dep-row .btn-remove:hover { color: var(--ember); background: rgba(217,116,66,0.1); }
+
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 720px) {
   .readonly-banner .who { font-size: 12px; }

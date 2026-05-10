@@ -13,6 +13,10 @@ interface PhaseListProps {
   onTogglePhase: (id: string) => void
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
+  onAddSubtask: (parentId: string, title: string) => void
+  onLinkDependency: (taskId: string, depId: string) => void
+  onUnlinkDependency: (taskId: string, depId: string) => void
+  hasCycle: (taskId: string, depId: string) => boolean
 }
 
 export function PhaseList({
@@ -24,6 +28,10 @@ export function PhaseList({
   onTogglePhase,
   onToggleTask,
   onCheckTask,
+  onAddSubtask,
+  onLinkDependency,
+  onUnlinkDependency,
+  hasCycle,
 }: PhaseListProps) {
   return (
     <>
@@ -37,6 +45,10 @@ export function PhaseList({
             expandedTaskId={expandedTaskId}
             onToggleTask={onToggleTask}
             onCheckTask={onCheckTask}
+            onAddSubtask={onAddSubtask}
+            onLinkDependency={onLinkDependency}
+            onUnlinkDependency={onUnlinkDependency}
+            hasCycle={hasCycle}
             allTasks={allTasks}
             readOnly={readOnly}
           />

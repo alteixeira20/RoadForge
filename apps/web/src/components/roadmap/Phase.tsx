@@ -12,6 +12,10 @@ interface PhaseProps {
   expandedTaskId: string | null
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
+  onAddSubtask: (parentId: string, title: string) => void
+  onLinkDependency: (taskId: string, depId: string) => void
+  onUnlinkDependency: (taskId: string, depId: string) => void
+  hasCycle: (taskId: string, depId: string) => boolean
   allTasks: Task[]
   readOnly: boolean
 }
@@ -32,6 +36,10 @@ export function Phase({
   expandedTaskId,
   onToggleTask,
   onCheckTask,
+  onAddSubtask,
+  onLinkDependency,
+  onUnlinkDependency,
+  hasCycle,
   allTasks,
   readOnly,
 }: PhaseProps) {
@@ -80,6 +88,10 @@ export function Phase({
               readOnly={readOnly}
               onToggle={onToggleTask}
               onCheck={onCheckTask}
+              onAddSubtask={onAddSubtask}
+              onLinkDependency={onLinkDependency}
+              onUnlinkDependency={onUnlinkDependency}
+              hasCycle={hasCycle}
             />
           ))}
         </div>
@@ -87,3 +99,4 @@ export function Phase({
     </div>
   )
 }
+

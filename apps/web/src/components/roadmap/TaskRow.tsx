@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { acquireLock, releaseLock } from '@/services/roadmap.service'
+import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import type { Task } from '@/types/roadmap'
 
 interface TaskRowProps {
@@ -13,9 +14,24 @@ interface TaskRowProps {
   readOnly: boolean
   onToggle: (id: string) => void
   onCheck: (id: string) => void
+  onAddSubtask: (parentId: string, title: string) => void
+  onLinkDependency: (taskId: string, depId: string) => void
+  onUnlinkDependency: (taskId: string, depId: string) => void
+  hasCycle: (taskId: string, depId: string) => boolean
 }
 
-export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck }: TaskRowProps) {
+export function TaskRow({
+  task,
+  allTasks,
+  expanded,
+  readOnly,
+  onToggle,
+  onCheck,
+  onAddSubtask,
+  onLinkDependency,
+  onUnlinkDependency,
+  hasCycle,
+}: TaskRowProps) {
   const {
     displayName,
     locks,
@@ -24,11 +40,23 @@ export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck 
     participantId,
   } = useRoadmap()
 
+  const [showSubtaskForm, setShowSubtaskForm] = useState(false)
+  const [showDepPicker, setShowDepPicker] = useState(false)
+
   const target = `task:${task.id}`
   const lock = locks[target]
   const isLockedByMe = lock?.participantId === participantId
   const isLockedByOther = lock && !isLockedByMe
   const effectivelyReadOnly = readOnly || isLockedByOther
+
+  // ─── Reset local state when collapsed ───────────────────────────────────────
+
+  useEffect(() => {
+    if (!expanded) {
+      setShowSubtaskForm(false)
+      setShowDepPicker(false)
+    }
+  }, [expanded])
 
   // ─── Lock lifecycle ──────────────────────────────────────────────────────────
 
@@ -157,6 +185,15 @@ export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck 
                     <span className={`dst ${d.done ? 'done' : 'ready'}`}>
                       {d.done ? 'done' : 'ready'}
                     </span>
+                    {!effectivelyReadOnly && (
+                      <button
+                        className="btn-remove"
+                        onClick={() => onUnlinkDependency(task.id, d.id)}
+                        title="Unlink dependency"
+                      >
+                        <Icon name="x" size={12} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -164,17 +201,41 @@ export function TaskRow({ task, allTasks, expanded, readOnly, onToggle, onCheck 
           )}
 
           {!effectivelyReadOnly && (
-            <div className="actions">
-              <button className="btn sm">
-                <Icon name="plus" size={13} /> Add subtask
-              </button>
-              <button className="btn sm">
-                <Icon name="link" size={13} /> Link dependency
-              </button>
-            </div>
+            <>
+              {showSubtaskForm ? (
+                <SubtaskForm
+                  onAdd={(title) => {
+                    onAddSubtask(task.id, title)
+                    setShowSubtaskForm(false)
+                  }}
+                  onCancel={() => setShowSubtaskForm(false)}
+                />
+              ) : showDepPicker ? (
+                <DependencyPicker
+                  currentTask={task}
+                  allTasks={allTasks}
+                  hasCycle={hasCycle}
+                  onLink={(depId) => {
+                    onLinkDependency(task.id, depId)
+                    setShowDepPicker(false)
+                  }}
+                  onCancel={() => setShowDepPicker(false)}
+                />
+              ) : (
+                <div className="actions">
+                  <button className="btn sm" onClick={() => setShowSubtaskForm(true)}>
+                    <Icon name="plus" size={13} /> Add subtask
+                  </button>
+                  <button className="btn sm" onClick={() => setShowDepPicker(true)}>
+                    <Icon name="link" size={13} /> Link dependency
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
     </div>
   )
 }
+

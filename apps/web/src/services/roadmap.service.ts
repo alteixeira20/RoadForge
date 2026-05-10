@@ -429,6 +429,7 @@ export async function reorderPhases(
 
 /**
  * Add a task to a phase.
+ * Note: Current UI uses full-snapshot save; granular endpoints are deferred.
  * TODO(backend): POST /api/roadmaps/:id/phases/:phaseId/tasks
  */
 export async function addTask(
@@ -441,6 +442,7 @@ export async function addTask(
 
 /**
  * Link a dependency between two tasks.
+ * Note: Current UI uses full-snapshot save; granular endpoints are deferred.
  * TODO(backend): PATCH /api/roadmaps/:id/tasks/:taskId  { deps }
  */
 export async function linkDependency(
