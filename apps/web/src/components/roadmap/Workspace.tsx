@@ -43,8 +43,12 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>('RF-05')
   const { openPhases, togglePhase, allOpen, collapseAll, expandAll } = usePhaseCollapse(phases)
-  const { searchQuery, setSearchQuery, filteredPhases } = usePhaseSearch(phases)
+  const { searchQuery, setSearchQuery, filteredPhases, matchingPhaseIds } = usePhaseSearch(phases)
   const { toast, showToast } = useToastState()
+
+  // ─── Effective State ───────────────────────────────────────────────────────
+
+  const effectiveOpenPhases = searchQuery.trim() ? matchingPhaseIds : openPhases
   const {
     showSave,
     showShare,
@@ -109,20 +113,67 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     const task = allTasks.find((t) => t.id === id)
     if (!task) return
 
-    // Rule: Parent cannot be done if any subtask is not done
-    if (!task.done) {
-      const subtasks = allTasks.filter((t) => t.parentId === id)
-      const hasUndoneSubtasks = subtasks.some((st) => !st.done)
-      if (hasUndoneSubtasks) {
+    // Reopening is always allowed
+    if (task.done) {
+      setPhases(
+        phases.map((p) => ({
+          ...p,
+          tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: false } : t)),
+        })),
+      )
+      setSaved(false)
+      return
+    }
+
+    // ─── Completion Guard ────────────────────────────────────────────────────
+
+    const subtasks = allTasks.filter((st) => st.parentId === id)
+    const unfinishedSubtasks = subtasks.filter((st) => !st.done)
+
+    const depIds = task.deps || []
+    const unfinishedDeps: Task[] = []
+    const missingDepIds: string[] = []
+
+    depIds.forEach((dId) => {
+      const d = allTasks.find((at) => at.id === dId)
+      if (!d) {
+        missingDepIds.push(dId)
+      } else if (!d.done) {
+        unfinishedDeps.push(d)
+      }
+    })
+
+    if (unfinishedSubtasks.length > 0 || unfinishedDeps.length > 0 || missingDepIds.length > 0) {
+      if (missingDepIds.length > 0) {
+        showToast(`Cannot complete task: missing dependency ${missingDepIds[0]}`)
+        return
+      }
+
+      if (unfinishedSubtasks.length > 0 && unfinishedDeps.length > 0) {
+        showToast('Complete all subtasks and dependencies first.')
+        return
+      }
+
+      if (unfinishedSubtasks.length > 0) {
         showToast('Complete all subtasks first.')
         return
       }
+
+      if (unfinishedDeps.length === 1) {
+        showToast(`Complete ${unfinishedDeps[0].id} — ${unfinishedDeps[0].title} first.`)
+        return
+      }
+
+      const count = unfinishedDeps.length
+      const ids = unfinishedDeps.map((d) => d.id).join(', ')
+      showToast(`Complete ${count} blockers first: ${ids}`)
+      return
     }
 
     setPhases(
       phases.map((p) => ({
         ...p,
-        tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
+        tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: true } : t)),
       })),
     )
     setSaved(false)
@@ -191,6 +242,32 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         // Insert after parent in flat storage
         newTasks.splice(parentIdx + 1, 0, newSubtask)
         return { ...p, tasks: newTasks }
+      }),
+    )
+
+    setSaved(false)
+    setExpandedTaskId(newId)
+  }
+
+  const handleAddTask = (phaseId: string) => {
+    if (readOnly) return
+
+    const newId = generateTaskId(allTasks)
+    const newTask: Task = {
+      id: newId,
+      title: 'New task',
+      done: false,
+      next: false,
+      est: '',
+      tags: [],
+      deps: [],
+      desc: '',
+    }
+
+    setPhases(
+      phases.map((p) => {
+        if (p.id !== phaseId) return p
+        return { ...p, tasks: [...p.tasks, newTask] }
       }),
     )
 
@@ -346,7 +423,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         />
         <PhaseList
           phases={filteredPhases}
-          openPhases={openPhases}
+          openPhases={effectiveOpenPhases}
           expandedTaskId={expandedTaskId}
           allTasks={allTasks}
           readOnly={readOnly}
@@ -354,6 +431,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onToggleTask={onToggleTask}
           onCheckTask={onCheckTask}
           onUpdateTask={handleUpdateTask}
+          onAddTask={handleAddTask}
           onAddSubtask={handleAddSubtask}
           onLinkDependency={handleLinkDependency}
           onUnlinkDependency={handleUnlinkDependency}

@@ -4,10 +4,11 @@ import type { Phase } from '@/types/roadmap'
 export function usePhaseSearch(phases: Phase[]) {
   const [searchQuery, setSearchQuery] = useState('')
 
-  const filteredPhases = useMemo(() => {
-    if (!searchQuery.trim()) return phases
+  const { filteredPhases, matchingPhaseIds } = useMemo(() => {
+    if (!searchQuery.trim()) return { filteredPhases: phases, matchingPhaseIds: [] }
     const q = searchQuery.toLowerCase()
-    return phases
+    
+    const filtered = phases
       .map((p) => ({
         ...p,
         tasks: p.tasks.filter(
@@ -18,7 +19,10 @@ export function usePhaseSearch(phases: Phase[]) {
         ),
       }))
       .filter((p) => p.tasks.length > 0)
+
+    const ids = filtered.map(p => p.id)
+    return { filteredPhases: filtered, matchingPhaseIds: ids }
   }, [phases, searchQuery])
 
-  return { searchQuery, setSearchQuery, filteredPhases }
+  return { searchQuery, setSearchQuery, filteredPhases, matchingPhaseIds }
 }
