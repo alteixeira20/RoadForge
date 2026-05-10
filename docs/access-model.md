@@ -17,7 +17,7 @@ When a roadmap is created, the backend generates three share links — one per r
 Each link is a URL of the form:
 
 ```
-http://localhost:3000/join?token=ed_<43-char-random-token>
+http://localhost:3020/join?token=ed_<43-char-random-token>
 ```
 
 **Security properties:**

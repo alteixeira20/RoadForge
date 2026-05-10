@@ -22,7 +22,9 @@ coverage/
 .env.*
 !.env.example
 
-# Logs
+# Logs and PIDs
+.logs/
+.pids/
 *.log
 npm-debug.log*
 pnpm-debug.log*

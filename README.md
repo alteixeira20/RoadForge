@@ -154,7 +154,7 @@ Defined in `.env.example`. Copy to `.env.local` for local overrides.
 | `POSTGRES_USER` | `roadforge` | Docker Compose |
 | `POSTGRES_PASSWORD` | `roadforge_dev` | Docker Compose |
 | `ROADFORGE_ENVIRONMENT` | `development` | Backend — log verbosity, SQL echo |
-| `ROADFORGE_WEB_BASE_URL` | `http://localhost:3000` | Backend — builds `/join?token=…` URLs |
+| `ROADFORGE_WEB_BASE_URL` | `http://localhost:3020` | Backend — builds `/join?token=…` URLs |
 
 ---
 
@@ -162,7 +162,7 @@ Defined in `.env.example`. Copy to `.env.local` for local overrides.
 
 Quick path:
 1. `docker compose up --build api postgres` + `pnpm dev`
-2. Open `http://localhost:3000`, complete wizard, click **Save to server**
+2. Open `http://localhost:3020`, complete wizard, click **Save to server**
 3. Open Share modal — rotate editor link, copy the URL
 4. Open a private browser window, paste the URL — join without a name
 5. Confirm editor is routed to `/workspace`, viewer to `/shared`

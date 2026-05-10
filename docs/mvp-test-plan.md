@@ -34,7 +34,7 @@ curl http://localhost:7878/api/health
 
 ## 1. Create roadmap
 
-1. Open `http://localhost:3000`.
+1. Open `http://localhost:3020`.
 2. Complete the wizard (any name, any roadmap title).
 3. Confirm you reach the Workspace.
 
@@ -49,7 +49,7 @@ curl http://localhost:7878/api/health
 3. Click confirm.
 4. Toast: "Saved · collaboration enabled".
 
-**Check localStorage (`F12 → Application → Local Storage → localhost:3000`):**
+**Check localStorage (`F12 → Application → Local Storage → localhost:3020`):**
 - `rf:saved` = `true`
 - `rf:serverRoadmapId` = a string starting with `rm_`
 - `rf:sessionToken` = a string starting with `sess_`
@@ -59,7 +59,7 @@ curl http://localhost:7878/api/health
 
 ## 3. Refresh page
 
-1. Refresh `http://localhost:3000`.
+1. Refresh `http://localhost:3020`.
 
 **Expected behavior:** On refresh, the app hydrates immediately from `localStorage`. `RoadmapContext` also calls `GET /api/roadmaps/{id}` in the background and replaces roadmap name, phases, and `ownerDisplayName` with the server snapshot.
 
