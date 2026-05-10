@@ -11,26 +11,62 @@ interface TaskRowProps {
   task: Task
   allTasks: Task[]
   expanded: boolean
+  expandedTaskId: string | null
   readOnly: boolean
   onToggle: (id: string) => void
   onCheck: (id: string) => void
+  onUpdateTask: (id: string, updates: Partial<Task>) => void
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void
   hasCycle: (taskId: string, depId: string) => boolean
+  isNested?: boolean
+}
+
+const TAG_COLORS: Record<string, string> = {
+  infra: '#7c3aed', // violet
+  design: '#db2777', // pink
+  security: '#dc2626', // red
+  backend: '#2563eb', // blue
+  frontend: '#0891b2', // cyan
+  polish: '#ca8a04', // yellow
+  subtask: '#4b5563', // gray
+}
+
+function getTagColor(tag: string): string {
+  const normalized = tag.toLowerCase().trim()
+  if (TAG_COLORS[normalized]) return TAG_COLORS[normalized]
+
+  // Deterministic color from a small palette
+  const palette = [
+    '#059669', // emerald
+    '#d97706', // amber
+    '#4f46e5', // indigo
+    '#9333ea', // purple
+    '#c026d3', // fuchsia
+    '#e11d48', // rose
+  ]
+  let hash = 0
+  for (let i = 0; i < normalized.length; i++) {
+    hash = normalized.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return palette[Math.abs(hash) % palette.length]
 }
 
 export function TaskRow({
   task,
   allTasks,
   expanded,
+  expandedTaskId,
   readOnly,
   onToggle,
   onCheck,
+  onUpdateTask,
   onAddSubtask,
   onLinkDependency,
   onUnlinkDependency,
   hasCycle,
+  isNested = false,
 }: TaskRowProps) {
   const {
     displayName,
@@ -42,6 +78,8 @@ export function TaskRow({
 
   const [showSubtaskForm, setShowSubtaskForm] = useState(false)
   const [showDepPicker, setShowDepPicker] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editDraft, setEditDraft] = useState<Partial<Task>>({})
 
   const target = `task:${task.id}`
   const lock = locks[target]
@@ -49,14 +87,46 @@ export function TaskRow({
   const isLockedByOther = lock && !isLockedByMe
   const effectivelyReadOnly = readOnly || isLockedByOther
 
-  // ─── Reset local state when collapsed ───────────────────────────────────────
+  // ─── Effects ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!expanded) {
       setShowSubtaskForm(false)
       setShowDepPicker(false)
+      setIsEditing(false)
     }
   }, [expanded])
+
+  // ─── Actions ──────────────────────────────────────────────────────────────
+
+  const handleStartEdit = () => {
+    setEditDraft({
+      title: task.title,
+      est: task.est,
+      desc: task.desc,
+      tags: [...(task.tags || [])],
+    })
+    setIsEditing(true)
+  }
+
+  const handleSaveEdit = () => {
+    onUpdateTask(task.id, {
+      ...editDraft,
+      title: editDraft.title?.trim(),
+      tags: (editDraft.tags || []).map((t) => t.trim().toLowerCase()).filter(Boolean),
+    })
+    setIsEditing(false)
+  }
+
+  const navigateToTask = (id: string) => {
+    const el = document.getElementById(`task-${id}`)
+    if (el) {
+      onToggle(id)
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('highlight-flash')
+      setTimeout(() => el.classList.remove('highlight-flash'), 2000)
+    }
+  }
 
   // ─── Lock lifecycle ──────────────────────────────────────────────────────────
 
@@ -98,25 +168,25 @@ export function TaskRow({
 
   const blockedBy = depTasks.filter((d) => !d.done)
 
+  const subtasks = allTasks.filter((t) => t.parentId === task.id)
+
   const checkStyle: CSSProperties = effectivelyReadOnly
     ? { cursor: 'not-allowed', opacity: 0.6 }
     : {}
 
   return (
     <div
+      id={`task-${task.id}`}
       className={[
         'task',
         expanded ? 'expanded' : '',
         task.done ? 'done' : '',
         task.next ? 'next' : '',
         isLockedByOther ? 'locked' : '',
+        isNested ? 'nested' : '',
       ]
         .filter(Boolean)
         .join(' ')}
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest('.check')) return
-        onToggle(task.id)
-      }}
     >
       <div className="task-row">
         <div
@@ -141,46 +211,110 @@ export function TaskRow({
           <span className="meta-pill">{task.est}</span>
         )}
         <span className="id">{task.id}</span>
+        <button
+          type="button"
+          className="toggle-btn"
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggle(task.id)
+          }}
+          aria-expanded={expanded}
+          aria-label={expanded ? 'Collapse task' : 'Expand task'}
+        >
+          <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={18} />
+        </button>
       </div>
 
       {expanded && (
         <div className="task-detail" onClick={(e) => e.stopPropagation()}>
-          {task.desc && <div className="desc">{task.desc}</div>}
+          {!effectivelyReadOnly && !isEditing && (
+            <button className="edit-trigger" onClick={handleStartEdit} title="Edit task">
+              <Icon name="pencil" size={14} />
+            </button>
+          )}
 
-          <div className="grid">
-            <div className="label">Estimate</div>
-            <div className="value">{task.est ?? '—'}</div>
-            <div className="label">Owner</div>
-            <div className="value" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <span className="avatar" style={{ width: 20, height: 20, fontSize: 10 }}>
-                {ownerInitials}
-              </span>{' '}
-              {ownerLabel}
+          {isEditing ? (
+            <div className="edit-form">
+              <div className="field">
+                <label>Title</label>
+                <input
+                  value={editDraft.title || ''}
+                  onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })}
+                  placeholder="Task title..."
+                />
+              </div>
+              <div className="field">
+                <label>Estimate</label>
+                <input
+                  value={editDraft.est || ''}
+                  onChange={(e) => setEditDraft({ ...editDraft, est: e.target.value })}
+                  placeholder="e.g. 2d, 5h..."
+                />
+              </div>
+              <div className="field full">
+                <label>Description</label>
+                <textarea
+                  value={editDraft.desc || ''}
+                  onChange={(e) => setEditDraft({ ...editDraft, desc: e.target.value })}
+                  placeholder="Task details..."
+                  rows={3}
+                />
+              </div>
+              <div className="field full">
+                <label>Tags (comma separated)</label>
+                <input
+                  value={(editDraft.tags || []).join(', ')}
+                  onChange={(e) => setEditDraft({ ...editDraft, tags: e.target.value.split(',') })}
+                  placeholder="infra, design..."
+                />
+              </div>
+              <div className="edit-actions">
+                <button className="btn sm ghost" onClick={() => setIsEditing(false)}>Discard</button>
+                <button className="btn sm primary" onClick={handleSaveEdit}>Save</button>
+              </div>
             </div>
-            {(task.tags ?? []).length > 0 && (
-              <>
-                <div className="label">Tags</div>
-                <div className="value">
-                  {(task.tags ?? []).map((g) => `#${g}`).join('  ')}
+          ) : (
+            <>
+              {task.desc && <div className="desc">{task.desc}</div>}
+
+              <div className="grid">
+                <div className="label">Estimate</div>
+                <div className="value">{task.est ?? '—'}</div>
+                <div className="label">Owner</div>
+                <div className="value" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <span className="avatar" style={{ width: 20, height: 20, fontSize: 10 }}>
+                    {ownerInitials}
+                  </span>{' '}
+                  {ownerLabel}
                 </div>
-              </>
-            )}
-          </div>
+                {(task.tags ?? []).length > 0 && (
+                  <>
+                    <div className="label">Tags</div>
+                    <div className="value tags">
+                      {(task.tags ?? []).map((g) => (
+                        <span key={g} className="tag-pill" style={{ '--tag-bg': getTagColor(g) } as CSSProperties}>
+                          {g}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
 
           {depTasks.length > 0 && (
-            <div>
-              <div className="label" style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 8 }}>
-                Depends on
-              </div>
+            <div className="section">
+              <div className="section-label">Depends on</div>
               <div className="deps">
                 {depTasks.map((d) => (
-                  <div key={d.id} className="dep-row">
+                  <div key={d.id} className="dep-row" onClick={() => navigateToTask(d.id)}>
                     <Icon
                       name={d.done ? 'circle-check' : 'circle'}
                       size={14}
                       stroke={d.done ? 'var(--ink-3)' : 'var(--ember)'}
                     />
-                    <span>{d.title}</span>
+                    <span className="title">{d.title}</span>
                     <span className="did">{d.id}</span>
                     <span className={`dst ${d.done ? 'done' : 'ready'}`}>
                       {d.done ? 'done' : 'ready'}
@@ -188,7 +322,10 @@ export function TaskRow({
                     {!effectivelyReadOnly && (
                       <button
                         className="btn-remove"
-                        onClick={() => onUnlinkDependency(task.id, d.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onUnlinkDependency(task.id, d.id)
+                        }}
                         title="Unlink dependency"
                       >
                         <Icon name="x" size={12} />
@@ -200,7 +337,33 @@ export function TaskRow({
             </div>
           )}
 
-          {!effectivelyReadOnly && (
+          {subtasks.length > 0 && (
+            <div className="section">
+              <div className="section-label">Subtasks</div>
+              <div className="subtasks">
+                {subtasks.map((st) => (
+                  <TaskRow
+                    key={st.id}
+                    task={st}
+                    allTasks={allTasks}
+                    expanded={expandedTaskId === st.id}
+                    expandedTaskId={expandedTaskId}
+                    readOnly={readOnly}
+                    onToggle={onToggle}
+                    onCheck={onCheck}
+                    onUpdateTask={onUpdateTask}
+                    onAddSubtask={onAddSubtask}
+                    onLinkDependency={onLinkDependency}
+                    onUnlinkDependency={onUnlinkDependency}
+                    hasCycle={hasCycle}
+                    isNested
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!effectivelyReadOnly && !isEditing && (
             <>
               {showSubtaskForm ? (
                 <SubtaskForm
@@ -223,9 +386,11 @@ export function TaskRow({
                 />
               ) : (
                 <div className="actions">
-                  <button className="btn sm" onClick={() => setShowSubtaskForm(true)}>
-                    <Icon name="plus" size={13} /> Add subtask
-                  </button>
+                  {!task.parentId && (
+                    <button className="btn sm" onClick={() => setShowSubtaskForm(true)}>
+                      <Icon name="plus" size={13} /> Add subtask
+                    </button>
+                  )}
                   <button className="btn sm" onClick={() => setShowDepPicker(true)}>
                     <Icon name="link" size={13} /> Link dependency
                   </button>
@@ -238,4 +403,3 @@ export function TaskRow({
     </div>
   )
 }
-

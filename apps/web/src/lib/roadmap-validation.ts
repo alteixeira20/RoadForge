@@ -98,6 +98,8 @@ function validateTask(value: unknown): Task {
   if (deps !== undefined) task.deps = deps
   const desc = cleanOptionalText(value.desc, 'task.desc', TASK_DESC_MAX)
   if (desc !== undefined) task.desc = desc
+  const parentId = cleanOptionalText(value.parentId, 'task.parentId', ID_MAX)
+  if (parentId !== undefined) task.parentId = parentId
   return task
 }
 

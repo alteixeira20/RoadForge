@@ -28,6 +28,8 @@ export type IconName =
   | 'robot'
   | 'fold'
   | 'activity'
+  | 'pencil'
+  | 'chevron-up'
 
 export interface IconProps {
   name: IconName
@@ -97,6 +99,12 @@ export function Icon({ name, size = 16, stroke = 'currentColor', strokeWidth = 1
       return (
         <svg {...s}>
           <path d="M6 9l6 6 6-6" />
+        </svg>
+      )
+    case 'chevron-up':
+      return (
+        <svg {...s}>
+          <path d="m18 15-6-6-6 6" />
         </svg>
       )
     case 'moon':
@@ -223,6 +231,12 @@ export function Icon({ name, size = 16, stroke = 'currentColor', strokeWidth = 1
       return (
         <svg {...s}>
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+      )
+    case 'pencil':
+      return (
+        <svg {...s}>
+          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
         </svg>
       )
     default:

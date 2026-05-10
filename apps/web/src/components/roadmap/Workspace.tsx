@@ -105,12 +105,27 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const onCheckTask = (id: string) => {
     if (readOnly) return
+
+    const task = allTasks.find((t) => t.id === id)
+    if (!task) return
+
+    // Rule: Parent cannot be done if any subtask is not done
+    if (!task.done) {
+      const subtasks = allTasks.filter((t) => t.parentId === id)
+      const hasUndoneSubtasks = subtasks.some((st) => !st.done)
+      if (hasUndoneSubtasks) {
+        showToast('Complete all subtasks first.')
+        return
+      }
+    }
+
     setPhases(
       phases.map((p) => ({
         ...p,
         tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
       })),
     )
+    setSaved(false)
   }
 
   // ─── Task Mutations ──────────────────────────────────────────────────────────
@@ -163,14 +178,17 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       tags: ['subtask'],
       deps: [],
       desc: `Subtask of ${parent.id} — ${parent.title}`,
+      parentId: parentId,
     }
 
     setPhases(
       phases.map((p) => {
+        // Find phase containing the parent
         const parentIdx = p.tasks.findIndex((t) => t.id === parentId)
         if (parentIdx === -1) return p
 
         const newTasks = [...p.tasks]
+        // Insert after parent in flat storage
         newTasks.splice(parentIdx + 1, 0, newSubtask)
         return { ...p, tasks: newTasks }
       }),
@@ -178,6 +196,17 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
     setSaved(false)
     setExpandedTaskId(newId)
+  }
+
+  const handleUpdateTask = (id: string, updates: Partial<Task>) => {
+    if (readOnly) return
+    setPhases(
+      phases.map((p) => ({
+        ...p,
+        tasks: p.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+      })),
+    )
+    setSaved(false)
   }
 
   const handleLinkDependency = (taskId: string, depId: string) => {
@@ -269,6 +298,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onTogglePhase={togglePhase}
           onToggleTask={onToggleTask}
           onCheckTask={onCheckTask}
+          onUpdateTask={handleUpdateTask}
           onAddSubtask={handleAddSubtask}
           onLinkDependency={handleLinkDependency}
           onUnlinkDependency={handleUnlinkDependency}

@@ -12,6 +12,7 @@ interface PhaseProps {
   expandedTaskId: string | null
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
+  onUpdateTask: (id: string, updates: Partial<Task>) => void
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void
@@ -36,6 +37,7 @@ export function Phase({
   expandedTaskId,
   onToggleTask,
   onCheckTask,
+  onUpdateTask,
   onAddSubtask,
   onLinkDependency,
   onUnlinkDependency,
@@ -44,10 +46,17 @@ export function Phase({
   readOnly,
 }: PhaseProps) {
   const doneCount = phase.tasks.filter((t) => t.done).length
+  const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
   const isActive = phase.status === 'active'
+
+  // Rule: Phase only shows 'Complete' if all tasks are done
+  const displayStatus = allDone ? 'done' : (phase.status === 'done' ? 'active' : phase.status)
 
   const headStyle: ForgeStyle = { '--phase-color': phase.color }
   const progressStyle: ForgeStyle = { '--p': `${phase.progress}%` }
+
+  // Only render top-level tasks in the main phase list
+  const topLevelTasks = phase.tasks.filter((t) => !t.parentId)
 
   return (
     <div
@@ -67,7 +76,7 @@ export function Phase({
         <span className="num">{phase.num}</span>
         <span className="name">{phase.name}</span>
         <span className={`status ${isActive ? 'active' : ''}`}>
-          {phaseStatusLabel(phase.status)}
+          {phaseStatusLabel(displayStatus)}
         </span>
         <span className="progress-mini" style={progressStyle}>
           <i />
@@ -79,15 +88,17 @@ export function Phase({
 
       {isOpen && (
         <div className="phase-body">
-          {phase.tasks.map((t) => (
+          {topLevelTasks.map((t) => (
             <TaskRow
               key={t.id}
               task={t}
               allTasks={allTasks}
               expanded={expandedTaskId === t.id}
+              expandedTaskId={expandedTaskId}
               readOnly={readOnly}
               onToggle={onToggleTask}
               onCheck={onCheckTask}
+              onUpdateTask={onUpdateTask}
               onAddSubtask={onAddSubtask}
               onLinkDependency={onLinkDependency}
               onUnlinkDependency={onUnlinkDependency}

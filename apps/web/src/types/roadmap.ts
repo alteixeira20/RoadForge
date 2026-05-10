@@ -18,6 +18,8 @@ export interface Task {
   /** IDs of tasks this task depends on */
   deps?: string[]
   desc?: string
+  /** ID of the parent task, if this is a subtask */
+  parentId?: string
 }
 
 export interface Phase {
