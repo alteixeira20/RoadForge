@@ -35,10 +35,14 @@ curl http://localhost:7878/api/health
 ## 1. Create roadmap
 
 1. Open `http://localhost:3020`.
-2. Complete the wizard (any name, any roadmap title).
+2. Complete the wizard:
+   - Enter your name.
+   - Enter a roadmap title.
+   - **Choose a starting point:** Select **Start blank** (or **Use template** if testing with examples).
+   - Review storage info.
 3. Confirm you reach the Workspace.
 
-**Check:** Workspace header shows the roadmap name. Progress bar shows 0/N tasks done.
+**Check:** Workspace header shows the roadmap name. Progress bar shows 0/N tasks done (0/0 if blank).
 
 ---
 
