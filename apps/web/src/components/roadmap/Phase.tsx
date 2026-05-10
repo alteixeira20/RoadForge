@@ -149,34 +149,44 @@ export function Phase({
 
       {isOpen && (
         <div className="phase-body">
-          {topLevelTasks.map((t) => (
-            <div
-              key={t.id}
-              draggable={!readOnly}
-              onDragStart={(e) => handleDragStart(e, t.id)}
-              onDragEnd={handleDragEnd}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, t.id)}
-              className="draggable-task-wrapper"
-            >
-              <TaskRow
-                task={t}
-                allTasks={allTasks}
-                expanded={expandedTaskId === t.id}
-                expandedTaskId={expandedTaskId}
-                readOnly={readOnly}
-                onToggle={onToggleTask}
-                onCheck={onCheckTask}
-                onUpdateTask={onUpdateTask}
-                onAddSubtask={onAddSubtask}
-                onLinkDependency={onLinkDependency}
-                onUnlinkDependency={onUnlinkDependency}
-                onReorderSubtasks={onReorderSubtasks}
-                hasCycle={hasCycle}
-              />
-            </div>
-          ))}
+          {topLevelTasks.map((t) => {
+            const isExpanded = expandedTaskId === t.id
+            return (
+              <div
+                key={t.id}
+                draggable={!readOnly && !isExpanded}
+                onDragStart={(e) => {
+                  const target = e.target as HTMLElement
+                  if (!target.closest('.drag-handle')) {
+                    e.preventDefault()
+                    return
+                  }
+                  handleDragStart(e, t.id)
+                }}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, t.id)}
+                className="draggable-task-wrapper"
+              >
+                <TaskRow
+                  task={t}
+                  allTasks={allTasks}
+                  expanded={isExpanded}
+                  expandedTaskId={expandedTaskId}
+                  readOnly={readOnly}
+                  onToggle={onToggleTask}
+                  onCheck={onCheckTask}
+                  onUpdateTask={onUpdateTask}
+                  onAddSubtask={onAddSubtask}
+                  onLinkDependency={onLinkDependency}
+                  onUnlinkDependency={onUnlinkDependency}
+                  onReorderSubtasks={onReorderSubtasks}
+                  hasCycle={hasCycle}
+                />
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

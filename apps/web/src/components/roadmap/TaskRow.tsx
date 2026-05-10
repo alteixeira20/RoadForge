@@ -251,7 +251,7 @@ export function TaskRow({
         .join(' ')}
     >
       <div className="task-row">
-        {!readOnly && (
+        {!effectivelyReadOnly && !expanded && (
           <div className="drag-handle" title="Drag to reorder">
             <Icon name="grip" size={14} />
           </div>
@@ -407,35 +407,45 @@ export function TaskRow({
                 <div className="section">
                   <div className="section-label">Subtasks</div>
                   <div className="subtasks">
-                    {subtasks.map((st) => (
-                      <div
-                        key={st.id}
-                        draggable={!readOnly}
-                        onDragStart={(e) => handleSubtaskDragStart(e, st.id)}
-                        onDragEnd={handleSubtaskDragEnd}
-                        onDragOver={handleSubtaskDragOver}
-                        onDragLeave={handleSubtaskDragLeave}
-                        onDrop={(e) => handleSubtaskDrop(e, st.id)}
-                        className="draggable-task-wrapper"
-                      >
-                        <TaskRow
-                          task={st}
-                          allTasks={allTasks}
-                          expanded={expandedTaskId === st.id}
-                          expandedTaskId={expandedTaskId}
-                          readOnly={readOnly}
-                          onToggle={onToggle}
-                          onCheck={onCheck}
-                          onUpdateTask={onUpdateTask}
-                          onAddSubtask={onAddSubtask}
-                          onLinkDependency={onLinkDependency}
-                          onUnlinkDependency={onUnlinkDependency}
-                          onReorderSubtasks={onReorderSubtasks}
-                          hasCycle={hasCycle}
-                          isNested
-                        />
-                      </div>
-                    ))}
+                    {subtasks.map((st) => {
+                      const isStExpanded = expandedTaskId === st.id
+                      return (
+                        <div
+                          key={st.id}
+                          draggable={!readOnly && !isStExpanded}
+                          onDragStart={(e) => {
+                            const target = e.target as HTMLElement
+                            if (!target.closest('.drag-handle')) {
+                              e.preventDefault()
+                              return
+                            }
+                            handleSubtaskDragStart(e, st.id)
+                          }}
+                          onDragEnd={handleSubtaskDragEnd}
+                          onDragOver={handleSubtaskDragOver}
+                          onDragLeave={handleSubtaskDragLeave}
+                          onDrop={(e) => handleSubtaskDrop(e, st.id)}
+                          className="draggable-task-wrapper"
+                        >
+                          <TaskRow
+                            task={st}
+                            allTasks={allTasks}
+                            expanded={isStExpanded}
+                            expandedTaskId={expandedTaskId}
+                            readOnly={readOnly}
+                            onToggle={onToggle}
+                            onCheck={onCheck}
+                            onUpdateTask={onUpdateTask}
+                            onAddSubtask={onAddSubtask}
+                            onLinkDependency={onLinkDependency}
+                            onUnlinkDependency={onUnlinkDependency}
+                            onReorderSubtasks={onReorderSubtasks}
+                            hasCycle={hasCycle}
+                            isNested
+                          />
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}

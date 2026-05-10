@@ -358,9 +358,10 @@
 .task-actions-footer {
   margin-top: 12px;
   display: flex; align-items: center;
+  justify-content: flex-end;
 }
 
-.task-detail .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; flex: 1; }
+.task-detail .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 /* ─── Drag & Drop ─────────────────────────────────────────────────────────── */
 
@@ -376,9 +377,13 @@
 .task-row:hover .drag-handle { opacity: 1; }
 .drag-handle:active { cursor: grabbing; }
 
-.draggable-task-wrapper { transition: transform 200ms cubic-bezier(.2,.8,.2,1); }
+.draggable-task-wrapper { 
+  transition: transform 200ms cubic-bezier(.2,.8,.2,1); 
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+}
 .draggable-task-wrapper.dragging { opacity: 0.4; filter: grayscale(1); }
-.draggable-task-wrapper.drag-over { border-top: 2px solid var(--ember); }
+.draggable-task-wrapper.drag-over { border-top-color: var(--ember); }
 
 /* ─── Task Detail Enhancements ────────────────────────────────────────────── */
 
@@ -438,7 +443,7 @@
 }
 .highlight-flash { animation: highlightFlash 2s ease-out; }
 
-.dep-row { cursor: pointer; transition: all 120ms; flex: 1; }
+.dep-row { cursor: pointer; transition: all 120ms; }
 .dep-row:hover { background: var(--bg); border-color: var(--border); }
 .dep-row .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
