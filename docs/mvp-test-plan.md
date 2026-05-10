@@ -153,6 +153,20 @@ curl http://localhost:7878/api/health
 
 ---
 
+## 12. Verify Activity Logs
+
+1. **Owner:** Click **Activity** in the toolbar.
+2. **Confirm:** Panel slides in from the right.
+3. **Verify entries:**
+   - `roadmap.created` with owner name.
+   - `roadmap.updated` for the save in Step 2.
+   - `share_link.rotated` for Step 5.
+   - `participant.joined` for the Editor join in Step 7.
+4. **Editor/Viewer:** Confirm they can also open the panel and see the audit trail.
+5. **Click X:** Confirm panel closes.
+
+---
+
 ## Validation checklist
 
 - [ ] `make reset` starts clean
@@ -165,3 +179,4 @@ curl http://localhost:7878/api/health
 - [ ] Soft lock prevents editing while another participant has task open
 - [ ] 409 Conflict toast appears on stale save
 - [ ] Revoke invalidates the link immediately
+- [ ] Activity panel shows creation, updates, and joins correctly

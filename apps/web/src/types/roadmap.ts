@@ -74,3 +74,24 @@ export interface ExportOption {
   badge?: string
   desc: string
 }
+
+// ─── Activity Logs ─────────────────────────────────────────────────────────────
+
+export interface ActivityLog {
+  id: string
+  roadmap_id: string
+  participant_id: string | null
+  actor_name: string | null
+  action: string
+  entity_type: string | null
+  entity_id: string | null
+  before_json: Record<string, unknown> | null
+  after_json: Record<string, unknown> | null
+  metadata_json: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface ActivityLogList {
+  logs: ActivityLog[]
+  has_more: boolean
+}

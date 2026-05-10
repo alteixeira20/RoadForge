@@ -274,6 +274,62 @@
 }
 .add-task-btn:hover { color: var(--ink); background: var(--bg-2); border-color: var(--border); }
 
+/* ─── Activity Panel ───────────────────────────────────────────────────────── */
+.activity-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 360px;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  z-index: 100;
+  display: flex; flex-direction: column;
+  box-shadow: -10px 0 30px rgba(0,0,0,0.25);
+  animation: slideIn 240ms cubic-bezier(.2,.8,.2,1);
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.activity-panel .panel-head {
+  height: var(--header-h);
+  padding: 0 22px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border-faint);
+}
+.activity-panel h3 { font-size: 15px; font-weight: 600; color: var(--ink-2); margin: 0; }
+.activity-panel .close-btn {
+  color: var(--ink-4); transition: color 160ms; cursor: pointer;
+  background: transparent; border: none; padding: 4px; display: grid; place-items: center;
+}
+.activity-panel .close-btn:hover { color: var(--ink); }
+
+.activity-panel .panel-body { flex: 1; overflow-y: auto; }
+
+.activity-panel .state-msg {
+  padding: 64px 32px; text-align: center; color: var(--ink-4);
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+}
+.activity-panel .state-msg p { margin: 0; font-size: 14px; }
+.activity-panel .state-msg.error { color: var(--ember); }
+
+.activity-list { display: flex; flex-direction: column; }
+.activity-row {
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border-faint);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.activity-row:hover { background: var(--bg-2); }
+.activity-row .row-main { display: flex; gap: 8px; align-items: baseline; font-size: 14px; }
+.activity-row .actor { font-weight: 600; color: var(--ink-2); }
+.activity-row .action { color: var(--ink-3); }
+.activity-row .row-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.activity-row .details { color: var(--ember); font-family: var(--font-mono); }
+.activity-row .details .dim { color: var(--ink-4); font-family: var(--font-sans); font-size: 11px; }
+.activity-row .time { color: var(--ink-4); }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spin { animation: spin 2s linear infinite; }
+
 @keyframes phaseExpand { from { opacity: 0; } to { opacity: 1; } }
 
 /* ─── Tasks ────────────────────────────────────────────────────────────────── */

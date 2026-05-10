@@ -8,6 +8,7 @@ import { WorkspaceHead } from './WorkspaceHead'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
 import { PhaseList } from './PhaseList'
 import { WorkspaceModals } from './WorkspaceModals'
+import { ActivityPanel } from './ActivityPanel'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
@@ -60,6 +61,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     closeShare,
     closeIO,
   } = useWorkspaceModals()
+  const [showActivity, setShowActivity] = useState(false)
 
   const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
   const totalDone = allTasks.filter((t) => t.done).length
@@ -420,6 +422,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           allOpen={allOpen}
           onCollapseAll={collapseAll}
           onExpandAll={expandAll}
+          onOpenActivity={() => setShowActivity(true)}
+          isSaved={!!serverRoadmapId}
         />
         <PhaseList
           phases={filteredPhases}
@@ -453,6 +457,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       />
 
       {toast && <Toast message={toast} />}
+
+      {showActivity && serverRoadmapId && sessionToken && (
+        <ActivityPanel
+          roadmapId={serverRoadmapId}
+          sessionToken={sessionToken}
+          onClose={() => setShowActivity(false)}
+        />
+      )}
     </div>
   )
 }

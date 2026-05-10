@@ -266,4 +266,12 @@ class ActivityLogResponse(BaseModel):
     action: str
     entity_type: str | None
     entity_id: str | None
+    before_json: dict[str, Any] | None = None
+    after_json: dict[str, Any] | None = None
+    metadata_json: dict[str, Any] | None = None
     created_at: datetime
+
+
+class ActivityLogListResponse(BaseModel):
+    logs: list[ActivityLogResponse]
+    has_more: bool

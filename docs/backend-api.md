@@ -354,6 +354,43 @@ List all active locks for a roadmap.
 
 ---
 
+## Activity Logs
+
+Audit trail of contributor actions.
+
+### GET /api/roadmaps/{roadmap_id}/activity
+
+Fetch paginated activity logs for a roadmap, newest first.
+**Requires:** `Authorization: Bearer <session_token>` (any role).
+
+**Query parameters:**
+- `limit` — optional, 1–200, default 100
+- `offset` — optional, default 0
+
+**Response 200:**
+```json
+{
+  "logs": [
+    {
+      "id": "al_123",
+      "roadmap_id": "rm_abc",
+      "participant_id": "pt_456",
+      "actor_name": "Ada",
+      "action": "roadmap.updated",
+      "entity_type": "roadmap",
+      "entity_id": "rm_abc",
+      "before_json": {"name": "Old Name"},
+      "after_json": {"name": "New Name"},
+      "metadata_json": null,
+      "created_at": "2026-05-08T14:00:00Z"
+    }
+  ],
+  "has_more": false
+}
+```
+
+---
+
 ## Error format
 
 All errors follow FastAPI's default shape:

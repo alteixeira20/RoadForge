@@ -344,6 +344,52 @@ async def revoke_share_link(
     await db.commit()
 
 
+async def get_activity_logs(
+    db: AsyncSession,
+    roadmap_id: str,
+    limit: int = 100,
+    offset: int = 0,
+) -> ActivityLogListResponse:
+    await _fetch_active_roadmap(db, roadmap_id)
+
+    # Max limit 200
+    safe_limit = min(limit, 200)
+
+    # Fetch logs + 1 to check for has_more
+    stmt = (
+        select(ActivityLog)
+        .where(ActivityLog.roadmap_id == roadmap_id)
+        .order_by(ActivityLog.created_at.desc())
+        .limit(safe_limit + 1)
+        .offset(offset)
+    )
+    result = await db.execute(stmt)
+    logs = result.scalars().all()
+
+    has_more = len(logs) > safe_limit
+    return_logs = logs[:safe_limit]
+
+    return ActivityLogListResponse(
+        logs=[
+            ActivityLogResponse(
+                id=al.id,
+                roadmap_id=al.roadmap_id,
+                participant_id=al.participant_id,
+                actor_name=al.actor_name,
+                action=al.action,
+                entity_type=al.entity_type,
+                entity_id=al.entity_id,
+                before_json=al.before_json,
+                after_json=al.after_json,
+                metadata_json=al.metadata_json,
+                created_at=al.created_at,
+            )
+            for al in return_logs
+        ],
+        has_more=has_more,
+    )
+
+
 async def join_roadmap(db: AsyncSession, payload: JoinRoadmapRequest) -> JoinRoadmapResponse:
     token_hash = hash_token(payload.token)
 

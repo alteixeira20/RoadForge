@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.config import get_settings
 from api.database import get_db
 from api.schemas.roadmap import (
+    ActivityLogListResponse,
     CreateRoadmapRequest,
     CreateRoadmapResponse,
     EventTicketResponse,
@@ -23,6 +24,7 @@ from api.services.event_bus import event_bus
 from api.services.lock_service import lock_service
 from api.services.roadmap_service import (
     create_roadmap,
+    get_activity_logs,
     get_roadmap,
     get_share_links,
     join_roadmap,
@@ -195,3 +197,15 @@ async def get_locks(
         )
         for l in locks
     ]
+
+
+@router.get("/{roadmap_id}/activity", response_model=ActivityLogListResponse)
+async def fetch_activity_logs(
+    roadmap_id: str,
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> ActivityLogListResponse:
+    await require_participant(db, roadmap_id, authorization, {"owner", "editor", "viewer"})
+    return await get_activity_logs(db, roadmap_id, limit, offset)

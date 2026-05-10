@@ -8,6 +8,8 @@ interface WorkspaceToolbarProps {
   allOpen: boolean
   onCollapseAll: () => void
   onExpandAll: () => void
+  onOpenActivity: () => void
+  isSaved: boolean
 }
 
 export function WorkspaceToolbar({
@@ -16,6 +18,8 @@ export function WorkspaceToolbar({
   allOpen,
   onCollapseAll,
   onExpandAll,
+  onOpenActivity,
+  isSaved,
 }: WorkspaceToolbarProps) {
   return (
     <div className="workspace-bar">
@@ -28,11 +32,22 @@ export function WorkspaceToolbar({
         />
         <span className="kbd">⌘ K</span>
       </div>
+      
       <button
         className="collapse-all"
         onClick={allOpen ? onCollapseAll : onExpandAll}
       >
         <Icon name="fold" size={14} /> {allOpen ? 'Collapse all' : 'Expand all'}
+      </button>
+
+      <button
+        className="collapse-all"
+        onClick={onOpenActivity}
+        disabled={!isSaved}
+        title={!isSaved ? 'Save roadmap to enable activity' : 'View recent activity'}
+        style={{ opacity: !isSaved ? 0.5 : 1, cursor: !isSaved ? 'not-allowed' : 'pointer' }}
+      >
+        <Icon name="activity" size={14} /> Activity
       </button>
     </div>
   )

@@ -5,7 +5,7 @@
 // Local-first model: localStorage is kept as optimistic cache.
 // When a backend call succeeds the caller is responsible for syncing context/storage.
 
-import type { Roadmap, Phase, Task, ShareLink, ShareRole, ExportFormat } from '@/types/roadmap'
+import type { Roadmap, Phase, Task, ShareLink, ShareRole, ExportFormat, ActivityLogList } from '@/types/roadmap'
 
 // ─── API configuration ─────────────────────────────────────────────────────────
 
@@ -297,6 +297,22 @@ export async function getLocks(
 ): Promise<ApiLockResponse[]> {
   return await requestJson<ApiLockResponse[]>(
     `/api/roadmaps/${roadmapId}/locks`,
+    {},
+    sessionToken,
+  )
+}
+
+/**
+ * Fetch activity logs for a roadmap.
+ */
+export async function getRoadmapActivity(
+  roadmapId: string,
+  sessionToken: string,
+  limit: number = 100,
+  offset: number = 0,
+): Promise<ActivityLogList> {
+  return await requestJson<ActivityLogList>(
+    `/api/roadmaps/${roadmapId}/activity?limit=${limit}&offset=${offset}`,
     {},
     sessionToken,
   )
