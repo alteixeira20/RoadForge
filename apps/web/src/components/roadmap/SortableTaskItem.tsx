@@ -15,6 +15,7 @@ interface SortableTaskItemProps {
   onToggle: (id: string) => void
   onCheck: (id: string) => void
   onUpdateTask: (id: string, updates: Partial<Task>) => void
+  onAddTask: (phaseId: string) => void
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void

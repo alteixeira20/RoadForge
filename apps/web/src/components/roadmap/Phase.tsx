@@ -35,6 +35,7 @@ interface PhaseProps {
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
   onUpdateTask: (id: string, updates: Partial<Task>) => void
+  onAddTask: (phaseId: string) => void
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void
@@ -62,6 +63,7 @@ export function Phase({
   onToggleTask,
   onCheckTask,
   onUpdateTask,
+  onAddTask,
   onAddSubtask,
   onLinkDependency,
   onUnlinkDependency,
@@ -92,7 +94,7 @@ export function Phase({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5, // Start dragging after moving 5px (prevents accidental drags on click)
+        distance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -152,67 +154,89 @@ export function Phase({
 
       {isOpen && (
         <div className="phase-body">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragCancel={handleDragCancel}
-            modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-          >
-            <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-              {topLevelTasks.map((t) => (
-                <SortableTaskItem
-                  key={t.id}
-                  task={t}
-                  allTasks={allTasks}
-                  expanded={expandedTaskId === t.id}
-                  expandedTaskId={expandedTaskId}
-                  readOnly={readOnly}
-                  dragDisabled={isAnyTaskInPhaseExpanded}
-                  onToggle={onToggleTask}
-                  onCheck={onCheckTask}
-                  onUpdateTask={onUpdateTask}
-                  onAddSubtask={onAddSubtask}
-                  onLinkDependency={onLinkDependency}
-                  onUnlinkDependency={onUnlinkDependency}
-                  onReorderSubtasks={onReorderSubtasks}
-                  hasCycle={hasCycle}
-                />
-              ))}
-            </SortableContext>
-            <DragOverlay 
-              dropAnimation={{ 
-                duration: 110,
-                easing: 'cubic-bezier(0.2, 0, 0, 1)',
-                sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) 
-              }}
+          {topLevelTasks.length === 0 ? (
+            <div className="empty-phase">
+              <p>No tasks yet.</p>
+              {!readOnly && (
+                <button className="btn sm ghost" onClick={() => onAddTask(phase.id)}>
+                  <Icon name="plus" size={13} /> Add first task
+                </button>
+              )}
+            </div>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
             >
-              {activeTask ? (
-                <div className="sortable-dragging-overlay">
-                  <TaskRow
-                    task={activeTask}
-                    allTasks={allTasks}
-                    expanded={false}
-                    expandedTaskId={null}
-                    readOnly={true} // disable interactions while dragging
-                    dragDisabled={false}
-                    onToggle={() => {}}
-                    onCheck={() => {}}
-                    onUpdateTask={() => {}}
-                    onAddSubtask={() => {}}
-                    onLinkDependency={() => {}}
-                    onUnlinkDependency={() => {}}
-                    onReorderSubtasks={() => {}}
-                    hasCycle={() => false}
-                  />
+              <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+                <div className="sortable-list">
+                  {topLevelTasks.map((t) => (
+                    <SortableTaskItem
+                      key={t.id}
+                      task={t}
+                      allTasks={allTasks}
+                      expanded={expandedTaskId === t.id}
+                      expandedTaskId={expandedTaskId}
+                      readOnly={readOnly}
+                      dragDisabled={isAnyTaskInPhaseExpanded}
+                      onToggle={onToggleTask}
+                      onCheck={onCheckTask}
+                      onUpdateTask={onUpdateTask}
+                      onAddTask={onAddTask}
+                      onAddSubtask={onAddSubtask}
+                      onLinkDependency={onLinkDependency}
+                      onUnlinkDependency={onUnlinkDependency}
+                      onReorderSubtasks={onReorderSubtasks}
+                      hasCycle={hasCycle}
+                    />
+                  ))}
                 </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+              </SortableContext>
+              <DragOverlay 
+                dropAnimation={{ 
+                  duration: 110,
+                  easing: 'cubic-bezier(0.2, 0, 0, 1)',
+                  sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) 
+                }}
+              >
+                {activeTask ? (
+                  <div className="sortable-dragging-overlay">
+                    <TaskRow
+                      task={activeTask}
+                      allTasks={allTasks}
+                      expanded={false}
+                      expandedTaskId={null}
+                      readOnly={true}
+                      dragDisabled={false}
+                      onToggle={() => {}}
+                      onCheck={() => {}}
+                      onUpdateTask={() => {}}
+                      onAddTask={() => {}}
+                      onAddSubtask={() => {}}
+                      onLinkDependency={() => {}}
+                      onUnlinkDependency={() => {}}
+                      onReorderSubtasks={() => {}}
+                      hasCycle={() => false}
+                    />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          )}
+
+          {!readOnly && topLevelTasks.length > 0 && (
+            <div className="phase-foot">
+              <button className="add-task-btn" onClick={() => onAddTask(phase.id)}>
+                <Icon name="plus" size={14} /> Add task
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
-

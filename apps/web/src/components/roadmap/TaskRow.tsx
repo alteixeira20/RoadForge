@@ -16,6 +16,7 @@ interface TaskRowProps {
   onToggle: (id: string) => void
   onCheck: (id: string) => void
   onUpdateTask: (id: string, updates: Partial<Task>) => void
+  onAddTask: (phaseId: string) => void
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void
@@ -65,6 +66,7 @@ export function TaskRow({
   onToggle,
   onCheck,
   onUpdateTask,
+  onAddTask: _onAddTask,
   onAddSubtask,
   onLinkDependency,
   onUnlinkDependency,
@@ -374,6 +376,7 @@ export function TaskRow({
                             onToggle={onToggle}
                             onCheck={onCheck}
                             onUpdateTask={onUpdateTask}
+                            onAddTask={_onAddTask}
                             onAddSubtask={onAddSubtask}
                             onLinkDependency={onLinkDependency}
                             onUnlinkDependency={onUnlinkDependency}
