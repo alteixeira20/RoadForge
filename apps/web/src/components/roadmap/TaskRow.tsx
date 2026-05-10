@@ -23,6 +23,7 @@ interface TaskRowProps {
   hasCycle: (taskId: string, depId: string) => boolean
   isNested?: boolean
   dragDisabled?: boolean
+  dragHandleProps?: Record<string, unknown>
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -71,6 +72,7 @@ export function TaskRow({
   hasCycle,
   isNested = false,
   dragDisabled = false,
+  dragHandleProps,
 }: TaskRowProps) {
   const {
     displayName,
@@ -179,9 +181,8 @@ export function TaskRow({
     : {}
 
   // ─── Subtask Reordering ──────────────────────────────────────────────────
-  // Subtask reordering is disabled in this slice to preserve simplicity.
-  // It can be implemented using useTaskReorder in a future slice if needed.
-  
+  // Subtask reordering is intentionally disabled for now.
+  // If needed later, it should use the same dnd-kit sortable pattern as top-level tasks.
   return (
     <div
       id={`task-${task.id}`}
@@ -197,8 +198,12 @@ export function TaskRow({
         .join(' ')}
     >
       <div className="task-row">
-        {!effectivelyReadOnly && !expanded && !dragDisabled && (
-          <div className="drag-handle" title="Drag to reorder">
+        {!effectivelyReadOnly && !expanded && (
+          <div 
+            className={`drag-handle ${dragDisabled ? 'disabled' : ''}`}
+            title={dragDisabled ? "Collapse task to reorder" : "Drag to reorder"}
+            {...dragHandleProps}
+          >
             <Icon name="grip" size={14} />
           </div>
         )}
@@ -383,7 +388,7 @@ export function TaskRow({
                 </div>
               )}
 
-              {!effectivelyReadOnly && (
+              {!effectivelyReadOnly && !isEditing && (
                 <div className="task-actions-footer">
                   {showSubtaskForm ? (
                     <SubtaskForm

@@ -371,34 +371,31 @@
   color: var(--ink-4);
   cursor: grab;
   margin-left: -12px;
-  opacity: 0;
   transition: all 160ms;
-  touch-action: none; /* Prevent scrolling while dragging */
+  touch-action: none;
 }
-.task-row:hover .drag-handle { opacity: 1; }
-.drag-handle:active, .draggable-task-wrapper.dragging .drag-handle {
+.drag-handle:hover { color: var(--ember); }
+.drag-handle:active { cursor: grabbing; color: var(--ember); }
+
+.drag-handle.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.drag-handle.disabled:hover { color: var(--ink-4); }
+
+.sortable-dragging {
+  opacity: 0.3;
+}
+
+.sortable-dragging-overlay {
+  box-shadow: var(--shadow-md);
+  border-radius: 8px;
+  background: var(--bg);
+  cursor: grabbing;
+}
+.sortable-dragging-overlay .drag-handle {
   cursor: grabbing;
   color: var(--ember);
-}
-
-.draggable-task-wrapper { 
-  transition: transform 0ms; /* No transition while dragging to prevent lag */
-}
-.draggable-task-wrapper.dragging {
-  opacity: 0.8;
-  box-shadow: var(--shadow-sm);
-  z-index: 10;
-  position: relative;
-  background: var(--bg);
-  border-radius: 8px;
-}
-
-.drop-indicator {
-  height: 2px;
-  background: var(--ember);
-  margin: -1px 0; /* overlap borders */
-  position: relative;
-  z-index: 5;
 }
 
 /* ─── Task Detail Enhancements ────────────────────────────────────────────── */

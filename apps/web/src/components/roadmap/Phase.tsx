@@ -1,8 +1,29 @@
 'use client'
 
+import { useState } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  defaultDropAnimationSideEffects,
+  DragStartEvent,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
+
 import { Icon } from '@/components/ui/Icon'
+import { SortableTaskItem } from './SortableTaskItem'
 import { TaskRow } from './TaskRow'
-import { useTaskReorder } from '@/hooks/useTaskReorder'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 import type { ForgeStyle } from '@/types/ui'
 
@@ -54,31 +75,52 @@ export function Phase({
   const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
   const isActive = phase.status === 'active'
 
-  // Rule: Phase only shows 'Complete' if all tasks are done
   const displayStatus = allDone ? 'done' : (phase.status === 'done' ? 'active' : phase.status)
 
   const headStyle: ForgeStyle = { '--phase-color': phase.color }
   const progressStyle: ForgeStyle = { '--p': `${phase.progress}%` }
 
-  // Only render top-level tasks in the main phase list
   const topLevelTasks = phase.tasks.filter((t) => !t.parentId)
   const taskIds = topLevelTasks.map((t) => t.id)
 
   const isAnyTaskInPhaseExpanded = expandedTaskId !== null && phase.tasks.some(t => t.id === expandedTaskId)
 
-  // ─── Drag & Drop Reordering ──────────────────────────────────────────────
+  // ─── dnd-kit Setup ────────────────────────────────────────────────────────
 
-  const handleReorderTasks = (newOrder: string[]) => {
-    onReorderTasks(phase.id, newOrder)
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, // Start dragging after moving 5px (prevents accidental drags on click)
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
   }
 
-  const { dragState, handlePointerDown, handlePointerMove, handlePointerUp } = useTaskReorder({
-    taskIds,
-    onReorder: handleReorderTasks,
-    readOnly,
-  })
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
 
-  const { isDragging, draggedId, visualDropSlot, translateY } = dragState
+    if (over && active.id !== over.id) {
+      const oldIndex = taskIds.indexOf(active.id as string)
+      const newIndex = taskIds.indexOf(over.id as string)
+      const newOrder = arrayMove(taskIds, oldIndex, newIndex)
+      onReorderTasks(phase.id, newOrder)
+    }
+  }
+
+  const handleDragCancel = () => {
+    setActiveId(null)
+  }
+
+  const activeTask = activeId ? topLevelTasks.find((t) => t.id === activeId) : null
 
   return (
     <div
@@ -110,52 +152,64 @@ export function Phase({
 
       {isOpen && (
         <div className="phase-body">
-          {isDragging && draggedId !== null && visualDropSlot === 0 && (
-            <div className="drop-indicator" />
-          )}
-          {topLevelTasks.map((t, index) => {
-            const isExpanded = expandedTaskId === t.id
-            const isBeingDragged = isDragging && draggedId === t.id
-            
-            const isDropTarget = isDragging && visualDropSlot === index + 1
-
-            return (
-              <div key={t.id}>
-                <div
-                  className={[
-                    'draggable-task-wrapper',
-                    isBeingDragged ? 'dragging' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  style={isBeingDragged ? { transform: `translateY(${translateY}px)` } : undefined}
-                  onPointerDown={(e) => {
-                    if (!isExpanded && !isAnyTaskInPhaseExpanded) handlePointerDown(e, t.id, index)
-                  }}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
-                >
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+            modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          >
+            <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+              {topLevelTasks.map((t) => (
+                <SortableTaskItem
+                  key={t.id}
+                  task={t}
+                  allTasks={allTasks}
+                  expanded={expandedTaskId === t.id}
+                  expandedTaskId={expandedTaskId}
+                  readOnly={readOnly}
+                  dragDisabled={isAnyTaskInPhaseExpanded}
+                  onToggle={onToggleTask}
+                  onCheck={onCheckTask}
+                  onUpdateTask={onUpdateTask}
+                  onAddSubtask={onAddSubtask}
+                  onLinkDependency={onLinkDependency}
+                  onUnlinkDependency={onUnlinkDependency}
+                  onReorderSubtasks={onReorderSubtasks}
+                  hasCycle={hasCycle}
+                />
+              ))}
+            </SortableContext>
+            <DragOverlay 
+              dropAnimation={{ 
+                duration: 110,
+                easing: 'cubic-bezier(0.2, 0, 0, 1)',
+                sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) 
+              }}
+            >
+              {activeTask ? (
+                <div className="sortable-dragging-overlay">
                   <TaskRow
-                    task={t}
+                    task={activeTask}
                     allTasks={allTasks}
-                    expanded={isExpanded}
-                    expandedTaskId={expandedTaskId}
-                    readOnly={readOnly}
-                    dragDisabled={isAnyTaskInPhaseExpanded}
-                    onToggle={onToggleTask}
-                    onCheck={onCheckTask}
-                    onUpdateTask={onUpdateTask}
-                    onAddSubtask={onAddSubtask}
-                    onLinkDependency={onLinkDependency}
-                    onUnlinkDependency={onUnlinkDependency}
-                    onReorderSubtasks={onReorderSubtasks}
-                    hasCycle={hasCycle}
+                    expanded={false}
+                    expandedTaskId={null}
+                    readOnly={true} // disable interactions while dragging
+                    dragDisabled={false}
+                    onToggle={() => {}}
+                    onCheck={() => {}}
+                    onUpdateTask={() => {}}
+                    onAddSubtask={() => {}}
+                    onLinkDependency={() => {}}
+                    onUnlinkDependency={() => {}}
+                    onReorderSubtasks={() => {}}
+                    hasCycle={() => false}
                   />
                 </div>
-                {isDropTarget && !isBeingDragged && <div className="drop-indicator" />}
-              </div>
-            )
-          })}
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </div>
       )}
     </div>
