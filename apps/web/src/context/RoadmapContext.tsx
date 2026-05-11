@@ -28,6 +28,9 @@ interface RoadmapContextValue {
   /** Collaboration role for this session. */
   role: ShareRole | null
   setRole: (value: ShareRole | null) => void
+  /** Whether the roadmap is password protected. */
+  isPasswordEnabled: boolean
+  setIsPasswordEnabled: (value: boolean) => void
   /** Display name of the roadmap owner (loaded from server). Null until fetched. */
   ownerDisplayName: string | null
   setOwnerDisplayName: (value: string | null) => void
@@ -50,6 +53,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [sessionToken, setSessionTokenState] = useState<string | null>(null)
   const [participantId, setParticipantIdState] = useState<string | null>(null)
   const [role, setRoleState] = useState<ShareRole | null>(null)
+  const [isPasswordEnabled, setIsPasswordEnabledState] = useState(false)
   const [ownerDisplayName, setOwnerDisplayNameState] = useState<string | null>(null)
   const [updatedAt, setUpdatedAtState] = useState<string | null>(null)
   const [locks, setLocks] = useState<Record<string, { participantId: string; displayName: string }>>({})
@@ -76,26 +80,50 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     if (storedUpdatedAt !== null) setUpdatedAtState(storedUpdatedAt)
 
     const storedServerId = storage.getServerRoadmapId()
+    const storedSessionToken = storage.getSessionToken()
+    const storedIsPasswordEnabled = storage.getIsPasswordEnabled()
+
+    setIsPasswordEnabledState(storedIsPasswordEnabled)
+
     if (storedServerId !== null) {
       setServerRoadmapIdState(storedServerId)
-      getRoadmap(storedServerId)
-        .then((loaded) => {
-          if (cancelled) return
-          setRoadmapNameState(loaded.roadmap.name)
-          setPhasesState(loaded.phases)
-          setOwnerDisplayNameState(loaded.ownerDisplayName)
-          storage.setOwnerDisplayName(loaded.ownerDisplayName)
-          setUpdatedAtState(loaded.updatedAt)
-          storage.setUpdatedAt(loaded.updatedAt)
-          setSavedState(true)
-        })
-        .catch(() => {
-          // Backend offline or roadmap gone — keep localStorage state, no crash.
-        })
+      
+      // Only call the server if we have a session token.
+      if (storedSessionToken !== null) {
+        setSessionTokenState(storedSessionToken)
+        getRoadmap(storedServerId, storedSessionToken)
+          .then((loaded) => {
+            if (cancelled) return
+            setRoadmapNameState(loaded.roadmap.name)
+            setPhasesState(loaded.phases)
+            setOwnerDisplayNameState(loaded.ownerDisplayName)
+            storage.setOwnerDisplayName(loaded.ownerDisplayName)
+            setUpdatedAtState(loaded.updatedAt)
+            storage.setUpdatedAt(loaded.updatedAt)
+            setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
+            storage.setIsPasswordEnabled(!!loaded.roadmap.isPasswordEnabled)
+            setSavedState(true)
+          })
+          .catch((err: Error) => {
+            if (cancelled) return
+            console.error('Failed to hydrate roadmap from server:', err)
+            // If 401/403, our session is invalid. Clear it so the user can rejoin.
+            if (err.message.includes('401') || err.message.includes('403')) {
+              storage.setServerRoadmapId(null)
+              storage.setSessionToken(null)
+              storage.setParticipantId(null)
+              storage.setRole(null)
+              storage.setIsPasswordEnabled(false)
+              setServerRoadmapIdState(null)
+              setSessionTokenState(null)
+              setParticipantIdState(null)
+              setRoleState(null)
+              setIsPasswordEnabledState(false)
+            }
+          })
+      }
     }
 
-    const storedSessionToken = storage.getSessionToken()
-    if (storedSessionToken !== null) setSessionTokenState(storedSessionToken)
     const storedParticipantId = storage.getParticipantId()
     if (storedParticipantId !== null) setParticipantIdState(storedParticipantId)
     const storedRole = storage.getRole()
@@ -129,12 +157,14 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
           onUpdated: (payload) => {
             if (payload.participant_id === participantId) return
             // Background refresh on remote update
-            getRoadmap(serverRoadmapId).then((loaded) => {
+            getRoadmap(serverRoadmapId, sessionToken).then((loaded) => {
               setRoadmapNameState(loaded.roadmap.name)
               setPhasesState(loaded.phases)
               setOwnerDisplayNameState(loaded.ownerDisplayName)
               setUpdatedAtState(loaded.updatedAt)
               storage.setUpdatedAt(loaded.updatedAt)
+              setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
+              storage.setIsPasswordEnabled(!!loaded.roadmap.isPasswordEnabled)
             })
           },
           onLockAcquired: (payload) => {
@@ -219,6 +249,11 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     storage.setRole(value)
   }, [])
 
+  const setIsPasswordEnabled = useCallback((value: boolean) => {
+    setIsPasswordEnabledState(value)
+    storage.setIsPasswordEnabled(value)
+  }, [])
+
   const setOwnerDisplayName = useCallback((value: string | null) => {
     setOwnerDisplayNameState(value)
     storage.setOwnerDisplayName(value)
@@ -239,6 +274,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setSessionTokenState(null)
     setParticipantIdState(null)
     setRoleState(null)
+    setIsPasswordEnabledState(false)
     setOwnerDisplayNameState(null)
     setUpdatedAtState(null)
     setLocks({})
@@ -246,7 +282,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, resetToSample }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, resetToSample }}
     >
       {children}
     </RoadmapContext.Provider>

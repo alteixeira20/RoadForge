@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
 from api.schemas.roadmap import (
+    ActivityLogListResponse,
+    ActivityLogResponse,
     CreateRoadmapRequest,
     CreateRoadmapResponse,
     JoinRoadmapRequest,
@@ -119,6 +121,7 @@ async def create_roadmap(
         owner_display_name=roadmap.owner_display_name,
         schema_version=roadmap.schema_version,
         phases=payload.phases,
+        is_password_enabled=roadmap.is_password_enabled,
         created_at=roadmap.created_at,
         updated_at=roadmap.updated_at,
         share_links=share_links_out,

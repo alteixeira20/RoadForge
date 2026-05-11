@@ -61,7 +61,9 @@ async def post_join(
 async def fetch_roadmap(
     roadmap_id: str,
     db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
+    await require_participant(db, roadmap_id, authorization, {"owner", "editor", "viewer"})
     return await get_roadmap(db, roadmap_id)
 
 

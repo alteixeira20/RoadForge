@@ -6,6 +6,7 @@ const KEYS = {
   roadmapName: 'rf:roadmapName',
   phases: 'rf:phases',
   saved: 'rf:saved',
+  isPasswordEnabled: 'rf:isPasswordEnabled',
   serverRoadmapId: 'rf:serverRoadmapId',
   sessionToken: 'rf:sessionToken',
   participantId: 'rf:participantId',
@@ -89,12 +90,20 @@ export const storage = {
   getServerRoadmapId(): string | null {
     return get(KEYS.serverRoadmapId)
   },
-  setServerRoadmapId(id: string | null): void {
-    if (!id) remove(KEYS.serverRoadmapId)
-    else set(KEYS.serverRoadmapId, id)
+  setServerRoadmapId(value: string | null): void {
+    if (!value) remove(KEYS.serverRoadmapId)
+    else set(KEYS.serverRoadmapId, value)
+  },
+
+  getIsPasswordEnabled(): boolean {
+    return get(KEYS.isPasswordEnabled) === 'true'
+  },
+  setIsPasswordEnabled(value: boolean): void {
+    set(KEYS.isPasswordEnabled, String(value))
   },
 
   getSessionToken(): string | null {
+
     return get(KEYS.sessionToken)
   },
   setSessionToken(value: string | null): void {

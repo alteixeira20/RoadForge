@@ -162,6 +162,7 @@ class RoadmapResponse(BaseModel):
     owner_display_name: str
     schema_version: str
     phases: list[PhaseDTO]
+    is_password_enabled: bool
     created_at: datetime
     updated_at: datetime
 
@@ -230,6 +231,7 @@ class CreateRoadmapResponse(BaseModel):
     owner_display_name: str
     schema_version: str
     phases: list[PhaseDTO]
+    is_password_enabled: bool
     created_at: datetime
     updated_at: datetime
     share_links: list[ShareLinkResponse]

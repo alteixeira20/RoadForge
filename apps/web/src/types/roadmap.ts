@@ -43,6 +43,7 @@ export interface Project {
 export interface RoadmapMeta {
   id: string
   name: string
+  isPasswordEnabled?: boolean
 }
 
 export interface Roadmap {
