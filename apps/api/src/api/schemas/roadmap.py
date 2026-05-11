@@ -144,6 +144,7 @@ class UpdateRoadmapRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=ROADMAP_NAME_MAX)
     phases: list[PhaseDTO] | None = Field(default=None, max_length=PHASES_MAX)
     last_updated_at: datetime | None = None
+    change_summary: dict[str, Any] | None = None
 
     @field_validator("name", mode="before")
     @classmethod

@@ -5,7 +5,7 @@
 // Local-first model: localStorage is kept as optimistic cache.
 // When a backend call succeeds the caller is responsible for syncing context/storage.
 
-import type { Roadmap, Phase, Task, ShareLink, ShareRole, ExportFormat, ActivityLogList } from '@/types/roadmap'
+import type { Roadmap, Phase, Task, ShareLink, ShareRole, ExportFormat, ActivityLogList, ChangeSummary } from '@/types/roadmap'
 
 // ─── API configuration ─────────────────────────────────────────────────────────
 
@@ -181,11 +181,13 @@ export async function saveToServer(
   phases?: Phase[],
   sessionToken?: string,
   lastUpdatedAt?: string,
+  changeSummary?: ChangeSummary | null,
 ): Promise<ApiRoadmapResponse> {
   const body: Record<string, unknown> = {}
   if (name !== undefined) body.name = name
   if (phases !== undefined) body.phases = phases
   if (lastUpdatedAt !== undefined) body.last_updated_at = lastUpdatedAt
+  if (changeSummary) body.change_summary = changeSummary
   return await requestJson<ApiRoadmapResponse>(`/api/roadmaps/${roadmapId}`, {
     method: 'PUT',
     body: JSON.stringify(body),

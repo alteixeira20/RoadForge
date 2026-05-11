@@ -162,17 +162,18 @@ curl http://localhost:7878/api/health
 
 ---
 
-## 12. Verify Activity Logs
+## 12. Verify Activity Logs (v0.2 Task-Level)
 
-1. **Owner:** Click **Activity** in the toolbar.
-2. **Confirm:** Panel slides in from the right.
-3. **Verify entries:**
-   - `roadmap.created` with owner name.
-   - `roadmap.updated` for the save in Step 2.
-   - `share_link.rotated` for Step 5.
-   - `participant.joined` for the Editor join in Step 7.
-4. **Editor/Viewer:** Confirm they can also open the panel and see the audit trail.
-5. **Click X:** Confirm panel closes.
+1. **Owner/Editor:** Open the **Activity** panel.
+2. **Action:** Check a task as done.
+3. **Click Save.**
+4. **Confirm Activity:** A new entry `Completed task` appears with the task ID and title.
+5. **Action:** Click the pencil on a task, change the title, and click Save.
+6. **Confirm Activity:** A new entry `Updated task` appears.
+7. **Action:** Link a dependency between two tasks and click Save.
+8. **Confirm Activity:** A new entry `Linked dependency` appears.
+9. **Action:** Drag to reorder tasks within a phase and click Save.
+10. **Confirm Activity:** A new entry `Reordered tasks` appears.
 
 ---
 

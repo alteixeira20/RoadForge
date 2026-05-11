@@ -15,7 +15,7 @@ import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { createRoadmap, saveToServer } from '@/services/roadmap.service'
-import type { WorkspaceMode, Task } from '@/types/roadmap'
+import type { WorkspaceMode, Task, ChangeSummary } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -62,6 +62,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     closeIO,
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
+  const [pendingChangeSummary, setPendingChangeSummary] = useState<ChangeSummary | null>(null)
 
   const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
   const totalDone = allTasks.filter((t) => t.done).length
@@ -85,13 +86,15 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         setRole('owner')
         setOwnerDisplayName(roadmap.ownerDisplayName)
         setUpdatedAt(roadmap.updatedAt)
+        setPendingChangeSummary(null)
       } else {
         if (!sessionToken) {
           showToast('Session expired — rejoin from the invite link')
           return
         }
-        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt || undefined)
+        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt || undefined, pendingChangeSummary)
         setUpdatedAt(data.updated_at)
+        setPendingChangeSummary(null)
       }
       setSaved(true)
       showToast('Saved · collaboration enabled')
@@ -247,6 +250,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       }),
     )
 
+    setPendingChangeSummary({ action: 'task.created', taskId: newId, taskTitle: title, entityType: 'task', entityId: newId })
     setSaved(false)
     setExpandedTaskId(newId)
   }
@@ -295,6 +299,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       return
     }
 
+    const task = allTasks.find(t => t.id === taskId)
+    const depTask = allTasks.find(t => t.id === depId)
+
     setPhases(
       phases.map((p) => ({
         ...p,
@@ -305,11 +312,15 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         }),
       })),
     )
+    setPendingChangeSummary({ action: 'task.dependency.linked', taskId: taskId, taskTitle: task?.title, dependencyId: depId, dependencyTitle: depTask?.title, entityType: 'task', entityId: taskId })
     setSaved(false)
   }
 
   const handleUnlinkDependency = (taskId: string, depId: string) => {
     if (readOnly) return
+    const task = allTasks.find(t => t.id === taskId)
+    const depTask = allTasks.find(t => t.id === depId)
+
     setPhases(
       phases.map((p) => ({
         ...p,
@@ -320,6 +331,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         }),
       })),
     )
+    setPendingChangeSummary({ action: 'task.dependency.unlinked', taskId: taskId, taskTitle: task?.title, dependencyId: depId, dependencyTitle: depTask?.title, entityType: 'task', entityId: taskId })
     setSaved(false)
   }
 
@@ -357,6 +369,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const handleReorderSubtasks = (parentId: string, subtaskIds: string[]) => {
     if (readOnly) return
+    const parent = allTasks.find(t => t.id === parentId)
     setPhases(
       phases.map((p) => {
         const hasParent = p.tasks.some(t => t.id === parentId)
@@ -375,6 +388,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         return { ...p, tasks: newTasks }
       }),
     )
+    setPendingChangeSummary({ action: 'task.reordered', taskId: parentId, taskTitle: parent?.title, entityType: 'task', entityId: parentId })
     setSaved(false)
   }
 

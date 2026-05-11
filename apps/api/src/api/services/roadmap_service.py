@@ -193,16 +193,28 @@ async def update_roadmap(
             "phases": [p.model_dump(exclude_none=True) for p in payload.phases]
         }
 
+    action = "roadmap.updated"
+    entity_type = "roadmap"
+    entity_id = roadmap_id
+    metadata_json = None
+
+    if payload.change_summary is not None and isinstance(payload.change_summary.get("action"), str):
+        action = payload.change_summary["action"]
+        entity_type = payload.change_summary.get("entity_type", "roadmap")
+        entity_id = payload.change_summary.get("entity_id", roadmap_id)
+        metadata_json = payload.change_summary
+
     db.add(ActivityLog(
         id=generate_id("al_"),
         roadmap_id=roadmap_id,
         participant_id=participant.id if participant else None,
         actor_name=participant.display_name if participant else None,
-        action="roadmap.updated",
-        entity_type="roadmap",
-        entity_id=roadmap_id,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
         before_json=before_json or None,
         after_json=after_json or None,
+        metadata_json=metadata_json,
     ))
 
     await db.commit()

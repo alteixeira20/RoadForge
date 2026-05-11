@@ -54,6 +54,19 @@ export interface Roadmap {
   updatedAt: string
 }
 
+export interface ChangeSummary {
+  action: string
+  entityType?: string
+  entityId?: string
+  taskId?: string
+  taskTitle?: string
+  phaseId?: string
+  phaseName?: string
+  dependencyId?: string
+  dependencyTitle?: string
+  details?: string
+}
+
 // ─── Collaboration / sharing ───────────────────────────────────────────────────
 
 export interface ShareLink {

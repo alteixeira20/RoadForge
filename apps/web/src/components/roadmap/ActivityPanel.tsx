@@ -57,7 +57,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPane
   }
 
   const getDetails = (log: ActivityLog) => {
-    const { action, before_json, after_json } = log
+    const { action, before_json, after_json, metadata_json } = log
     if (action === 'roadmap.created' && after_json?.name) {
       return <span>&ldquo;{String(after_json.name)}&rdquo;</span>
     }
@@ -66,6 +66,18 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPane
         return <span>{String(after_json.phase_count)} phases</span>
       }
       return <span className="dim">Snapshot saved</span>
+    }
+    if (action === 'task.completed' || action === 'task.reopened' || action === 'task.created' || action === 'task.updated') {
+      return <span>{String(metadata_json?.taskId)} — {String(metadata_json?.taskTitle)}</span>
+    }
+    if (action === 'task.dependency.linked' || action === 'task.dependency.unlinked') {
+      return <span>{String(metadata_json?.taskId)} depends on {String(metadata_json?.dependencyId)}</span>
+    }
+    if (action === 'task.reordered') {
+      if (metadata_json?.phaseId) {
+        return <span>Phase {String(metadata_json?.phaseName || metadata_json?.phaseId)}</span>
+      }
+      return <span>{String(metadata_json?.taskId)} — {String(metadata_json?.taskTitle)}</span>
     }
     return null
   }

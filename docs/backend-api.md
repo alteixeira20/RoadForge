@@ -120,29 +120,23 @@ Update a roadmap's name and/or phases. Both fields are optional; omit to leave u
 {
   "name": "v1.1 Beta",
   "phases": [
-    {
-      "id": "p1",
-      "num": "01",
-      "name": "Foundation",
-      "color": "#d97442",
-      "status": "active",
-      "progress": 40,
-      "tasks": [
-        {
-          "id": "RF-01",
-          "title": "Set up repo",
-          "done": true,
-          "next": false,
-          "est": "2d",
-          "tags": ["infra"],
-          "deps": [],
-          "desc": null
-        }
-      ]
-    }
-  ]
+    /* ... */
+  ],
+  "last_updated_at": "2026-05-08T10:00:00Z",
+  "change_summary": {
+    "action": "task.completed",
+    "entity_type": "task",
+    "entity_id": "RF-01",
+    "taskId": "RF-01",
+    "taskTitle": "Set up repo"
+  }
 }
 ```
+
+- `name` — optional, 1–120 chars
+- `phases` — optional, array of phase objects
+- `last_updated_at` — optional, optimistic concurrency check
+- `change_summary` — optional, dictionary used to customize the activity log entry for this update. If provided, `action` is required.
 
 **Response 200:** Same shape as `GET /api/roadmaps/{roadmap_id}`.
 
