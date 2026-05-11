@@ -54,6 +54,7 @@ interface ApiRoadmapResponse {
   owner_display_name: string
   schema_version: string
   phases: Phase[]
+  is_password_enabled: boolean
   created_at: string
   updated_at: string
 }
@@ -101,7 +102,7 @@ export interface RealtimeHandlers {
 function toRoadmap(r: ApiRoadmapResponse): Roadmap {
   return {
     project: { id: r.id, name: r.name },
-    roadmap: { id: r.id, name: r.name },
+    roadmap: { id: r.id, name: r.name, isPasswordEnabled: r.is_password_enabled },
     phases: r.phases,
     ownerDisplayName: r.owner_display_name,
     updatedAt: r.updated_at,
@@ -150,8 +151,8 @@ export async function createRoadmap(
 /**
  * Load a roadmap by ID.
  */
-export async function getRoadmap(id: string): Promise<Roadmap> {
-  const data = await requestJson<ApiRoadmapResponse>(`/api/roadmaps/${id}`)
+export async function getRoadmap(id: string, sessionToken?: string): Promise<Roadmap> {
+  const data = await requestJson<ApiRoadmapResponse>(`/api/roadmaps/${id}`, {}, sessionToken)
   return toRoadmap(data)
 }
 
@@ -468,4 +469,5 @@ export async function linkDependency(
 ): Promise<void> {
   throw new Error('Not implemented — requires backend')
 }
+
 
