@@ -13,11 +13,13 @@ interface SaveToServerModalProps {
 export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModalProps) {
   const [password, setPassword] = useState('')
   const [pwError, setPwError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     if (!open) {
       setPassword('')
       setPwError('')
+      setShowPassword(false)
     }
   }, [open])
 
@@ -34,16 +36,16 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
       open={open}
       onClose={onClose}
       icon={{ name: 'cloud' }}
-      title="Save this roadmap to your server"
-      sub="Saving to a Roadforge server unlocks collaboration. Your local copy stays on this device as a fallback."
+      title="Save this roadmap to RoadForge"
+      sub="Save to enable collaboration, share links, realtime sync, and activity logs. Your local copy stays on this browser as a fallback."
       footer={
         <>
           <button className="back" onClick={onClose}>
-            Stay local
+            Keep local
           </button>
           <span className="spacer" />
           <button className="btn primary" onClick={handleConfirm}>
-            Save and enable collaboration{' '}
+            Save to RoadForge{' '}
             <Icon name="arrow-right" size={15} stroke="#fff" />
           </button>
         </>
@@ -63,7 +65,7 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
           <div className="glyph">
             <Icon name="cloud" size={20} stroke="#fff" />
           </div>
-          <span className="lbl">Your server</span>
+          <span className="lbl">RoadForge</span>
         </div>
       </div>
 
@@ -72,8 +74,17 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
           <Icon name="users" size={13} />
         </span>
         <span className="text">
-          <b>Collaboration unlocks.</b> Invite editors and viewers through secure
-          links — no accounts required for them either.
+          <b>Collaboration:</b> Invite editors and viewers with secure
+          links. No accounts required.
+        </span>
+      </div>
+      <div className="bullet">
+        <span className="dot">
+          <Icon name="spark" size={13} />
+        </span>
+        <span className="text">
+          <b>Realtime sync:</b> Connected collaborators receive updates
+          while working on the roadmap.
         </span>
       </div>
       <div className="bullet">
@@ -81,25 +92,17 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
           <Icon name="activity" size={13} />
         </span>
         <span className="text">
-          <b>Activity log becomes available.</b> See who changed what, scoped to
-          this roadmap.
+          <b>Activity logs:</b> Track joins, saves, link changes, and
+          roadmap activity in one place.
         </span>
       </div>
       <div className="bullet">
         <span className="dot">
-          <Icon name="export" size={13} />
+          <Icon name="link" size={13} />
         </span>
         <span className="text">
-          <b>You can still export.</b> JSON, Markdown, and PDF stay one click
-          away.
-        </span>
-      </div>
-      <div className="bullet">
-        <span className="dot">
-          <Icon name="lock" size={13} />
-        </span>
-        <span className="text">
-          <b>Optional, always.</b> You can switch back to local-only at any time.
+          <b>Access elsewhere:</b> RoadForge is accountless. Keep an invite
+          link or export so you can reopen shared roadmaps elsewhere.
         </span>
       </div>
 
@@ -110,24 +113,35 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
         >
           Password (optional)
         </label>
-        <input
-          id="rm-pw"
-          className="input"
-          type="password"
-          placeholder="Protect with a password — min 6 characters"
-          value={password}
-          onChange={(e) => { setPassword(e.target.value); if (pwError) setPwError('') }}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleConfirm() }}
-          maxLength={128}
-          autoComplete="new-password"
-        />
+        <div className="password-field">
+          <input
+            id="rm-pw"
+            className="password-input"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Protect with a password — min 6 characters"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); if (pwError) setPwError('') }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleConfirm() }}
+            maxLength={128}
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={() => setShowPassword(!showPassword)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            title={showPassword ? 'Hide password' : 'Show password'}
+          >
+            <Icon name={showPassword ? 'eye-off' : 'eye'} size={16} />
+          </button>
+        </div>
         {pwError ? (
           <span style={{ fontSize: 12, color: 'var(--ember)', marginTop: 4, display: 'block' }}>
             {pwError}
           </span>
         ) : (
           <span style={{ fontSize: 12, color: 'var(--ink-4)', marginTop: 4, display: 'block' }}>
-            Anyone joining with an invite link will also need this password.
+            People joining with an invite link will also need this password.
           </span>
         )}
       </div>
@@ -137,11 +151,8 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
           <Icon name="shield" size={14} />
         </span>
         <span>
-          You&apos;re saving to{' '}
-          <span className="mono" style={{ color: 'var(--ink)' }}>
-            roadforge.local:7878
-          </span>{' '}
-          — your self-hosted server. Configure a different endpoint in settings.
+          After saving, open Share and copy a link for any device or collaborator
+          that needs access. RoadForge is accountless, so access is link-based.
         </span>
       </div>
     </Modal>

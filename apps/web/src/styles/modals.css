@@ -333,6 +333,71 @@
 .note-line .ic { color: var(--ember); flex: 0 0 auto; padding-top: 2px; }
 .note-line .mono { font-family: var(--font-mono); font-size: 12px; }
 
+/* ─── Password Field ───────────────────────────────────────────────────────── */
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 46px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all 160ms ease;
+  overflow: hidden;
+}
+.password-field:focus-within {
+  border-color: var(--ember);
+  box-shadow: 0 0 0 3px var(--lava-glow);
+  background: var(--bg-2);
+}
+.password-input {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--ink);
+  padding: 0 44px 0 14px;
+  font: inherit;
+  font-size: 14.5px;
+  line-height: normal;
+  appearance: none;
+}
+.password-input::placeholder {
+  color: var(--ink-4);
+  opacity: 1;
+}
+.password-input:-webkit-autofill,
+.password-input:-webkit-autofill:hover,
+.password-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0px 1000px var(--bg-inset) inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--ink-3);
+  transition: all 140ms ease;
+  cursor: pointer;
+  z-index: 2;
+}
+.password-toggle:hover {
+  color: var(--ember);
+  background: var(--bg-2);
+}
+
 /* ─── Bullet ───────────────────────────────────────────────────────────────── */
 .bullet {
   display: flex; gap: 12px; align-items: flex-start;
