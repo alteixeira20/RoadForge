@@ -16,7 +16,7 @@ interface ShareModalProps {
 }
 
 export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
-  const { serverRoadmapId, sessionToken } = useRoadmap()
+  const { serverRoadmapId, sessionToken, isPasswordEnabled } = useRoadmap()
   const [links, setLinks] = useState<ShareLink[]>([])
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
@@ -92,7 +92,10 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       footer={
         <>
           <span className="note">
-            <Icon name="lock" size={12} /> Share links carefully — anyone with a link can join.
+            <Icon name="lock" size={12} />{' '}
+            {isPasswordEnabled
+              ? 'This roadmap is password protected — people need both the invite link and the password to join.'
+              : 'Share links carefully — anyone with a link can join with that role.'}
           </span>
           <span className="spacer" />
           <button className="btn" onClick={onClose}>
