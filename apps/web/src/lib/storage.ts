@@ -3,6 +3,11 @@ import type { Phase, ShareRole, Theme } from '@/types/roadmap'
 const KEYS = {
   theme: 'rf:theme',
   displayName: 'rf:displayName',
+  lastRoadmapId: 'rf:lastRoadmapId',
+  activeRoadmapId: 'rf:activeRoadmapId',
+} as const
+
+const LEGACY_KEYS = {
   roadmapName: 'rf:roadmapName',
   phases: 'rf:phases',
   saved: 'rf:saved',
@@ -15,7 +20,23 @@ const KEYS = {
   updatedAt: 'rf:updatedAt',
 } as const
 
-function get(key: string): string | null {
+export interface RoadmapCache {
+  roadmapName: string
+  phases: Phase[]
+  saved: boolean
+  ownerDisplayName: string | null
+  updatedAt: string | null
+  isPasswordEnabled: boolean
+}
+
+export interface AuthCache {
+  serverRoadmapId: string
+  sessionToken: string
+  participantId: string | null
+  role: ShareRole
+}
+
+function getLocal(key: string): string | null {
   if (typeof window === 'undefined') return null
   try {
     return window.localStorage.getItem(key)
@@ -24,7 +45,7 @@ function get(key: string): string | null {
   }
 }
 
-function set(key: string, value: string): void {
+function setLocal(key: string, value: string): void {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.setItem(key, value)
@@ -33,7 +54,7 @@ function set(key: string, value: string): void {
   }
 }
 
-function remove(key: string): void {
+function removeLocal(key: string): void {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.removeItem(key)
@@ -42,109 +63,147 @@ function remove(key: string): void {
   }
 }
 
+function getSession(key: string): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.sessionStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function setSession(key: string, value: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.setItem(key, value)
+  } catch {}
+}
+
 export const storage = {
   getTheme(): Theme | null {
-    const v = get(KEYS.theme)
+    const v = getLocal(KEYS.theme)
     return v === 'dark' || v === 'light' ? v : null
   },
   setTheme(theme: Theme): void {
-    set(KEYS.theme, theme)
+    setLocal(KEYS.theme, theme)
   },
 
   getDisplayName(): string | null {
-    return get(KEYS.displayName)
+    return getLocal(KEYS.displayName)
   },
   setDisplayName(name: string): void {
-    set(KEYS.displayName, name)
+    setLocal(KEYS.displayName, name)
   },
 
-  getRoadmapName(): string | null {
-    return get(KEYS.roadmapName)
+  getLastRoadmapId(): string | null {
+    return getLocal(KEYS.lastRoadmapId)
   },
-  setRoadmapName(name: string): void {
-    set(KEYS.roadmapName, name)
+  setLastRoadmapId(id: string | null): void {
+    if (!id) removeLocal(KEYS.lastRoadmapId)
+    else setLocal(KEYS.lastRoadmapId, id)
   },
 
-  getPhases(): Phase[] | null {
-    const raw = get(KEYS.phases)
+  getActiveRoadmapId(): string | null {
+    return getSession(KEYS.activeRoadmapId)
+  },
+  setActiveRoadmapId(id: string | null): void {
+    if (!id) {
+      if (typeof window !== 'undefined') window.sessionStorage.removeItem(KEYS.activeRoadmapId)
+    } else {
+      setSession(KEYS.activeRoadmapId, id)
+    }
+  },
+
+  createLocalDraftId(): string {
+    return `local_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+  },
+
+  getRoadmapCache(id: string): RoadmapCache | null {
+    const raw = getLocal(`rf:roadmap:${id}`)
     if (!raw) return null
     try {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed as Phase[]
-      return null
+      return JSON.parse(raw) as RoadmapCache
     } catch {
       return null
     }
   },
-  setPhases(phases: Phase[]): void {
-    set(KEYS.phases, JSON.stringify(phases))
+  setRoadmapCache(id: string, cache: RoadmapCache): void {
+    setLocal(`rf:roadmap:${id}`, JSON.stringify(cache))
+  },
+  
+  getAuthCache(id: string): AuthCache | null {
+    const raw = getLocal(`rf:auth:${id}`)
+    if (!raw) return null
+    try {
+      return JSON.parse(raw) as AuthCache
+    } catch {
+      return null
+    }
+  },
+  setAuthCache(id: string, auth: AuthCache | null): void {
+    if (!auth) removeLocal(`rf:auth:${id}`)
+    else setLocal(`rf:auth:${id}`, JSON.stringify(auth))
   },
 
-  getSaved(): boolean {
-    return get(KEYS.saved) === 'true'
-  },
-  setSaved(saved: boolean): void {
-    set(KEYS.saved, String(saved))
+  clearRoadmapCache(id: string): void {
+    removeLocal(`rf:roadmap:${id}`)
+    removeLocal(`rf:auth:${id}`)
   },
 
-  getServerRoadmapId(): string | null {
-    return get(KEYS.serverRoadmapId)
-  },
-  setServerRoadmapId(value: string | null): void {
-    if (!value) remove(KEYS.serverRoadmapId)
-    else set(KEYS.serverRoadmapId, value)
-  },
+  migrateLegacyStorageIfNeeded(): string | null {
+    const serverRoadmapId = getLocal(LEGACY_KEYS.serverRoadmapId)
+    const rawPhases = getLocal(LEGACY_KEYS.phases)
+    
+    if (!serverRoadmapId && !rawPhases) {
+      return null // nothing to migrate
+    }
 
-  getIsPasswordEnabled(): boolean {
-    return get(KEYS.isPasswordEnabled) === 'true'
-  },
-  setIsPasswordEnabled(value: boolean): void {
-    set(KEYS.isPasswordEnabled, String(value))
-  },
+    let phases: Phase[] = []
+    try {
+      phases = rawPhases ? JSON.parse(rawPhases) : []
+    } catch {}
 
-  getSessionToken(): string | null {
+    const roadmapName = getLocal(LEGACY_KEYS.roadmapName) || 'v1.0 Public Launch'
+    const saved = getLocal(LEGACY_KEYS.saved) === 'true'
+    const ownerDisplayName = getLocal(LEGACY_KEYS.ownerDisplayName)
+    const updatedAt = getLocal(LEGACY_KEYS.updatedAt)
+    const isPasswordEnabled = getLocal(LEGACY_KEYS.isPasswordEnabled) === 'true'
 
-    return get(KEYS.sessionToken)
-  },
-  setSessionToken(value: string | null): void {
-    if (!value) remove(KEYS.sessionToken)
-    else set(KEYS.sessionToken, value)
-  },
+    const newId = serverRoadmapId || this.createLocalDraftId()
 
-  getParticipantId(): string | null {
-    return get(KEYS.participantId)
-  },
-  setParticipantId(value: string | null): void {
-    if (!value) remove(KEYS.participantId)
-    else set(KEYS.participantId, value)
-  },
+    const roadmapCache: RoadmapCache = {
+      roadmapName,
+      phases,
+      saved,
+      ownerDisplayName,
+      updatedAt,
+      isPasswordEnabled
+    }
+    this.setRoadmapCache(newId, roadmapCache)
 
-  getRole(): ShareRole | null {
-    const v = get(KEYS.role)
-    return v === 'owner' || v === 'editor' || v === 'viewer' ? v : null
-  },
-  setRole(value: ShareRole | null): void {
-    if (!value) remove(KEYS.role)
-    else set(KEYS.role, value)
-  },
+    if (serverRoadmapId) {
+      const sessionToken = getLocal(LEGACY_KEYS.sessionToken)
+      const participantId = getLocal(LEGACY_KEYS.participantId)
+      const roleRaw = getLocal(LEGACY_KEYS.role)
+      const role: ShareRole = roleRaw === 'owner' || roleRaw === 'editor' || roleRaw === 'viewer' ? roleRaw : 'viewer'
 
-  getOwnerDisplayName(): string | null {
-    return get(KEYS.ownerDisplayName)
-  },
-  setOwnerDisplayName(value: string | null): void {
-    if (!value) remove(KEYS.ownerDisplayName)
-    else set(KEYS.ownerDisplayName, value)
-  },
+      if (sessionToken) {
+        const authCache: AuthCache = {
+          serverRoadmapId,
+          sessionToken,
+          participantId,
+          role
+        }
+        this.setAuthCache(serverRoadmapId, authCache)
+      }
+    }
 
-  getUpdatedAt(): string | null {
-    return get(KEYS.updatedAt)
-  },
-  setUpdatedAt(value: string | null): void {
-    if (!value) remove(KEYS.updatedAt)
-    else set(KEYS.updatedAt, value)
-  },
+    this.setActiveRoadmapId(newId)
+    this.setLastRoadmapId(newId)
 
-  clearAll(): void {
-    Object.values(KEYS).forEach(remove)
-  },
+    // Clear legacy keys
+    Object.values(LEGACY_KEYS).forEach(removeLocal)
+
+    return newId
+  }
 }

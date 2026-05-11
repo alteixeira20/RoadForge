@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Icon } from '@/components/ui/Icon'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useRoadmap } from '@/context/RoadmapContext'
+import { storage } from '@/lib/storage'
 import { joinRoadmap, getRoadmap } from '@/services/roadmap.service'
+import type { ShareRole } from '@/types/roadmap'
 
 export function JoinPage() {
   const router = useRouter()
@@ -66,10 +68,20 @@ export function JoinPage() {
         name.trim() || undefined,
         password || undefined,
       )
+      
+      storage.setActiveRoadmapId(roadmapId)
+      storage.setLastRoadmapId(roadmapId)
+      storage.setAuthCache(roadmapId, {
+        serverRoadmapId: roadmapId,
+        sessionToken,
+        participantId,
+        role: role as ShareRole,
+      })
+
       setServerRoadmapId(roadmapId)
       setSessionToken(sessionToken)
       setParticipantId(participantId)
-      setRole(role as 'owner' | 'editor' | 'viewer')
+      setRole(role as ShareRole)
       if (name.trim()) setDisplayName(name.trim())
 
       try {
@@ -77,6 +89,15 @@ export function JoinPage() {
         setRoadmapName(roadmap.roadmap.name)
         setPhases(roadmap.phases)
         setOwnerDisplayName(roadmap.ownerDisplayName)
+        
+        storage.setRoadmapCache(roadmapId, {
+          roadmapName: roadmap.roadmap.name,
+          phases: roadmap.phases,
+          saved: true,
+          ownerDisplayName: roadmap.ownerDisplayName,
+          updatedAt: roadmap.updatedAt,
+          isPasswordEnabled: !!roadmap.roadmap.isPasswordEnabled,
+        })
       } catch {
         // non-fatal — workspace will show whatever's cached
       }

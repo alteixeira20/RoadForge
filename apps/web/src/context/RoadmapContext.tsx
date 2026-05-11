@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import type { Phase, ShareRole } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
-import { storage } from '@/lib/storage'
+import { storage, type RoadmapCache } from '@/lib/storage'
 import { getRoadmap, getEventTicket, subscribeToRoadmapEvents, getLocks } from '@/services/roadmap.service'
 
 interface RoadmapContextValue {
@@ -13,31 +13,22 @@ interface RoadmapContextValue {
   setRoadmapName: (name: string) => void
   phases: Phase[]
   setPhases: (phases: Phase[]) => void
-  /** Whether the roadmap has been saved to the server. */
   saved: boolean
   setSaved: (saved: boolean) => void
-  /** Server-side roadmap record ID. Null until the roadmap has been saved to the server. */
   serverRoadmapId: string | null
   setServerRoadmapId: (id: string | null) => void
-  /** Session token returned by createRoadmap or join. Null until first server save. */
   sessionToken: string | null
   setSessionToken: (value: string | null) => void
-  /** Participant ID returned by join. Null for the owner flow (create). */
   participantId: string | null
   setParticipantId: (value: string | null) => void
-  /** Collaboration role for this session. */
   role: ShareRole | null
   setRole: (value: ShareRole | null) => void
-  /** Whether the roadmap is password protected. */
   isPasswordEnabled: boolean
   setIsPasswordEnabled: (value: boolean) => void
-  /** Display name of the roadmap owner (loaded from server). Null until fetched. */
   ownerDisplayName: string | null
   setOwnerDisplayName: (value: string | null) => void
-  /** Last updated timestamp from server. */
   updatedAt: string | null
   setUpdatedAt: (value: string | null) => void
-  /** Active soft locks for collaboration. */
   locks: Record<string, { participantId: string; displayName: string }>
   resetToSample: () => void
 }
@@ -58,76 +49,86 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [updatedAt, setUpdatedAtState] = useState<string | null>(null)
   const [locks, setLocks] = useState<Record<string, { participantId: string; displayName: string }>>({})
 
-  // Hydrate from localStorage once on client mount, then re-sync from server if an ID is available.
+  // Hydrate once on mount
   useEffect(() => {
     let cancelled = false
 
     const storedDisplayName = storage.getDisplayName()
     if (storedDisplayName !== null) setDisplayNameState(storedDisplayName)
 
-    const storedRoadmapName = storage.getRoadmapName()
-    if (storedRoadmapName !== null) setRoadmapNameState(storedRoadmapName)
+    // Migration
+    storage.migrateLegacyStorageIfNeeded()
 
-    const storedPhases = storage.getPhases()
-    if (storedPhases !== null) setPhasesState(storedPhases)
-
-    setSavedState(storage.getSaved())
-
-    const storedOwnerDisplayName = storage.getOwnerDisplayName()
-    if (storedOwnerDisplayName !== null) setOwnerDisplayNameState(storedOwnerDisplayName)
-
-    const storedUpdatedAt = storage.getUpdatedAt()
-    if (storedUpdatedAt !== null) setUpdatedAtState(storedUpdatedAt)
-
-    const storedServerId = storage.getServerRoadmapId()
-    const storedSessionToken = storage.getSessionToken()
-    const storedIsPasswordEnabled = storage.getIsPasswordEnabled()
-
-    setIsPasswordEnabledState(storedIsPasswordEnabled)
-
-    if (storedServerId !== null) {
-      setServerRoadmapIdState(storedServerId)
-      
-      // Only call the server if we have a session token.
-      if (storedSessionToken !== null) {
-        setSessionTokenState(storedSessionToken)
-        getRoadmap(storedServerId, storedSessionToken)
-          .then((loaded) => {
-            if (cancelled) return
-            setRoadmapNameState(loaded.roadmap.name)
-            setPhasesState(loaded.phases)
-            setOwnerDisplayNameState(loaded.ownerDisplayName)
-            storage.setOwnerDisplayName(loaded.ownerDisplayName)
-            setUpdatedAtState(loaded.updatedAt)
-            storage.setUpdatedAt(loaded.updatedAt)
-            setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
-            storage.setIsPasswordEnabled(!!loaded.roadmap.isPasswordEnabled)
-            setSavedState(true)
-          })
-          .catch((err: Error) => {
-            if (cancelled) return
-            console.error('Failed to hydrate roadmap from server:', err)
-            // If 401/403, our session is invalid. Clear it so the user can rejoin.
-            if (err.message.includes('401') || err.message.includes('403')) {
-              storage.setServerRoadmapId(null)
-              storage.setSessionToken(null)
-              storage.setParticipantId(null)
-              storage.setRole(null)
-              storage.setIsPasswordEnabled(false)
-              setServerRoadmapIdState(null)
-              setSessionTokenState(null)
-              setParticipantIdState(null)
-              setRoleState(null)
-              setIsPasswordEnabledState(false)
-            }
-          })
-      }
+    let targetId = storage.getActiveRoadmapId()
+    if (!targetId) {
+      targetId = storage.getLastRoadmapId()
+    }
+    if (!targetId) {
+      // Default local fallback
+      targetId = storage.createLocalDraftId()
+      storage.setActiveRoadmapId(targetId)
+      storage.setLastRoadmapId(targetId)
+      storage.setRoadmapCache(targetId, {
+        roadmapName: 'v1.0 Public Launch',
+        phases: SAMPLE_ROADMAP.phases,
+        saved: false,
+        ownerDisplayName: null,
+        updatedAt: null,
+        isPasswordEnabled: false,
+      })
+    } else {
+      storage.setActiveRoadmapId(targetId)
     }
 
-    const storedParticipantId = storage.getParticipantId()
-    if (storedParticipantId !== null) setParticipantIdState(storedParticipantId)
-    const storedRole = storage.getRole()
-    if (storedRole !== null) setRoleState(storedRole)
+    const rc = storage.getRoadmapCache(targetId)
+    const ac = storage.getAuthCache(targetId)
+
+    if (rc) {
+      setRoadmapNameState(rc.roadmapName)
+      setPhasesState(rc.phases)
+      setSavedState(rc.saved)
+      setOwnerDisplayNameState(rc.ownerDisplayName)
+      setUpdatedAtState(rc.updatedAt)
+      setIsPasswordEnabledState(rc.isPasswordEnabled)
+    }
+
+    if (ac) {
+      setServerRoadmapIdState(ac.serverRoadmapId)
+      setSessionTokenState(ac.sessionToken)
+      setParticipantIdState(ac.participantId)
+      setRoleState(ac.role)
+
+      getRoadmap(ac.serverRoadmapId, ac.sessionToken)
+        .then((loaded) => {
+          if (cancelled) return
+          setRoadmapNameState(loaded.roadmap.name)
+          setPhasesState(loaded.phases)
+          setOwnerDisplayNameState(loaded.ownerDisplayName)
+          setUpdatedAtState(loaded.updatedAt)
+          setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
+          setSavedState(true)
+
+          storage.setRoadmapCache(targetId, {
+            roadmapName: loaded.roadmap.name,
+            phases: loaded.phases,
+            saved: true,
+            ownerDisplayName: loaded.ownerDisplayName,
+            updatedAt: loaded.updatedAt,
+            isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
+          })
+        })
+        .catch((err: Error) => {
+          if (cancelled) return
+          console.error('Failed to hydrate roadmap from server:', err)
+          if (err.message.includes('401') || err.message.includes('403')) {
+            storage.setAuthCache(targetId, null)
+            setServerRoadmapIdState(null)
+            setSessionTokenState(null)
+            setParticipantIdState(null)
+            setRoleState(null)
+          }
+        })
+    }
 
     return () => { cancelled = true }
   }, [])
@@ -143,7 +144,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
     const startSync = async () => {
       try {
-        // Initial fetch of active locks
         const activeLocks = await getLocks(serverRoadmapId, sessionToken)
         const lockMap: Record<string, { participantId: string; displayName: string }> = {}
         for (const l of activeLocks) {
@@ -151,20 +151,31 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
         }
         setLocks(lockMap)
 
-        // Get ticket and open SSE
         const { ticket } = await getEventTicket(serverRoadmapId, sessionToken)
         unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, ticket, {
           onUpdated: (payload) => {
             if (payload.participant_id === participantId) return
-            // Background refresh on remote update
             getRoadmap(serverRoadmapId, sessionToken).then((loaded) => {
               setRoadmapNameState(loaded.roadmap.name)
               setPhasesState(loaded.phases)
               setOwnerDisplayNameState(loaded.ownerDisplayName)
               setUpdatedAtState(loaded.updatedAt)
-              storage.setUpdatedAt(loaded.updatedAt)
               setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
-              storage.setIsPasswordEnabled(!!loaded.roadmap.isPasswordEnabled)
+
+              const activeId = storage.getActiveRoadmapId()
+              if (activeId) {
+                const rc = storage.getRoadmapCache(activeId)
+                if (rc) {
+                  storage.setRoadmapCache(activeId, {
+                    ...rc,
+                    roadmapName: loaded.roadmap.name,
+                    phases: loaded.phases,
+                    ownerDisplayName: loaded.ownerDisplayName,
+                    updatedAt: loaded.updatedAt,
+                    isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
+                  })
+                }
+              }
             })
           },
           onLockAcquired: (payload) => {
@@ -189,7 +200,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         const now = Date.now()
-        // Reconnect if hidden for more than 60 seconds
         if (hiddenAt && now - hiddenAt > 60_000) {
           if (unsubscribe) unsubscribe()
           startSync()
@@ -216,59 +226,134 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
   const setRoadmapName = useCallback((name: string) => {
     setRoadmapNameState(name)
-    storage.setRoadmapName(name)
+    const id = storage.getActiveRoadmapId()
+    if (id) {
+      const rc = storage.getRoadmapCache(id)
+      if (rc) storage.setRoadmapCache(id, { ...rc, roadmapName: name })
+    }
   }, [])
 
   const setPhases = useCallback((p: Phase[]) => {
     setPhasesState(p)
-    storage.setPhases(p)
+    const id = storage.getActiveRoadmapId()
+    if (id) {
+      const rc = storage.getRoadmapCache(id)
+      if (rc) storage.setRoadmapCache(id, { ...rc, phases: p })
+    }
   }, [])
 
   const setSaved = useCallback((s: boolean) => {
     setSavedState(s)
-    storage.setSaved(s)
+    const id = storage.getActiveRoadmapId()
+    if (id) {
+      const rc = storage.getRoadmapCache(id)
+      if (rc) storage.setRoadmapCache(id, { ...rc, saved: s })
+    }
   }, [])
 
   const setServerRoadmapId = useCallback((id: string | null) => {
     setServerRoadmapIdState(id)
-    storage.setServerRoadmapId(id)
+    const currentActiveId = storage.getActiveRoadmapId()
+    
+    if (id && currentActiveId && currentActiveId !== id) {
+      // Migrate from local draft to server ID
+      const rc = storage.getRoadmapCache(currentActiveId)
+      if (rc) storage.setRoadmapCache(id, rc)
+      const ac = storage.getAuthCache(currentActiveId)
+      if (ac) storage.setAuthCache(id, ac)
+      
+      storage.clearRoadmapCache(currentActiveId)
+      storage.setActiveRoadmapId(id)
+      storage.setLastRoadmapId(id)
+    }
+    
+    const targetId = storage.getActiveRoadmapId()
+    if (targetId) {
+      if (id) {
+        const ac = storage.getAuthCache(targetId)
+        storage.setAuthCache(targetId, {
+          ...(ac || { sessionToken: '', participantId: null, role: 'viewer' }),
+          serverRoadmapId: id,
+        })
+      } else {
+        storage.setAuthCache(targetId, null)
+      }
+    }
   }, [])
 
   const setSessionToken = useCallback((value: string | null) => {
     setSessionTokenState(value)
-    storage.setSessionToken(value)
+    const id = storage.getActiveRoadmapId()
+    if (id && value) {
+      const ac = storage.getAuthCache(id)
+      storage.setAuthCache(id, { ...(ac || { serverRoadmapId: '', participantId: null, role: 'viewer' }), sessionToken: value })
+    }
   }, [])
 
   const setParticipantId = useCallback((value: string | null) => {
     setParticipantIdState(value)
-    storage.setParticipantId(value)
+    const id = storage.getActiveRoadmapId()
+    if (id) {
+      const ac = storage.getAuthCache(id)
+      if (ac) storage.setAuthCache(id, { ...ac, participantId: value })
+    }
   }, [])
 
   const setRole = useCallback((value: ShareRole | null) => {
     setRoleState(value)
-    storage.setRole(value)
+    const id = storage.getActiveRoadmapId()
+    if (id && value) {
+      const ac = storage.getAuthCache(id)
+      if (ac) storage.setAuthCache(id, { ...ac, role: value })
+    }
   }, [])
 
   const setIsPasswordEnabled = useCallback((value: boolean) => {
     setIsPasswordEnabledState(value)
-    storage.setIsPasswordEnabled(value)
+    const id = storage.getActiveRoadmapId()
+    if (id) {
+      const rc = storage.getRoadmapCache(id)
+      if (rc) storage.setRoadmapCache(id, { ...rc, isPasswordEnabled: value })
+    }
   }, [])
 
   const setOwnerDisplayName = useCallback((value: string | null) => {
     setOwnerDisplayNameState(value)
-    storage.setOwnerDisplayName(value)
+    const id = storage.getActiveRoadmapId()
+    if (id) {
+      const rc = storage.getRoadmapCache(id)
+      if (rc) storage.setRoadmapCache(id, { ...rc, ownerDisplayName: value })
+    }
   }, [])
 
   const setUpdatedAt = useCallback((value: string | null) => {
     setUpdatedAtState(value)
-    storage.setUpdatedAt(value)
+    const id = storage.getActiveRoadmapId()
+    if (id) {
+      const rc = storage.getRoadmapCache(id)
+      if (rc) storage.setRoadmapCache(id, { ...rc, updatedAt: value })
+    }
   }, [])
 
   const resetToSample = useCallback(() => {
-    storage.clearAll()
-    setDisplayNameState('')
-    setRoadmapNameState('v1.0 Public Launch')
-    setPhasesState(SAMPLE_ROADMAP.phases)
+    const newId = storage.createLocalDraftId()
+    storage.setActiveRoadmapId(newId)
+    storage.setLastRoadmapId(newId)
+    
+    const cache: RoadmapCache = {
+      roadmapName: 'v1.0 Public Launch',
+      phases: SAMPLE_ROADMAP.phases,
+      saved: false,
+      ownerDisplayName: null,
+      updatedAt: null,
+      isPasswordEnabled: false,
+    }
+    storage.setRoadmapCache(newId, cache)
+    storage.setAuthCache(newId, null)
+
+    // Note: We intentionally don't wipe other roadmap caches.
+    setRoadmapNameState(cache.roadmapName)
+    setPhasesState(cache.phases)
     setSavedState(false)
     setServerRoadmapIdState(null)
     setSessionTokenState(null)

@@ -53,11 +53,10 @@ curl http://localhost:7878/api/health
 3. Click confirm.
 4. Toast: "Saved · collaboration enabled".
 
-**Check localStorage (`F12 → Application → Local Storage → localhost:3020`):**
-- `rf:saved` = `true`
-- `rf:serverRoadmapId` = a string starting with `rm_`
-- `rf:sessionToken` = a string starting with `sess_`
-- `rf:role` = `owner`
+**Check localStorage/sessionStorage (`F12 → Application`):**
+- `sessionStorage` `rf:activeRoadmapId` = a string starting with `rm_`
+- `localStorage` `rf:roadmap:rm_...` = JSON object with phases
+- `localStorage` `rf:auth:rm_...` = JSON object with role, sessionToken
 
 ---
 
@@ -65,11 +64,21 @@ curl http://localhost:7878/api/health
 
 1. Refresh `http://localhost:3020`.
 
-**Expected behavior:** On refresh, the app hydrates immediately from `localStorage`. `RoadmapContext` also calls `GET /api/roadmaps/{id}` in the background and replaces roadmap name, phases, and `ownerDisplayName` with the server snapshot.
+**Expected behavior:** On refresh, the app hydrates immediately from scoped `localStorage` via the active ID in `sessionStorage`. `RoadmapContext` also calls `GET /api/roadmaps/{id}` in the background and replaces roadmap name, phases, and `ownerDisplayName` with the server snapshot.
 
 ---
 
-## 4. Open share modal
+## 4. Multi-Roadmap Isolation
+
+1. **Tab A:** Keep the roadmap from Step 2 open.
+2. **Tab B:** Open a new tab to `http://localhost:3020`. Create a new roadmap titled "Roadmap B" and save it.
+3. **Tab A:** Refresh Tab A. It should still show the first roadmap.
+4. **Tab B:** Refresh Tab B. It should still show Roadmap B.
+5. **Check Storage:** `sessionStorage` in Tab A should hold the first ID, and Tab B should hold the second. `localStorage` should contain cache entries for both `rm_` IDs without overwriting each other.
+
+---
+
+## 5. Open share modal
 
 1. Click **Share** in the app header.
 2. Confirm the modal loads three share links: Owner, Editor invite, Viewer (read-only).

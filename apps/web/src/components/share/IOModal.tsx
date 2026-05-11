@@ -6,7 +6,6 @@ import { Icon } from '@/components/ui/Icon'
 import { EXPORT_OPTIONS } from '@/data/sample-roadmap'
 import { exportRoadmap } from '@/services/roadmap.service'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { storage } from '@/lib/storage'
 import { validateImportedPhases, IMPORT_MAX_BYTES } from '@/lib/roadmap-validation'
 import type { IconName } from '@/components/ui/Icon'
 
@@ -63,7 +62,6 @@ export function IOModal({ open, onClose, onToast }: IOModalProps) {
         const parsed = JSON.parse(ev.target?.result as string)
         const validated = validateImportedPhases(parsed)
         setPhases(validated)
-        storage.setPhases(validated)
         onToast('Roadmap imported from JSON')
         onClose()
       } catch {
