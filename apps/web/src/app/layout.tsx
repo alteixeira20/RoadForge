@@ -19,7 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Roadforge — Open-source roadmap planning',
+  title: 'RoadForge',
   description:
     'Plan in phases. Forge your roadmap locally — no account, no sign-up. Self-hostable, AI-friendly.',
 }

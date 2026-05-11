@@ -150,6 +150,29 @@ export const storage = {
     removeLocal(`rf:auth:${id}`)
   },
 
+  listRoadmapCaches(): Array<{ id: string; cache: RoadmapCache; auth: AuthCache | null }> {
+    if (typeof window === 'undefined') return []
+    const results: Array<{ id: string; cache: RoadmapCache; auth: AuthCache | null }> = []
+    
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i)
+      if (key && key.startsWith('rf:roadmap:')) {
+        const id = key.substring('rf:roadmap:'.length)
+        const cache = this.getRoadmapCache(id)
+        if (cache) {
+          const auth = this.getAuthCache(id)
+          results.push({ id, cache, auth })
+        }
+      }
+    }
+    
+    return results.sort((a, b) => {
+      const aTime = a.cache.updatedAt ? new Date(a.cache.updatedAt).getTime() : 0
+      const bTime = b.cache.updatedAt ? new Date(b.cache.updatedAt).getTime() : 0
+      return bTime - aTime
+    })
+  },
+
   migrateLegacyStorageIfNeeded(): string | null {
     const serverRoadmapId = getLocal(LEGACY_KEYS.serverRoadmapId)
     const rawPhases = getLocal(LEGACY_KEYS.phases)

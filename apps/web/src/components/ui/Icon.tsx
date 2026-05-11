@@ -16,6 +16,7 @@ export type IconName =
   | 'device'
   | 'share'
   | 'users'
+  | 'user'
   | 'import'
   | 'export'
   | 'link'
@@ -170,6 +171,13 @@ export function Icon({ name, size = 16, stroke = 'currentColor', strokeWidth = 1
           <path d="M3 20a6 6 0 0 1 12 0" />
           <circle cx="17" cy="9" r="2.5" />
           <path d="M15 20a5 5 0 0 1 6 0" />
+        </svg>
+      )
+    case 'user':
+      return (
+        <svg {...s}>
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
         </svg>
       )
     case 'import':

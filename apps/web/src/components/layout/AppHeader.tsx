@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Icon } from '@/components/ui/Icon'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { RoadmapSwitcher } from '@/components/roadmap/RoadmapSwitcher'
 
 interface AppHeaderProps {
   roadmapName: string
@@ -17,7 +18,6 @@ interface AppHeaderProps {
 
 export function AppHeader({
   roadmapName,
-  displayName,
   saved,
   readOnly = false,
   onSave,
@@ -25,13 +25,6 @@ export function AppHeader({
   onIO,
   onCreateOwn,
 }: AppHeaderProps) {
-  const initials = ((displayName || 'You')
-    .split(' ')
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join('') || 'Y'
-  ).toUpperCase()
-
   return (
     <header className="app-header">
       <Link href="/" className="brand-mini" style={{ cursor: 'pointer', textDecoration: 'none' }}>
@@ -112,9 +105,7 @@ export function AppHeader({
           </button>
         )}
         <ThemeToggle />
-        <span className="avatar" title={displayName}>
-          {initials}
-        </span>
+        <RoadmapSwitcher />
       </div>
     </header>
   )
