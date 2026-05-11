@@ -5,6 +5,8 @@ import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { acquireLock, releaseLock } from '@/services/roadmap.service'
 import { SubtaskForm, DependencyPicker } from './TaskActionForms'
+import { useToastState } from '@/hooks/useToastState'
+import { Toast } from '@/components/ui/Toast'
 import type { Task } from '@/types/roadmap'
 
 interface TaskRowProps {
@@ -89,6 +91,8 @@ export function TaskRow({
   const [isEditing, setIsEditing] = useState(false)
   const [editDraft, setEditDraft] = useState<Partial<Task>>({})
 
+  const { toast, showToast } = useToastState()
+
   const target = `task:${task.id}`
   const lock = locks[target]
   const isLockedByMe = lock?.participantId === participantId
@@ -105,9 +109,59 @@ export function TaskRow({
     }
   }, [expanded])
 
+  // ─── Lock lifecycle ──────────────────────────────────────────────────────────
+
+  const activeForm = isEditing || showSubtaskForm || showDepPicker
+
+  const tryAcquireEditLock = async (): Promise<boolean> => {
+    if (readOnly) return false
+    if (!serverRoadmapId || !sessionToken) return true
+    
+    try {
+      await acquireLock(serverRoadmapId, target, sessionToken)
+      return true
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('409')) {
+        const holder = lock?.displayName || 'Another participant'
+        showToast(`${holder} is editing this task.`)
+      } else {
+        showToast('Could not acquire lock.')
+      }
+      return false
+    }
+  }
+
+  useEffect(() => {
+    if (!activeForm || readOnly || !serverRoadmapId || !sessionToken) return
+
+    let interval: ReturnType<typeof setInterval> | null = null
+
+    const tryAcquire = async () => {
+      try {
+        await acquireLock(serverRoadmapId, target, sessionToken)
+      } catch (_err) {
+        // Silently fail on refresh
+      }
+    }
+
+    // Refresh lock every 20s (TTL is 30s)
+    interval = setInterval(tryAcquire, 20_000)
+
+    return () => {
+      if (interval) clearInterval(interval)
+      releaseLock(serverRoadmapId, target, sessionToken).catch(() => {
+        // Silently fail on release (TTL will handle it)
+      })
+    }
+  }, [activeForm, readOnly, serverRoadmapId, sessionToken, target])
+
   // ─── Actions ──────────────────────────────────────────────────────────────
 
-  const handleStartEdit = () => {
+  const handleStartEdit = async () => {
+    const success = await tryAcquireEditLock()
+    if (!success) return
+
     setEditDraft({
       title: task.title,
       est: task.est,
@@ -135,33 +189,6 @@ export function TaskRow({
       setTimeout(() => el.classList.remove('highlight-flash'), 2000)
     }
   }
-
-  // ─── Lock lifecycle ──────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!expanded || readOnly || !serverRoadmapId || !sessionToken) return
-
-    let interval: ReturnType<typeof setInterval> | null = null
-
-    const tryAcquire = async () => {
-      try {
-        await acquireLock(serverRoadmapId, target, sessionToken)
-      } catch (err) {
-        console.error('Failed to acquire lock', err)
-      }
-    }
-
-    tryAcquire()
-    // Refresh lock every 20s (TTL is 30s)
-    interval = setInterval(tryAcquire, 20_000)
-
-    return () => {
-      if (interval) clearInterval(interval)
-      releaseLock(serverRoadmapId, target, sessionToken).catch(() => {
-        // Silently fail on release (TTL will handle it)
-      })
-    }
-  }, [expanded, readOnly, serverRoadmapId, sessionToken, target])
 
   // ─── Rendering ───────────────────────────────────────────────────────────────
 
@@ -415,12 +442,18 @@ export function TaskRow({
                   ) : (
                     <div className="actions">
                       {!isNested && (
-                        <button className="btn sm" onClick={() => setShowSubtaskForm(true)}>
+                        <button className="btn sm" onClick={async () => {
+                          const success = await tryAcquireEditLock()
+                          if (success) setShowSubtaskForm(true)
+                        }}>
                           <Icon name="plus" size={13} /> Add subtask
                         </button>
                       )}
                       {!isNested && (
-                        <button className="btn sm" onClick={() => setShowDepPicker(true)}>
+                        <button className="btn sm" onClick={async () => {
+                          const success = await tryAcquireEditLock()
+                          if (success) setShowDepPicker(true)
+                        }}>
                           <Icon name="link" size={13} /> Link dependency
                         </button>
                       )}
@@ -436,6 +469,7 @@ export function TaskRow({
           )}
         </div>
       )}
+      {toast && <Toast message={toast} />}
     </div>
   )
 }
