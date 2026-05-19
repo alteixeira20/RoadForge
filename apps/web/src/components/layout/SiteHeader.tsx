@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Brand } from '@/components/ui/Brand'
 import { Icon } from '@/components/ui/Icon'
+import { RoadmapSwitcher } from '@/components/roadmap/RoadmapSwitcher'
 
 interface SiteHeaderProps {
   onCreate: () => void
@@ -38,6 +39,11 @@ export function SiteHeader({ onCreate }: SiteHeaderProps) {
         <button className="btn primary" onClick={onCreate}>
           Create roadmap
         </button>
+        <RoadmapSwitcher
+          variant="header"
+          hideWhenEmpty
+          label="Open saved roadmaps"
+        />
       </div>
     </header>
   )

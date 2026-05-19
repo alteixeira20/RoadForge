@@ -1,13 +1,25 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { storage } from '@/lib/storage'
 import { joinRoadmap, getRoadmap } from '@/services/roadmap.service'
 import type { ShareRole } from '@/types/roadmap'
 
-export function RoadmapSwitcher() {
+interface RoadmapSwitcherProps {
+  variant?: 'header' | 'compact' | 'workspace'
+  hideWhenEmpty?: boolean
+  label?: string
+}
+
+export function RoadmapSwitcher({
+  variant = 'workspace',
+  hideWhenEmpty = false,
+  label = 'Open workspace menu',
+}: RoadmapSwitcherProps) {
+  const router = useRouter()
   const {
     displayName,
     activeRoadmapId,
@@ -38,6 +50,10 @@ export function RoadmapSwitcher() {
   }, [isOpen])
 
   const caches = storage.listRoadmapCaches()
+  const meaningfulCaches = caches.filter(({ cache, auth }) => auth || cache.saved)
+  const visibleCaches = hideWhenEmpty ? meaningfulCaches : caches
+
+  if (hideWhenEmpty && meaningfulCaches.length === 0) return null
 
   const initials = ((displayName || 'You')
     .split(' ')
@@ -49,6 +65,13 @@ export function RoadmapSwitcher() {
   const handleCreateNew = () => {
     resetToSample()
     setIsOpen(false)
+    if (variant !== 'workspace') router.push('/workspace')
+  }
+
+  const handleActivateRoadmap = (id: string) => {
+    activateRoadmap(id)
+    setIsOpen(false)
+    if (variant !== 'workspace') router.push('/workspace')
   }
 
   const handleJoin = async () => {
@@ -100,6 +123,7 @@ export function RoadmapSwitcher() {
       setInviteLink('')
       setPassword('')
       setNeedsPassword(false)
+      if (variant !== 'workspace') router.push(role === 'viewer' ? '/shared' : '/workspace')
       
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
@@ -118,15 +142,17 @@ export function RoadmapSwitcher() {
     }
   }
 
+  const isWorkspaceVariant = variant === 'workspace'
+
   return (
-    <div className="roadmap-switcher" ref={menuRef} style={{ position: 'relative' }}>
+    <div className={`roadmap-switcher ${variant}`} ref={menuRef} style={{ position: 'relative' }}>
       <button 
-        className="avatar" 
-        title="Open workspace menu"
+        className={isWorkspaceVariant ? 'avatar' : 'iconbtn'}
+        title={label}
         onClick={() => setIsOpen(!isOpen)}
-        aria-label="Open workspace menu"
+        aria-label={label}
       >
-        {initials}
+        {isWorkspaceVariant ? initials : <Icon name="device" size={16} />}
       </button>
 
       {isOpen && (
@@ -150,18 +176,15 @@ export function RoadmapSwitcher() {
           </div>
           
           <div style={{ maxHeight: 300, overflowY: 'auto', padding: 8 }}>
-            {caches.length === 0 ? (
+            {visibleCaches.length === 0 ? (
               <div style={{ padding: '16px', textAlign: 'center', fontSize: 13, color: 'var(--ink-3)' }}>
                 No stored roadmaps.
               </div>
             ) : (
-              caches.map(({ id, cache, auth }) => (
+              visibleCaches.map(({ id, cache, auth }) => (
                 <button
                   key={id}
-                  onClick={() => {
-                    activateRoadmap(id)
-                    setIsOpen(false)
-                  }}
+                  onClick={() => handleActivateRoadmap(id)}
                   style={{
                     width: '100%',
                     textAlign: 'left',
