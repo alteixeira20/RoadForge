@@ -13,6 +13,19 @@ const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:7878'
 ).replace(/\/$/, '')
 
+export class ApiConnectionError extends Error {
+  constructor() {
+    super('Could not reach the RoadForge API.')
+    this.name = 'ApiConnectionError'
+  }
+}
+
+export function isApiConnectionError(error: unknown): error is ApiConnectionError {
+  return error instanceof ApiConnectionError || (
+    error instanceof Error && error.name === 'ApiConnectionError'
+  )
+}
+
 // ─── HTTP helper ───────────────────────────────────────────────────────────────
 
 async function requestJson<T>(
@@ -27,10 +40,15 @@ async function requestJson<T>(
   if (sessionToken) {
     headers['Authorization'] = `Bearer ${sessionToken}`
   }
-  const res = await fetch(API_BASE_URL + path, {
-    ...options,
-    headers: { ...headers, ...(options.headers as Record<string, string> | undefined) },
-  })
+  let res: Response
+  try {
+    res = await fetch(API_BASE_URL + path, {
+      ...options,
+      headers: { ...headers, ...(options.headers as Record<string, string> | undefined) },
+    })
+  } catch {
+    throw new ApiConnectionError()
+  }
   // 204 No Content — no body to parse
   if (res.status === 204) return undefined as T
   if (!res.ok) {
@@ -471,5 +489,4 @@ export async function linkDependency(
 ): Promise<void> {
   throw new Error('Not implemented — requires backend')
 }
-
 

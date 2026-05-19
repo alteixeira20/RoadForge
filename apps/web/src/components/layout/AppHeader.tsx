@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { Icon } from '@/components/ui/Icon'
+import { Brand } from '@/components/ui/Brand'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { RoadmapSwitcher } from '@/components/roadmap/RoadmapSwitcher'
 
@@ -27,35 +27,10 @@ export function AppHeader({
 }: AppHeaderProps) {
   return (
     <header className="app-header">
-      <Link href="/" className="brand-mini" style={{ cursor: 'pointer', textDecoration: 'none' }}>
-        <div
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: 6,
-            background: 'linear-gradient(180deg, #2a2018, #161114)',
-            border: '1px solid var(--border-strong)',
-            display: 'grid',
-            placeItems: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'radial-gradient(circle at 50% 110%, var(--molten), transparent 60%)',
-              opacity: 0.95,
-            }}
-          />
-          <Icon name="anvil" size={13} stroke="#f5853f" strokeWidth={1.7} />
-        </div>
-        <span>Roadforge</span>
-      </Link>
+      <Brand href="/" className="brand-mini" />
 
       <div className="crumbs">
-        <span>Roadforge</span>
+        <span>RoadForge</span>
         <span className="sep">/</span>
         <span className="active">{roadmapName}</span>
       </div>

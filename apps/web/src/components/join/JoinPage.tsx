@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Brand } from '@/components/ui/Brand'
 import { Icon } from '@/components/ui/Icon'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useRoadmap } from '@/context/RoadmapContext'
@@ -36,12 +37,7 @@ export function JoinPage() {
       <div className="join-page">
         <div className="join-card">
           <div className="top">
-            <div className="brand">
-              <div className="mark">
-                <Icon name="anvil" size={15} stroke="#f5853f" strokeWidth={1.7} />
-              </div>
-              <span>Roadforge</span>
-            </div>
+            <Brand />
           </div>
           <h1>Invalid invite link</h1>
           <p className="sum">
@@ -85,7 +81,7 @@ export function JoinPage() {
       if (name.trim()) setDisplayName(name.trim())
 
       try {
-        const roadmap = await getRoadmap(roadmapId)
+        const roadmap = await getRoadmap(roadmapId, sessionToken)
         setRoadmapName(roadmap.roadmap.name)
         setPhases(roadmap.phases)
         setOwnerDisplayName(roadmap.ownerDisplayName)
@@ -121,12 +117,7 @@ export function JoinPage() {
     <div className="join-page">
       <div className="join-card">
         <div className="top">
-          <div className="brand">
-            <div className="mark">
-              <Icon name="anvil" size={15} stroke="#f5853f" strokeWidth={1.7} />
-            </div>
-            <span>Roadforge</span>
-          </div>
+          <Brand />
           <span style={{ color: 'var(--ink-4)' }}>·</span>
           <span style={{ fontSize: 13 }}>You&apos;ve been invited.</span>
         </div>
@@ -184,7 +175,7 @@ export function JoinPage() {
             <Icon name="lock" size={14} />
           </span>
           <span>
-            This invite is signed and revocable. Roadforge does not collect
+            This invite is signed and revocable. RoadForge does not collect
             emails, telemetry, or account data.
           </span>
         </div>

@@ -4,7 +4,13 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import type { Phase, ShareRole } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage, type RoadmapCache } from '@/lib/storage'
-import { getRoadmap, getEventTicket, subscribeToRoadmapEvents, getLocks } from '@/services/roadmap.service'
+import {
+  getRoadmap,
+  getEventTicket,
+  subscribeToRoadmapEvents,
+  getLocks,
+  isApiConnectionError,
+} from '@/services/roadmap.service'
 
 interface RoadmapContextValue {
   displayName: string
@@ -37,6 +43,12 @@ interface RoadmapContextValue {
 
 const RoadmapContext = createContext<RoadmapContextValue | null>(null)
 
+function isAuthError(error: unknown): boolean {
+  return error instanceof Error && (
+    error.message.includes('401') || error.message.includes('403')
+  )
+}
+
 export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [displayName, setDisplayNameState] = useState('')
   const [roadmapName, setRoadmapNameState] = useState('v1.0 Public Launch')
@@ -51,10 +63,13 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [updatedAt, setUpdatedAtState] = useState<string | null>(null)
   const [locks, setLocks] = useState<Record<string, { participantId: string; displayName: string }>>({})
   const [activeRoadmapId, setActiveRoadmapIdState] = useState<string | null>(null)
+  const [isHydratingServer, setIsHydratingServer] = useState(false)
+  const [backendUnavailableRoadmapId, setBackendUnavailableRoadmapId] = useState<string | null>(null)
 
   const loadRoadmapIntoState = useCallback((targetId: string, cancelled: { value: boolean }) => {
     const rc = storage.getRoadmapCache(targetId)
     const ac = storage.getAuthCache(targetId)
+    setBackendUnavailableRoadmapId(null)
 
     if (rc) {
       setRoadmapNameState(rc.roadmapName)
@@ -70,10 +85,13 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       setSessionTokenState(ac.sessionToken)
       setParticipantIdState(ac.participantId)
       setRoleState(ac.role)
+      setIsHydratingServer(true)
 
       getRoadmap(ac.serverRoadmapId, ac.sessionToken)
         .then((loaded) => {
           if (cancelled.value) return
+          setIsHydratingServer(false)
+          setBackendUnavailableRoadmapId(null)
           setRoadmapNameState(loaded.roadmap.name)
           setPhasesState(loaded.phases)
           setOwnerDisplayNameState(loaded.ownerDisplayName)
@@ -90,18 +108,26 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
             isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
           })
         })
-        .catch((err: Error) => {
+        .catch((err: unknown) => {
           if (cancelled.value) return
-          console.error('Failed to hydrate roadmap from server:', err)
-          if (err.message.includes('401') || err.message.includes('403')) {
+          setIsHydratingServer(false)
+          if (isApiConnectionError(err)) {
+            setBackendUnavailableRoadmapId(ac.serverRoadmapId)
+            console.warn('RoadForge API unavailable; using cached roadmap data.')
+            return
+          }
+          if (isAuthError(err)) {
             storage.setAuthCache(targetId, null)
             setServerRoadmapIdState(null)
             setSessionTokenState(null)
             setParticipantIdState(null)
             setRoleState(null)
+            return
           }
+          console.error('Failed to hydrate roadmap from server:', err)
         })
     } else {
+      setIsHydratingServer(false)
       setServerRoadmapIdState(null)
       setSessionTokenState(null)
       setParticipantIdState(null)
@@ -151,6 +177,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!serverRoadmapId || !sessionToken) return
     if (typeof document === 'undefined') return
+    if (isHydratingServer) return
+    if (backendUnavailableRoadmapId === serverRoadmapId) return
 
     let unsubscribe: (() => void) | null = null
     let hiddenAt: number | null = null
@@ -206,6 +234,11 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
           },
         })
       } catch (err) {
+        if (isApiConnectionError(err)) {
+          setBackendUnavailableRoadmapId(serverRoadmapId)
+          console.warn('Realtime sync paused; RoadForge API is unavailable.')
+          return
+        }
         console.error('Realtime sync failed', err)
       }
     }
@@ -230,7 +263,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       if (unsubscribe) unsubscribe()
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [serverRoadmapId, sessionToken, participantId])
+  }, [serverRoadmapId, sessionToken, participantId, isHydratingServer, backendUnavailableRoadmapId])
 
   const setDisplayName = useCallback((name: string) => {
     setDisplayNameState(name)
@@ -365,6 +398,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     storage.setAuthCache(newId, null)
 
     // Note: We intentionally don't wipe other roadmap caches.
+    setBackendUnavailableRoadmapId(null)
+    setIsHydratingServer(false)
     setRoadmapNameState(cache.roadmapName)
     setPhasesState(cache.phases)
     setSavedState(false)
@@ -381,6 +416,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const activateRoadmap = useCallback((id: string) => {
     storage.setActiveRoadmapId(id)
     storage.setLastRoadmapId(id)
+    setBackendUnavailableRoadmapId(null)
     setActiveRoadmapIdState(id)
     loadRoadmapIntoState(id, { value: false })
   }, [loadRoadmapIntoState])
