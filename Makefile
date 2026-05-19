@@ -3,7 +3,7 @@
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 WEB_PORT ?= 3020
-WEB_HOST ?= 127.0.0.1
+WEB_HOST ?= localhost
 WEB_URL  := http://localhost:$(WEB_PORT)
 API_URL  := http://localhost:7878
 
@@ -48,7 +48,7 @@ install:
 # ─── Foreground Development ───────────────────────────────────────────────────
 
 dev:
-	pnpm --filter web dev --hostname $(WEB_HOST) --port $(WEB_PORT)
+	NEXT_PUBLIC_API_URL=$(API_URL) pnpm --filter web dev --hostname $(WEB_HOST) --port $(WEB_PORT)
 
 check:
 	pnpm lint && pnpm typecheck && pnpm build
@@ -123,10 +123,12 @@ web-start:
 	@if lsof -i :$(WEB_PORT) >/dev/null 2>&1; then \
 		echo "Error: Port $(WEB_PORT) is already in use."; \
 		lsof -i :$(WEB_PORT); \
+		echo "Run 'make web-stop' to clean up stale frontend processes."; \
 		exit 1; \
 	fi
-	@echo "Starting Web in background on port $(WEB_PORT)..."
-	@setsid sh -c 'exec pnpm --filter web dev --hostname $(WEB_HOST) --port $(WEB_PORT) > .logs/web.log 2>&1' & echo $$! > .pids/web.pid
+	@echo "Starting Web in background on $(WEB_URL)..."
+	@echo "Using API: $(API_URL)"
+	@setsid sh -c 'exec env NEXT_PUBLIC_API_URL=$(API_URL) pnpm --filter web dev --hostname $(WEB_HOST) --port $(WEB_PORT) > .logs/web.log 2>&1' & echo $$! > .pids/web.pid
 	@sleep 2
 	@if kill -0 $$(cat .pids/web.pid) 2>/dev/null; then \
 		echo "Web started (PID $$(cat .pids/web.pid))"; \
@@ -138,7 +140,8 @@ web-start:
 	fi
 
 web-stop:
-	@if [ -f .pids/web.pid ]; then \
+	@STOPPED=0; \
+	if [ -f .pids/web.pid ]; then \
 		PID=$$(cat .pids/web.pid); \
 		if kill -0 $$PID 2>/dev/null; then \
 			echo "Stopping Web process group (PGID $$PID)..."; \
@@ -148,12 +151,20 @@ web-stop:
 				echo "Process still alive, force killing..."; \
 				kill -KILL -$$PID 2>/dev/null || kill -KILL $$PID; \
 			fi; \
+			STOPPED=1; \
 		fi; \
 		rm -f .pids/web.pid; \
-		echo "Web stopped."; \
-	else \
-		echo "Web is not running (no PID file)."; \
-	fi
+	fi; \
+	if lsof -ti :$(WEB_PORT) >/dev/null 2>&1; then \
+		echo "Stopping stale process(es) listening on port $(WEB_PORT)..."; \
+		lsof -ti :$(WEB_PORT) | xargs -r kill -TERM; \
+		sleep 2; \
+		if lsof -ti :$(WEB_PORT) >/dev/null 2>&1; then \
+			lsof -ti :$(WEB_PORT) | xargs -r kill -KILL; \
+		fi; \
+		STOPPED=1; \
+	fi; \
+	if [ "$$STOPPED" = "1" ]; then echo "Web stopped."; else echo "Web is not running."; fi
 
 web-status:
 	@if [ -f .pids/web.pid ] && kill -0 $$(cat .pids/web.pid) 2>/dev/null; then \
@@ -185,4 +196,3 @@ logs-web:
 	else \
 		echo "Frontend log not found; run 'make web-start' first."; \
 	fi
-

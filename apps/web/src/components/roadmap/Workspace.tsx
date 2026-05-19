@@ -14,7 +14,7 @@ import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
-import { createRoadmap, saveToServer } from '@/services/roadmap.service'
+import { createRoadmap, isApiConnectionError, saveToServer } from '@/services/roadmap.service'
 import type { WorkspaceMode, Task, ChangeSummary } from '@/types/roadmap'
 
 interface WorkspaceProps {
@@ -106,6 +106,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         showToast('Session expired — rejoin from the invite link')
       } else if (msg.includes('403')) {
         showToast('You do not have permission for this action')
+      } else if (isApiConnectionError(err)) {
+        showToast('RoadForge API is not reachable. Start the backend with make start.')
       } else {
         showToast('Save failed — check backend connection')
       }
