@@ -43,6 +43,7 @@ export function SiteHeader({ onCreate }: SiteHeaderProps) {
           variant="header"
           hideWhenEmpty
           label="Open saved roadmaps"
+          onCreate={onCreate}
         />
       </div>
     </header>

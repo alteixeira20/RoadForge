@@ -12,21 +12,23 @@ interface RoadmapSwitcherProps {
   variant?: 'header' | 'compact' | 'workspace'
   hideWhenEmpty?: boolean
   label?: string
+  onCreate?: () => void
 }
 
 export function RoadmapSwitcher({
   variant = 'workspace',
   hideWhenEmpty = false,
   label = 'Open workspace menu',
+  onCreate,
 }: RoadmapSwitcherProps) {
   const router = useRouter()
   const {
     displayName,
     activeRoadmapId,
     activateRoadmap,
-    resetToSample,
   } = useRoadmap()
 
+  const [mounted, setMounted] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [inviteLink, setInviteLink] = useState('')
@@ -36,6 +38,10 @@ export function RoadmapSwitcher({
   const [error, setError] = useState<string | null>(null)
   
   const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const handleDown = (e: MouseEvent) => {
@@ -49,10 +55,11 @@ export function RoadmapSwitcher({
     return () => document.removeEventListener('mousedown', handleDown)
   }, [isOpen])
 
-  const caches = storage.listRoadmapCaches()
+  const caches = mounted ? storage.listRoadmapCaches() : []
   const meaningfulCaches = caches.filter(({ cache, auth }) => auth || cache.saved)
   const visibleCaches = hideWhenEmpty ? meaningfulCaches : caches
 
+  if (!mounted && hideWhenEmpty) return null
   if (hideWhenEmpty && meaningfulCaches.length === 0) return null
 
   const initials = ((displayName || 'You')
@@ -63,9 +70,12 @@ export function RoadmapSwitcher({
   ).toUpperCase()
 
   const handleCreateNew = () => {
-    resetToSample()
     setIsOpen(false)
-    if (variant !== 'workspace') router.push('/workspace')
+    if (onCreate) {
+      onCreate()
+      return
+    }
+    router.push('/?create=1')
   }
 
   const handleActivateRoadmap = (id: string) => {
@@ -266,7 +276,7 @@ export function RoadmapSwitcher({
                   onClick={handleCreateNew}
                   style={{ width: '100%', textAlign: 'left', padding: '6px 8px', fontSize: 13, background: 'transparent', border: 'none', color: 'var(--ink-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 4 }}
                 >
-                  <Icon name="plus" size={14} /> New local roadmap
+                  <Icon name="plus" size={14} /> Create new roadmap
                 </button>
                 <button 
                   onClick={() => setShowAddForm(true)}

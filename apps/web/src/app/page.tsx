@@ -1,13 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Homepage } from '@/components/home/Homepage'
 import { CreateWizard } from '@/components/wizard/CreateWizard'
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [showWizard, setShowWizard] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      setShowWizard(true)
+      router.replace('/')
+    }
+  }, [router, searchParams])
 
   const handleWizardComplete = () => {
     setShowWizard(false)
@@ -24,5 +32,13 @@ export default function HomePage() {
         />
       )}
     </>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense>
+      <HomePageContent />
+    </Suspense>
   )
 }
