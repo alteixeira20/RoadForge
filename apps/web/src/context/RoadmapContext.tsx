@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import type { Phase, ShareRole } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage, type RoadmapCache } from '@/lib/storage'
@@ -65,6 +65,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [roadmapName, setRoadmapNameState] = useState('v1.0 Public Launch')
   const [phases, setPhasesState] = useState<Phase[]>(SAMPLE_ROADMAP.phases)
   const [saved, setSavedState] = useState(false)
+  // Ref so SSE callbacks always read the current saved value without stale closure
+  const savedRef = useRef(false)
   const [serverRoadmapId, setServerRoadmapIdState] = useState<string | null>(null)
   const [sessionToken, setSessionTokenState] = useState<string | null>(null)
   const [participantId, setParticipantIdState] = useState<string | null>(null)
@@ -76,6 +78,9 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [activeRoadmapId, setActiveRoadmapIdState] = useState<string | null>(null)
   const [isHydratingServer, setIsHydratingServer] = useState(false)
   const [backendUnavailableRoadmapId, setBackendUnavailableRoadmapId] = useState<string | null>(null)
+
+  // Keep ref current so SSE callbacks always read the latest value
+  savedRef.current = saved
 
   const loadRoadmapIntoState = useCallback((targetId: string, cancelled: { value: boolean }) => {
     const rc = storage.getRoadmapCache(targetId)
@@ -210,6 +215,15 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
         unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, ticket, {
           onUpdated: (payload) => {
             if (payload.participant_id === participantId) return
+
+            // If this client has pending unsynced changes, do NOT overwrite local
+            // phases, roadmap name, or updatedAt — preserve the user's work and
+            // keep the stale updatedAt so the next autosync sends an outdated
+            // last_updated_at and receives a 409, surfacing as OFFLINE.
+            if (savedRef.current === false) {
+              return
+            }
+
             getRoadmap(serverRoadmapId, sessionToken).then((loaded) => {
               setRoadmapNameState(loaded.roadmap.name)
               setPhasesState(loaded.phases)
