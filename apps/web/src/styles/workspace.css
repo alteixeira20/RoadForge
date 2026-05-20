@@ -62,13 +62,39 @@
   line-height: 1;
 }
 
-/* Synced badge variant */
-.app-header .badge.synced {
+/* Synced/live badge variant */
+.app-header .badge.synced,
+.app-header .badge.live {
   background: linear-gradient(180deg, rgba(217,116,66,0.10), rgba(217,116,66,0.04));
   border-color: rgba(217,116,66,0.30);
   color: var(--ember);
 }
-.app-header .badge.synced .dot { background: var(--ember); box-shadow: 0 0 8px var(--ember); }
+.app-header .badge.synced .dot,
+.app-header .badge.live .dot { background: var(--ember); box-shadow: 0 0 8px var(--ember); }
+
+/* Syncing badge variant — pulsing dot */
+.app-header .badge.syncing {
+  background: linear-gradient(180deg, rgba(217,116,66,0.10), rgba(217,116,66,0.04));
+  border-color: rgba(217,116,66,0.30);
+  color: var(--ember);
+}
+.app-header .badge.syncing .dot {
+  background: var(--ember);
+  animation: badge-dot-pulse 1s ease-in-out infinite;
+}
+
+/* Offline badge variant */
+.app-header .badge.offline {
+  background: var(--bg-2);
+  border-color: var(--border);
+  color: var(--ink-2);
+}
+.app-header .badge.offline .dot { background: var(--ink-3, #888); box-shadow: none; }
+
+@keyframes badge-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
 
 /* ─── Read-only banner ─────────────────────────────────────────────────────── */
 .readonly-banner {

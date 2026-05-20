@@ -7,6 +7,7 @@ export type WorkspaceMode = 'owner' | 'viewer'
 export type ExportFormat = 'json'
 export type ShareRole = 'owner' | 'editor' | 'viewer'
 export type Theme = 'dark' | 'light'
+export type SyncStatus = 'local' | 'live' | 'syncing' | 'offline'
 
 export interface Task {
   id: string

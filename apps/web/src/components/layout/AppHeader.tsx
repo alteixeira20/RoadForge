@@ -4,11 +4,19 @@ import { Icon } from '@/components/ui/Icon'
 import { Brand } from '@/components/ui/Brand'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { RoadmapSwitcher } from '@/components/roadmap/RoadmapSwitcher'
+import type { SyncStatus } from '@/types/roadmap'
+
+const BADGE_LABEL: Record<SyncStatus, string> = {
+  local: 'LOCAL',
+  live: 'LIVE',
+  syncing: 'SYNCING',
+  offline: 'OFFLINE',
+}
 
 interface AppHeaderProps {
   roadmapName: string
   displayName: string
-  saved: boolean
+  syncStatus: SyncStatus
   readOnly?: boolean
   onSave?: () => void
   onShare?: () => void
@@ -18,13 +26,15 @@ interface AppHeaderProps {
 
 export function AppHeader({
   roadmapName,
-  saved,
+  syncStatus,
   readOnly = false,
   onSave,
   onShare,
   onIO,
   onCreateOwn,
 }: AppHeaderProps) {
+  const isServerBacked = syncStatus !== 'local'
+
   return (
     <header className="app-header">
       <Brand href="/" className="brand-mini" />
@@ -36,9 +46,9 @@ export function AppHeader({
       </div>
 
       {!readOnly && (
-        <span className={`badge ${saved ? 'synced' : ''}`}>
+        <span className={`badge ${syncStatus}`} title={syncStatus === 'offline' ? 'API unreachable — changes saved locally' : undefined}>
           <span className="dot" />
-          {saved ? 'SYNCED' : 'LOCAL ONLY'}
+          {BADGE_LABEL[syncStatus]}
         </span>
       )}
       {readOnly && (
@@ -59,11 +69,11 @@ export function AppHeader({
             <button
               className="iconbtn"
               title="Share"
-              onClick={saved ? onShare : onSave}
+              onClick={isServerBacked ? onShare : onSave}
             >
               <Icon name="share" size={16} />
             </button>
-            {!saved ? (
+            {!isServerBacked ? (
               <button
                 className="btn sm header-save-btn"
                 onClick={onSave}
@@ -72,6 +82,16 @@ export function AppHeader({
               >
                 <Icon name="cloud" size={14} />
                 <span className="header-save-label">Save</span>
+              </button>
+            ) : syncStatus === 'offline' ? (
+              <button
+                className="btn sm header-save-btn"
+                onClick={onSave}
+                title="Retry sync"
+                aria-label="Retry sync"
+              >
+                <Icon name="cloud" size={14} />
+                <span className="header-save-label">Retry</span>
               </button>
             ) : (
               <button className="btn sm" onClick={onShare}>

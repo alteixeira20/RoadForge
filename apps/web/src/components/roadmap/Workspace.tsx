@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/Icon'
 import { Toast } from '@/components/ui/Toast'
@@ -16,7 +16,7 @@ import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { createRoadmap, isApiConnectionError, saveToServer } from '@/services/roadmap.service'
-import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary } from '@/types/roadmap'
+import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -43,6 +43,22 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setUpdatedAt,
   } = useRoadmap()
   const readOnly = mode === 'viewer'
+
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [isOffline, setIsOffline] = useState(false)
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Ref prevents concurrent autosync calls without adding isSyncing to effect deps
+  const isSyncingRef = useRef(false)
+  // Holds latest values so the debounced callback is never stale
+  const syncParamsRef = useRef({ phases, roadmapName, updatedAt, pendingActivityChanges: [] as ActivityChange[], serverRoadmapId, sessionToken, saved })
+
+  const syncStatus: SyncStatus = !serverRoadmapId
+    ? 'local'
+    : isSyncing
+      ? 'syncing'
+      : isOffline
+        ? 'offline'
+        : 'live'
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>('RF-05')
   const { openPhases, togglePhase, allOpen, collapseAll, expandAll } = usePhaseCollapse(phases)
@@ -162,6 +178,58 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     }
   }
 
+  // Keep ref fresh so the debounced callback always reads the latest values
+  syncParamsRef.current = { phases, roadmapName, updatedAt, pendingActivityChanges, serverRoadmapId, sessionToken, saved }
+
+  // ─── Debounced autosync for server-backed roadmaps ─────────────────────────
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!serverRoadmapId || !sessionToken || readOnly || saved) return
+
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
+
+    syncTimerRef.current = setTimeout(async () => {
+      if (isSyncingRef.current) return
+      isSyncingRef.current = true
+      setIsSyncing(true)
+
+      const { phases: p, roadmapName: n, updatedAt: ua, pendingActivityChanges: pac, serverRoadmapId: rid, sessionToken: tok, saved: currentSaved } = syncParamsRef.current
+      if (!rid || !tok || currentSaved) {
+        isSyncingRef.current = false
+        setIsSyncing(false)
+        return
+      }
+
+      const changeSummary = buildChangeSummary(pac)
+      try {
+        const data = await saveToServer(rid, n, p, tok, ua || undefined, changeSummary)
+        setUpdatedAt(data.updated_at)
+        setSaved(true)
+        setPendingActivityChanges([])
+        setIsOffline(false)
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('409')) {
+          setIsOffline(true)
+          showToast('Roadmap changed elsewhere — review your edits and retry sync')
+        } else if (isApiConnectionError(err)) {
+          setIsOffline(true)
+        } else if (err instanceof Error && (err.message.includes('401') || err.message.includes('403'))) {
+          setIsOffline(true)
+        } else {
+          setIsOffline(true)
+        }
+      } finally {
+        isSyncingRef.current = false
+        setIsSyncing(false)
+      }
+    }, 1500)
+
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
+    }
+  // phases/roadmapName resets the debounce; buildChangeSummary/syncParamsRef are stable by design
+  }, [serverRoadmapId, sessionToken, readOnly, saved, phases, roadmapName])
+
   const handleConfirmSave = async (password?: string) => {
     closeSave()
     const changeSummary = buildChangeSummary(pendingActivityChanges)
@@ -193,6 +261,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         setPendingActivityChanges([])
       }
       setSaved(true)
+      setIsOffline(false)
       showToast('Saved · collaboration enabled')
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
@@ -637,10 +706,10 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       <AppHeader
         roadmapName={roadmapName}
         displayName={displayName || 'You'}
-        saved={saved}
+        syncStatus={syncStatus}
         readOnly={readOnly}
         onSave={openSave}
-        onShare={() => (saved ? openShare() : openSave())}
+        onShare={openShare}
         onIO={openIO}
         onCreateOwn={onCreateOwn}
       />
