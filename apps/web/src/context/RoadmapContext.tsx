@@ -39,6 +39,7 @@ interface RoadmapContextValue {
   activeRoadmapId: string | null
   activateRoadmap: (id: string) => void
   resetToSample: () => void
+  removeRoadmapFromBrowser: (id: string) => void
 }
 
 const RoadmapContext = createContext<RoadmapContextValue | null>(null)
@@ -413,6 +414,48 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setLocks({})
   }, [])
 
+  const removeRoadmapFromBrowser = useCallback((id: string) => {
+    storage.removeRoadmap(id)
+    setBackendUnavailableRoadmapId(null)
+    setIsHydratingServer(false)
+    setLocks({})
+
+    const next = storage.listRoadmapCaches()[0]
+    if (next) {
+      storage.setActiveRoadmapId(next.id)
+      storage.setLastRoadmapId(next.id)
+      setActiveRoadmapIdState(next.id)
+      loadRoadmapIntoState(next.id, { value: false })
+      return
+    }
+
+    const newId = storage.createLocalDraftId()
+    const cache: RoadmapCache = {
+      roadmapName: 'v1.0 Public Launch',
+      phases: SAMPLE_ROADMAP.phases,
+      saved: false,
+      ownerDisplayName: null,
+      updatedAt: null,
+      isPasswordEnabled: false,
+    }
+    storage.setActiveRoadmapId(newId)
+    storage.setLastRoadmapId(newId)
+    storage.setRoadmapCache(newId, cache)
+    storage.setAuthCache(newId, null)
+
+    setActiveRoadmapIdState(newId)
+    setRoadmapNameState(cache.roadmapName)
+    setPhasesState(cache.phases)
+    setSavedState(false)
+    setServerRoadmapIdState(null)
+    setSessionTokenState(null)
+    setParticipantIdState(null)
+    setRoleState(null)
+    setIsPasswordEnabledState(false)
+    setOwnerDisplayNameState(null)
+    setUpdatedAtState(null)
+  }, [loadRoadmapIntoState])
+
   const activateRoadmap = useCallback((id: string) => {
     storage.setActiveRoadmapId(id)
     storage.setLastRoadmapId(id)
@@ -423,7 +466,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, resetToSample }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, resetToSample, removeRoadmapFromBrowser }}
     >
       {children}
     </RoadmapContext.Provider>

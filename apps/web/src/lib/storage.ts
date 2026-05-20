@@ -63,6 +63,15 @@ function removeLocal(key: string): void {
   }
 }
 
+function removeSession(key: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.removeItem(key)
+  } catch {
+    // ignore
+  }
+}
+
 function getSession(key: string): string | null {
   if (typeof window === 'undefined') return null
   try {
@@ -108,7 +117,7 @@ export const storage = {
   },
   setActiveRoadmapId(id: string | null): void {
     if (!id) {
-      if (typeof window !== 'undefined') window.sessionStorage.removeItem(KEYS.activeRoadmapId)
+      removeSession(KEYS.activeRoadmapId)
     } else {
       setSession(KEYS.activeRoadmapId, id)
     }
@@ -148,6 +157,15 @@ export const storage = {
   clearRoadmapCache(id: string): void {
     removeLocal(`rf:roadmap:${id}`)
     removeLocal(`rf:auth:${id}`)
+  },
+
+  removeRoadmap(id: string): void {
+    this.clearRoadmapCache(id)
+    if (this.getActiveRoadmapId() === id) this.setActiveRoadmapId(null)
+    if (this.getLastRoadmapId() === id) {
+      const next = this.listRoadmapCaches()[0]?.id ?? null
+      this.setLastRoadmapId(next)
+    }
   },
 
   listRoadmapCaches(): Array<{ id: string; cache: RoadmapCache; auth: AuthCache | null }> {

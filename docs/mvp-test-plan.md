@@ -177,6 +177,20 @@ curl http://localhost:7878/api/health
 
 ---
 
+## 13. Verify JSON import/export
+
+1. Stop the backend if you want to verify local-only behavior.
+2. Open a local unsaved roadmap.
+3. Open **Import / Export**.
+4. Export JSON and confirm a `.roadforge.json` file downloads.
+5. Import that JSON and confirm the roadmap name and phases load.
+6. Import a raw JSON phase array and confirm it loads.
+7. Import invalid JSON and confirm the error says `Import failed: invalid JSON.`
+
+**Expected:** JSON is currently the only exposed import/export format. Markdown, PDF, and agent bundle are intentionally not exposed yet.
+
+---
+
 ## Validation checklist
 
 - [ ] `make reset` starts clean
@@ -190,3 +204,4 @@ curl http://localhost:7878/api/health
 - [ ] 409 Conflict toast appears on stale save
 - [ ] Revoke invalidates the link immediately
 - [ ] Activity panel shows creation, updates, and joins correctly
+- [ ] JSON export/import works without the backend running

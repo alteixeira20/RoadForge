@@ -6,6 +6,7 @@
 // When a backend call succeeds the caller is responsible for syncing context/storage.
 
 import type { Roadmap, Phase, Task, ShareLink, ShareRole, ExportFormat, ActivityLogList, ChangeSummary } from '@/types/roadmap'
+import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 
 // ─── API configuration ─────────────────────────────────────────────────────────
 
@@ -172,6 +173,17 @@ export async function createRoadmap(
 export async function getRoadmap(id: string, sessionToken?: string): Promise<Roadmap> {
   const data = await requestJson<ApiRoadmapResponse>(`/api/roadmaps/${id}`, {}, sessionToken)
   return toRoadmap(data)
+}
+
+export async function deleteRoadmap(
+  roadmapId: string,
+  sessionToken: string,
+): Promise<{ ok: boolean }> {
+  return await requestJson<{ ok: boolean }>(
+    `/api/roadmaps/${roadmapId}`,
+    { method: 'DELETE' },
+    sessionToken,
+  )
 }
 
 // ─── Task mutations ────────────────────────────────────────────────────────────
@@ -389,29 +401,61 @@ export async function revokeShareLink(
 
 /**
  * Export the roadmap as a downloadable blob.
- * JSON export runs client-side. Other formats require a backend endpoint.
- * TODO(backend): GET /api/roadmaps/:id/export?format=markdown|pdf
+ * Portable roadmap-only formats run client-side.
  */
 export async function exportRoadmap(
   phases: Phase[],
   format: ExportFormat,
+  metadata: {
+    roadmapName?: string
+    ownerDisplayName?: string | null
+    updatedAt?: string | null
+    saved?: boolean
+    serverRoadmapId?: string | null
+    role?: ShareRole | null
+  } = {},
 ): Promise<Blob> {
-  if (format === 'json') {
-    const json = JSON.stringify({ phases }, null, 2)
-    return new Blob([json], { type: 'application/json' })
+  const json = JSON.stringify(buildRoadmapExport(phases, metadata), null, 2)
+  return new Blob([json], { type: 'application/json' })
+}
+
+function buildRoadmapExport(
+  phases: Phase[],
+  metadata: {
+    roadmapName?: string
+    ownerDisplayName?: string | null
+    updatedAt?: string | null
+    saved?: boolean
+    serverRoadmapId?: string | null
+    role?: ShareRole | null
+  },
+) {
+  return {
+    schema: 'roadforge.roadmap.export',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    roadmap: {
+      name: metadata.roadmapName || 'Untitled Roadmap',
+      saved: !!metadata.saved,
+      id: metadata.serverRoadmapId ?? null,
+      updatedAt: metadata.updatedAt ?? null,
+    },
+    collaborator: {
+      role: metadata.role ?? null,
+      ownerDisplayName: metadata.ownerDisplayName ?? null,
+    },
+    phases,
   }
-  throw new Error(`Export format "${format}" requires backend`)
 }
 
 /**
- * Import phases from a JSON or Markdown payload.
- * TODO(backend): POST /api/roadmaps/import  { data, format }
+ * Import phases from RoadForge JSON. Runs client-side.
  */
 export async function importRoadmap(
-  _data: string,
-  _format: 'json' | 'markdown',
+  data: string,
+  _format: 'json',
 ): Promise<Phase[]> {
-  throw new Error('Import requires backend')
+  return parseImportedRoadmapJson(data).phases
 }
 
 // ─── Invite / join ─────────────────────────────────────────────────────────────
@@ -489,4 +533,3 @@ export async function linkDependency(
 ): Promise<void> {
   throw new Error('Not implemented — requires backend')
 }
-

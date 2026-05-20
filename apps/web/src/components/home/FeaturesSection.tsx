@@ -46,7 +46,7 @@ export function FeaturesSection() {
           <div className="ic"><Icon name="export" size={20} /></div>
           <h3>Portable</h3>
           <p>
-            Export to JSON or Markdown. Import from either. No lock-in, ever.
+            Export and import JSON. No lock-in, ever.
           </p>
         </div>
         <div className="feature">

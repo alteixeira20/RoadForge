@@ -168,6 +168,10 @@ class RoadmapResponse(BaseModel):
     updated_at: datetime
 
 
+class DeleteRoadmapResponse(BaseModel):
+    ok: bool
+
+
 # ─── Share link ───────────────────────────────────────────────────────────────
 
 

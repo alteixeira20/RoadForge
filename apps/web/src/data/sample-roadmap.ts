@@ -177,7 +177,7 @@ export const SAMPLE_ROADMAP: Roadmap = {
       tasks: [
         {
           id: 'RF-14',
-          title: 'Import from Markdown and JSON',
+          title: 'Import and export RoadForge JSON',
           done: false,
           est: '2 days',
           tags: ['import'],
@@ -231,8 +231,5 @@ export const MOCK_SHARE_LINKS: ShareLink[] = [
 // ─── Export format options ─────────────────────────────────────────────────────
 
 export const EXPORT_OPTIONS: ExportOption[] = [
-  { id: 'json', icon: 'export', name: 'JSON', badge: 'Source of truth', desc: 'The portable, AI-friendly format. Re-import anywhere with no loss.' },
-  { id: 'markdown', icon: 'export', name: 'Markdown', desc: 'Human-readable. Great for READMEs and pull requests.' },
-  { id: 'pdf', icon: 'export', name: 'PDF', desc: 'A polished, print-ready snapshot of the current roadmap.' },
-  { id: 'agent-bundle', icon: 'robot', name: 'Agent bundle', desc: 'JSON plus a short prompt preface — drop into any agent context.' },
+  { id: 'json', icon: 'export', name: 'Export JSON', badge: 'Source of truth', desc: 'The portable RoadForge format. Re-import anywhere with no loss.' },
 ]

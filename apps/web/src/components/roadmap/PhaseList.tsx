@@ -14,6 +14,7 @@ interface PhaseListProps {
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
   onUpdateTask: (id: string, updates: Partial<Task>) => void
+  onUpdatePhaseColor: (phaseId: string, color: string) => void
   onAddTask: (phaseId: string) => void
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
@@ -33,6 +34,7 @@ export function PhaseList({
   onToggleTask,
   onCheckTask,
   onUpdateTask,
+  onUpdatePhaseColor,
   onAddTask,
   onAddSubtask,
   onLinkDependency,
@@ -54,6 +56,7 @@ export function PhaseList({
             onToggleTask={onToggleTask}
             onCheckTask={onCheckTask}
             onUpdateTask={onUpdateTask}
+            onUpdatePhaseColor={onUpdatePhaseColor}
             onAddTask={onAddTask}
             onAddSubtask={onAddSubtask}
             onLinkDependency={onLinkDependency}

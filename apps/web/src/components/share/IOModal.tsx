@@ -3,11 +3,9 @@
 import { useState, useRef } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
-import { EXPORT_OPTIONS } from '@/data/sample-roadmap'
 import { exportRoadmap } from '@/services/roadmap.service'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { validateImportedPhases, IMPORT_MAX_BYTES } from '@/lib/roadmap-validation'
-import type { IconName } from '@/components/ui/Icon'
+import { parseImportedRoadmapJson, IMPORT_MAX_BYTES } from '@/lib/roadmap-validation'
 
 interface IOModalProps {
   open: boolean
@@ -17,36 +15,154 @@ interface IOModalProps {
 
 type Tab = 'export' | 'import'
 
+const AI_ROADMAP_TEMPLATE = `# RoadForge AI Roadmap Template
+
+Create a RoadForge roadmap JSON file that can be imported into RoadForge.
+
+Use this template to gather context, then produce a final .json file for RoadForge.
+
+## Fill in
+
+Project name:
+
+Product goal:
+
+Existing completed work:
+
+Pending features:
+
+Deployment target:
+
+Constraints:
+
+Preferred phases:
+
+Priority rules:
+
+## Valid schema example
+
+\`\`\`json
+{
+  "schema": "roadforge.roadmap.import",
+  "version": 1,
+  "roadmap": {
+    "name": "Example Roadmap"
+  },
+  "phases": [
+    {
+      "id": "phase-01",
+      "num": "01",
+      "name": "Foundation",
+      "color": "#f5853f",
+      "status": "active",
+      "progress": 25,
+      "tasks": [
+        {
+          "id": "RF-101",
+          "title": "Define MVP scope",
+          "done": true,
+          "next": false,
+          "est": "1 day",
+          "tags": ["planning"],
+          "deps": [],
+          "desc": "Write the scope that guides the first build."
+        },
+        {
+          "id": "RF-102",
+          "title": "Draft implementation plan",
+          "done": false,
+          "next": true,
+          "est": "2 days",
+          "tags": ["planning"],
+          "deps": ["RF-101"],
+          "desc": "Convert scope into sequenced work.",
+          "parentId": "RF-101"
+        }
+      ]
+    }
+  ]
+}
+\`\`\`
+
+## RoadForge constraints
+
+- Status values: done, active, next, future.
+- Progress must be a number from 0 to 100.
+- Task IDs should be stable and readable, for example RF-101.
+- Dependencies use task IDs in deps.
+- Subtasks use parentId set to another task ID.
+- Optional task fields: next, est, tags, deps, desc, parentId.
+- Use double quotes and do not include trailing commas.
+- Do not include session tokens, invite tokens, passwords, auth cache, or browser storage data.
+
+## Final AI instruction
+
+Return only the final JSON. Do not wrap it in Markdown. Do not include comments.
+`
+
 export function IOModal({ open, onClose, onToast }: IOModalProps) {
   const [tab, setTab] = useState<Tab>('export')
-  const { phases, setPhases, resetToSample } = useRoadmap()
+  const {
+    roadmapName,
+    phases,
+    setPhases,
+    setRoadmapName,
+    setSaved,
+    resetToSample,
+    saved,
+    serverRoadmapId,
+    role,
+    ownerDisplayName,
+    updatedAt,
+  } = useRoadmap()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const slug = (value: string) => value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'roadmap'
+
+  const exportMetadata = {
+    roadmapName,
+    saved,
+    serverRoadmapId,
+    role,
+    ownerDisplayName,
+    updatedAt,
+  }
 
   const handleJsonExport = async () => {
     try {
-      const blob = await exportRoadmap(phases, 'json')
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'roadmap.json'
-      a.click()
-      URL.revokeObjectURL(url)
+      const blob = await exportRoadmap(phases, 'json', exportMetadata)
+      downloadBlob(blob, `${slug(roadmapName)}.roadforge.json`)
       onToast('JSON file downloaded')
       onClose()
     } catch {
-      onToast('Export failed — try again')
+      onToast('Export failed. Could not create JSON file.')
     }
   }
 
-  const handleExportClick = (id: string, name: string) => {
-    if (id === 'json') {
-      handleJsonExport()
-      return
+  const handleAITemplateExport = () => {
+    try {
+      const blob = new Blob([AI_ROADMAP_TEMPLATE], { type: 'text/plain;charset=utf-8' })
+      downloadBlob(blob, 'roadforge-ai-roadmap-template.txt')
+      onToast('AI roadmap template downloaded')
+    } catch {
+      onToast('Export failed. Could not create template file.')
     }
-    onToast(`${name} export requires backend`)
   }
 
-  const handleJsonImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -59,13 +175,14 @@ export function IOModal({ open, onClose, onToast }: IOModalProps) {
     const reader = new FileReader()
     reader.onload = (ev) => {
       try {
-        const parsed = JSON.parse(ev.target?.result as string)
-        const validated = validateImportedPhases(parsed)
-        setPhases(validated)
+        const imported = parseImportedRoadmapJson(ev.target?.result as string)
+        setPhases(imported.phases)
+        if (imported.roadmapName) setRoadmapName(imported.roadmapName)
+        setSaved(false)
         onToast('Roadmap imported from JSON')
         onClose()
-      } catch {
-        onToast('Import failed — invalid roadmap file')
+      } catch (err) {
+        onToast(err instanceof Error ? err.message : 'Import failed: invalid roadmap file.')
       }
     }
     reader.readAsText(file)
@@ -83,10 +200,10 @@ export function IOModal({ open, onClose, onToast }: IOModalProps) {
     <Modal
       open={open}
       onClose={onClose}
-      width={580}
+      width={540}
       icon={{ name: tab === 'export' ? 'export' : 'import', plain: true }}
       title={tab === 'export' ? 'Export roadmap' : 'Import roadmap'}
-      sub="JSON is the portable source-of-truth format. Markdown and PDF are read-only snapshots."
+      sub="JSON is the only supported import/export format for now."
       footer={
         <>
           <span className="note">No data leaves your device.</span>
@@ -113,74 +230,103 @@ export function IOModal({ open, onClose, onToast }: IOModalProps) {
       </div>
 
       {tab === 'export' ? (
-        <div className="io-grid">
-          {EXPORT_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              className={`io-card ${opt.id === 'json' ? 'recommended' : ''}`}
-              onClick={() => handleExportClick(opt.id, opt.name)}
-            >
-              <div className="h">
-                <span className="ic">
-                  <Icon name={opt.icon as IconName} size={14} />
-                </span>
-                <span className="nm">{opt.name}</span>
-                {opt.badge && <span className="badge">{opt.badge}</span>}
-              </div>
-              <div className="d">{opt.desc}</div>
-            </button>
-          ))}
+        <div className="io-actions">
+          <button
+            type="button"
+            className="io-action primary"
+            onClick={handleJsonExport}
+            aria-label="Export JSON"
+          >
+            <span className="io-action-icon">
+              <Icon name="export" size={15} />
+            </span>
+            <span className="io-action-copy">
+              <span className="io-action-title">Export JSON</span>
+              <span className="io-action-desc">
+                Portable RoadForge backup. Includes phases, tasks, dependencies,
+                tags, and status.
+              </span>
+              <span className="io-action-note">
+                Does not include invite links, sessions, passwords, or browser auth.
+              </span>
+            </span>
+            <span className="io-action-go" aria-hidden>
+              <Icon name="arrow-right" size={15} />
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className="io-action"
+            onClick={handleAITemplateExport}
+            aria-label="Export AI roadmap template"
+          >
+            <span className="io-action-icon">
+              <Icon name="robot" size={15} />
+            </span>
+            <span className="io-action-copy">
+              <span className="io-action-title">Export AI roadmap template</span>
+              <span className="io-action-desc">
+                Download a prompt template for an AI assistant to generate a valid
+                RoadForge JSON roadmap.
+              </span>
+            </span>
+            <span className="io-action-go" aria-hidden>
+              <Icon name="arrow-right" size={15} />
+            </span>
+          </button>
         </div>
       ) : (
         <>
-          <div className="io-grid">
+          <div className="io-actions">
             <button
-              className="io-card recommended"
+              type="button"
+              className="io-action primary"
               onClick={() => fileInputRef.current?.click()}
+              aria-label="Import JSON"
             >
-              <div className="h">
-                <span className="ic">
-                  <Icon name="import" size={14} />
+              <span className="io-action-icon">
+                <Icon name="import" size={15} />
+              </span>
+              <span className="io-action-copy">
+                <span className="io-action-title">Import JSON</span>
+                <span className="io-action-desc">
+                  Import a RoadForge JSON file or raw phases array.
                 </span>
-                <span className="nm">From JSON</span>
-                <span className="badge">Recommended</span>
-              </div>
-              <div className="d">
-                Pick a Roadforge JSON file from disk.
-              </div>
+              </span>
+              <span className="io-action-go" aria-hidden>
+                <Icon name="arrow-right" size={15} />
+              </span>
             </button>
+
             <button
-              className="io-card"
-              onClick={() => onToast('Markdown import requires backend')}
+              type="button"
+              className="io-action"
+              onClick={handleReset}
+              aria-label="Restore starter roadmap"
             >
-              <div className="h">
-                <span className="ic">
-                  <Icon name="import" size={14} />
+              <span className="io-action-icon">
+                <Icon name="shield" size={15} />
+              </span>
+              <span className="io-action-copy">
+                <span className="io-action-title">Restore starter roadmap</span>
+                <span className="io-action-desc">
+                  Replace the current roadmap with the default starter roadmap.
                 </span>
-                <span className="nm">From Markdown</span>
-              </div>
-              <div className="d">
-                A simple checklist file with phase headings.
-              </div>
+              </span>
+              <span className="io-action-go" aria-hidden>
+                <Icon name="arrow-right" size={15} />
+              </span>
             </button>
           </div>
-          <div className="note-line">
+          <div className="note-line compact">
             <span className="ic">
               <Icon name="shield" size={14} />
             </span>
             <span>
-              Importing replaces the current roadmap. We&apos;ll keep an undo for one
-              minute.
+              Importing replaces the current local roadmap. Export a backup first if
+              needed.
             </span>
-          </div>
-          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>
-            <button
-              className="btn ghost"
-              style={{ fontSize: 12, opacity: 0.6 }}
-              onClick={handleReset}
-            >
-              Reset to sample roadmap
-            </button>
           </div>
         </>
       )}
@@ -190,7 +336,7 @@ export function IOModal({ open, onClose, onToast }: IOModalProps) {
         type="file"
         accept=".json,application/json"
         style={{ display: 'none' }}
-        onChange={handleJsonImport}
+        onChange={handleImportFile}
       />
     </Modal>
   )

@@ -143,6 +143,7 @@ def _roadmap_response(roadmap: Roadmap, phases: list[PhaseDTO]) -> RoadmapRespon
         owner_display_name=roadmap.owner_display_name,
         schema_version=roadmap.schema_version,
         phases=phases,
+        is_password_enabled=roadmap.is_password_enabled,
         created_at=roadmap.created_at,
         updated_at=roadmap.updated_at,
     )
@@ -232,6 +233,50 @@ async def update_roadmap(
     ))
 
     return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+
+
+async def delete_roadmap(
+    db: AsyncSession,
+    roadmap_id: str,
+    participant: Participant,
+) -> dict[str, bool]:
+    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+    now = datetime.now(timezone.utc)
+
+    result = await db.execute(
+        select(ShareLink).where(
+            ShareLink.roadmap_id == roadmap_id,
+            ShareLink.is_active.is_(True),
+        )
+    )
+    for share_link in result.scalars().all():
+        share_link.is_active = False
+
+    db.add(ActivityLog(
+        id=generate_id("al_"),
+        roadmap_id=roadmap_id,
+        participant_id=participant.id,
+        actor_name=participant.display_name,
+        action="roadmap.deleted",
+        entity_type="roadmap",
+        entity_id=roadmap_id,
+        before_json={"name": roadmap.name},
+    ))
+
+    roadmap.deleted_at = now
+    await db.commit()
+
+    await event_bus.publish(Event(
+        roadmap_id=roadmap_id,
+        action="roadmap.deleted",
+        payload={
+            "roadmap_id": roadmap_id,
+            "updated_at": now.isoformat(),
+            "participant_id": participant.id,
+        }
+    ))
+
+    return {"ok": True}
 
 
 async def get_share_links(db: AsyncSession, roadmap_id: str) -> list[ShareLinkResponse]:

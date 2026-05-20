@@ -35,6 +35,7 @@ interface PhaseProps {
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
   onUpdateTask: (id: string, updates: Partial<Task>) => void
+  onUpdatePhaseColor: (phaseId: string, color: string) => void
   onAddTask: (phaseId: string) => void
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
@@ -55,6 +56,18 @@ function phaseStatusLabel(status: PhaseType['status']): string {
   }
 }
 
+const PHASE_COLOR_PRESETS = [
+  { label: 'Orange', value: '#f97316' },
+  { label: 'Green', value: '#22c55e' },
+  { label: 'Blue', value: '#38bdf8' },
+  { label: 'Purple', value: '#a855f7' },
+  { label: 'Yellow', value: '#eab308' },
+  { label: 'Teal', value: '#14b8a6' },
+  { label: 'Slate', value: '#64748b' },
+  { label: 'Red', value: '#ef4444' },
+  { label: 'Cyan', value: '#0ea5e9' },
+]
+
 export function Phase({
   phase,
   isOpen,
@@ -63,6 +76,7 @@ export function Phase({
   onToggleTask,
   onCheckTask,
   onUpdateTask,
+  onUpdatePhaseColor,
   onAddTask,
   onAddSubtask,
   onLinkDependency,
@@ -76,6 +90,7 @@ export function Phase({
   const doneCount = phase.tasks.filter((t) => t.done).length
   const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
   const isActive = phase.status === 'active'
+  const [showColorPicker, setShowColorPicker] = useState(false)
 
   const displayStatus = allDone ? 'done' : (phase.status === 'done' ? 'active' : phase.status)
 
@@ -130,6 +145,7 @@ export function Phase({
         'phase',
         isOpen ? 'expanded' : '',
         isActive ? 'active-phase' : '',
+        showColorPicker ? 'phase-color-open' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -150,6 +166,39 @@ export function Phase({
         <span className="count">
           {doneCount}/{phase.tasks.length}
         </span>
+        {!readOnly && (
+          <div className="phase-color-control" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="phase-color-trigger"
+              title="Change phase color"
+              aria-label={`Change color for ${phase.name}`}
+              aria-expanded={showColorPicker}
+              onClick={() => setShowColorPicker((prev) => !prev)}
+            >
+              <span style={{ backgroundColor: phase.color }} />
+            </button>
+            {showColorPicker && (
+              <div className="phase-color-popover" role="menu" aria-label="Phase colors">
+                {PHASE_COLOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    className={preset.value.toLowerCase() === phase.color.toLowerCase() ? 'selected' : ''}
+                    title={preset.label}
+                    aria-label={preset.label}
+                    onClick={() => {
+                      onUpdatePhaseColor(phase.id, preset.value)
+                      setShowColorPicker(false)
+                    }}
+                  >
+                    <span style={{ backgroundColor: preset.value }} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {isOpen && (

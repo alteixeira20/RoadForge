@@ -9,7 +9,7 @@ interface WorkspaceToolbarProps {
   onCollapseAll: () => void
   onExpandAll: () => void
   onOpenActivity: () => void
-  isSaved: boolean
+  hasServerActivity: boolean
 }
 
 export function WorkspaceToolbar({
@@ -19,7 +19,7 @@ export function WorkspaceToolbar({
   onCollapseAll,
   onExpandAll,
   onOpenActivity,
-  isSaved,
+  hasServerActivity,
 }: WorkspaceToolbarProps) {
   return (
     <div className="workspace-bar">
@@ -43,9 +43,7 @@ export function WorkspaceToolbar({
       <button
         className="collapse-all"
         onClick={onOpenActivity}
-        disabled={!isSaved}
-        title={!isSaved ? 'Save roadmap to enable activity' : 'View recent activity'}
-        style={{ opacity: !isSaved ? 0.5 : 1, cursor: !isSaved ? 'not-allowed' : 'pointer' }}
+        title={hasServerActivity ? 'View recent activity' : 'Activity logs become available after saving to RoadForge.'}
       >
         <Icon name="activity" size={14} /> Activity
       </button>

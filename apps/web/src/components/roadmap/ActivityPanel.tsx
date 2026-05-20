@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import { getRoadmapActivity } from '@/services/roadmap.service'
+import { getRoadmapActivity, isApiConnectionError } from '@/services/roadmap.service'
 import type { ActivityLog } from '@/types/roadmap'
 
 interface ActivityPanelProps {
-  roadmapId: string
-  sessionToken: string
+  roadmapId: string | null
+  sessionToken: string | null
   onClose: () => void
 }
 
@@ -15,14 +15,32 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPane
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [localOnly, setLocalOnly] = useState(false)
+  const [offline, setOffline] = useState(false)
 
   useEffect(() => {
     async function load() {
+      setLogs([])
+      setError(null)
+      setLocalOnly(false)
+      setOffline(false)
+
+      if (!roadmapId || !sessionToken) {
+        setLocalOnly(true)
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
       try {
         const data = await getRoadmapActivity(roadmapId, sessionToken)
         setLogs(data.logs)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load activity')
+        if (isApiConnectionError(err)) {
+          setOffline(true)
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to load activity')
+        }
       } finally {
         setLoading(false)
       }
@@ -98,6 +116,16 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPane
               <Icon name="spark" size={24} />
             </span>
             <p>Loading activity...</p>
+          </div>
+        ) : localOnly ? (
+          <div className="state-msg">
+            <Icon name="activity" size={24} />
+            <p>Activity logs are available after saving this roadmap to RoadForge.</p>
+          </div>
+        ) : offline ? (
+          <div className="state-msg offline">
+            <Icon name="activity" size={24} />
+            <p>Activity is unavailable while the RoadForge API is offline. Your cached roadmap is still usable.</p>
           </div>
         ) : error ? (
           <div className="state-msg error">

@@ -4,6 +4,8 @@ Base URL: `http://localhost:7878` (local Docker).
 All endpoints are under `/api/`.  
 All request and response bodies are JSON.
 
+Import/export note: RoadForge currently exposes JSON import/export only in the browser client. There are no backend import/export endpoints for Markdown, PDF, or agent bundles yet.
+
 ---
 
 ## GET /api/health

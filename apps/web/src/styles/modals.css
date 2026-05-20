@@ -332,6 +332,10 @@
 }
 .note-line .ic { color: var(--ember); flex: 0 0 auto; padding-top: 2px; }
 .note-line .mono { font-family: var(--font-mono); font-size: 12px; }
+.note-line.compact {
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
 
 /* ─── Password Field ───────────────────────────────────────────────────────── */
 .password-field {
@@ -548,17 +552,17 @@
   display: inline-flex;
   background: var(--bg-2);
   border: 1px solid var(--border-faint);
-  border-radius: 8px;
-  padding: 3px;
+  border-radius: 7px;
+  padding: 2px;
   gap: 2px;
   align-self: flex-start;
 }
 .io-tab button {
-  padding: 6px 14px;
+  padding: 5px 12px;
   border: none; background: transparent;
-  font-size: 13px; font-weight: 500;
+  font-size: 12.5px; font-weight: 500;
   color: var(--ink-3);
-  border-radius: 6px;
+  border-radius: 5px;
   transition: all 140ms ease;
 }
 .io-tab button.active {
@@ -566,45 +570,80 @@
   color: var(--ink);
   box-shadow: var(--shadow-sm);
 }
-.io-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+.io-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.io-card {
+.io-action {
+  width: 100%;
   text-align: left;
-  padding: 14px;
+  display: grid;
+  grid-template-columns: 34px 1fr 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
   background: var(--bg-2);
   border: 1px solid var(--border-faint);
-  border-radius: 10px;
+  border-radius: 8px;
+  color: var(--ink);
   transition: all 160ms ease;
 }
-.io-card:hover {
-  border-color: var(--border-strong);
+.io-action:hover,
+.io-action:focus-visible {
+  border-color: rgba(217,116,66,0.45);
   background: var(--bg-3);
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px var(--lava-glow);
+  outline: none;
 }
-.io-card.recommended {
+.io-action.primary {
   border-color: rgba(217,116,66,0.30);
   background: linear-gradient(180deg, var(--bg-2), rgba(217,116,66,0.04));
 }
-.io-card .h {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 14px; font-weight: 600; color: var(--ink);
-  margin-bottom: 6px;
-}
-.io-card .h .ic { color: var(--ember); display: inline-flex; }
-.io-card .h .nm { flex: 1; }
-.io-card .h .badge {
-  font-size: 10px; padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--lava-glow);
+.io-action-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
   color: var(--ember);
-  border: 1px solid rgba(217,116,66,0.25);
-  text-transform: uppercase; letter-spacing: 0.06em;
-  font-weight: 600;
 }
-.io-card .d { font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+.io-action-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.io-action-title {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.io-action-desc {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.35;
+}
+.io-action-note {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  line-height: 1.35;
+}
+.io-action-go {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-4);
+  transition: color 140ms ease, transform 140ms ease;
+}
+.io-action:hover .io-action-go,
+.io-action:focus-visible .io-action-go {
+  color: var(--ember);
+  transform: translateX(1px);
+}
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 580px) {
@@ -613,5 +652,12 @@
   .modal-foot { padding: 14px 22px; flex-wrap: wrap; }
   .wizard-step { padding: 22px 22px 6px; }
   .wizard-foot { padding: 14px 22px; }
-  .io-grid { grid-template-columns: 1fr; }
+  .io-action {
+    grid-template-columns: 30px 1fr 20px;
+    padding: 10px;
+  }
+  .io-action-icon {
+    width: 28px;
+    height: 28px;
+  }
 }

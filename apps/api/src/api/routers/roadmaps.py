@@ -9,6 +9,7 @@ from api.schemas.roadmap import (
     ActivityLogListResponse,
     CreateRoadmapRequest,
     CreateRoadmapResponse,
+    DeleteRoadmapResponse,
     EventTicketResponse,
     JoinRoadmapRequest,
     JoinRoadmapResponse,
@@ -24,6 +25,7 @@ from api.services.event_bus import event_bus
 from api.services.lock_service import lock_service
 from api.services.roadmap_service import (
     create_roadmap,
+    delete_roadmap,
     get_activity_logs,
     get_roadmap,
     get_share_links,
@@ -76,6 +78,17 @@ async def put_roadmap(
 ) -> RoadmapResponse:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
     return await update_roadmap(db, roadmap_id, payload, participant)
+
+
+@router.delete("/{roadmap_id}", response_model=DeleteRoadmapResponse)
+async def remove_roadmap(
+    roadmap_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> DeleteRoadmapResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    result = await delete_roadmap(db, roadmap_id, participant)
+    return DeleteRoadmapResponse(**result)
 
 
 @router.get("/{roadmap_id}/share-links", response_model=list[ShareLinkResponse])

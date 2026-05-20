@@ -4,7 +4,7 @@
 
 export type PhaseStatus = 'done' | 'active' | 'next' | 'future'
 export type WorkspaceMode = 'owner' | 'viewer'
-export type ExportFormat = 'json' | 'markdown' | 'pdf' | 'agent-bundle'
+export type ExportFormat = 'json'
 export type ShareRole = 'owner' | 'editor' | 'viewer'
 export type Theme = 'dark' | 'light'
 

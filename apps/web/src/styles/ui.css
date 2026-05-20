@@ -121,3 +121,25 @@
   font-weight: 600;
   color: var(--ink);
 }
+
+.roadmap-menu-trigger {
+  height: 36px;
+  min-width: 50px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--ink-2);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: background 160ms, border-color 160ms, color 160ms;
+}
+.roadmap-menu-trigger:hover,
+.roadmap-menu-trigger[aria-expanded="true"] {
+  color: var(--ink);
+  background: var(--bg-3);
+  border-color: var(--border-strong);
+}
+

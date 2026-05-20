@@ -294,6 +294,26 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setSaved(false)
   }
 
+  const handleUpdatePhaseColor = (phaseId: string, color: string) => {
+    if (readOnly) return
+
+    const phase = phases.find((p) => p.id === phaseId)
+    if (!phase || phase.color === color) return
+
+    setPhases(
+      phases.map((p) => (p.id === phaseId ? { ...p, color } : p)),
+    )
+    setPendingChangeSummary({
+      action: 'phase.updated',
+      phaseId,
+      phaseName: phase.name,
+      entityType: 'phase',
+      entityId: phaseId,
+      details: 'Changed phase color',
+    })
+    setSaved(false)
+  }
+
   const handleLinkDependency = (taskId: string, depId: string) => {
     if (readOnly) return
     if (hasCycle(taskId, depId)) {
@@ -439,7 +459,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onCollapseAll={collapseAll}
           onExpandAll={expandAll}
           onOpenActivity={() => setShowActivity(true)}
-          isSaved={!!serverRoadmapId}
+          hasServerActivity={!!serverRoadmapId && !!sessionToken}
         />
         <PhaseList
           phases={filteredPhases}
@@ -451,6 +471,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onToggleTask={onToggleTask}
           onCheckTask={onCheckTask}
           onUpdateTask={handleUpdateTask}
+          onUpdatePhaseColor={handleUpdatePhaseColor}
           onAddTask={handleAddTask}
           onAddSubtask={handleAddSubtask}
           onLinkDependency={handleLinkDependency}
@@ -474,7 +495,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
       {toast && <Toast message={toast} />}
 
-      {showActivity && serverRoadmapId && sessionToken && (
+      {showActivity && (
         <ActivityPanel
           roadmapId={serverRoadmapId}
           sessionToken={sessionToken}

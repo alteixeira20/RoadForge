@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { storage } from '@/lib/storage'
-import { joinRoadmap, getRoadmap } from '@/services/roadmap.service'
+import { storage, type AuthCache, type RoadmapCache } from '@/lib/storage'
+import { deleteRoadmap, getRoadmap, isApiConnectionError, joinRoadmap } from '@/services/roadmap.service'
 import type { ShareRole } from '@/types/roadmap'
 
 interface RoadmapSwitcherProps {
@@ -15,10 +15,17 @@ interface RoadmapSwitcherProps {
   onCreate?: () => void
 }
 
+interface DeleteTarget {
+  id: string
+  cache: RoadmapCache
+  auth: AuthCache | null
+  mode: 'server' | 'local'
+}
+
 export function RoadmapSwitcher({
   variant = 'workspace',
   hideWhenEmpty = false,
-  label = 'Open workspace menu',
+  label = 'Roadmaps and session',
   onCreate,
 }: RoadmapSwitcherProps) {
   const router = useRouter()
@@ -26,6 +33,7 @@ export function RoadmapSwitcher({
     displayName,
     activeRoadmapId,
     activateRoadmap,
+    removeRoadmapFromBrowser,
   } = useRoadmap()
 
   const [mounted, setMounted] = useState(false)
@@ -36,6 +44,8 @@ export function RoadmapSwitcher({
   const [needsPassword, setNeedsPassword] = useState(false)
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [deleting, setDeleting] = useState(false)
   
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -61,13 +71,6 @@ export function RoadmapSwitcher({
 
   if (!mounted && hideWhenEmpty) return null
   if (hideWhenEmpty && meaningfulCaches.length === 0) return null
-
-  const initials = ((displayName || 'You')
-    .split(' ')
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join('') || 'Y'
-  ).toUpperCase()
 
   const handleCreateNew = () => {
     setIsOpen(false)
@@ -152,17 +155,64 @@ export function RoadmapSwitcher({
     }
   }
 
+  const handleRequestDelete = (target: DeleteTarget) => {
+    setDeleteTarget(target)
+    setError(null)
+    setIsOpen(false)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || deleting) return
+    setDeleting(true)
+    setError(null)
+
+    try {
+      if (deleteTarget.mode === 'server') {
+        if (!deleteTarget.auth?.sessionToken) {
+          setError('Missing owner session for this roadmap.')
+          return
+        }
+        await deleteRoadmap(deleteTarget.auth.serverRoadmapId, deleteTarget.auth.sessionToken)
+      }
+
+      removeRoadmapFromBrowser(deleteTarget.id)
+      setDeleteTarget(null)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('404')) {
+        removeRoadmapFromBrowser(deleteTarget.id)
+        setDeleteTarget(null)
+      } else if (msg.includes('403')) {
+        setError('Only the owner can delete this roadmap.')
+      } else if (isApiConnectionError(err)) {
+        setError('RoadForge API is not reachable. Start the backend with make start.')
+      } else {
+        setError('Could not delete roadmap.')
+      }
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const isWorkspaceVariant = variant === 'workspace'
 
   return (
     <div className={`roadmap-switcher ${variant}`} ref={menuRef} style={{ position: 'relative' }}>
       <button 
-        className={isWorkspaceVariant ? 'avatar' : 'iconbtn'}
+        className={isWorkspaceVariant ? 'roadmap-menu-trigger' : 'iconbtn'}
         title={label}
         onClick={() => setIsOpen(!isOpen)}
         aria-label={label}
+        aria-expanded={isOpen}
       >
-        {isWorkspaceVariant ? initials : <Icon name="device" size={16} />}
+        {isWorkspaceVariant ? (
+          <>
+            <Icon name="user" size={16} />
+            <Icon name="chevron-down" size={12} />
+          </>
+        ) : (
+          <Icon name="device" size={16} />
+        )}
       </button>
 
       {isOpen && (
@@ -191,43 +241,74 @@ export function RoadmapSwitcher({
                 No stored roadmaps.
               </div>
             ) : (
-              visibleCaches.map(({ id, cache, auth }) => (
-                <button
+              visibleCaches.map(({ id, cache, auth }) => {
+                const canDeleteServer = cache.saved && auth?.role === 'owner'
+                const canRemoveLocal = !canDeleteServer
+                return (
+                <div
                   key={id}
-                  onClick={() => handleActivateRoadmap(id)}
                   style={{
                     width: '100%',
-                    textAlign: 'left',
-                    padding: '8px 12px',
+                    padding: '6px 8px',
                     borderRadius: 6,
                     background: activeRoadmapId === id ? 'var(--bg-3)' : 'transparent',
-                    border: 'none',
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
-                    cursor: 'pointer',
+                    gap: 6,
+                    alignItems: 'stretch',
                     boxShadow: activeRoadmapId === id ? '0 0 0 1px var(--molten-dim) inset' : 'none'
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: activeRoadmapId === id ? 'var(--ember)' : 'var(--ink)' }}>
-                      {cache.roadmapName || 'Untitled Roadmap'}
-                    </span>
-                    {auth ? (
-                      <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--ink-3)', background: 'var(--bg-1)', padding: '2px 6px', borderRadius: 4 }}>
-                        {auth.role}
+                  <button
+                    onClick={() => handleActivateRoadmap(id)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      textAlign: 'left',
+                      background: 'transparent',
+                      border: 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      cursor: 'pointer',
+                      padding: '2px 4px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: activeRoadmapId === id ? 'var(--ember)' : 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {cache.roadmapName || 'Untitled Roadmap'}
                       </span>
-                    ) : (
-                      <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--molten)', background: 'var(--molten-dim)', padding: '2px 6px', borderRadius: 4 }}>
-                        Local
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-4)' }}>
-                    {cache.updatedAt ? new Date(cache.updatedAt).toLocaleDateString() : 'Draft'}
-                  </div>
-                </button>
-              ))
+                      {auth ? (
+                        <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--ink-3)', background: 'var(--bg-1)', padding: '2px 6px', borderRadius: 4 }}>
+                          {auth.role}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--molten)', background: 'var(--molten-dim)', padding: '2px 6px', borderRadius: 4 }}>
+                          Local
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-4)' }}>
+                      {cache.updatedAt ? new Date(cache.updatedAt).toLocaleDateString() : 'Draft'}
+                    </div>
+                  </button>
+                  {(canDeleteServer || canRemoveLocal) && (
+                    <button
+                      className="iconbtn"
+                      title={canDeleteServer ? 'Delete roadmap' : cache.saved ? 'Remove from this browser' : 'Remove local draft'}
+                      aria-label={canDeleteServer ? 'Delete roadmap' : cache.saved ? 'Remove from this browser' : 'Remove local draft'}
+                      onClick={() => handleRequestDelete({
+                        id,
+                        cache,
+                        auth,
+                        mode: canDeleteServer ? 'server' : 'local',
+                      })}
+                      style={{ color: 'var(--ember)' }}
+                    >
+                      <Icon name="trash" size={14} />
+                    </button>
+                  )}
+                </div>
+              )})
             )}
           </div>
 
@@ -286,6 +367,66 @@ export function RoadmapSwitcher({
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {deleteTarget && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 300,
+          display: 'grid',
+          placeItems: 'center',
+          background: 'rgba(0,0,0,0.48)',
+          padding: 24,
+        }}>
+          <div style={{
+            width: 'min(440px, 100%)',
+            background: 'var(--panel)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 12,
+            boxShadow: 'var(--shadow-lg)',
+            padding: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+          }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20, color: 'var(--ink)' }}>
+                {deleteTarget.mode === 'server'
+                  ? 'Delete roadmap?'
+                  : deleteTarget.cache.saved
+                    ? 'Remove from this browser?'
+                    : 'Remove local draft?'}
+              </h2>
+              <p style={{ margin: '8px 0 0', color: 'var(--ink-2)', fontSize: 14, lineHeight: 1.5 }}>
+                {deleteTarget.mode === 'server'
+                  ? 'This will delete the RoadForge server copy and disable access for collaborators. This cannot be undone.'
+                  : deleteTarget.cache.saved
+                    ? 'This removes the cached roadmap and session from this browser only. The RoadForge server copy is not deleted.'
+                    : 'This removes the draft from this browser only. It has not been saved to RoadForge.'}
+              </p>
+            </div>
+            <div style={{ padding: '10px 12px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--ink)', fontSize: 14 }}>
+              {deleteTarget.cache.roadmapName || 'Untitled Roadmap'}
+            </div>
+            {error && (
+              <div style={{ fontSize: 13, color: 'var(--ember)' }}>{error}</div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button className="btn sm ghost" onClick={() => { setDeleteTarget(null); setError(null) }} disabled={deleting}>
+                Cancel
+              </button>
+              <button className="btn sm primary" onClick={handleConfirmDelete} disabled={deleting}>
+                {deleting
+                  ? 'Deleting...'
+                  : deleteTarget.mode === 'server'
+                    ? 'Delete roadmap'
+                    : deleteTarget.cache.saved
+                      ? 'Remove from browser'
+                      : 'Remove draft'}
+              </button>
+            </div>
           </div>
         </div>
       )}

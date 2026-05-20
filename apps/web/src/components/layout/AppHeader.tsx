@@ -64,8 +64,14 @@ export function AppHeader({
               <Icon name="share" size={16} />
             </button>
             {!saved ? (
-              <button className="btn sm" onClick={onSave}>
-                <Icon name="cloud" size={14} /> Save to server
+              <button
+                className="btn sm header-save-btn"
+                onClick={onSave}
+                title="Save to RoadForge"
+                aria-label="Save to RoadForge"
+              >
+                <Icon name="cloud" size={14} />
+                <span className="header-save-label">Save</span>
               </button>
             ) : (
               <button className="btn sm" onClick={onShare}>

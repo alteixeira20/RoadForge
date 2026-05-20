@@ -126,6 +126,18 @@ function validatePhase(value: unknown): Phase {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
+export interface ImportedRoadmap {
+  phases: Phase[]
+  roadmapName?: string
+}
+
+function roadmapNameFromPayload(value: unknown): string | undefined {
+  if (!isPlainObject(value)) return undefined
+  const roadmap = value.roadmap
+  if (!isPlainObject(roadmap)) return undefined
+  return cleanOptionalText(roadmap.name, 'roadmap.name', PHASE_NAME_MAX)
+}
+
 /**
  * Validates and returns a clean Phase[] from an unknown import payload.
  * Accepts { phases: [...] } or [...] directly.
@@ -144,4 +156,31 @@ export function validateImportedPhases(value: unknown): Phase[] {
   if (!Array.isArray(raw)) throw new Error('phases must be an array')
   if (raw.length > PHASES_MAX) throw new Error(`Too many phases (max ${PHASES_MAX})`)
   return (raw as unknown[]).map((p) => validatePhase(p))
+}
+
+export function validateImportedRoadmap(value: unknown): ImportedRoadmap {
+  return {
+    phases: validateImportedPhases(value),
+    roadmapName: roadmapNameFromPayload(value),
+  }
+}
+
+export function parseImportedRoadmapJson(text: string): ImportedRoadmap {
+  const trimmed = text.trim()
+  if (!trimmed) throw new Error('Import failed: invalid JSON.')
+
+  try {
+    return validateImportedRoadmap(JSON.parse(trimmed))
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error('Import failed: invalid JSON.')
+    }
+    if (err instanceof Error && err.message === 'phases must be an array') {
+      throw new Error('Import failed: JSON must contain a phases array.')
+    }
+    if (err instanceof Error) {
+      throw new Error(`Import failed: ${err.message}`)
+    }
+    throw new Error('Import failed: invalid roadmap file.')
+  }
 }
