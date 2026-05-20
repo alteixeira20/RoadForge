@@ -59,7 +59,7 @@ export function JoinPage() {
     setJoining(true)
     setError(null)
     try {
-      const { roadmapId, role, sessionToken, participantId } = await joinRoadmap(
+      const { roadmapId, roadmapName, role, sessionToken, participantId } = await joinRoadmap(
         token,
         name.trim() || undefined,
         password || undefined,
@@ -73,11 +73,22 @@ export function JoinPage() {
         participantId,
         role: role as ShareRole,
       })
+      storage.setRoadmapCache(roadmapId, {
+        roadmapName,
+        phases: [],
+        saved: true,
+        ownerDisplayName: null,
+        updatedAt: null,
+        isPasswordEnabled: false,
+      })
 
       setServerRoadmapId(roadmapId)
       setSessionToken(sessionToken)
       setParticipantId(participantId)
       setRole(role as ShareRole)
+      setRoadmapName(roadmapName)
+      setPhases([])
+      setOwnerDisplayName(null)
       if (name.trim()) setDisplayName(name.trim())
 
       try {
@@ -98,7 +109,8 @@ export function JoinPage() {
         // non-fatal — workspace will show whatever's cached
       }
 
-      router.push(role === 'viewer' ? '/shared' : '/workspace')
+      const path = role === 'viewer' ? '/shared' : '/workspace'
+      router.push(`${path}?roadmap=${encodeURIComponent(roadmapId)}`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('password')) {

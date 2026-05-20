@@ -7,12 +7,12 @@ import { createBlankPhases } from '@/lib/roadmap-factory'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 
 interface CreateWizardProps {
-  onComplete: () => void
+  onComplete: (roadmapId?: string) => void
   onClose: () => void
 }
 
 export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
-  const { displayName, setDisplayName, roadmapName, setRoadmapName, setPhases } = useRoadmap()
+  const { displayName, setDisplayName, roadmapName, setRoadmapName, createLocalRoadmap } = useRoadmap()
   const [step, setStep] = useState(0)
   const [startingPoint, setStartingPoint] = useState<'template' | 'blank'>('blank')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -35,12 +35,9 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
   const back = () => setStep((s) => Math.max(0, s - 1))
 
   const handleFinish = () => {
-    if (startingPoint === 'blank') {
-      setPhases(createBlankPhases())
-    } else {
-      setPhases(SAMPLE_ROADMAP.phases)
-    }
-    onComplete()
+    const nextPhases = startingPoint === 'blank' ? createBlankPhases() : SAMPLE_ROADMAP.phases
+    const newRoadmapId = createLocalRoadmap(roadmapName.trim() || 'Untitled Roadmap', nextPhases)
+    onComplete(newRoadmapId)
   }
 
   const canProceed =

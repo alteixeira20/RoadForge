@@ -13,40 +13,35 @@ interface ActivityPanelProps {
 
 export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPanelProps) {
   const [logs, setLogs] = useState<ActivityLog[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [localOnly, setLocalOnly] = useState(false)
-  const [offline, setOffline] = useState(false)
+  const [state, setState] = useState<'local' | 'loading' | 'offline' | 'auth' | 'error' | 'ready'>('loading')
+  const isServerBacked = Boolean(roadmapId && sessionToken)
 
   useEffect(() => {
     async function load() {
       setLogs([])
-      setError(null)
-      setLocalOnly(false)
-      setOffline(false)
 
       if (!roadmapId || !sessionToken) {
-        setLocalOnly(true)
-        setLoading(false)
+        setState('local')
         return
       }
 
-      setLoading(true)
+      setState('loading')
       try {
         const data = await getRoadmapActivity(roadmapId, sessionToken)
         setLogs(data.logs)
+        setState('ready')
       } catch (err) {
         if (isApiConnectionError(err)) {
-          setOffline(true)
+          setState('offline')
+        } else if (err instanceof Error && (err.message.includes('401') || err.message.includes('403'))) {
+          setState('auth')
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load activity')
+          setState('error')
         }
-      } finally {
-        setLoading(false)
       }
     }
     load()
-  }, [roadmapId, sessionToken])
+  }, [isServerBacked, roadmapId, sessionToken])
 
   const formatTime = (iso: string) => {
     const d = new Date(iso)
@@ -110,27 +105,33 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPane
       </div>
 
       <div className="panel-body">
-        {loading ? (
+        {state === 'loading' ? (
           <div className="state-msg">
             <span className="spin">
               <Icon name="spark" size={24} />
             </span>
             <p>Loading activity...</p>
           </div>
-        ) : localOnly ? (
+        ) : state === 'local' ? (
           <div className="state-msg">
             <Icon name="activity" size={24} />
-            <p>Activity logs are available after saving this roadmap to RoadForge.</p>
+            <p>Activity logs become available after saving this roadmap to RoadForge.</p>
+            <small>Local changes are still stored in this browser.</small>
           </div>
-        ) : offline ? (
+        ) : state === 'offline' ? (
           <div className="state-msg offline">
             <Icon name="activity" size={24} />
             <p>Activity is unavailable while the RoadForge API is offline. Your cached roadmap is still usable.</p>
           </div>
-        ) : error ? (
-          <div className="state-msg error">
-            <Icon name="flame" size={24} />
-            <p>{error}</p>
+        ) : state === 'auth' ? (
+          <div className="state-msg offline">
+            <Icon name="lock" size={24} />
+            <p>Activity could not be loaded for this session.</p>
+          </div>
+        ) : state === 'error' ? (
+          <div className="state-msg offline">
+            <Icon name="activity" size={24} />
+            <p>Activity could not be loaded right now.</p>
           </div>
         ) : logs.length === 0 ? (
           <div className="state-msg">

@@ -38,6 +38,7 @@ interface RoadmapContextValue {
   locks: Record<string, { participantId: string; displayName: string }>
   activeRoadmapId: string | null
   activateRoadmap: (id: string) => void
+  createLocalRoadmap: (name: string, phases: Phase[]) => string
   resetToSample: () => void
   removeRoadmapFromBrowser: (id: string) => void
 }
@@ -48,6 +49,15 @@ function isAuthError(error: unknown): boolean {
   return error instanceof Error && (
     error.message.includes('401') || error.message.includes('403')
   )
+}
+
+function getRoadmapIdFromUrl(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return new URLSearchParams(window.location.search).get('roadmap')
+  } catch {
+    return null
+  }
 }
 
 export function RoadmapProvider({ children }: { children: ReactNode }) {
@@ -146,11 +156,14 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     // Migration
     storage.migrateLegacyStorageIfNeeded()
 
-    let targetId = storage.getActiveRoadmapId()
-    if (!targetId) {
+    const urlRoadmapId = getRoadmapIdFromUrl()
+    let targetId = urlRoadmapId && storage.getRoadmapCache(urlRoadmapId)
+      ? urlRoadmapId
+      : storage.getActiveRoadmapId()
+    if (!targetId || !storage.getRoadmapCache(targetId)) {
       targetId = storage.getLastRoadmapId()
     }
-    if (!targetId) {
+    if (!targetId || !storage.getRoadmapCache(targetId)) {
       // Default local fallback
       targetId = storage.createLocalDraftId()
       storage.setActiveRoadmapId(targetId)
@@ -312,6 +325,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       storage.clearRoadmapCache(currentActiveId)
       storage.setActiveRoadmapId(id)
       storage.setLastRoadmapId(id)
+      setActiveRoadmapIdState(id)
     }
     
     const targetId = storage.getActiveRoadmapId()
@@ -414,6 +428,40 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setLocks({})
   }, [])
 
+  const createLocalRoadmap = useCallback((name: string, nextPhases: Phase[]) => {
+    const newId = storage.createLocalDraftId()
+    const cache: RoadmapCache = {
+      roadmapName: name,
+      phases: nextPhases,
+      saved: false,
+      ownerDisplayName: null,
+      updatedAt: null,
+      isPasswordEnabled: false,
+    }
+
+    storage.setActiveRoadmapId(newId)
+    storage.setLastRoadmapId(newId)
+    storage.setRoadmapCache(newId, cache)
+    storage.setAuthCache(newId, null)
+
+    setBackendUnavailableRoadmapId(null)
+    setIsHydratingServer(false)
+    setLocks({})
+    setActiveRoadmapIdState(newId)
+    setRoadmapNameState(name)
+    setPhasesState(nextPhases)
+    setSavedState(false)
+    setServerRoadmapIdState(null)
+    setSessionTokenState(null)
+    setParticipantIdState(null)
+    setRoleState(null)
+    setIsPasswordEnabledState(false)
+    setOwnerDisplayNameState(null)
+    setUpdatedAtState(null)
+
+    return newId
+  }, [])
+
   const removeRoadmapFromBrowser = useCallback((id: string) => {
     storage.removeRoadmap(id)
     setBackendUnavailableRoadmapId(null)
@@ -466,7 +514,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, resetToSample, removeRoadmapFromBrowser }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, createLocalRoadmap, resetToSample, removeRoadmapFromBrowser }}
     >
       {children}
     </RoadmapContext.Provider>

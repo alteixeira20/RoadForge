@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/Icon'
 import { Toast } from '@/components/ui/Toast'
 import { AppHeader } from '@/components/layout/AppHeader'
@@ -23,6 +24,7 @@ interface WorkspaceProps {
 }
 
 export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
+  const router = useRouter()
   const {
     displayName,
     roadmapName,
@@ -81,12 +83,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           phases,
           password,
         )
+        const nextRoadmapId = roadmap.roadmap.id
         setServerRoadmapId(roadmap.roadmap.id)
         setSessionToken(ownerSessionToken)
         setRole('owner')
         setOwnerDisplayName(roadmap.ownerDisplayName)
         setUpdatedAt(roadmap.updatedAt)
         setPendingChangeSummary(null)
+        router.replace(`/workspace?roadmap=${encodeURIComponent(nextRoadmapId)}`)
       } else {
         if (!sessionToken) {
           showToast('Session expired — rejoin from the invite link')

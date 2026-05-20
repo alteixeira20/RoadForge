@@ -17,9 +17,9 @@ function HomePageContent() {
     }
   }, [router, searchParams])
 
-  const handleWizardComplete = () => {
+  const handleWizardComplete = (roadmapId?: string) => {
     setShowWizard(false)
-    router.push('/workspace')
+    router.push(roadmapId ? `/workspace?roadmap=${encodeURIComponent(roadmapId)}` : '/workspace')
   }
 
   return (

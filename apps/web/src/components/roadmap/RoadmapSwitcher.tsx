@@ -66,11 +66,15 @@ export function RoadmapSwitcher({
   }, [isOpen])
 
   const caches = mounted ? storage.listRoadmapCaches() : []
-  const meaningfulCaches = caches.filter(({ cache, auth }) => auth || cache.saved)
-  const visibleCaches = hideWhenEmpty ? meaningfulCaches : caches
+  const visibleCaches = caches
 
   if (!mounted && hideWhenEmpty) return null
-  if (hideWhenEmpty && meaningfulCaches.length === 0) return null
+  if (hideWhenEmpty && visibleCaches.length === 0) return null
+
+  const getRoadmapPath = (id: string, role?: ShareRole | null) => {
+    const path = role === 'viewer' ? '/shared' : '/workspace'
+    return `${path}?roadmap=${encodeURIComponent(id)}`
+  }
 
   const handleCreateNew = () => {
     setIsOpen(false)
@@ -82,9 +86,10 @@ export function RoadmapSwitcher({
   }
 
   const handleActivateRoadmap = (id: string) => {
+    const auth = storage.getAuthCache(id)
     activateRoadmap(id)
     setIsOpen(false)
-    if (variant !== 'workspace') router.push('/workspace')
+    router.push(getRoadmapPath(id, auth?.role))
   }
 
   const handleJoin = async () => {
@@ -101,7 +106,7 @@ export function RoadmapSwitcher({
         // Not a URL, try as raw token
       }
 
-      const { roadmapId, role, sessionToken, participantId } = await joinRoadmap(
+      const { roadmapId, roadmapName, role, sessionToken, participantId } = await joinRoadmap(
         token,
         displayName.trim() || undefined,
         password || undefined,
@@ -114,6 +119,14 @@ export function RoadmapSwitcher({
         sessionToken,
         participantId,
         role: role as ShareRole,
+      })
+      storage.setRoadmapCache(roadmapId, {
+        roadmapName,
+        phases: [],
+        saved: true,
+        ownerDisplayName: null,
+        updatedAt: null,
+        isPasswordEnabled: false,
       })
 
       try {
@@ -136,7 +149,7 @@ export function RoadmapSwitcher({
       setInviteLink('')
       setPassword('')
       setNeedsPassword(false)
-      if (variant !== 'workspace') router.push(role === 'viewer' ? '/shared' : '/workspace')
+      router.push(getRoadmapPath(roadmapId, role as ShareRole))
       
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''

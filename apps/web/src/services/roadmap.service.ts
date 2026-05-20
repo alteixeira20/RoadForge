@@ -469,7 +469,7 @@ export async function joinRoadmap(
   token: string,
   displayName?: string,
   password?: string,
-): Promise<{ roadmapId: string; role: string; sessionToken: string; participantId: string }> {
+): Promise<{ roadmapId: string; roadmapName: string; role: string; sessionToken: string; participantId: string }> {
   const body: Record<string, unknown> = { token }
   if (displayName) body.display_name = displayName
   if (password) body.password = password
@@ -479,6 +479,7 @@ export async function joinRoadmap(
   })
   return {
     roadmapId: data.roadmap_id,
+    roadmapName: data.roadmap_name,
     role: data.role,
     sessionToken: data.session_token,
     participantId: data.participant_id,

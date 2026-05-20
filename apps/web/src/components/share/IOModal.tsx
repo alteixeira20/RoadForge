@@ -108,6 +108,10 @@ export function IOModal({ open, onClose, onToast }: IOModalProps) {
     setPhases,
     setRoadmapName,
     setSaved,
+    setServerRoadmapId,
+    setSessionToken,
+    setParticipantId,
+    setRole,
     resetToSample,
     saved,
     serverRoadmapId,
@@ -178,6 +182,10 @@ export function IOModal({ open, onClose, onToast }: IOModalProps) {
         const imported = parseImportedRoadmapJson(ev.target?.result as string)
         setPhases(imported.phases)
         if (imported.roadmapName) setRoadmapName(imported.roadmapName)
+        setServerRoadmapId(null)
+        setSessionToken(null)
+        setParticipantId(null)
+        setRole(null)
         setSaved(false)
         onToast('Roadmap imported from JSON')
         onClose()
