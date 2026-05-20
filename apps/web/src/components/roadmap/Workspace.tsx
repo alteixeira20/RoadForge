@@ -16,7 +16,7 @@ import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { createRoadmap, isApiConnectionError, saveToServer } from '@/services/roadmap.service'
-import type { WorkspaceMode, Task, ChangeSummary } from '@/types/roadmap'
+import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -64,7 +64,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     closeIO,
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
-  const [pendingChangeSummary, setPendingChangeSummary] = useState<ChangeSummary | null>(null)
+  const [pendingActivityChanges, setPendingActivityChanges] = useState<ActivityChange[]>([])
 
   const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
   const totalDone = allTasks.filter((t) => t.done).length
@@ -72,8 +72,99 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const onToggleTask = (id: string) => setExpandedTaskId((prev) => (prev === id ? null : id))
 
+  const isPhaseComplete = (phase: PhaseType) => phase.tasks.length > 0 && phase.tasks.every((t) => t.done)
+  const phaseLabel = (phase: PhaseType) => `${phase.num} — ${phase.name}`
+  const taskCountFor = (phaseList: PhaseType[]) => phaseList.reduce((count, phase) => count + phase.tasks.length, 0)
+  const findPhaseForTask = (taskId: string, phaseList: PhaseType[] = phases) => (
+    phaseList.find((phase) => phase.tasks.some((task) => task.id === taskId))
+  )
+
+  const changePriority: Record<ActivityAction, number> = {
+    'roadmap.imported': 1,
+    'phase.completed': 2,
+    'phase.reopened': 2,
+    'task.created': 3,
+    'task.completed': 4,
+    'task.reopened': 4,
+    'task.dependency.linked': 5,
+    'task.dependency.unlinked': 5,
+    'task.updated': 6,
+    'task.reordered': 7,
+    'roadmap.batch_changed': 8,
+    'roadmap.updated': 9,
+  }
+
+  const countKeyForAction = (action: ActivityAction): string => {
+    switch (action) {
+      case 'roadmap.imported': return 'imports'
+      case 'phase.completed': return 'phases_completed'
+      case 'phase.reopened': return 'phases_reopened'
+      case 'task.created': return 'tasks_added'
+      case 'task.completed': return 'tasks_completed'
+      case 'task.reopened': return 'tasks_reopened'
+      case 'task.dependency.linked': return 'dependencies_linked'
+      case 'task.dependency.unlinked': return 'dependencies_unlinked'
+      case 'task.updated': return 'tasks_updated'
+      case 'task.reordered': return 'tasks_reordered'
+      default: return 'updates'
+    }
+  }
+
+  const dedupeKey = (change: ActivityChange) => {
+    if (change.taskId) return `task:${change.taskId}`
+    if (change.phaseId) return `phase:${change.phaseId}`
+    return `${change.action}:${change.entity_id || change.roadmapName || 'roadmap'}`
+  }
+
+  const areOppositeActions = (a: ActivityAction, b: ActivityAction) => (
+    (a === 'task.completed' && b === 'task.reopened') ||
+    (a === 'task.reopened' && b === 'task.completed') ||
+    (a === 'phase.completed' && b === 'phase.reopened') ||
+    (a === 'phase.reopened' && b === 'phase.completed')
+  )
+
+  const addPendingActivityChange = (change: ActivityChange) => {
+    setPendingActivityChanges((prev) => {
+      const key = dedupeKey(change)
+      const existing = prev.find((item) => dedupeKey(item) === key)
+      if (existing && areOppositeActions(existing.action, change.action)) {
+        return prev.filter((item) => dedupeKey(item) !== key)
+      }
+      if (existing?.action === 'task.created' && change.action === 'task.updated') {
+        return prev.map((item) => (
+          dedupeKey(item) === key ? { ...item, taskTitle: change.taskTitle || item.taskTitle } : item
+        ))
+      }
+      if (existing && existing.action === change.action) {
+        return prev.map((item) => (dedupeKey(item) === key ? change : item))
+      }
+      return [...prev, change]
+    })
+  }
+
+  const buildChangeSummary = (changes: ActivityChange[]): ChangeSummary | null => {
+    if (changes.length === 0) return null
+    if (changes.length === 1) return changes[0]
+
+    const counts = changes.reduce<Record<string, number>>((acc, change) => {
+      const key = countKeyForAction(change.action)
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+    const primaryChange = [...changes].sort((a, b) => changePriority[a.action] - changePriority[b.action])[0]
+    return {
+      action: 'roadmap.batch_changed',
+      entity_type: 'roadmap',
+      entity_id: serverRoadmapId || undefined,
+      changes,
+      counts,
+      primary_change: primaryChange,
+    }
+  }
+
   const handleConfirmSave = async (password?: string) => {
     closeSave()
+    const changeSummary = buildChangeSummary(pendingActivityChanges)
     try {
       if (!serverRoadmapId) {
         // First save: no bearer token needed — create returns a new owner session.
@@ -82,6 +173,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           displayName || 'Owner',
           phases,
           password,
+          changeSummary,
         )
         const nextRoadmapId = roadmap.roadmap.id
         setServerRoadmapId(roadmap.roadmap.id)
@@ -89,16 +181,16 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         setRole('owner')
         setOwnerDisplayName(roadmap.ownerDisplayName)
         setUpdatedAt(roadmap.updatedAt)
-        setPendingChangeSummary(null)
+        setPendingActivityChanges([])
         router.replace(`/workspace?roadmap=${encodeURIComponent(nextRoadmapId)}`)
       } else {
         if (!sessionToken) {
           showToast('Session expired — rejoin from the invite link')
           return
         }
-        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt || undefined, pendingChangeSummary)
+        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt || undefined, changeSummary)
         setUpdatedAt(data.updated_at)
-        setPendingChangeSummary(null)
+        setPendingActivityChanges([])
       }
       setSaved(true)
       showToast('Saved · collaboration enabled')
@@ -126,12 +218,36 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
     // Reopening is always allowed
     if (task.done) {
-      setPhases(
-        phases.map((p) => ({
-          ...p,
-          tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: false } : t)),
-        })),
-      )
+      const affectedPhase = findPhaseForTask(id)
+      const wasPhaseComplete = affectedPhase ? isPhaseComplete(affectedPhase) : false
+      const nextPhases = phases.map((p) => ({
+        ...p,
+        tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: false } : t)),
+      }))
+      const nextPhase = affectedPhase ? nextPhases.find((p) => p.id === affectedPhase.id) : null
+      const isNowPhaseComplete = nextPhase ? isPhaseComplete(nextPhase) : false
+      setPhases(nextPhases)
+      if (affectedPhase && wasPhaseComplete && !isNowPhaseComplete) {
+        addPendingActivityChange({
+          action: 'phase.reopened',
+          entity_type: 'phase',
+          entity_id: affectedPhase.id,
+          phaseId: affectedPhase.id,
+          phaseName: affectedPhase.name,
+          phaseNum: affectedPhase.num,
+          details: phaseLabel(affectedPhase),
+        })
+      } else {
+        addPendingActivityChange({
+          action: 'task.reopened',
+          entity_type: 'task',
+          entity_id: task.id,
+          taskId: task.id,
+          taskTitle: task.title,
+          phaseId: affectedPhase?.id,
+          phaseName: affectedPhase?.name,
+        })
+      }
       setSaved(false)
       return
     }
@@ -181,12 +297,36 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       return
     }
 
-    setPhases(
-      phases.map((p) => ({
-        ...p,
-        tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: true } : t)),
-      })),
-    )
+    const affectedPhase = findPhaseForTask(id)
+    const wasPhaseComplete = affectedPhase ? isPhaseComplete(affectedPhase) : false
+    const nextPhases = phases.map((p) => ({
+      ...p,
+      tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: true } : t)),
+    }))
+    const nextPhase = affectedPhase ? nextPhases.find((p) => p.id === affectedPhase.id) : null
+    const isNowPhaseComplete = nextPhase ? isPhaseComplete(nextPhase) : false
+    setPhases(nextPhases)
+    if (affectedPhase && !wasPhaseComplete && isNowPhaseComplete) {
+      addPendingActivityChange({
+        action: 'phase.completed',
+        entity_type: 'phase',
+        entity_id: affectedPhase.id,
+        phaseId: affectedPhase.id,
+        phaseName: affectedPhase.name,
+        phaseNum: affectedPhase.num,
+        details: phaseLabel(affectedPhase),
+      })
+    } else {
+      addPendingActivityChange({
+        action: 'task.completed',
+        entity_type: 'task',
+        entity_id: task.id,
+        taskId: task.id,
+        taskTitle: task.title,
+        phaseId: affectedPhase?.id,
+        phaseName: affectedPhase?.name,
+      })
+    }
     setSaved(false)
   }
 
@@ -256,7 +396,17 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       }),
     )
 
-    setPendingChangeSummary({ action: 'task.created', taskId: newId, taskTitle: title, entityType: 'task', entityId: newId })
+    const phase = findPhaseForTask(parentId)
+    addPendingActivityChange({
+      action: 'task.created',
+      entity_type: 'task',
+      entity_id: newId,
+      taskId: newId,
+      taskTitle: title,
+      phaseId: phase?.id,
+      phaseName: phase?.name,
+      parentId,
+    })
     setSaved(false)
     setExpandedTaskId(newId)
   }
@@ -276,6 +426,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       desc: '',
     }
 
+    const phase = phases.find((p) => p.id === phaseId)
     setPhases(
       phases.map((p) => {
         if (p.id !== phaseId) return p
@@ -283,18 +434,40 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       }),
     )
 
+    addPendingActivityChange({
+      action: 'task.created',
+      entity_type: 'task',
+      entity_id: newId,
+      taskId: newId,
+      taskTitle: newTask.title,
+      phaseId: phase?.id,
+      phaseName: phase?.name,
+    })
     setSaved(false)
     setExpandedTaskId(newId)
   }
 
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {
     if (readOnly) return
+    const task = allTasks.find((t) => t.id === id)
+    const phase = findPhaseForTask(id)
     setPhases(
       phases.map((p) => ({
         ...p,
         tasks: p.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
       })),
     )
+    if (task) {
+      addPendingActivityChange({
+        action: 'task.updated',
+        entity_type: 'task',
+        entity_id: id,
+        taskId: id,
+        taskTitle: updates.title ?? task.title,
+        phaseId: phase?.id,
+        phaseName: phase?.name,
+      })
+    }
     setSaved(false)
   }
 
@@ -307,14 +480,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setPhases(
       phases.map((p) => (p.id === phaseId ? { ...p, color } : p)),
     )
-    setPendingChangeSummary({
-      action: 'phase.updated',
-      phaseId,
-      phaseName: phase.name,
-      entityType: 'phase',
-      entityId: phaseId,
-      details: 'Changed phase color',
-    })
     setSaved(false)
   }
 
@@ -338,7 +503,18 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         }),
       })),
     )
-    setPendingChangeSummary({ action: 'task.dependency.linked', taskId: taskId, taskTitle: task?.title, dependencyId: depId, dependencyTitle: depTask?.title, entityType: 'task', entityId: taskId })
+    const phase = findPhaseForTask(taskId)
+    addPendingActivityChange({
+      action: 'task.dependency.linked',
+      entity_type: 'task',
+      entity_id: taskId,
+      taskId,
+      taskTitle: task?.title,
+      dependencyId: depId,
+      dependencyTitle: depTask?.title,
+      phaseId: phase?.id,
+      phaseName: phase?.name,
+    })
     setSaved(false)
   }
 
@@ -357,7 +533,18 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         }),
       })),
     )
-    setPendingChangeSummary({ action: 'task.dependency.unlinked', taskId: taskId, taskTitle: task?.title, dependencyId: depId, dependencyTitle: depTask?.title, entityType: 'task', entityId: taskId })
+    const phase = findPhaseForTask(taskId)
+    addPendingActivityChange({
+      action: 'task.dependency.unlinked',
+      entity_type: 'task',
+      entity_id: taskId,
+      taskId,
+      taskTitle: task?.title,
+      dependencyId: depId,
+      dependencyTitle: depTask?.title,
+      phaseId: phase?.id,
+      phaseName: phase?.name,
+    })
     setSaved(false)
   }
 
@@ -390,6 +577,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         return { ...p, tasks: [...orderedTasks, ...remainingTasks] }
       }),
     )
+    const phase = phases.find((p) => p.id === phaseId)
+    addPendingActivityChange({
+      action: 'task.reordered',
+      entity_type: 'phase',
+      entity_id: phaseId,
+      phaseId,
+      phaseName: phase?.name,
+    })
     setSaved(false)
   }
 
@@ -414,8 +609,27 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         return { ...p, tasks: newTasks }
       }),
     )
-    setPendingChangeSummary({ action: 'task.reordered', taskId: parentId, taskTitle: parent?.title, entityType: 'task', entityId: parentId })
+    const phase = findPhaseForTask(parentId)
+    addPendingActivityChange({
+      action: 'task.reordered',
+      entity_type: 'task',
+      entity_id: parentId,
+      taskId: parentId,
+      taskTitle: parent?.title,
+      phaseId: phase?.id,
+      phaseName: phase?.name,
+    })
     setSaved(false)
+  }
+
+  const handleRoadmapImported = (importedName: string | undefined, importedPhases: PhaseType[]) => {
+    setPendingActivityChanges([{
+      action: 'roadmap.imported',
+      entity_type: 'roadmap',
+      roadmapName: importedName,
+      phase_count: importedPhases.length,
+      task_count: taskCountFor(importedPhases),
+    }])
   }
 
   return (
@@ -495,6 +709,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         onCloseIO={closeIO}
         onConfirmSave={handleConfirmSave}
         onToast={showToast}
+        onRoadmapImported={handleRoadmapImported}
       />
 
       {toast && <Toast message={toast} />}

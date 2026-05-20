@@ -114,6 +114,7 @@ class CreateRoadmapRequest(BaseModel):
     owner_display_name: str = Field(min_length=1, max_length=DISPLAY_NAME_MAX)
     phases: list[PhaseDTO] = Field(default=[], max_length=PHASES_MAX)
     password: str | None = Field(default=None, min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)
+    change_summary: dict[str, Any] | None = None
 
     @field_validator("name", "owner_display_name", mode="before")
     @classmethod

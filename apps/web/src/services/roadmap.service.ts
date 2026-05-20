@@ -157,9 +157,11 @@ export async function createRoadmap(
   ownerDisplayName: string,
   phases: Phase[] = [],
   password?: string,
+  changeSummary?: ChangeSummary | null,
 ): Promise<{ roadmap: Roadmap; ownerSessionToken: string }> {
   const body: Record<string, unknown> = { name, owner_display_name: ownerDisplayName, phases }
   if (password) body.password = password
+  if (changeSummary) body.change_summary = changeSummary
   const data = await requestJson<ApiCreateRoadmapResponse>('/api/roadmaps', {
     method: 'POST',
     body: JSON.stringify(body),

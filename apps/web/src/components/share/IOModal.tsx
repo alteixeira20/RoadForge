@@ -6,11 +6,13 @@ import { Icon } from '@/components/ui/Icon'
 import { exportRoadmap } from '@/services/roadmap.service'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { parseImportedRoadmapJson, IMPORT_MAX_BYTES } from '@/lib/roadmap-validation'
+import type { Phase } from '@/types/roadmap'
 
 interface IOModalProps {
   open: boolean
   onClose: () => void
   onToast: (msg: string) => void
+  onRoadmapImported?: (roadmapName: string | undefined, phases: Phase[]) => void
 }
 
 type Tab = 'export' | 'import'
@@ -100,7 +102,7 @@ Priority rules:
 Return only the final JSON. Do not wrap it in Markdown. Do not include comments.
 `
 
-export function IOModal({ open, onClose, onToast }: IOModalProps) {
+export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalProps) {
   const [tab, setTab] = useState<Tab>('export')
   const {
     roadmapName,
@@ -187,6 +189,7 @@ export function IOModal({ open, onClose, onToast }: IOModalProps) {
         setParticipantId(null)
         setRole(null)
         setSaved(false)
+        onRoadmapImported?.(imported.roadmapName, imported.phases)
         onToast('Roadmap imported from JSON')
         onClose()
       } catch (err) {

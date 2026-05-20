@@ -29,7 +29,13 @@ Create a new roadmap. Returns the roadmap, three share links with raw join URLs,
   "name": "v1.0 Public Launch",
   "owner_display_name": "Ada",
   "phases": [],
-  "password": null
+  "password": null,
+  "change_summary": {
+    "action": "roadmap.imported",
+    "entity_type": "roadmap",
+    "phase_count": 11,
+    "task_count": 77
+  }
 }
 ```
 
@@ -37,6 +43,7 @@ Create a new roadmap. Returns the roadmap, three share links with raw join URLs,
 - `owner_display_name` — required, 1–128 chars
 - `phases` — optional, array of phase objects (see Phase shape below), max 50 phases
 - `password` — optional, 6–128 chars; enables password gate for all joiners
+- `change_summary` — optional, dictionary used to customize the first activity log entry. Clients can use this for first-save imports.
 
 **Response 201:**
 ```json
@@ -135,10 +142,33 @@ Update a roadmap's name and/or phases. Both fields are optional; omit to leave u
 }
 ```
 
+Batch activity summaries are also supported:
+```json
+{
+  "change_summary": {
+    "action": "roadmap.batch_changed",
+    "entity_type": "roadmap",
+    "changes": [
+      {
+        "action": "task.created",
+        "entity_type": "task",
+        "entity_id": "RF-302",
+        "taskId": "RF-302",
+        "taskTitle": "Remove stale Markdown/PDF export paths"
+      }
+    ],
+    "counts": {
+      "tasks_added": 1,
+      "phases_completed": 1
+    }
+  }
+}
+```
+
 - `name` — optional, 1–120 chars
 - `phases` — optional, array of phase objects
 - `last_updated_at` — optional, optimistic concurrency check
-- `change_summary` — optional, dictionary used to customize the activity log entry for this update. If provided, `action` is required.
+- `change_summary` — optional, dictionary used to customize the single activity log entry for this save. If provided, `action` is required. Clients should accumulate local changes and send either one high-signal action or one `roadmap.batch_changed` summary on explicit Save.
 
 **Response 200:** Same shape as `GET /api/roadmaps/{roadmap_id}`.
 

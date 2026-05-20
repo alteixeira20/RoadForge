@@ -87,15 +87,26 @@ async def create_roadmap(
         share_link_rows.append(sl)
 
     # ── Activity log ──────────────────────────────────────────────────────────
+    action = "roadmap.created"
+    entity_type = "roadmap"
+    entity_id = roadmap_id
+    metadata_json = None
+    if payload.change_summary is not None and isinstance(payload.change_summary.get("action"), str):
+        action = payload.change_summary["action"]
+        entity_type = payload.change_summary.get("entity_type", "roadmap")
+        entity_id = payload.change_summary.get("entity_id", roadmap_id)
+        metadata_json = payload.change_summary
+
     db.add(ActivityLog(
         id=generate_id("al_"),
         roadmap_id=roadmap_id,
         participant_id=participant.id,
         actor_name=payload.owner_display_name,
-        action="roadmap.created",
-        entity_type="roadmap",
-        entity_id=roadmap_id,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
         after_json={"name": payload.name},
+        metadata_json=metadata_json,
     ))
 
     await db.commit()

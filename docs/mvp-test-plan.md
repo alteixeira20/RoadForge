@@ -162,18 +162,20 @@ curl http://localhost:7878/api/health
 
 ---
 
-## 12. Verify Activity Logs (v0.2 Task-Level)
+## 12. Verify Activity Logs (Save-Level Summaries)
 
 1. **Owner/Editor:** Open the **Activity** panel.
-2. **Action:** Check a task as done.
+2. **Action:** Complete the last unfinished task in a phase.
 3. **Click Save.**
-4. **Confirm Activity:** A new entry `Completed task` appears with the task ID and title.
-5. **Action:** Click the pencil on a task, change the title, and click Save.
-6. **Confirm Activity:** A new entry `Updated task` appears.
-7. **Action:** Link a dependency between two tasks and click Save.
-8. **Confirm Activity:** A new entry `Linked dependency` appears.
-9. **Action:** Drag to reorder tasks within a phase and click Save.
-10. **Confirm Activity:** A new entry `Reordered tasks` appears.
+4. **Confirm Activity:** One new entry `Completed phase` appears with the phase number/name.
+5. **Action:** Reopen a task in that completed phase and click Save.
+6. **Confirm Activity:** One new entry `Reopened phase` appears.
+7. **Action:** Add a task and click Save.
+8. **Confirm Activity:** One new entry `Added task` appears with task ID/title.
+9. **Action:** Import a JSON roadmap, then click Save.
+10. **Confirm Activity:** One new entry `Imported roadmap` appears with phase/task counts.
+11. **Action:** Make several meaningful changes before clicking Save.
+12. **Confirm Activity:** One compact `Saved N changes` batch entry appears, not one row per local click.
 
 ---
 

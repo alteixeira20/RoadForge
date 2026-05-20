@@ -54,17 +54,44 @@ export interface Roadmap {
   updatedAt: string
 }
 
-export interface ChangeSummary {
-  action: string
-  entityType?: string
-  entityId?: string
+export type ActivityAction =
+  | 'roadmap.updated'
+  | 'roadmap.imported'
+  | 'roadmap.batch_changed'
+  | 'phase.completed'
+  | 'phase.reopened'
+  | 'task.created'
+  | 'task.completed'
+  | 'task.reopened'
+  | 'task.updated'
+  | 'task.dependency.linked'
+  | 'task.dependency.unlinked'
+  | 'task.reordered'
+
+export interface ActivityChange {
+  action: ActivityAction
+  entity_type?: string
+  entity_id?: string
   taskId?: string
   taskTitle?: string
   phaseId?: string
   phaseName?: string
+  phaseNum?: string
+  parentId?: string
   dependencyId?: string
   dependencyTitle?: string
+  roadmapName?: string
+  phase_count?: number
+  task_count?: number
+  phaseCount?: number
+  taskCount?: number
   details?: string
+}
+
+export interface ChangeSummary extends ActivityChange {
+  changes?: ActivityChange[]
+  counts?: Record<string, number>
+  primary_change?: ActivityChange
 }
 
 // ─── Collaboration / sharing ───────────────────────────────────────────────────

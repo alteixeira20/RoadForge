@@ -62,6 +62,20 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPane
     switch (action) {
       case 'roadmap.created': return 'Created roadmap'
       case 'roadmap.updated': return 'Saved roadmap'
+      case 'roadmap.imported': return 'Imported roadmap'
+      case 'roadmap.batch_changed': {
+        const changes = Array.isArray(metadata?.changes) ? metadata.changes.length : 0
+        return `Saved ${changes || 'multiple'} changes`
+      }
+      case 'phase.completed': return 'Completed phase'
+      case 'phase.reopened': return 'Reopened phase'
+      case 'task.created': return 'Added task'
+      case 'task.completed': return 'Completed task'
+      case 'task.reopened': return 'Reopened task'
+      case 'task.updated': return 'Updated task'
+      case 'task.dependency.linked': return 'Linked dependency'
+      case 'task.dependency.unlinked': return 'Unlinked dependency'
+      case 'task.reordered': return 'Reordered tasks'
       case 'participant.joined': return `Joined as ${metadata?.role || 'contributor'}`
       case 'share_link.rotated': return `Rotated ${metadata?.role || ''} link`
       case 'share_link.revoked': return `Revoked ${metadata?.role || ''} link`
@@ -69,10 +83,63 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPane
     }
   }
 
+  const plural = (count: number, singular: string, pluralLabel = `${singular}s`) => (
+    `${count} ${count === 1 ? singular : pluralLabel}`
+  )
+
+  const getBatchDetails = (metadata: Record<string, unknown> | null) => {
+    const counts = metadata?.counts
+    if (!counts || typeof counts !== 'object') return null
+    const c = counts as Record<string, unknown>
+    const parts: string[] = []
+    const add = (key: string, singular: string, pluralLabel?: string) => {
+      const value = c[key]
+      if (typeof value === 'number' && value > 0) parts.push(plural(value, singular, pluralLabel))
+    }
+    add('tasks_added', 'task added', 'tasks added')
+    add('phases_completed', 'phase completed', 'phases completed')
+    add('phases_reopened', 'phase reopened', 'phases reopened')
+    add('tasks_completed', 'task completed', 'tasks completed')
+    add('tasks_reopened', 'task reopened', 'tasks reopened')
+    add('dependencies_linked', 'dependency linked', 'dependencies linked')
+    add('dependencies_unlinked', 'dependency unlinked', 'dependencies unlinked')
+    add('tasks_updated', 'task updated', 'tasks updated')
+    add('tasks_reordered', 'task reorder', 'task reorders')
+    add('imports', 'import')
+    return parts.length ? parts.join(' · ') : null
+  }
+
   const getDetails = (log: ActivityLog) => {
     const { action, before_json, after_json, metadata_json } = log
     if (action === 'roadmap.created' && after_json?.name) {
       return <span>&ldquo;{String(after_json.name)}&rdquo;</span>
+    }
+    if (action === 'roadmap.imported') {
+      const phaseCount = typeof metadata_json?.phase_count === 'number'
+        ? metadata_json.phase_count
+        : typeof metadata_json?.phaseCount === 'number'
+          ? metadata_json.phaseCount
+          : null
+      const taskCount = typeof metadata_json?.task_count === 'number'
+        ? metadata_json.task_count
+        : typeof metadata_json?.taskCount === 'number'
+          ? metadata_json.taskCount
+          : null
+      if (phaseCount !== null && taskCount !== null) {
+        return <span>{plural(phaseCount, 'phase')} · {plural(taskCount, 'task')}</span>
+      }
+      return <span className="dim">Roadmap snapshot imported</span>
+    }
+    if (action === 'roadmap.batch_changed') {
+      const details = getBatchDetails(metadata_json)
+      return details ? <span>{details}</span> : <span className="dim">Snapshot saved</span>
+    }
+    if (action === 'phase.completed' || action === 'phase.reopened') {
+      if (metadata_json?.details) return <span>{String(metadata_json.details)}</span>
+      if (metadata_json?.phaseNum || metadata_json?.phaseName) {
+        return <span>{[metadata_json.phaseNum, metadata_json.phaseName].filter(Boolean).map(String).join(' — ')}</span>
+      }
+      return <span>{String(metadata_json?.phaseId || log.entity_id || 'Phase')}</span>
     }
     if (action === 'roadmap.updated') {
       if (before_json?.phase_count !== undefined && after_json?.phase_count !== undefined) {
@@ -81,7 +148,9 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPane
       return <span className="dim">Snapshot saved</span>
     }
     if (action === 'task.completed' || action === 'task.reopened' || action === 'task.created' || action === 'task.updated') {
-      return <span>{String(metadata_json?.taskId)} — {String(metadata_json?.taskTitle)}</span>
+      const task = [metadata_json?.taskId, metadata_json?.taskTitle].filter(Boolean).map(String).join(' — ')
+      const phase = metadata_json?.phaseName ? ` · ${String(metadata_json.phaseName)}` : ''
+      return <span>{task}{phase}</span>
     }
     if (action === 'task.dependency.linked' || action === 'task.dependency.unlinked') {
       return <span>{String(metadata_json?.taskId)} depends on {String(metadata_json?.dependencyId)}</span>
