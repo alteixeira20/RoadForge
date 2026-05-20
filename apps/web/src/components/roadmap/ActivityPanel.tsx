@@ -9,9 +9,10 @@ interface ActivityPanelProps {
   roadmapId: string | null
   sessionToken: string | null
   onClose: () => void
+  refreshKey?: number
 }
 
-export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPanelProps) {
+export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: ActivityPanelProps) {
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [state, setState] = useState<'local' | 'loading' | 'offline' | 'auth' | 'error' | 'ready'>('loading')
   const isServerBacked = Boolean(roadmapId && sessionToken)
@@ -41,7 +42,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose }: ActivityPane
       }
     }
     load()
-  }, [isServerBacked, roadmapId, sessionToken])
+  }, [isServerBacked, roadmapId, sessionToken, refreshKey])
 
   const formatTime = (iso: string) => {
     const d = new Date(iso)

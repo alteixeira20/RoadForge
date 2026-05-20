@@ -50,7 +50,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   // Ref prevents concurrent autosync calls without adding isSyncing to effect deps
   const isSyncingRef = useRef(false)
   // Holds latest values so the debounced callback is never stale
-  const syncParamsRef = useRef({ phases, roadmapName, updatedAt, pendingActivityChanges: [] as ActivityChange[], serverRoadmapId, sessionToken, saved })
+  const syncParamsRef = useRef({ phases, roadmapName, updatedAt, pendingActivityChanges: [] as ActivityChange[], serverRoadmapId, sessionToken, saved, showActivity: false })
 
   const syncStatus: SyncStatus = !serverRoadmapId
     ? 'local'
@@ -80,6 +80,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     closeIO,
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0)
   const [pendingActivityChanges, setPendingActivityChanges] = useState<ActivityChange[]>([])
 
   const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
@@ -179,10 +180,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   }
 
   // Keep ref fresh so the debounced callback always reads the latest values
-  syncParamsRef.current = { phases, roadmapName, updatedAt, pendingActivityChanges, serverRoadmapId, sessionToken, saved }
+  syncParamsRef.current = { phases, roadmapName, updatedAt, pendingActivityChanges, serverRoadmapId, sessionToken, saved, showActivity }
 
   // ─── Debounced autosync for server-backed roadmaps ─────────────────────────
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!serverRoadmapId || !sessionToken || readOnly || saved) return
 
@@ -193,7 +193,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       isSyncingRef.current = true
       setIsSyncing(true)
 
-      const { phases: p, roadmapName: n, updatedAt: ua, pendingActivityChanges: pac, serverRoadmapId: rid, sessionToken: tok, saved: currentSaved } = syncParamsRef.current
+      const { phases: p, roadmapName: n, updatedAt: ua, pendingActivityChanges: pac, serverRoadmapId: rid, sessionToken: tok, saved: currentSaved, showActivity: showAct } = syncParamsRef.current
       if (!rid || !tok || currentSaved) {
         isSyncingRef.current = false
         setIsSyncing(false)
@@ -207,6 +207,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         setSaved(true)
         setPendingActivityChanges([])
         setIsOffline(false)
+        if (showAct) setActivityRefreshKey((k) => k + 1)
       } catch (err) {
         if (err instanceof Error && err.message.includes('409')) {
           setIsOffline(true)
@@ -227,7 +228,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     return () => {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
     }
-  // phases/roadmapName resets the debounce; buildChangeSummary/syncParamsRef are stable by design
+  // phases/roadmapName resets the debounce; other values read from syncParamsRef to avoid stale closures
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverRoadmapId, sessionToken, readOnly, saved, phases, roadmapName])
 
   const handleConfirmSave = async (password?: string) => {
@@ -262,6 +264,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       }
       setSaved(true)
       setIsOffline(false)
+      if (showActivity) setActivityRefreshKey((k) => k + 1)
       showToast('Saved · collaboration enabled')
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
@@ -788,6 +791,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           roadmapId={serverRoadmapId}
           sessionToken={sessionToken}
           onClose={() => setShowActivity(false)}
+          refreshKey={activityRefreshKey}
         />
       )}
     </div>
