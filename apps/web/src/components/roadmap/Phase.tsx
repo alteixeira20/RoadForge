@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -22,8 +22,12 @@ import {
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 
 import { Icon } from '@/components/ui/Icon'
+import { Toast } from '@/components/ui/Toast'
 import { SortableTaskItem } from './SortableTaskItem'
 import { TaskRow } from './TaskRow'
+import { useRoadmap } from '@/context/RoadmapContext'
+import { acquireLock, releaseLock } from '@/services/roadmap.service'
+import { useToastState } from '@/hooks/useToastState'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 import type { ForgeStyle } from '@/types/ui'
 
@@ -91,6 +95,51 @@ export function Phase({
   const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
   const isActive = phase.status === 'active'
   const [showColorPicker, setShowColorPicker] = useState(false)
+
+  const { locks, serverRoadmapId, sessionToken, participantId } = useRoadmap()
+  const { toast, showToast } = useToastState()
+
+  const colorLockTarget = `phase:${phase.id}`
+  const colorLock = locks[colorLockTarget]
+  const isColorLockedByMe = colorLock?.participantId === participantId
+  const isColorLockedByOther = !!colorLock && !isColorLockedByMe
+
+  const tryAcquireColorLock = async (): Promise<boolean> => {
+    if (readOnly) return false
+    if (!serverRoadmapId || !sessionToken) return true
+    try {
+      await acquireLock(serverRoadmapId, colorLockTarget, sessionToken)
+      return true
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('409')) {
+        const holder = colorLock?.displayName || 'Another participant'
+        showToast(`${holder} is editing this phase.`)
+      } else {
+        showToast('Could not acquire lock.')
+      }
+      return false
+    }
+  }
+
+  useEffect(() => {
+    if (!showColorPicker || readOnly || !serverRoadmapId || !sessionToken) return
+
+    const tryRefresh = async () => {
+      try {
+        await acquireLock(serverRoadmapId, colorLockTarget, sessionToken)
+      } catch {
+        // Silently fail on refresh; TTL handles expiry
+      }
+    }
+
+    const interval = setInterval(tryRefresh, 20_000)
+
+    return () => {
+      clearInterval(interval)
+      releaseLock(serverRoadmapId, colorLockTarget, sessionToken).catch(() => {})
+    }
+  }, [showColorPicker, readOnly, serverRoadmapId, sessionToken, colorLockTarget])
 
   const displayStatus = allDone ? 'done' : (phase.status === 'done' ? 'active' : phase.status)
 
@@ -166,7 +215,12 @@ export function Phase({
         <span className="count">
           {doneCount}/{phase.tasks.length}
         </span>
-        {!readOnly && (
+        {isColorLockedByOther && (
+          <span className="phase-lock-pill">
+            <Icon name="shield" size={11} /> {colorLock.displayName} is editing
+          </span>
+        )}
+        {!readOnly && !isColorLockedByOther && (
           <div className="phase-color-control" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
@@ -174,7 +228,14 @@ export function Phase({
               title="Change phase color"
               aria-label={`Change color for ${phase.name}`}
               aria-expanded={showColorPicker}
-              onClick={() => setShowColorPicker((prev) => !prev)}
+              onClick={async () => {
+                if (showColorPicker) {
+                  setShowColorPicker(false)
+                  return
+                }
+                const success = await tryAcquireColorLock()
+                if (success) setShowColorPicker(true)
+              }}
             >
               <span style={{ backgroundColor: phase.color }} />
             </button>
@@ -286,6 +347,7 @@ export function Phase({
           )}
         </div>
       )}
+      {toast && <Toast message={toast} />}
     </div>
   )
 }

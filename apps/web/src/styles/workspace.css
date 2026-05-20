@@ -507,6 +507,14 @@
 }
 .task-row .meta-pill.dep { color: var(--ember); }
 .task-row .meta-pill.blocked { color: var(--ink-4); }
+
+/* Phase-level lock indicator — mirrors task meta-pill style */
+.phase-head .phase-lock-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+}
 .task-row .next-pip {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 9px;
