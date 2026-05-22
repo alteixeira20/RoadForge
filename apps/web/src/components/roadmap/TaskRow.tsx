@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { acquireLock, releaseLock } from '@/services/roadmap.service'
+import { cleanAssigneeName, dedupeNames, getTaskAssignees, getVisibleTaskTags, removeAssignmentTags } from '@/lib/task-assignment'
 import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import { useToastState } from '@/hooks/useToastState'
 import { Toast } from '@/components/ui/Toast'
@@ -27,6 +28,7 @@ interface TaskRowProps {
   isNested?: boolean
   dragDisabled?: boolean
   dragHandleProps?: Record<string, unknown>
+  assignmentNames: string[]
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -77,6 +79,7 @@ export function TaskRow({
   isNested = false,
   dragDisabled = false,
   dragHandleProps,
+  assignmentNames,
 }: TaskRowProps) {
   const {
     displayName,
@@ -90,6 +93,7 @@ export function TaskRow({
   const [showDepPicker, setShowDepPicker] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editDraft, setEditDraft] = useState<Partial<Task>>({})
+  const [assigneeDraft, setAssigneeDraft] = useState('')
 
   const { toast, showToast } = useToastState()
 
@@ -166,18 +170,42 @@ export function TaskRow({
       title: task.title,
       est: task.est,
       desc: task.desc,
-      tags: [...(task.tags || [])],
+      assignees: getTaskAssignees(task),
+      tags: getVisibleTaskTags(task),
     })
+    setAssigneeDraft('')
     setIsEditing(true)
   }
 
   const handleSaveEdit = () => {
+    const assignees = dedupeNames(editDraft.assignees ?? [])
     onUpdateTask(task.id, {
       ...editDraft,
       title: editDraft.title?.trim(),
-      tags: (editDraft.tags || []).map((t) => t.trim().toLowerCase()).filter(Boolean),
+      assignees,
+      tags: removeAssignmentTags((editDraft.tags || []).map((t) => t.trim().toLowerCase()).filter(Boolean)),
     })
     setIsEditing(false)
+  }
+
+  const toggleAssignee = (name: string) => {
+    const clean = cleanAssigneeName(name)
+    if (!clean) return
+    const current = editDraft.assignees ?? []
+    const exists = current.some((item) => item.toLowerCase() === clean.toLowerCase())
+    setEditDraft({
+      ...editDraft,
+      assignees: exists
+        ? current.filter((item) => item.toLowerCase() !== clean.toLowerCase())
+        : dedupeNames([...current, clean]),
+    })
+  }
+
+  const handleAddAssignee = () => {
+    const clean = cleanAssigneeName(assigneeDraft)
+    if (!clean) return
+    setEditDraft({ ...editDraft, assignees: dedupeNames([...(editDraft.assignees ?? []), clean]) })
+    setAssigneeDraft('')
   }
 
   const navigateToTask = (id: string) => {
@@ -192,10 +220,13 @@ export function TaskRow({
 
   // ─── Rendering ───────────────────────────────────────────────────────────────
 
-  const ownerInitials = displayName
-    ? displayName.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')
-    : '?'
-  const ownerLabel = displayName || 'You'
+  const assignedNames = getTaskAssignees(task)
+  const visibleTags = getVisibleTaskTags(task)
+  const availableAssignees = dedupeNames([
+    ...assignmentNames,
+    ...assignedNames,
+    displayName,
+  ]).sort((a, b) => a.localeCompare(b))
 
   const depTasks = (task.deps ?? [])
     .map((id) => allTasks.find((t) => t.id === id))
@@ -305,6 +336,47 @@ export function TaskRow({
                 />
               </div>
               <div className="field full">
+                <label>Assigned</label>
+                <div className="assignee-editor">
+                  {availableAssignees.length > 0 && (
+                    <div className="assignee-options">
+                      {availableAssignees.map((name) => {
+                        const selected = (editDraft.assignees ?? []).some((item) => item.toLowerCase() === name.toLowerCase())
+                        return (
+                          <button
+                            key={name}
+                            type="button"
+                            className={`assignee-option ${selected ? 'selected' : ''}`}
+                            onClick={() => toggleAssignee(name)}
+                          >
+                            {name}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <div className="add-assignee-row">
+                    <input
+                      value={assigneeDraft}
+                      onChange={(e) => setAssigneeDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleAddAssignee()
+                        }
+                      }}
+                      placeholder="Add assignee"
+                    />
+                    <button type="button" className="btn sm ghost" onClick={handleAddAssignee}>
+                      Add assignee
+                    </button>
+                  </div>
+                  {(editDraft.assignees ?? []).length === 0 && (
+                    <span className="empty-assignees">None</span>
+                  )}
+                </div>
+              </div>
+              <div className="field full">
                 <label>Tags (comma separated)</label>
                 <input
                   value={(editDraft.tags || []).join(', ')}
@@ -328,18 +400,21 @@ export function TaskRow({
                     <div className="value">{task.est ?? '—'}</div>
                   </>
                 )}
-                <div className="label">Owner</div>
-                <div className="value" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <span className="avatar" style={{ width: 20, height: 20, fontSize: 10 }}>
-                    {ownerInitials}
-                  </span>{' '}
-                  {ownerLabel}
+                <div className="label">Assigned</div>
+                <div className="value assignees">
+                  {assignedNames.length > 0 ? (
+                    assignedNames.map((name) => (
+                      <span key={name} className="assignee-pill">{name}</span>
+                    ))
+                  ) : (
+                    <span className="muted">None</span>
+                  )}
                 </div>
-                {(task.tags ?? []).length > 0 && (
+                {visibleTags.length > 0 && (
                   <>
                     <div className="label">Tags</div>
                     <div className="value tags">
-                      {(task.tags ?? []).map((g) => (
+                      {visibleTags.map((g) => (
                         <span key={g} className="tag-pill" style={{ '--tag-bg': getTagColor(g) } as CSSProperties}>
                           {g}
                         </span>
@@ -410,6 +485,7 @@ export function TaskRow({
                             onReorderSubtasks={onReorderSubtasks}
                             hasCycle={hasCycle}
                             isNested
+                            assignmentNames={assignmentNames}
                           />
                         </div>
                       )

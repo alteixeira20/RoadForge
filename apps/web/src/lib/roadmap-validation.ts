@@ -9,8 +9,10 @@ const TASK_TITLE_MAX = 160
 const TASK_DESC_MAX = 2_000
 const TASK_EST_MAX = 64
 const TASK_TAGS_MAX = 20
+const TASK_ASSIGNEES_MAX = 20
 const TASK_DEPS_MAX = 50
 const TAG_MAX = 40
+const ASSIGNEE_MAX = 128
 const ID_MAX = 80
 const PHASE_NAME_MAX = 120
 const PHASE_NUM_MAX = 12
@@ -94,6 +96,8 @@ function validateTask(value: unknown): Task {
   if (est !== undefined) task.est = est
   const tags = validateStringArray(value.tags, 'task.tags', TASK_TAGS_MAX, TAG_MAX)
   if (tags !== undefined) task.tags = tags
+  const assignees = validateStringArray(value.assignees, 'task.assignees', TASK_ASSIGNEES_MAX, ASSIGNEE_MAX)
+  if (assignees !== undefined) task.assignees = assignees
   const deps = validateStringArray(value.deps, 'task.deps', TASK_DEPS_MAX, ID_MAX)
   if (deps !== undefined) task.deps = deps
   const desc = cleanOptionalText(value.desc, 'task.desc', TASK_DESC_MAX)

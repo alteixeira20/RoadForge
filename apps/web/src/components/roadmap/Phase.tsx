@@ -49,6 +49,7 @@ interface PhaseProps {
   hasCycle: (taskId: string, depId: string) => boolean
   allTasks: Task[]
   readOnly: boolean
+  assignmentNames: string[]
 }
 
 function phaseStatusLabel(status: PhaseType['status']): string {
@@ -90,6 +91,7 @@ export function Phase({
   hasCycle,
   allTasks,
   readOnly,
+  assignmentNames,
 }: PhaseProps) {
   const doneCount = phase.tasks.filter((t) => t.done).length
   const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
@@ -302,6 +304,7 @@ export function Phase({
                       onUnlinkDependency={onUnlinkDependency}
                       onReorderSubtasks={onReorderSubtasks}
                       hasCycle={hasCycle}
+                      assignmentNames={assignmentNames}
                     />
                   ))}
                 </div>
@@ -331,6 +334,7 @@ export function Phase({
                       onUnlinkDependency={() => {}}
                       onReorderSubtasks={() => {}}
                       hasCycle={() => false}
+                      assignmentNames={assignmentNames}
                     />
                   </div>
                 ) : null}

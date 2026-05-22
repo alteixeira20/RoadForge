@@ -15,7 +15,9 @@ from api.schemas.limits import (
     PHASE_NUM_MAX,
     PHASES_MAX,
     ROADMAP_NAME_MAX,
+    ASSIGNEE_MAX,
     TAG_MAX,
+    TASK_ASSIGNEES_MAX,
     TASK_DEPS_MAX,
     TASK_DESC_MAX,
     TASK_EST_MAX,
@@ -40,6 +42,7 @@ class TaskDTO(BaseModel):
     done: bool
     next: bool | None = None
     est: str | None = Field(default=None, max_length=TASK_EST_MAX)
+    assignees: list[str] | None = Field(default=None, max_length=TASK_ASSIGNEES_MAX)
     tags: list[str] | None = Field(default=None, max_length=TASK_TAGS_MAX)
     deps: list[str] | None = Field(default=None, max_length=TASK_DEPS_MAX)
     desc: str | None = Field(default=None, max_length=TASK_DESC_MAX)
@@ -67,6 +70,16 @@ class TaskDTO(BaseModel):
         if not isinstance(v, list):
             return v
         return [clean_required_text(s, "tag", TAG_MAX) if isinstance(s, str) else s for s in v]
+
+    @field_validator("assignees", mode="before")
+    @classmethod
+    def _validate_assignees(cls, v: object) -> object:
+        if not isinstance(v, list):
+            return v
+        return [
+            clean_required_text(s, "assignee", ASSIGNEE_MAX) if isinstance(s, str) else s
+            for s in v
+        ]
 
     @field_validator("deps", mode="before")
     @classmethod

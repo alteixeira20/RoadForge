@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { getTaskAssignees, getVisibleTaskTags } from '@/lib/task-assignment'
 import type { Phase } from '@/types/roadmap'
 
 export function usePhaseSearch(phases: Phase[]) {
@@ -15,7 +16,8 @@ export function usePhaseSearch(phases: Phase[]) {
           (t) =>
             t.title.toLowerCase().includes(q) ||
             t.id.toLowerCase().includes(q) ||
-            (t.tags ?? []).some((tag) => tag.toLowerCase().includes(q)),
+            getVisibleTaskTags(t).some((tag) => tag.toLowerCase().includes(q)) ||
+            getTaskAssignees(t).some((assignee) => assignee.toLowerCase().includes(q)),
         ),
       }))
       .filter((p) => p.tasks.length > 0)

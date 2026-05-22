@@ -22,6 +22,7 @@ interface PhaseListProps {
   onReorderTasks: (phaseId: string, taskIds: string[]) => void
   onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
   hasCycle: (taskId: string, depId: string) => boolean
+  assignmentNames: string[]
 }
 
 export function PhaseList({
@@ -42,6 +43,7 @@ export function PhaseList({
   onReorderTasks,
   onReorderSubtasks,
   hasCycle,
+  assignmentNames,
 }: PhaseListProps) {
   return (
     <>
@@ -66,6 +68,7 @@ export function PhaseList({
             hasCycle={hasCycle}
             allTasks={allTasks}
             readOnly={readOnly}
+            assignmentNames={assignmentNames}
           />
         ))}
       </div>

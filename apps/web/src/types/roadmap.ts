@@ -16,6 +16,7 @@ export interface Task {
   done: boolean
   next?: boolean
   est?: string
+  assignees?: string[]
   tags?: string[]
   /** IDs of tasks this task depends on */
   deps?: string[]

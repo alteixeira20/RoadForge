@@ -10,13 +10,15 @@ import { WorkspaceToolbar } from './WorkspaceToolbar'
 import { PhaseList } from './PhaseList'
 import { WorkspaceModals } from './WorkspaceModals'
 import { ActivityPanel } from './ActivityPanel'
+import { TeamPanel } from './TeamPanel'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
-import { createRoadmap, isApiConnectionError, saveToServer } from '@/services/roadmap.service'
-import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter } from '@/types/roadmap'
+import { createRoadmap, getParticipants, isApiConnectionError, saveToServer } from '@/services/roadmap.service'
+import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
+import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter, Participant } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -25,32 +27,14 @@ interface WorkspaceProps {
 
 const normalizeFilterValue = (value: string) => value.trim().toLowerCase()
 
-const taskTags = (task: Task) => (task.tags ?? []).map(normalizeFilterValue)
-
-const assignmentPersonFromTag = (tag: string) => {
-  const [kind, ...rest] = tag.split(':')
-  if ((kind !== 'owner' && kind !== 'review') || rest.length === 0) return null
-  const name = rest.join(':').trim()
-  return name || null
-}
-
-const taskMatchesPerson = (task: Task, person: string) => {
-  const target = normalizeFilterValue(person)
-  if (!target) return false
-  return taskTags(task).some((tag) => {
-    const assigned = assignmentPersonFromTag(tag)
-    return assigned ? normalizeFilterValue(assigned) === target : false
-  })
-}
-
 const taskMatchesFilter = (task: Task, filter: TaskFilter, displayName: string) => {
   if (filter === 'all') return true
-  if (filter === 'mine') return taskMatchesPerson(task, displayName)
-  if (filter === 'pair') return taskTags(task).includes('pair')
+  if (filter === 'mine') return taskMatchesAssignee(task, displayName)
+  if (filter === 'pair') return getVisibleTaskTags(task).map(normalizeFilterValue).includes('pair')
   if (filter === 'next') return task.next === true
   if (filter === 'open') return task.done === false
   if (filter === 'done') return task.done === true
-  if (filter.startsWith('person:')) return taskMatchesPerson(task, filter.slice('person:'.length))
+  if (filter.startsWith('person:')) return taskMatchesAssignee(task, filter.slice('person:'.length))
   return true
 }
 
@@ -110,6 +94,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     closeIO,
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
+  const [showTeam, setShowTeam] = useState(false)
+  const [participants, setParticipants] = useState<Participant[]>([])
   const [activityRefreshKey, setActivityRefreshKey] = useState(0)
   const [pendingActivityChanges, setPendingActivityChanges] = useState<ActivityChange[]>([])
 
@@ -119,21 +105,36 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   // ─── Effective State ───────────────────────────────────────────────────────
 
-  const peopleFilterOptions = useMemo(() => {
-    const people = new Map<string, string>()
-    allTasks.forEach((task) => {
-      taskTags(task).forEach((tag) => {
-        const person = assignmentPersonFromTag(tag)
-        if (!person) return
-        const key = normalizeFilterValue(person)
-        if (!people.has(key)) people.set(key, person)
+  useEffect(() => {
+    if (!serverRoadmapId || !sessionToken || role !== 'owner') {
+      setParticipants([])
+      return
+    }
+    let cancelled = false
+    getParticipants(serverRoadmapId, sessionToken)
+      .then((data) => {
+        if (!cancelled) setParticipants(data)
       })
-    })
-    return [...people.values()].sort((a, b) => a.localeCompare(b)).map((person) => ({
+      .catch(() => {
+        if (!cancelled) setParticipants([])
+      })
+    return () => { cancelled = true }
+  }, [serverRoadmapId, sessionToken, role])
+
+  const assignmentNames = useMemo(() => (
+    dedupeNames([
+      ...participants.filter((p) => !p.revokedAt).map((p) => p.displayName),
+      ...allTasks.flatMap((task) => getTaskAssignees(task)),
+      displayName,
+    ]).sort((a, b) => a.localeCompare(b))
+  ), [participants, allTasks, displayName])
+
+  const peopleFilterOptions = useMemo(() => {
+    return assignmentNames.map((person) => ({
       value: `person:${person}` as TaskFilter,
       label: person,
     }))
-  }, [allTasks])
+  }, [assignmentNames])
 
   const taskFilterOptions = useMemo(() => ([
     { value: 'all' as TaskFilter, label: 'All' },
@@ -830,7 +831,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onCollapseAll={collapseAll}
           onExpandAll={expandAll}
           onOpenActivity={() => setShowActivity(true)}
+          onOpenTeam={() => setShowTeam(true)}
           hasServerActivity={!!serverRoadmapId && !!sessionToken}
+          canViewTeam={!readOnly}
         />
         <PhaseList
           phases={visiblePhases}
@@ -850,6 +853,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onReorderTasks={handleReorderTasks}
           onReorderSubtasks={handleReorderSubtasks}
           hasCycle={hasCycle}
+          assignmentNames={assignmentNames}
         />
       </div>
 
@@ -873,6 +877,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           sessionToken={sessionToken}
           onClose={() => setShowActivity(false)}
           refreshKey={activityRefreshKey}
+        />
+      )}
+
+      {showTeam && (
+        <TeamPanel
+          tasks={allTasks}
+          participants={participants}
+          onClose={() => setShowTeam(false)}
         />
       )}
     </div>
