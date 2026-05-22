@@ -188,6 +188,19 @@ class ShareLinkResponse(BaseModel):
     rotated_at: datetime | None = None
 
 
+# ─── Participants ─────────────────────────────────────────────────────────────
+
+
+class ParticipantResponse(BaseModel):
+    id: str
+    display_name: str
+    role: ShareRole
+    created_at: datetime
+    last_seen_at: datetime | None = None
+    revoked_at: datetime | None = None
+    is_current_participant: bool = False
+
+
 # ─── Join flow ────────────────────────────────────────────────────────────────
 
 

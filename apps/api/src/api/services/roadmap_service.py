@@ -13,6 +13,7 @@ from api.schemas.roadmap import (
     JoinRoadmapRequest,
     JoinRoadmapResponse,
     PhaseDTO,
+    ParticipantResponse,
     RoadmapResponse,
     ShareLinkResponse,
     ShareRole,
@@ -426,6 +427,81 @@ async def revoke_share_link(
     ))
 
     await db.commit()
+
+
+async def get_participants(
+    db: AsyncSession,
+    roadmap_id: str,
+    current_participant: Participant,
+) -> list[ParticipantResponse]:
+    await _fetch_active_roadmap(db, roadmap_id)
+
+    result = await db.execute(
+        select(Participant)
+        .where(Participant.roadmap_id == roadmap_id)
+        .order_by(Participant.created_at.asc())
+    )
+    return [
+        ParticipantResponse(
+            id=participant.id,
+            display_name=participant.display_name,
+            role=participant.role,  # type: ignore[arg-type]
+            created_at=participant.created_at,
+            last_seen_at=participant.last_seen_at,
+            revoked_at=participant.revoked_at,
+            is_current_participant=participant.id == current_participant.id,
+        )
+        for participant in result.scalars().all()
+    ]
+
+
+async def revoke_participant(
+    db: AsyncSession,
+    roadmap_id: str,
+    participant_id: str,
+    actor: Participant,
+) -> None:
+    await _fetch_active_roadmap(db, roadmap_id)
+
+    if participant_id == actor.id:
+        raise HTTPException(status_code=400, detail="Cannot revoke your own owner session")
+
+    result = await db.execute(
+        select(Participant).where(
+            Participant.roadmap_id == roadmap_id,
+            Participant.id == participant_id,
+            Participant.revoked_at.is_(None),
+        )
+    )
+    target = result.scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=404, detail="Participant not found")
+
+    now = datetime.now(timezone.utc)
+    target.revoked_at = now
+
+    db.add(ActivityLog(
+        id=generate_id("al_"),
+        roadmap_id=roadmap_id,
+        participant_id=actor.id,
+        actor_name=actor.display_name,
+        action="participant.revoked",
+        entity_type="participant",
+        entity_id=target.id,
+        metadata_json={"display_name": target.display_name, "role": target.role},
+    ))
+
+    await db.commit()
+
+    await event_bus.publish(Event(
+        roadmap_id=roadmap_id,
+        action="participant.revoked",
+        payload={
+            "roadmap_id": roadmap_id,
+            "participant_id": target.id,
+            "revoked_at": now.isoformat(),
+        }
+    ))
 
 
 async def get_activity_logs(

@@ -15,6 +15,7 @@ from api.schemas.roadmap import (
     JoinRoadmapResponse,
     LockRequest,
     LockResponse,
+    ParticipantResponse,
     RoadmapResponse,
     ShareLinkResponse,
     ShareRole,
@@ -27,9 +28,11 @@ from api.services.roadmap_service import (
     create_roadmap,
     delete_roadmap,
     get_activity_logs,
+    get_participants,
     get_roadmap,
     get_share_links,
     join_roadmap,
+    revoke_participant,
     revoke_share_link,
     rotate_share_link,
     update_roadmap,
@@ -125,6 +128,28 @@ async def delete_share_link(
 ) -> Response:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
     await revoke_share_link(db, roadmap_id, role, participant)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{roadmap_id}/participants", response_model=list[ParticipantResponse])
+async def fetch_participants(
+    roadmap_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> list[ParticipantResponse]:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    return await get_participants(db, roadmap_id, participant)
+
+
+@router.post("/{roadmap_id}/participants/{participant_id}/revoke", status_code=status.HTTP_204_NO_CONTENT)
+async def post_revoke_participant(
+    roadmap_id: str,
+    participant_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> Response:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await revoke_participant(db, roadmap_id, participant_id, participant)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

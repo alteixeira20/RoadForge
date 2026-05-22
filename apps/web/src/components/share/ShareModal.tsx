@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
 import { MOCK_SHARE_LINKS } from '@/data/sample-roadmap'
-import { getShareLinks, regenerateShareLink, revokeShareLink } from '@/services/roadmap.service'
+import { getParticipants, getShareLinks, regenerateShareLink, revokeParticipant, revokeShareLink } from '@/services/roadmap.service'
 import { useRoadmap } from '@/context/RoadmapContext'
-import type { ShareLink, ShareRole } from '@/types/roadmap'
+import type { Participant, ShareLink, ShareRole } from '@/types/roadmap'
 import type { IconName } from '@/components/ui/Icon'
 
 interface ShareModalProps {
@@ -18,31 +18,43 @@ interface ShareModalProps {
 export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
   const { serverRoadmapId, sessionToken, role, isPasswordEnabled } = useRoadmap()
   const [links, setLinks] = useState<ShareLink[]>([])
+  const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState(false)
+  const [participantsLoading, setParticipantsLoading] = useState(false)
   const [ownerOnly, setOwnerOnly] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const canManageShare = role === 'owner'
+  const roadmapUrl = serverRoadmapId && typeof window !== 'undefined'
+    ? `${window.location.origin}/workspace?roadmap=${encodeURIComponent(serverRoadmapId)}`
+    : null
 
   useEffect(() => {
     if (!open) return
     setOwnerOnly(false)
+    setParticipants([])
     if (!canManageShare) {
       setLinks([])
       setLoading(false)
+      setParticipantsLoading(false)
       setOwnerOnly(true)
       return
     }
     if (!serverRoadmapId) {
       setLinks(MOCK_SHARE_LINKS)
+      setParticipants([])
+      setLoading(false)
+      setParticipantsLoading(false)
       return
     }
     if (!sessionToken) {
       setLinks([])
+      setParticipants([])
       setOwnerOnly(true)
       return
     }
     let cancelled = false
     setLoading(true)
+    setParticipantsLoading(true)
     getShareLinks(serverRoadmapId, sessionToken)
       .then((data) => { if (!cancelled) setLinks(data) })
       .catch((err) => {
@@ -56,6 +68,19 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
         }
       })
       .finally(() => { if (!cancelled) setLoading(false) })
+    getParticipants(serverRoadmapId, sessionToken)
+      .then((data) => { if (!cancelled) setParticipants(data) })
+      .catch((err) => {
+        if (cancelled) return
+        const msg = err instanceof Error ? err.message : ''
+        if (msg.includes('401') || msg.includes('403')) {
+          setOwnerOnly(true)
+          onToast('Only the owner can manage share links.')
+        } else {
+          onToast('Could not load participants')
+        }
+      })
+      .finally(() => { if (!cancelled) setParticipantsLoading(false) })
     return () => { cancelled = true }
     // onToast identity is not stable (no useCallback in useToastState); omitting
     // it is safe because its behaviour never changes, only its reference.
@@ -66,6 +91,16 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
     if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {})
     setCopied(role)
     setTimeout(() => setCopied(null), 1600)
+  }
+
+  const formatDate = (value: string | null) => {
+    if (!value) return 'Never'
+    return new Date(value).toLocaleString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   }
 
   const replaceRoleLink = (updated: ShareLink) => {
@@ -112,6 +147,36 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
     }
   }
 
+  const refreshParticipants = async () => {
+    if (!serverRoadmapId || !sessionToken) return
+    setParticipantsLoading(true)
+    try {
+      setParticipants(await getParticipants(serverRoadmapId, sessionToken))
+    } catch {
+      onToast('Could not load participants')
+    } finally {
+      setParticipantsLoading(false)
+    }
+  }
+
+  const handleRevokeParticipant = async (participant: Participant) => {
+    if (!serverRoadmapId || !sessionToken) return
+    if (participant.isCurrentParticipant) {
+      onToast('You cannot revoke your current owner session.')
+      return
+    }
+    try {
+      await revokeParticipant(serverRoadmapId, participant.id, sessionToken)
+      onToast('Participant revoked')
+      await refreshParticipants()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('401') || msg.includes('403')) onToast('Only the owner can manage participants.')
+      else if (msg.includes('400')) onToast('You cannot revoke your current owner session.')
+      else onToast('Could not revoke participant')
+    }
+  }
+
   return (
     <Modal
       open={open}
@@ -135,6 +200,57 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
         </>
       }
     >
+      {!ownerOnly && serverRoadmapId && (
+        <div className="owner-access">
+          <div className="note-line compact">
+            <span className="ic">
+              <Icon name="shield" size={14} />
+            </span>
+            <span>
+              This browser is connected as owner. To access as owner from another
+              browser, save or generate an owner invite link.
+            </span>
+          </div>
+          {roadmapUrl && (
+            <div className="share-row compact">
+              <div className="ic">
+                <Icon name="link" size={15} />
+              </div>
+              <div className="meta">
+                <div className="h">Current roadmap URL</div>
+                <div className="d">Use this URL with an owner session in this browser.</div>
+              </div>
+              <div className="link-line">
+                <code>{roadmapUrl}</code>
+                <button
+                  className={`copy ${copied === 'roadmap-url' ? 'copied' : ''}`}
+                  onClick={() => copy('roadmap-url', roadmapUrl)}
+                >
+                  {copied === 'roadmap-url' ? (
+                    <>
+                      <Icon name="check" size={13} /> Copied
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="link" size={13} /> Copy
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="note-line compact warning">
+            <span className="ic">
+              <Icon name="lock" size={14} />
+            </span>
+            <span>
+              Owner links grant full control. Store carefully. Rotate/generate an
+              owner link to reveal a new owner invite.
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="share-list">
         {loading && (
           <div style={{ padding: '12px 0', color: 'var(--ink-4)', fontSize: 13 }}>
@@ -212,6 +328,42 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
             </div>
           ))}
       </div>
+
+      {!ownerOnly && serverRoadmapId && (
+        <div className="participants-section">
+          <div className="section-heading">
+            <span>Participants</span>
+            {participantsLoading && <span className="muted">Loading…</span>}
+          </div>
+          <div className="participants-list">
+            {!participantsLoading && participants.length === 0 && (
+              <div className="participant-row muted">No participants yet.</div>
+            )}
+            {participants.map((participant) => (
+              <div
+                key={participant.id}
+                className={`participant-row ${participant.revokedAt ? 'revoked' : ''}`}
+              >
+                <div className="participant-main">
+                  <div className="participant-name">
+                    {participant.displayName}
+                    {participant.isCurrentParticipant && <span className="badge ember">Current</span>}
+                    {participant.revokedAt && <span className="badge">Revoked</span>}
+                  </div>
+                  <div className="participant-meta">
+                    {participant.role} · Joined {formatDate(participant.createdAt)} · Last seen {formatDate(participant.lastSeenAt)}
+                  </div>
+                </div>
+                {!participant.revokedAt && !participant.isCurrentParticipant && (
+                  <button className="mini" onClick={() => handleRevokeParticipant(participant)}>
+                    <Icon name="x" size={12} /> Revoke
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Modal>
   )
 }

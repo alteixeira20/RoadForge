@@ -35,6 +35,7 @@ async def require_participant(
         select(Participant).where(
             Participant.roadmap_id == roadmap_id,
             Participant.session_token_hash == hash_token(raw_token),
+            Participant.revoked_at.is_(None),
         )
     )
     participant = result.scalar_one_or_none()

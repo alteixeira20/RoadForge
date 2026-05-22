@@ -95,6 +95,7 @@ class Participant(Base):
         sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
     )
     last_seen_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
 
     roadmap: Mapped[Roadmap] = relationship("Roadmap", back_populates="participants")
     activity_logs: Mapped[list[ActivityLog]] = relationship(
@@ -105,6 +106,7 @@ class Participant(Base):
         sa.CheckConstraint("role IN ('owner', 'editor', 'viewer')", name="ck_participant_role"),
         sa.UniqueConstraint("session_token_hash", name="uq_participants_session_token_hash"),
         sa.Index("ix_participants_roadmap_id", "roadmap_id"),
+        sa.Index("ix_participants_roadmap_revoked", "roadmap_id", "revoked_at"),
     )
 
 

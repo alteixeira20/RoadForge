@@ -336,6 +336,10 @@
   padding: 8px 10px;
   font-size: 12.5px;
 }
+.note-line.warning {
+  border-color: rgba(217,116,66,0.25);
+  background: rgba(217,116,66,0.06);
+}
 
 /* ─── Password Field ───────────────────────────────────────────────────────── */
 .password-field {
@@ -460,6 +464,11 @@
 }
 
 /* ─── Share modal ──────────────────────────────────────────────────────────── */
+.owner-access {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .share-list { display: flex; flex-direction: column; gap: 10px; }
 .share-row {
   position: relative;
@@ -471,6 +480,9 @@
   grid-template-columns: 32px 1fr;
   grid-template-rows: auto auto auto;
   gap: 4px 12px;
+}
+.share-row.compact {
+  padding: 12px;
 }
 .share-row.recommended {
   border-color: rgba(217,116,66,0.30);
@@ -546,6 +558,97 @@
   transition: all 140ms ease;
 }
 .share-row .mini:hover { color: var(--ink-2); border-color: var(--border); }
+
+.participants-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.section-heading .muted,
+.participant-row.muted {
+  color: var(--ink-4);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.participants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.participant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+}
+.participant-row.revoked {
+  opacity: 0.62;
+}
+.participant-main {
+  min-width: 0;
+}
+.participant-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.participant-meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+.participant-row .badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--bg-inset);
+  color: var(--ink-3);
+  border: 1px solid var(--border-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 650;
+}
+.participant-row .badge.ember {
+  color: var(--ember);
+  border-color: rgba(217,116,66,0.25);
+  background: var(--lava-glow);
+}
+.participant-row .mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  background: transparent;
+  border: 1px solid var(--border-faint);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-weight: 500;
+  transition: all 140ms ease;
+}
+.participant-row .mini:hover {
+  color: var(--ink-2);
+  border-color: var(--border);
+}
 
 /* ─── Import / export ──────────────────────────────────────────────────────── */
 .io-tab {

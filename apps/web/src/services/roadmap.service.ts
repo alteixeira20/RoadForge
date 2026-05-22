@@ -5,7 +5,7 @@
 // Local-first model: localStorage is kept as optimistic cache.
 // When a backend call succeeds the caller is responsible for syncing context/storage.
 
-import type { Roadmap, Phase, Task, ShareLink, ShareRole, ExportFormat, ActivityLogList, ChangeSummary } from '@/types/roadmap'
+import type { Roadmap, Phase, Task, ShareLink, ShareRole, ExportFormat, ActivityLogList, ChangeSummary, Participant } from '@/types/roadmap'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 
 // ─── API configuration ─────────────────────────────────────────────────────────
@@ -93,6 +93,16 @@ interface ApiShareLinkResponse {
   rotated_at: string | null
 }
 
+interface ApiParticipantResponse {
+  id: string
+  display_name: string
+  role: string
+  created_at: string
+  last_seen_at: string | null
+  revoked_at: string | null
+  is_current_participant: boolean
+}
+
 interface ApiJoinResponse {
   roadmap_id: string
   roadmap_name: string
@@ -148,6 +158,18 @@ function toShareLink(r: ApiShareLinkResponse): ShareLink {
     createdAt: r.created_at,
     rotatedAt: r.rotated_at,
     ...(meta.recommended ? { recommended: true } : {}),
+  }
+}
+
+function toParticipant(r: ApiParticipantResponse): Participant {
+  return {
+    id: r.id,
+    displayName: r.display_name,
+    role: r.role as ShareRole,
+    createdAt: r.created_at,
+    lastSeenAt: r.last_seen_at,
+    revokedAt: r.revoked_at,
+    isCurrentParticipant: r.is_current_participant,
   }
 }
 
@@ -401,6 +423,38 @@ export async function revokeShareLink(
   await requestJson<void>(
     `/api/roadmaps/${roadmapId}/share-links/${role}`,
     { method: 'DELETE' },
+    sessionToken,
+  )
+}
+
+// ─── Participants ─────────────────────────────────────────────────────────────
+
+/**
+ * Fetch joined participant sessions for owner management.
+ */
+export async function getParticipants(
+  roadmapId: string,
+  sessionToken: string,
+): Promise<Participant[]> {
+  const data = await requestJson<ApiParticipantResponse[]>(
+    `/api/roadmaps/${roadmapId}/participants`,
+    {},
+    sessionToken,
+  )
+  return data.map(toParticipant)
+}
+
+/**
+ * Revoke a joined participant session. This does not revoke invite links.
+ */
+export async function revokeParticipant(
+  roadmapId: string,
+  participantId: string,
+  sessionToken: string,
+): Promise<void> {
+  await requestJson<void>(
+    `/api/roadmaps/${roadmapId}/participants/${participantId}/revoke`,
+    { method: 'POST' },
     sessionToken,
   )
 }

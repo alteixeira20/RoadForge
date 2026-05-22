@@ -112,6 +112,16 @@ export interface ShareLink {
   recommended?: boolean
 }
 
+export interface Participant {
+  id: string
+  displayName: string
+  role: ShareRole
+  createdAt: string
+  lastSeenAt: string | null
+  revokedAt: string | null
+  isCurrentParticipant: boolean
+}
+
 // ─── Import / Export ───────────────────────────────────────────────────────────
 
 export interface ExportOption {

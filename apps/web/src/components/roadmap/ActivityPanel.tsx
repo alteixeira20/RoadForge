@@ -78,6 +78,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
       case 'task.dependency.unlinked': return 'Unlinked dependency'
       case 'task.reordered': return 'Reordered tasks'
       case 'participant.joined': return `Joined as ${metadata?.role || 'contributor'}`
+      case 'participant.revoked': return 'Revoked participant'
       case 'share_link.rotated': return `Rotated ${metadata?.role || ''} link`
       case 'share_link.revoked': return `Revoked ${metadata?.role || ''} link`
       default: return action
@@ -161,6 +162,10 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
         return <span>Phase {String(metadata_json?.phaseName || metadata_json?.phaseId)}</span>
       }
       return <span>{String(metadata_json?.taskId)} — {String(metadata_json?.taskTitle)}</span>
+    }
+    if (action === 'participant.revoked') {
+      const label = [metadata_json?.display_name, metadata_json?.role].filter(Boolean).map(String).join(' · ')
+      return label ? <span>{label}</span> : <span className="dim">Session revoked</span>
     }
     return null
   }
