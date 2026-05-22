@@ -16,6 +16,7 @@ interface IOModalProps {
 }
 
 type Tab = 'export' | 'import'
+type ImportMode = 'replace-current' | 'new-local'
 
 const AI_ROADMAP_TEMPLATE = `# RoadForge AI Roadmap Template
 
@@ -110,10 +111,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     setPhases,
     setRoadmapName,
     setSaved,
-    setServerRoadmapId,
-    setSessionToken,
-    setParticipantId,
-    setRole,
+    createLocalRoadmap,
     resetToSample,
     saved,
     serverRoadmapId,
@@ -122,6 +120,8 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     updatedAt,
   } = useRoadmap()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const importModeRef = useRef<ImportMode>('replace-current')
+  const canReplaceCurrent = !serverRoadmapId || role === 'owner' || role === 'editor'
 
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob)
@@ -168,6 +168,16 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     }
   }
 
+  const selectImportFile = (mode: ImportMode) => {
+    importModeRef.current = mode
+    fileInputRef.current?.click()
+  }
+
+  const updateUrlForLocalRoadmap = (roadmapId: string) => {
+    if (typeof window === 'undefined') return
+    window.history.replaceState(null, '', `/workspace?roadmap=${encodeURIComponent(roadmapId)}`)
+  }
+
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -182,15 +192,25 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     reader.onload = (ev) => {
       try {
         const imported = parseImportedRoadmapJson(ev.target?.result as string)
-        setPhases(imported.phases)
-        if (imported.roadmapName) setRoadmapName(imported.roadmapName)
-        setServerRoadmapId(null)
-        setSessionToken(null)
-        setParticipantId(null)
-        setRole(null)
-        setSaved(false)
+        const nextName = imported.roadmapName || roadmapName
+        const mode = importModeRef.current
+
+        if (mode === 'replace-current') {
+          if (!canReplaceCurrent) {
+            onToast('Viewers can import as a new local roadmap only.')
+            return
+          }
+          setPhases(imported.phases)
+          if (imported.roadmapName) setRoadmapName(imported.roadmapName)
+          setSaved(false)
+          onToast(serverRoadmapId ? 'Roadmap replaced — syncing after autosave' : 'Roadmap replaced from JSON')
+        } else {
+          const newId = createLocalRoadmap(nextName, imported.phases)
+          updateUrlForLocalRoadmap(newId)
+          onToast('Imported as new local roadmap')
+        }
+
         onRoadmapImported?.(imported.roadmapName, imported.phases)
-        onToast('Roadmap imported from JSON')
         onClose()
       } catch (err) {
         onToast(err instanceof Error ? err.message : 'Import failed: invalid roadmap file.')
@@ -293,16 +313,22 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
             <button
               type="button"
               className="io-action primary"
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Import JSON"
+              onClick={() => selectImportFile('replace-current')}
+              disabled={!canReplaceCurrent}
+              aria-label="Replace current roadmap from JSON"
             >
               <span className="io-action-icon">
                 <Icon name="import" size={15} />
               </span>
               <span className="io-action-copy">
-                <span className="io-action-title">Import JSON</span>
+                <span className="io-action-title">Replace current roadmap</span>
                 <span className="io-action-desc">
-                  Import a RoadForge JSON file or raw phases array.
+                  {serverRoadmapId
+                    ? 'This will replace the current shared roadmap for everyone after sync.'
+                    : 'Replace this local draft with a RoadForge JSON file.'}
+                </span>
+                <span className="io-action-note">
+                  Keeps the current roadmap ID, session, and switcher entry.
                 </span>
               </span>
               <span className="io-action-go" aria-hidden>
@@ -313,16 +339,16 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
             <button
               type="button"
               className="io-action"
-              onClick={handleReset}
-              aria-label="Restore starter roadmap"
+              onClick={() => selectImportFile('new-local')}
+              aria-label="Import as new local roadmap"
             >
               <span className="io-action-icon">
-                <Icon name="shield" size={15} />
+                <Icon name="plus" size={15} />
               </span>
               <span className="io-action-copy">
-                <span className="io-action-title">Restore starter roadmap</span>
+                <span className="io-action-title">Import as new local roadmap</span>
                 <span className="io-action-desc">
-                  Replace the current roadmap with the default starter roadmap.
+                  Create and activate a separate local draft. Collaborators are not affected.
                 </span>
               </span>
               <span className="io-action-go" aria-hidden>
@@ -335,10 +361,17 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
               <Icon name="shield" size={14} />
             </span>
             <span>
-              Importing replaces the current local roadmap. Export a backup first if
-              needed.
+              JSON imports preserve phases, tasks, tags, assignees, dependencies, and status.
+              Export a backup first if needed.
             </span>
           </div>
+          <button
+            type="button"
+            className="back inline-reset"
+            onClick={handleReset}
+          >
+            Restore starter roadmap
+          </button>
         </>
       )}
 

@@ -699,6 +699,15 @@
   box-shadow: 0 0 0 3px var(--lava-glow);
   outline: none;
 }
+.io-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.io-action:disabled:hover {
+  border-color: var(--border-faint);
+  background: var(--bg-2);
+}
 .io-action.primary {
   border-color: rgba(217,116,66,0.30);
   background: linear-gradient(180deg, var(--bg-2), rgba(217,116,66,0.04));
@@ -746,6 +755,15 @@
 .io-action:focus-visible .io-action-go {
   color: var(--ember);
   transform: translateX(1px);
+}
+.inline-reset {
+  align-self: flex-start;
+  padding: 6px 0;
+  color: var(--ink-4);
+  font-size: 12.5px;
+}
+.inline-reset:hover {
+  color: var(--ink-2);
 }
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
