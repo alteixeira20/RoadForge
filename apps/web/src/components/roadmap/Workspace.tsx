@@ -89,6 +89,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const totalDone = allTasks.filter((t) => t.done).length
   const nextReadyCount = allTasks.filter((t) => t.next && !t.done).length
 
+  useEffect(() => {
+    const title = roadmapName.trim()
+    document.title = title ? `${title} · RoadForge` : 'RoadForge'
+    return () => {
+      document.title = 'RoadForge'
+    }
+  }, [roadmapName])
+
   const onToggleTask = (id: string) => setExpandedTaskId((prev) => (prev === id ? null : id))
 
   const isPhaseComplete = (phase: PhaseType) => phase.tasks.length > 0 && phase.tasks.every((t) => t.done)
@@ -301,6 +309,15 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       const nextPhase = affectedPhase ? nextPhases.find((p) => p.id === affectedPhase.id) : null
       const isNowPhaseComplete = nextPhase ? isPhaseComplete(nextPhase) : false
       setPhases(nextPhases)
+      addPendingActivityChange({
+        action: 'task.reopened',
+        entity_type: 'task',
+        entity_id: task.id,
+        taskId: task.id,
+        taskTitle: task.title,
+        phaseId: affectedPhase?.id,
+        phaseName: affectedPhase?.name,
+      })
       if (affectedPhase && wasPhaseComplete && !isNowPhaseComplete) {
         addPendingActivityChange({
           action: 'phase.reopened',
@@ -310,16 +327,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           phaseName: affectedPhase.name,
           phaseNum: affectedPhase.num,
           details: phaseLabel(affectedPhase),
-        })
-      } else {
-        addPendingActivityChange({
-          action: 'task.reopened',
-          entity_type: 'task',
-          entity_id: task.id,
-          taskId: task.id,
-          taskTitle: task.title,
-          phaseId: affectedPhase?.id,
-          phaseName: affectedPhase?.name,
         })
       }
       setSaved(false)
@@ -380,6 +387,15 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     const nextPhase = affectedPhase ? nextPhases.find((p) => p.id === affectedPhase.id) : null
     const isNowPhaseComplete = nextPhase ? isPhaseComplete(nextPhase) : false
     setPhases(nextPhases)
+    addPendingActivityChange({
+      action: 'task.completed',
+      entity_type: 'task',
+      entity_id: task.id,
+      taskId: task.id,
+      taskTitle: task.title,
+      phaseId: affectedPhase?.id,
+      phaseName: affectedPhase?.name,
+    })
     if (affectedPhase && !wasPhaseComplete && isNowPhaseComplete) {
       addPendingActivityChange({
         action: 'phase.completed',
@@ -389,16 +405,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         phaseName: affectedPhase.name,
         phaseNum: affectedPhase.num,
         details: phaseLabel(affectedPhase),
-      })
-    } else {
-      addPendingActivityChange({
-        action: 'task.completed',
-        entity_type: 'task',
-        entity_id: task.id,
-        taskId: task.id,
-        taskTitle: task.title,
-        phaseId: affectedPhase?.id,
-        phaseName: affectedPhase?.name,
       })
     }
     setSaved(false)

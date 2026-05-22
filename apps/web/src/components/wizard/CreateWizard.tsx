@@ -48,12 +48,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
     step === 4
 
   return (
-    <div
-      className="wizard-scrim"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
+    <div className="wizard-scrim">
       <div className="wizard" role="dialog" aria-modal>
         <div className="wizard-progress">
           {[0, 1, 2, 3, 4].map((i) => (

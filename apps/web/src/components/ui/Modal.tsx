@@ -33,12 +33,7 @@ export function Modal({ open, onClose, icon, title, sub, children, footer, width
   if (!open) return null
 
   return (
-    <div
-      className="modal-scrim"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
+    <div className="modal-scrim">
       <div className="modal" style={width ? { width } : undefined} role="dialog" aria-modal>
         <div className="modal-head">
           {icon && (
