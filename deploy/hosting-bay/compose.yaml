@@ -1,0 +1,94 @@
+name: roadforge
+
+services:
+  roadforge-web:
+    container_name: roadforge-web
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    expose:
+      - "3000"
+    depends_on:
+      roadforge-api:
+        condition: service_healthy
+    networks:
+      edge:
+        aliases:
+          - roadforge-web
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  roadforge-api:
+    container_name: roadforge-api
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://roadforge:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@roadforge-postgres:5432/roadforge
+      ROADFORGE_ENVIRONMENT: production
+      ROADFORGE_WEB_BASE_URL: ${ROADFORGE_WEB_BASE_URL:?ROADFORGE_WEB_BASE_URL is required}
+      ROADFORGE_CORS_ORIGINS: ${ROADFORGE_CORS_ORIGINS:?ROADFORGE_CORS_ORIGINS is required}
+    expose:
+      - "7878"
+    depends_on:
+      roadforge-postgres:
+        condition: service_healthy
+    networks:
+      edge:
+        aliases:
+          - roadforge-api
+      roadforge-internal:
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:7878/api/health', timeout=3).read()\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  roadforge-postgres:
+    container_name: roadforge-postgres
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: roadforge
+      POSTGRES_USER: roadforge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - /opt/data/apps/roadforge/postgres:/var/lib/postgresql/data
+    networks:
+      roadforge-internal:
+        aliases:
+          - roadforge-postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roadforge -d roadforge"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+networks:
+  edge:
+    external: true
+  roadforge-internal:
+    driver: bridge
+    internal: true

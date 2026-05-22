@@ -1,4 +1,4 @@
-.PHONY: help install dev api-up api-down api-reset api-migrate api-health web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check
+.PHONY: help install dev api-up api-down api-reset api-migrate api-health web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -6,6 +6,13 @@ WEB_PORT ?= 3020
 WEB_HOST ?= localhost
 WEB_URL  := http://localhost:$(WEB_PORT)
 API_URL  := http://localhost:7878
+
+APP_NAME ?= roadforge
+DEPLOY_ROOT ?= /opt/stacks/roadforge
+DATA_ROOT ?= /opt/data/apps/roadforge
+ENV_FILE ?= $(DEPLOY_ROOT)/.env
+COMPOSE_FILE ?= deploy/hosting-bay/compose.yaml
+DEPLOY_COMPOSE := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) --project-name $(APP_NAME)
 
 # ─── Help ─────────────────────────────────────────────────────────────────────
 
@@ -18,6 +25,16 @@ help:
 	@echo "  make check         Run linting, typechecking, and production build"
 	@echo "  make audit         Run dependency security audit"
 	@echo "  make audit-prod    Run dependency security audit (production only)"
+	@echo ""
+	@echo "Deployment (hosting-bay):"
+	@echo "  make deploy        Build/start production stack and run migrations"
+	@echo "  make update        Pull latest code, rebuild/restart stack, run migrations"
+	@echo "  make migrate       Run production Alembic migrations"
+	@echo "  make ps            Show production container status"
+	@echo "  make logs          Follow production logs when $(ENV_FILE) exists; local logs otherwise"
+	@echo "  make restart       Restart production stack when $(ENV_FILE) exists; local restart otherwise"
+	@echo "  make down          Stop production stack without deleting volumes"
+	@echo "  make doctor        Check production deployment prerequisites"
 	@echo ""
 	@echo "  make start         Start all services (API in Docker, Web in background)"
 	@echo "  make stop          Stop all services"
@@ -71,7 +88,15 @@ start: api-up api-migrate api-health web-start
 
 stop: web-stop api-down
 
-restart: stop start
+restart:
+	@if [ -f "$(ENV_FILE)" ]; then \
+		echo "Restarting production $(APP_NAME) stack..."; \
+		$(DEPLOY_COMPOSE) restart roadforge-postgres roadforge-api roadforge-web; \
+		$(MAKE) ps; \
+	else \
+		$(MAKE) stop; \
+		$(MAKE) start; \
+	fi
 
 reset: web-stop
 	@echo "Resetting database..."
@@ -178,11 +203,15 @@ web-status:
 # ─── Logs ──────────────────────────────────────────────────────────────────────
 
 logs:
-	@echo "Following all logs (Ctrl+C to stop)..."
-	@tail -n 100 -F .logs/web.log 2>/dev/null & TAIL_PID=$$!; \
-	docker compose logs -f api postgres & DC_PID=$$!; \
-	trap "kill $$TAIL_PID $$DC_PID 2>/dev/null" INT TERM EXIT; \
-	wait $$TAIL_PID $$DC_PID
+	@if [ -f "$(ENV_FILE)" ]; then \
+		$(DEPLOY_COMPOSE) logs --tail=100 -f; \
+	else \
+		echo "Following all logs (Ctrl+C to stop)..."; \
+		tail -n 100 -F .logs/web.log 2>/dev/null & TAIL_PID=$$!; \
+		docker compose logs -f api postgres & DC_PID=$$!; \
+		trap "kill $$TAIL_PID $$DC_PID 2>/dev/null" INT TERM EXIT; \
+		wait $$TAIL_PID $$DC_PID; \
+	fi
 
 logs-api:
 	docker compose logs --tail=100 -f api
@@ -196,3 +225,60 @@ logs-web:
 	else \
 		echo "Frontend log not found; run 'make web-start' first."; \
 	fi
+
+# ─── Production Deployment (hosting-bay) ──────────────────────────────────────
+
+deploy-check:
+	@test -f "$(COMPOSE_FILE)" || (echo "Missing $(COMPOSE_FILE)" && exit 1)
+	@test -f "$(ENV_FILE)" || (echo "Missing $(ENV_FILE). Copy deploy/hosting-bay/.env.example to $(ENV_FILE) and set POSTGRES_PASSWORD." && exit 1)
+	@test -f "apps/web/Dockerfile" || (echo "Missing apps/web/Dockerfile" && exit 1)
+	@test -f "apps/api/Dockerfile" || (echo "Missing apps/api/Dockerfile" && exit 1)
+
+deploy: deploy-check
+	@mkdir -p "$(DATA_ROOT)/postgres"
+	$(DEPLOY_COMPOSE) build
+	$(DEPLOY_COMPOSE) up -d
+	$(MAKE) migrate
+	$(MAKE) ps
+	$(MAKE) deploy-hints
+
+update:
+	git pull --ff-only
+	$(MAKE) deploy-check
+	@mkdir -p "$(DATA_ROOT)/postgres"
+	$(DEPLOY_COMPOSE) build
+	$(DEPLOY_COMPOSE) up -d
+	$(MAKE) migrate
+	$(MAKE) ps
+	$(MAKE) deploy-hints
+
+migrate: deploy-check
+	$(DEPLOY_COMPOSE) exec -T roadforge-api alembic upgrade head
+
+ps: deploy-check
+	$(DEPLOY_COMPOSE) ps
+
+down: deploy-check
+	$(DEPLOY_COMPOSE) down
+
+doctor:
+	@echo "RoadForge deployment doctor"
+	@echo "APP_NAME=$(APP_NAME)"
+	@echo "DEPLOY_ROOT=$(DEPLOY_ROOT)"
+	@echo "DATA_ROOT=$(DATA_ROOT)"
+	@echo "ENV_FILE=$(ENV_FILE)"
+	@echo "COMPOSE_FILE=$(COMPOSE_FILE)"
+	@test -f "$(COMPOSE_FILE)" && echo "OK: compose file exists" || echo "MISSING: $(COMPOSE_FILE)"
+	@test -f "$(ENV_FILE)" && echo "OK: env file exists" || echo "MISSING: $(ENV_FILE)"
+	@test -f "deploy/hosting-bay/nginx/roadforge.conf" && echo "OK: nginx config template exists" || echo "MISSING: nginx config template"
+	@test -f "deploy/hosting-bay/cloudflared-ingress-snippet.yml" && echo "OK: cloudflared snippet exists" || echo "MISSING: cloudflared snippet"
+	@docker network inspect edge >/dev/null 2>&1 && echo "OK: Docker network edge exists" || echo "MISSING: Docker network edge"
+
+deploy-hints:
+	@echo ""
+	@echo "RoadForge production stack updated."
+	@echo "Status: make ps"
+	@echo "Logs:   make logs"
+	@echo "Health: curl -s https://roadforge.alexandreteixeira.dev/api/health"
+	@echo "Nginx config template: deploy/hosting-bay/nginx/roadforge.conf"
+	@echo "Cloudflared snippet:   deploy/hosting-bay/cloudflared-ingress-snippet.yml"

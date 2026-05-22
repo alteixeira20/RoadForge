@@ -1,6 +1,7 @@
 {
   "name": "roadforge",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
