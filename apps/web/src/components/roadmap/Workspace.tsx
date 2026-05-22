@@ -36,6 +36,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setServerRoadmapId,
     sessionToken,
     setSessionToken,
+    role,
     setRole,
     ownerDisplayName,
     setOwnerDisplayName,
@@ -43,6 +44,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setUpdatedAt,
   } = useRoadmap()
   const readOnly = mode === 'viewer'
+  const canManageShare = role === 'owner'
 
   const [isSyncing, setIsSyncing] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
@@ -711,6 +713,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         displayName={displayName || 'You'}
         syncStatus={syncStatus}
         readOnly={readOnly}
+        canManageShare={canManageShare}
         onSave={openSave}
         onShare={openShare}
         onIO={openIO}

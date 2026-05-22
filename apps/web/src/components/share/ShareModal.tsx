@@ -6,7 +6,7 @@ import { Icon } from '@/components/ui/Icon'
 import { MOCK_SHARE_LINKS } from '@/data/sample-roadmap'
 import { getShareLinks, regenerateShareLink, revokeShareLink } from '@/services/roadmap.service'
 import { useRoadmap } from '@/context/RoadmapContext'
-import type { ShareLink } from '@/types/roadmap'
+import type { ShareLink, ShareRole } from '@/types/roadmap'
 import type { IconName } from '@/components/ui/Icon'
 
 interface ShareModalProps {
@@ -16,28 +16,51 @@ interface ShareModalProps {
 }
 
 export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
-  const { serverRoadmapId, sessionToken, isPasswordEnabled } = useRoadmap()
+  const { serverRoadmapId, sessionToken, role, isPasswordEnabled } = useRoadmap()
   const [links, setLinks] = useState<ShareLink[]>([])
   const [loading, setLoading] = useState(false)
+  const [ownerOnly, setOwnerOnly] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const canManageShare = role === 'owner'
 
   useEffect(() => {
     if (!open) return
+    setOwnerOnly(false)
+    if (!canManageShare) {
+      setLinks([])
+      setLoading(false)
+      setOwnerOnly(true)
+      return
+    }
     if (!serverRoadmapId) {
       setLinks(MOCK_SHARE_LINKS)
       return
     }
+    if (!sessionToken) {
+      setLinks([])
+      setOwnerOnly(true)
+      return
+    }
     let cancelled = false
     setLoading(true)
-    getShareLinks(serverRoadmapId)
+    getShareLinks(serverRoadmapId, sessionToken)
       .then((data) => { if (!cancelled) setLinks(data) })
-      .catch(() => { if (!cancelled) onToast('Could not load share links') })
+      .catch((err) => {
+        if (cancelled) return
+        const msg = err instanceof Error ? err.message : ''
+        if (msg.includes('401') || msg.includes('403')) {
+          setOwnerOnly(true)
+          onToast('Only the owner can manage share links.')
+        } else {
+          onToast('Could not load share links')
+        }
+      })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
     // onToast identity is not stable (no useCallback in useToastState); omitting
     // it is safe because its behaviour never changes, only its reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, serverRoadmapId])
+  }, [open, serverRoadmapId, sessionToken, canManageShare])
 
   const copy = (role: string, url: string) => {
     if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {})
@@ -45,38 +68,46 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
     setTimeout(() => setCopied(null), 1600)
   }
 
-  const handleRegenerate = async (role: string) => {
+  const replaceRoleLink = (updated: ShareLink) => {
+    setLinks((prev) => prev.map((l) => (l.role === updated.role ? updated : l)))
+  }
+
+  const markRoleInactive = (targetRole: string) => {
+    setLinks((prev) => prev.map((l) => (
+      l.role === targetRole ? { ...l, url: '', isActive: false } : l
+    )))
+  }
+
+  const handleRegenerate = async (targetRole: ShareRole) => {
     if (!serverRoadmapId) return
-    if (!sessionToken) {
-      onToast('Session expired — rejoin from the invite link')
+    if (!canManageShare || !sessionToken) {
+      onToast('Only the owner can manage share links.')
       return
     }
     try {
-      const updated = await regenerateShareLink(serverRoadmapId, role, sessionToken)
-      setLinks((prev) => prev.map((l) => (l.role === role ? updated : l)))
+      const updated = await regenerateShareLink(serverRoadmapId, targetRole, sessionToken)
+      replaceRoleLink(updated)
       onToast('New link generated — copy it now')
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('401')) onToast('Session expired — rejoin from the invite link')
-      else if (msg.includes('403')) onToast('You do not have permission for this action')
+      if (msg.includes('401') || msg.includes('403')) onToast('Only the owner can manage share links.')
       else onToast('Could not rotate link')
     }
   }
 
-  const handleRevoke = async (role: string) => {
+  const handleRevoke = async (targetRole: ShareRole) => {
     if (!serverRoadmapId) return
-    if (!sessionToken) {
-      onToast('Session expired — rejoin from the invite link')
+    if (!canManageShare || !sessionToken) {
+      onToast('Only the owner can manage share links.')
       return
     }
     try {
-      await revokeShareLink(serverRoadmapId, role, sessionToken)
-      setLinks((prev) => prev.filter((l) => l.role !== role))
+      await revokeShareLink(serverRoadmapId, targetRole, sessionToken)
+      markRoleInactive(targetRole)
       onToast('Link revoked')
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('401')) onToast('Session expired — rejoin from the invite link')
-      else if (msg.includes('403')) onToast('You do not have permission for this action')
+      if (msg.includes('401') || msg.includes('403')) onToast('Only the owner can manage share links.')
       else onToast('Could not revoke link')
     }
   }
@@ -110,7 +141,13 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
             Loading share links…
           </div>
         )}
+        {!loading && ownerOnly && (
+          <div style={{ padding: '12px 0', color: 'var(--ink-4)', fontSize: 13 }}>
+            Owner only
+          </div>
+        )}
         {!loading &&
+          !ownerOnly &&
           links.map((link) => (
             <div key={link.role} className={`share-row ${link.recommended ? 'recommended' : ''}`}>
               <div className="ic">
@@ -128,7 +165,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
                 <div className="d">{link.desc}</div>
               </div>
               <div className="link-line">
-                {link.url ? (
+                {link.isActive && link.url ? (
                   <>
                     <code>{link.url}</code>
                     <button
@@ -146,19 +183,31 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
                       )}
                     </button>
                   </>
+                ) : link.isActive ? (
+                  <span style={{ fontSize: 12, color: 'var(--ink-4)', fontStyle: 'italic' }}>
+                    Rotate to reveal a new link
+                  </span>
                 ) : (
                   <span style={{ fontSize: 12, color: 'var(--ink-4)', fontStyle: 'italic' }}>
-                    Rotate to generate a copyable link
+                    No active invite link
                   </span>
                 )}
               </div>
               <div className="actions">
-                <button className="mini" onClick={() => handleRegenerate(link.role)}>
-                  <Icon name="link" size={12} /> Regenerate
-                </button>
-                <button className="mini" onClick={() => handleRevoke(link.role)}>
-                  <Icon name="x" size={12} /> Revoke
-                </button>
+                {link.isActive ? (
+                  <>
+                    <button className="mini" onClick={() => handleRegenerate(link.role)}>
+                      <Icon name="link" size={12} /> Rotate
+                    </button>
+                    <button className="mini" onClick={() => handleRevoke(link.role)}>
+                      <Icon name="x" size={12} /> Revoke
+                    </button>
+                  </>
+                ) : (
+                  <button className="mini" onClick={() => handleRegenerate(link.role)}>
+                    <Icon name="link" size={12} /> Generate link
+                  </button>
+                )}
               </div>
             </div>
           ))}

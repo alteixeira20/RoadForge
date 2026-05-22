@@ -177,14 +177,14 @@ class DeleteRoadmapResponse(BaseModel):
 
 
 class ShareLinkResponse(BaseModel):
-    id: str
+    id: str | None
     role: ShareRole
     # Readable prefix shown in UI; not the secret token.
-    token_prefix: str
+    token_prefix: str | None = None
     # Full join URL with the raw token embedded; returned only on create/rotate.
     url: str | None = None
     is_active: bool
-    created_at: datetime
+    created_at: datetime | None = None
     rotated_at: datetime | None = None
 
 

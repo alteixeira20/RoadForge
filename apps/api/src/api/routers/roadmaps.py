@@ -95,7 +95,9 @@ async def remove_roadmap(
 async def fetch_share_links(
     roadmap_id: str,
     db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
 ) -> list[ShareLinkResponse]:
+    await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
     return await get_share_links(db, roadmap_id)
 
 

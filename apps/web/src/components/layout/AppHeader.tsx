@@ -18,6 +18,7 @@ interface AppHeaderProps {
   displayName: string
   syncStatus: SyncStatus
   readOnly?: boolean
+  canManageShare?: boolean
   onSave?: () => void
   onShare?: () => void
   onIO?: () => void
@@ -28,6 +29,7 @@ export function AppHeader({
   roadmapName,
   syncStatus,
   readOnly = false,
+  canManageShare = false,
   onSave,
   onShare,
   onIO,
@@ -66,13 +68,15 @@ export function AppHeader({
             <button className="iconbtn" title="Import / Export" onClick={onIO}>
               <Icon name="export" size={16} />
             </button>
-            <button
-              className="iconbtn"
-              title="Share"
-              onClick={isServerBacked ? onShare : onSave}
-            >
-              <Icon name="share" size={16} />
-            </button>
+            {(!isServerBacked || canManageShare) && (
+              <button
+                className="iconbtn"
+                title={isServerBacked ? 'Share' : 'Save to RoadForge'}
+                onClick={isServerBacked ? onShare : onSave}
+              >
+                <Icon name={isServerBacked ? 'share' : 'cloud'} size={16} />
+              </button>
+            )}
             {!isServerBacked ? (
               <button
                 className="btn sm header-save-btn"
@@ -93,11 +97,11 @@ export function AppHeader({
                 <Icon name="cloud" size={14} />
                 <span className="header-save-label">Retry</span>
               </button>
-            ) : (
+            ) : canManageShare ? (
               <button className="btn sm" onClick={onShare}>
                 <Icon name="share" size={14} /> Share
               </button>
-            )}
+            ) : null}
           </>
         )}
         {readOnly && (

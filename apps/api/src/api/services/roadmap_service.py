@@ -296,25 +296,38 @@ async def get_share_links(db: AsyncSession, roadmap_id: str) -> list[ShareLinkRe
     )
     if exists.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Roadmap not found")
-    result = await db.execute(
-        select(ShareLink).where(
-            ShareLink.roadmap_id == roadmap_id,
-            ShareLink.is_active.is_(True),
+    result = await db.execute(select(ShareLink).where(ShareLink.roadmap_id == roadmap_id))
+    links_by_role = {sl.role: sl for sl in result.scalars().all()}
+
+    responses: list[ShareLinkResponse] = []
+    for role in sorted(_SHARE_PREFIXES.keys(), key=lambda r: _ROLE_ORDER.get(r, 99)):
+        sl = links_by_role.get(role)
+        if sl is None:
+            responses.append(
+                ShareLinkResponse(
+                    id=None,
+                    role=role,  # type: ignore[arg-type]
+                    token_prefix=None,
+                    url=None,
+                    is_active=False,
+                    created_at=None,
+                    rotated_at=None,
+                )
+            )
+            continue
+
+        responses.append(
+            ShareLinkResponse(
+                id=sl.id,
+                role=sl.role,  # type: ignore[arg-type]
+                token_prefix=None,
+                url=None,
+                is_active=sl.is_active,
+                created_at=sl.created_at,
+                rotated_at=sl.rotated_at,
+            )
         )
-    )
-    links = sorted(result.scalars().all(), key=lambda sl: _ROLE_ORDER.get(sl.role, 99))
-    return [
-        ShareLinkResponse(
-            id=sl.id,
-            role=sl.role,  # type: ignore[arg-type]
-            token_prefix=sl.token_prefix,
-            url=None,
-            is_active=sl.is_active,
-            created_at=sl.created_at,
-            rotated_at=sl.rotated_at,
-        )
-        for sl in links
-    ]
+    return responses
 
 
 async def rotate_share_link(

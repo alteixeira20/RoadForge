@@ -84,12 +84,12 @@ interface ApiCreateRoadmapResponse extends ApiRoadmapResponse {
 }
 
 interface ApiShareLinkResponse {
-  id: string
+  id: string | null
   role: string
-  token_prefix: string
+  token_prefix: string | null
   url: string | null
   is_active: boolean
-  created_at: string
+  created_at: string | null
   rotated_at: string | null
 }
 
@@ -143,6 +143,10 @@ function toShareLink(r: ApiShareLinkResponse): ShareLink {
     icon: meta.icon,
     desc: meta.desc,
     url: r.url ?? '',
+    isActive: r.is_active,
+    tokenPrefix: r.token_prefix,
+    createdAt: r.created_at,
+    rotatedAt: r.rotated_at,
     ...(meta.recommended ? { recommended: true } : {}),
   }
 }
@@ -357,12 +361,14 @@ export async function getRoadmapActivity(
 // ─── Share links ───────────────────────────────────────────────────────────────
 
 /**
- * Fetch all active share links for a roadmap.
+ * Fetch share-link states for all roles on a roadmap.
  * url is empty string when null — raw tokens are not re-exposed after creation.
  */
-export async function getShareLinks(roadmapId: string): Promise<ShareLink[]> {
+export async function getShareLinks(roadmapId: string, sessionToken: string): Promise<ShareLink[]> {
   const data = await requestJson<ApiShareLinkResponse[]>(
     `/api/roadmaps/${roadmapId}/share-links`,
+    {},
+    sessionToken,
   )
   return data.map(toShareLink)
 }

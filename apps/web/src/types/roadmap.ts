@@ -98,12 +98,16 @@ export interface ChangeSummary extends ActivityChange {
 // ─── Collaboration / sharing ───────────────────────────────────────────────────
 
 export interface ShareLink {
-  id: string
+  id: string | null
   role: ShareRole
   /** Icon name for the UI */
   icon: string
   desc: string
   url: string
+  isActive: boolean
+  tokenPrefix?: string | null
+  createdAt?: string | null
+  rotatedAt?: string | null
   recommended?: boolean
 }
 

@@ -208,6 +208,7 @@ export const MOCK_SHARE_LINKS: ShareLink[] = [
     icon: 'shield',
     desc: 'Full control — manage settings, links, and members.',
     url: 'https://roadforge.local/r/v1-launch?k=ow_8hQ2…N3a',
+    isActive: true,
     recommended: false,
   },
   {
@@ -216,6 +217,7 @@ export const MOCK_SHARE_LINKS: ShareLink[] = [
     icon: 'users',
     desc: 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.',
     url: 'https://roadforge.local/r/v1-launch?k=ed_2bD7…XqL',
+    isActive: true,
     recommended: true,
   },
   {
@@ -224,6 +226,7 @@ export const MOCK_SHARE_LINKS: ShareLink[] = [
     icon: 'circle',
     desc: 'Can read everything but not change anything. Good for stakeholders.',
     url: 'https://roadforge.local/r/v1-launch?k=vi_91Hp…W4z',
+    isActive: true,
     recommended: false,
   },
 ]
