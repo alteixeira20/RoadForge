@@ -16,11 +16,42 @@ import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { createRoadmap, isApiConnectionError, saveToServer } from '@/services/roadmap.service'
-import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus } from '@/types/roadmap'
+import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
   onCreateOwn?: () => void
+}
+
+const normalizeFilterValue = (value: string) => value.trim().toLowerCase()
+
+const taskTags = (task: Task) => (task.tags ?? []).map(normalizeFilterValue)
+
+const assignmentPersonFromTag = (tag: string) => {
+  const [kind, ...rest] = tag.split(':')
+  if ((kind !== 'owner' && kind !== 'review') || rest.length === 0) return null
+  const name = rest.join(':').trim()
+  return name || null
+}
+
+const taskMatchesPerson = (task: Task, person: string) => {
+  const target = normalizeFilterValue(person)
+  if (!target) return false
+  return taskTags(task).some((tag) => {
+    const assigned = assignmentPersonFromTag(tag)
+    return assigned ? normalizeFilterValue(assigned) === target : false
+  })
+}
+
+const taskMatchesFilter = (task: Task, filter: TaskFilter, displayName: string) => {
+  if (filter === 'all') return true
+  if (filter === 'mine') return taskMatchesPerson(task, displayName)
+  if (filter === 'pair') return taskTags(task).includes('pair')
+  if (filter === 'next') return task.next === true
+  if (filter === 'open') return task.done === false
+  if (filter === 'done') return task.done === true
+  if (filter.startsWith('person:')) return taskMatchesPerson(task, filter.slice('person:'.length))
+  return true
 }
 
 export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
@@ -64,12 +95,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>('RF-05')
   const { openPhases, togglePhase, allOpen, collapseAll, expandAll } = usePhaseCollapse(phases)
-  const { searchQuery, setSearchQuery, filteredPhases, matchingPhaseIds } = usePhaseSearch(phases)
+  const { searchQuery, setSearchQuery, filteredPhases } = usePhaseSearch(phases)
   const { toast, showToast } = useToastState()
-
-  // ─── Effective State ───────────────────────────────────────────────────────
-
-  const effectiveOpenPhases = searchQuery.trim() ? matchingPhaseIds : openPhases
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
   const {
     showSave,
     showShare,
@@ -88,6 +116,47 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
   const totalDone = allTasks.filter((t) => t.done).length
   const nextReadyCount = allTasks.filter((t) => t.next && !t.done).length
+
+  // ─── Effective State ───────────────────────────────────────────────────────
+
+  const peopleFilterOptions = useMemo(() => {
+    const people = new Map<string, string>()
+    allTasks.forEach((task) => {
+      taskTags(task).forEach((tag) => {
+        const person = assignmentPersonFromTag(tag)
+        if (!person) return
+        const key = normalizeFilterValue(person)
+        if (!people.has(key)) people.set(key, person)
+      })
+    })
+    return [...people.values()].sort((a, b) => a.localeCompare(b)).map((person) => ({
+      value: `person:${person}` as TaskFilter,
+      label: person,
+    }))
+  }, [allTasks])
+
+  const taskFilterOptions = useMemo(() => ([
+    { value: 'all' as TaskFilter, label: 'All' },
+    { value: 'mine' as TaskFilter, label: 'My tasks' },
+    ...peopleFilterOptions,
+    { value: 'pair' as TaskFilter, label: 'Pair' },
+    { value: 'next' as TaskFilter, label: 'Next' },
+    { value: 'open' as TaskFilter, label: 'Open' },
+    { value: 'done' as TaskFilter, label: 'Done' },
+  ]), [peopleFilterOptions])
+
+  const visiblePhases = useMemo(() => {
+    if (taskFilter === 'all') return filteredPhases
+    return filteredPhases
+      .map((phase) => ({
+        ...phase,
+        tasks: phase.tasks.filter((task) => taskMatchesFilter(task, taskFilter, displayName)),
+      }))
+      .filter((phase) => phase.tasks.length > 0)
+  }, [filteredPhases, taskFilter, displayName])
+
+  const isFiltering = searchQuery.trim().length > 0 || taskFilter !== 'all'
+  const effectiveOpenPhases = isFiltering ? visiblePhases.map((phase) => phase.id) : openPhases
 
   useEffect(() => {
     const title = roadmapName.trim()
@@ -754,6 +823,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         <WorkspaceToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          taskFilter={taskFilter}
+          taskFilterOptions={taskFilterOptions}
+          onTaskFilterChange={setTaskFilter}
           allOpen={allOpen}
           onCollapseAll={collapseAll}
           onExpandAll={expandAll}
@@ -761,7 +833,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           hasServerActivity={!!serverRoadmapId && !!sessionToken}
         />
         <PhaseList
-          phases={filteredPhases}
+          phases={visiblePhases}
           openPhases={effectiveOpenPhases}
           expandedTaskId={expandedTaskId}
           allTasks={allTasks}

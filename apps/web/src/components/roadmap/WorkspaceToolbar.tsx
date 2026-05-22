@@ -1,10 +1,19 @@
 'use client'
 
 import { Icon } from '@/components/ui/Icon'
+import type { TaskFilter } from '@/types/roadmap'
+
+interface TaskFilterOption {
+  value: TaskFilter
+  label: string
+}
 
 interface WorkspaceToolbarProps {
   searchQuery: string
   onSearchChange: (q: string) => void
+  taskFilter: TaskFilter
+  taskFilterOptions: TaskFilterOption[]
+  onTaskFilterChange: (filter: TaskFilter) => void
   allOpen: boolean
   onCollapseAll: () => void
   onExpandAll: () => void
@@ -15,6 +24,9 @@ interface WorkspaceToolbarProps {
 export function WorkspaceToolbar({
   searchQuery,
   onSearchChange,
+  taskFilter,
+  taskFilterOptions,
+  onTaskFilterChange,
   allOpen,
   onCollapseAll,
   onExpandAll,
@@ -32,6 +44,20 @@ export function WorkspaceToolbar({
         />
         <span className="kbd">⌘ K</span>
       </div>
+
+      <label className="task-filter">
+        <span>Filter</span>
+        <select
+          value={taskFilter}
+          onChange={(e) => onTaskFilterChange(e.target.value as TaskFilter)}
+        >
+          {taskFilterOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
       
       <button
         className="collapse-all"
