@@ -35,6 +35,7 @@ export type IconName =
   | 'eye'
   | 'eye-off'
   | 'trash'
+  | 'clock'
 
 export interface IconProps {
   name: IconName
@@ -211,6 +212,13 @@ export function Icon({ name, size = 16, stroke = 'currentColor', strokeWidth = 1
         <svg {...s}>
           <circle cx="12" cy="12" r="8" />
           <path d="m8 12 3 3 5-6" />
+        </svg>
+      )
+    case 'clock':
+      return (
+        <svg {...s}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 7v5l3 2" />
         </svg>
       )
     case 'arrow-right':

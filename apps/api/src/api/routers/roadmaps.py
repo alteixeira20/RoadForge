@@ -17,6 +17,8 @@ from api.schemas.roadmap import (
     LockResponse,
     ParticipantResponse,
     RoadmapResponse,
+    RoadmapVersionDetailResponse,
+    RoadmapVersionSummaryResponse,
     ShareLinkResponse,
     ShareRole,
     UpdateRoadmapRequest,
@@ -30,10 +32,13 @@ from api.services.roadmap_service import (
     get_activity_logs,
     get_participants,
     get_roadmap,
+    get_roadmap_version,
+    get_roadmap_versions,
     get_share_links,
     join_roadmap,
     revoke_participant,
     revoke_share_link,
+    restore_roadmap_version,
     rotate_share_link,
     update_roadmap,
 )
@@ -129,6 +134,38 @@ async def delete_share_link(
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
     await revoke_share_link(db, roadmap_id, role, participant)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{roadmap_id}/versions", response_model=list[RoadmapVersionSummaryResponse])
+async def fetch_roadmap_versions(
+    roadmap_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> list[RoadmapVersionSummaryResponse]:
+    await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    return await get_roadmap_versions(db, roadmap_id)
+
+
+@router.get("/{roadmap_id}/versions/{version_id}", response_model=RoadmapVersionDetailResponse)
+async def fetch_roadmap_version(
+    roadmap_id: str,
+    version_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapVersionDetailResponse:
+    await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    return await get_roadmap_version(db, roadmap_id, version_id)
+
+
+@router.post("/{roadmap_id}/versions/{version_id}/restore", response_model=RoadmapResponse)
+async def post_restore_roadmap_version(
+    roadmap_id: str,
+    version_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    return await restore_roadmap_version(db, roadmap_id, version_id, participant)
 
 
 @router.get("/{roadmap_id}/participants", response_model=list[ParticipantResponse])

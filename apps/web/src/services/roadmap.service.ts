@@ -5,7 +5,7 @@
 // Local-first model: localStorage is kept as optimistic cache.
 // When a backend call succeeds the caller is responsible for syncing context/storage.
 
-import type { Roadmap, Phase, Task, ShareLink, ShareRole, ExportFormat, ActivityLogList, ChangeSummary, Participant } from '@/types/roadmap'
+import type { Roadmap, Phase, Task, ShareLink, ShareRole, ExportFormat, ActivityLogList, ChangeSummary, Participant, RoadmapVersionDetail, RoadmapVersionSummary } from '@/types/roadmap'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 
 // ─── API configuration ─────────────────────────────────────────────────────────
@@ -103,6 +103,22 @@ interface ApiParticipantResponse {
   is_current_participant: boolean
 }
 
+interface ApiRoadmapVersionSummaryResponse {
+  id: string
+  version_number: number
+  created_at: string
+  actor_name: string | null
+  action: string | null
+  phase_count: number
+  task_count: number
+}
+
+interface ApiRoadmapVersionDetailResponse extends ApiRoadmapVersionSummaryResponse {
+  roadmap_name: string
+  phases: Phase[]
+  metadata_json: Record<string, unknown> | null
+}
+
 interface ApiJoinResponse {
   roadmap_id: string
   roadmap_name: string
@@ -173,6 +189,27 @@ function toParticipant(r: ApiParticipantResponse): Participant {
   }
 }
 
+function toRoadmapVersionSummary(r: ApiRoadmapVersionSummaryResponse): RoadmapVersionSummary {
+  return {
+    id: r.id,
+    versionNumber: r.version_number,
+    createdAt: r.created_at,
+    actorName: r.actor_name,
+    action: r.action,
+    phaseCount: r.phase_count,
+    taskCount: r.task_count,
+  }
+}
+
+function toRoadmapVersionDetail(r: ApiRoadmapVersionDetailResponse): RoadmapVersionDetail {
+  return {
+    ...toRoadmapVersionSummary(r),
+    roadmapName: r.roadmap_name,
+    phases: r.phases,
+    metadataJson: r.metadata_json,
+  }
+}
+
 // ─── Roadmap CRUD ──────────────────────────────────────────────────────────────
 
 /**
@@ -212,6 +249,46 @@ export async function deleteRoadmap(
     { method: 'DELETE' },
     sessionToken,
   )
+}
+
+// ─── Roadmap versions ─────────────────────────────────────────────────────────
+
+export async function getRoadmapVersions(
+  roadmapId: string,
+  sessionToken: string,
+): Promise<RoadmapVersionSummary[]> {
+  const data = await requestJson<ApiRoadmapVersionSummaryResponse[]>(
+    `/api/roadmaps/${roadmapId}/versions`,
+    {},
+    sessionToken,
+  )
+  return data.map(toRoadmapVersionSummary)
+}
+
+export async function getRoadmapVersion(
+  roadmapId: string,
+  versionId: string,
+  sessionToken: string,
+): Promise<RoadmapVersionDetail> {
+  const data = await requestJson<ApiRoadmapVersionDetailResponse>(
+    `/api/roadmaps/${roadmapId}/versions/${versionId}`,
+    {},
+    sessionToken,
+  )
+  return toRoadmapVersionDetail(data)
+}
+
+export async function restoreRoadmapVersion(
+  roadmapId: string,
+  versionId: string,
+  sessionToken: string,
+): Promise<Roadmap> {
+  const data = await requestJson<ApiRoadmapResponse>(
+    `/api/roadmaps/${roadmapId}/versions/${versionId}/restore`,
+    { method: 'POST' },
+    sessionToken,
+  )
+  return toRoadmap(data)
 }
 
 // ─── Task mutations ────────────────────────────────────────────────────────────

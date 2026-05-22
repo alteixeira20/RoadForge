@@ -11,6 +11,7 @@ import { PhaseList } from './PhaseList'
 import { WorkspaceModals } from './WorkspaceModals'
 import { ActivityPanel } from './ActivityPanel'
 import { TeamPanel } from './TeamPanel'
+import { VersionsPanel } from './VersionsPanel'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
@@ -18,7 +19,7 @@ import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { createRoadmap, getParticipants, isApiConnectionError, saveToServer } from '@/services/roadmap.service'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
-import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter, Participant } from '@/types/roadmap'
+import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -95,6 +96,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
   const [showTeam, setShowTeam] = useState(false)
+  const [showVersions, setShowVersions] = useState(false)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [activityRefreshKey, setActivityRefreshKey] = useState(0)
   const [pendingActivityChanges, setPendingActivityChanges] = useState<ActivityChange[]>([])
@@ -178,6 +180,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const changePriority: Record<ActivityAction, number> = {
     'roadmap.imported': 1,
+    'roadmap.restored': 1,
     'phase.completed': 2,
     'phase.reopened': 2,
     'task.created': 3,
@@ -194,6 +197,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const countKeyForAction = (action: ActivityAction): string => {
     switch (action) {
       case 'roadmap.imported': return 'imports'
+      case 'roadmap.restored': return 'restores'
       case 'phase.completed': return 'phases_completed'
       case 'phase.reopened': return 'phases_reopened'
       case 'task.created': return 'tasks_added'
@@ -782,6 +786,16 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     }])
   }
 
+  const handleRoadmapRestored = (restored: Roadmap) => {
+    setRoadmapName(restored.roadmap.name)
+    setPhases(restored.phases)
+    setOwnerDisplayName(restored.ownerDisplayName)
+    setUpdatedAt(restored.updatedAt)
+    setSaved(true)
+    setIsOffline(false)
+    if (showActivity) setActivityRefreshKey((k) => k + 1)
+  }
+
   return (
     <div className="app-shell">
       <AppHeader
@@ -832,8 +846,10 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onExpandAll={expandAll}
           onOpenActivity={() => setShowActivity(true)}
           onOpenTeam={() => setShowTeam(true)}
+          onOpenVersions={() => setShowVersions(true)}
           hasServerActivity={!!serverRoadmapId && !!sessionToken}
           canViewTeam={!readOnly}
+          canViewVersions={role === 'owner' && !!serverRoadmapId && !!sessionToken}
         />
         <PhaseList
           phases={visiblePhases}
@@ -885,6 +901,16 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           tasks={allTasks}
           participants={participants}
           onClose={() => setShowTeam(false)}
+        />
+      )}
+
+      {showVersions && serverRoadmapId && sessionToken && (
+        <VersionsPanel
+          roadmapId={serverRoadmapId}
+          sessionToken={sessionToken}
+          onClose={() => setShowVersions(false)}
+          onRestored={handleRoadmapRestored}
+          onToast={showToast}
         />
       )}
     </div>

@@ -19,8 +19,10 @@ interface WorkspaceToolbarProps {
   onExpandAll: () => void
   onOpenActivity: () => void
   onOpenTeam: () => void
+  onOpenVersions: () => void
   hasServerActivity: boolean
   canViewTeam: boolean
+  canViewVersions: boolean
 }
 
 export function WorkspaceToolbar({
@@ -34,8 +36,10 @@ export function WorkspaceToolbar({
   onExpandAll,
   onOpenActivity,
   onOpenTeam,
+  onOpenVersions,
   hasServerActivity,
   canViewTeam,
+  canViewVersions,
 }: WorkspaceToolbarProps) {
   return (
     <div className="workspace-bar">
@@ -85,6 +89,16 @@ export function WorkspaceToolbar({
           title="View assigned work by person"
         >
           <Icon name="users" size={14} /> Team
+        </button>
+      )}
+
+      {canViewVersions && (
+        <button
+          className="collapse-all"
+          onClick={onOpenVersions}
+          title="View and restore roadmap versions"
+        >
+          <Icon name="clock" size={14} /> Versions
         </button>
       )}
     </div>

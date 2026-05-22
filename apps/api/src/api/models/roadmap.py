@@ -41,6 +41,9 @@ class Roadmap(Base):
     activity_logs: Mapped[list[ActivityLog]] = relationship(
         "ActivityLog", back_populates="roadmap", cascade="all, delete-orphan"
     )
+    versions: Mapped[list[RoadmapVersion]] = relationship(
+        "RoadmapVersion", back_populates="roadmap", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         sa.Index("ix_roadmaps_created_at", "created_at"),
@@ -139,4 +142,34 @@ class ActivityLog(Base):
     __table_args__ = (
         # Queries are almost always filtered by roadmap and ordered newest-first.
         sa.Index("ix_activity_logs_roadmap_created", "roadmap_id", sa.text("created_at DESC")),
+    )
+
+
+class RoadmapVersion(Base):
+    __tablename__ = "roadmap_versions"
+
+    id: Mapped[str] = mapped_column(sa.String, primary_key=True)
+    roadmap_id: Mapped[str] = mapped_column(
+        sa.String, sa.ForeignKey("roadmaps.id", ondelete="CASCADE"), nullable=False
+    )
+    version_number: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    roadmap_name: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    snapshot_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    participant_id: Mapped[str | None] = mapped_column(
+        sa.String, sa.ForeignKey("participants.id", ondelete="SET NULL"), nullable=True
+    )
+    actor_name: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    action: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+    )
+
+    roadmap: Mapped[Roadmap] = relationship("Roadmap", back_populates="versions")
+    participant: Mapped[Participant | None] = relationship("Participant")
+
+    __table_args__ = (
+        sa.UniqueConstraint("roadmap_id", "version_number", name="uq_roadmap_versions_number"),
+        sa.Index("ix_roadmap_versions_roadmap_created", "roadmap_id", sa.text("created_at DESC")),
+        sa.Index("ix_roadmap_versions_roadmap_number", "roadmap_id", "version_number"),
     )

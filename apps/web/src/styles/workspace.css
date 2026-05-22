@@ -538,6 +538,44 @@
   font-size: 12.5px;
 }
 
+.version-list {
+  display: flex;
+  flex-direction: column;
+}
+.version-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.version-row:hover {
+  background: var(--bg-2);
+}
+.version-main {
+  flex: 1;
+  min-width: 0;
+}
+.version-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 650;
+}
+.version-title span {
+  color: var(--ember);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.version-meta,
+.version-counts {
+  margin-top: 3px;
+  color: var(--ink-4);
+  font-size: 12px;
+}
+
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .spin { animation: spin 2s linear infinite; }
 

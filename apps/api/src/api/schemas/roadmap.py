@@ -186,6 +186,32 @@ class DeleteRoadmapResponse(BaseModel):
     ok: bool
 
 
+# ─── Roadmap versions ────────────────────────────────────────────────────────
+
+
+class RoadmapVersionSummaryResponse(BaseModel):
+    id: str
+    version_number: int
+    created_at: datetime
+    actor_name: str | None = None
+    action: str | None = None
+    phase_count: int
+    task_count: int
+
+
+class RoadmapVersionDetailResponse(BaseModel):
+    id: str
+    version_number: int
+    roadmap_name: str
+    phases: list[PhaseDTO]
+    created_at: datetime
+    actor_name: str | None = None
+    action: str | None = None
+    phase_count: int
+    task_count: int
+    metadata_json: dict[str, Any] | None = None
+
+
 # ─── Share link ───────────────────────────────────────────────────────────────
 
 

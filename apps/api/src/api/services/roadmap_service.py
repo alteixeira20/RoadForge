@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
+from api.models.roadmap import ActivityLog, Participant, Roadmap, RoadmapVersion, ShareLink
 from api.schemas.roadmap import (
     ActivityLogListResponse,
     ActivityLogResponse,
@@ -15,6 +15,8 @@ from api.schemas.roadmap import (
     PhaseDTO,
     ParticipantResponse,
     RoadmapResponse,
+    RoadmapVersionDetailResponse,
+    RoadmapVersionSummaryResponse,
     ShareLinkResponse,
     ShareRole,
     UpdateRoadmapRequest,
@@ -31,6 +33,64 @@ _SHARE_PREFIXES: dict[str, str] = {
     "editor": "ed_",
     "viewer": "vi_",
 }
+
+_MAX_ROADMAP_VERSIONS = 100
+
+
+def _snapshot_from_phases(phases: list[PhaseDTO]) -> dict:
+    return {"phases": [p.model_dump(exclude_none=True) for p in phases]}
+
+
+def _snapshot_counts(snapshot_json: dict) -> tuple[int, int]:
+    phases = snapshot_json.get("phases", [])
+    if not isinstance(phases, list):
+        return 0, 0
+    task_count = sum(len(p.get("tasks", [])) for p in phases if isinstance(p, dict))
+    return len(phases), task_count
+
+
+async def _create_roadmap_version(
+    db: AsyncSession,
+    roadmap: Roadmap,
+    participant: Participant | None,
+    action: str | None,
+    metadata_json: dict | None = None,
+    force: bool = False,
+) -> None:
+    latest_result = await db.execute(
+        select(RoadmapVersion)
+        .where(RoadmapVersion.roadmap_id == roadmap.id)
+        .order_by(RoadmapVersion.version_number.desc())
+        .limit(1)
+    )
+    latest = latest_result.scalar_one_or_none()
+
+    if not force and latest and latest.roadmap_name == roadmap.name and latest.snapshot_json == roadmap.snapshot_json:
+        return
+
+    next_number = (latest.version_number if latest else 0) + 1
+    db.add(RoadmapVersion(
+        id=generate_id("rv_"),
+        roadmap_id=roadmap.id,
+        version_number=next_number,
+        roadmap_name=roadmap.name,
+        snapshot_json=roadmap.snapshot_json,
+        participant_id=participant.id if participant else None,
+        actor_name=participant.display_name if participant else None,
+        action=action,
+        metadata_json=metadata_json,
+    ))
+    await db.flush()
+
+    old_ids_result = await db.execute(
+        select(RoadmapVersion.id)
+        .where(RoadmapVersion.roadmap_id == roadmap.id)
+        .order_by(RoadmapVersion.version_number.desc())
+        .offset(_MAX_ROADMAP_VERSIONS)
+    )
+    old_ids = old_ids_result.scalars().all()
+    if old_ids:
+        await db.execute(delete(RoadmapVersion).where(RoadmapVersion.id.in_(old_ids)))
 
 
 async def create_roadmap(
@@ -52,7 +112,7 @@ async def create_roadmap(
         id=roadmap_id,
         name=payload.name,
         owner_display_name=payload.owner_display_name,
-        snapshot_json={"phases": [p.model_dump(exclude_none=True) for p in payload.phases]},
+        snapshot_json=_snapshot_from_phases(payload.phases),
         schema_version="1.0",
         is_password_enabled=bool(payload.password),
         password_hash=hash_password(payload.password) if payload.password else None,
@@ -109,6 +169,7 @@ async def create_roadmap(
         after_json={"name": payload.name},
         metadata_json=metadata_json,
     ))
+    await _create_roadmap_version(db, roadmap, participant, "roadmap.created", metadata_json)
 
     await db.commit()
     # Refresh roadmap to read server-set created_at / updated_at timestamps.
@@ -202,9 +263,7 @@ async def update_roadmap(
     if payload.phases is not None:
         before_json["phase_count"] = len(roadmap.snapshot_json.get("phases", []))
         after_json["phase_count"] = len(payload.phases)
-        roadmap.snapshot_json = {
-            "phases": [p.model_dump(exclude_none=True) for p in payload.phases]
-        }
+        roadmap.snapshot_json = _snapshot_from_phases(payload.phases)
 
     action = "roadmap.updated"
     entity_type = "roadmap"
@@ -229,6 +288,7 @@ async def update_roadmap(
         after_json=after_json or None,
         metadata_json=metadata_json,
     ))
+    await _create_roadmap_version(db, roadmap, participant, action, metadata_json)
 
     await db.commit()
     await db.refresh(roadmap)
@@ -241,6 +301,127 @@ async def update_roadmap(
             "roadmap_id": roadmap_id,
             "updated_at": roadmap.updated_at.isoformat(),
             "participant_id": participant.id if participant else None,
+        }
+    ))
+
+    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+
+
+async def get_roadmap_versions(
+    db: AsyncSession,
+    roadmap_id: str,
+) -> list[RoadmapVersionSummaryResponse]:
+    await _fetch_active_roadmap(db, roadmap_id)
+
+    result = await db.execute(
+        select(RoadmapVersion)
+        .where(RoadmapVersion.roadmap_id == roadmap_id)
+        .order_by(RoadmapVersion.version_number.desc())
+    )
+    versions = result.scalars().all()
+    responses: list[RoadmapVersionSummaryResponse] = []
+    for version in versions:
+        phase_count, task_count = _snapshot_counts(version.snapshot_json)
+        responses.append(RoadmapVersionSummaryResponse(
+            id=version.id,
+            version_number=version.version_number,
+            created_at=version.created_at,
+            actor_name=version.actor_name,
+            action=version.action,
+            phase_count=phase_count,
+            task_count=task_count,
+        ))
+    return responses
+
+
+async def get_roadmap_version(
+    db: AsyncSession,
+    roadmap_id: str,
+    version_id: str,
+) -> RoadmapVersionDetailResponse:
+    await _fetch_active_roadmap(db, roadmap_id)
+    result = await db.execute(
+        select(RoadmapVersion).where(
+            RoadmapVersion.roadmap_id == roadmap_id,
+            RoadmapVersion.id == version_id,
+        )
+    )
+    version = result.scalar_one_or_none()
+    if version is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    phase_count, task_count = _snapshot_counts(version.snapshot_json)
+    return RoadmapVersionDetailResponse(
+        id=version.id,
+        version_number=version.version_number,
+        roadmap_name=version.roadmap_name,
+        phases=_phases_from_snapshot(version.snapshot_json),
+        created_at=version.created_at,
+        actor_name=version.actor_name,
+        action=version.action,
+        phase_count=phase_count,
+        task_count=task_count,
+        metadata_json=version.metadata_json,
+    )
+
+
+async def restore_roadmap_version(
+    db: AsyncSession,
+    roadmap_id: str,
+    version_id: str,
+    participant: Participant,
+) -> RoadmapResponse:
+    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+    result = await db.execute(
+        select(RoadmapVersion).where(
+            RoadmapVersion.roadmap_id == roadmap_id,
+            RoadmapVersion.id == version_id,
+        )
+    )
+    version = result.scalar_one_or_none()
+    if version is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    before_json = {
+        "name": roadmap.name,
+        "phase_count": len(roadmap.snapshot_json.get("phases", [])),
+    }
+    phase_count, task_count = _snapshot_counts(version.snapshot_json)
+    roadmap.name = version.roadmap_name
+    roadmap.snapshot_json = version.snapshot_json
+    roadmap.updated_at = datetime.now(timezone.utc)
+
+    metadata_json = {
+        "version_id": version.id,
+        "version_number": version.version_number,
+        "phase_count": phase_count,
+        "task_count": task_count,
+    }
+
+    db.add(ActivityLog(
+        id=generate_id("al_"),
+        roadmap_id=roadmap_id,
+        participant_id=participant.id,
+        actor_name=participant.display_name,
+        action="roadmap.restored",
+        entity_type="roadmap",
+        entity_id=roadmap_id,
+        before_json=before_json,
+        after_json={"name": roadmap.name, "phase_count": phase_count},
+        metadata_json=metadata_json,
+    ))
+    await _create_roadmap_version(db, roadmap, participant, "roadmap.restored", metadata_json, force=True)
+
+    await db.commit()
+    await db.refresh(roadmap)
+
+    await event_bus.publish(Event(
+        roadmap_id=roadmap_id,
+        action="roadmap.updated",
+        payload={
+            "roadmap_id": roadmap_id,
+            "updated_at": roadmap.updated_at.isoformat(),
+            "participant_id": participant.id,
         }
     ))
 

@@ -60,6 +60,7 @@ export interface Roadmap {
 export type ActivityAction =
   | 'roadmap.updated'
   | 'roadmap.imported'
+  | 'roadmap.restored'
   | 'roadmap.batch_changed'
   | 'phase.completed'
   | 'phase.reopened'
@@ -121,6 +122,22 @@ export interface Participant {
   lastSeenAt: string | null
   revokedAt: string | null
   isCurrentParticipant: boolean
+}
+
+export interface RoadmapVersionSummary {
+  id: string
+  versionNumber: number
+  createdAt: string
+  actorName: string | null
+  action: string | null
+  phaseCount: number
+  taskCount: number
+}
+
+export interface RoadmapVersionDetail extends RoadmapVersionSummary {
+  roadmapName: string
+  phases: Phase[]
+  metadataJson: Record<string, unknown> | null
 }
 
 // ─── Import / Export ───────────────────────────────────────────────────────────

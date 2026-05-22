@@ -64,6 +64,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
       case 'roadmap.created': return 'Created roadmap'
       case 'roadmap.updated': return 'Saved roadmap'
       case 'roadmap.imported': return 'Imported roadmap'
+      case 'roadmap.restored': return 'Restored roadmap'
       case 'roadmap.batch_changed': {
         const changes = Array.isArray(metadata?.changes) ? metadata.changes.length : 0
         return `Saved ${changes || 'multiple'} changes`
@@ -131,6 +132,12 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
         return <span>{plural(phaseCount, 'phase')} · {plural(taskCount, 'task')}</span>
       }
       return <span className="dim">Roadmap snapshot imported</span>
+    }
+    if (action === 'roadmap.restored') {
+      if (typeof metadata_json?.version_number === 'number') {
+        return <span>Version {metadata_json.version_number}</span>
+      }
+      return <span className="dim">Roadmap snapshot restored</span>
     }
     if (action === 'roadmap.batch_changed') {
       const details = getBatchDetails(metadata_json)
