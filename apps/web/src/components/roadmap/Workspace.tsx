@@ -226,6 +226,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     'task.dependency.unlinked': 5,
     'task.updated': 6,
     'task.reordered': 7,
+    'roadmap.phases_reordered': 7,
     'roadmap.batch_changed': 8,
     'roadmap.updated': 9,
   }
@@ -243,6 +244,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       case 'task.dependency.unlinked': return 'dependencies_unlinked'
       case 'task.updated': return 'tasks_updated'
       case 'task.reordered': return 'tasks_reordered'
+      case 'roadmap.phases_reordered': return 'phases_reordered'
       default: return 'updates'
     }
   }
@@ -816,6 +818,20 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setSaved(false)
   }
 
+  const handleReorderPhases = (phaseIds: string[]) => {
+    if (readOnly) return
+    const reordered = phaseIds
+      .map((id) => phases.find((p) => p.id === id))
+      .filter((p): p is PhaseType => !!p)
+    setPhases(reordered)
+    addPendingActivityChange({
+      action: 'roadmap.phases_reordered',
+      entity_type: 'roadmap',
+      entity_id: serverRoadmapId || undefined,
+    })
+    setSaved(false)
+  }
+
   const handleRoadmapImported = (importedName: string | undefined, importedPhases: PhaseType[]) => {
     setPendingActivityChanges([{
       action: 'roadmap.imported',
@@ -940,6 +956,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           expandedTaskId={expandedTaskId}
           allTasks={allTasks}
           readOnly={readOnly}
+          isFiltering={isFiltering}
           onTogglePhase={togglePhase}
           onToggleTask={onToggleTask}
           onCheckTask={onCheckTask}
@@ -951,6 +968,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onUnlinkDependency={handleUnlinkDependency}
           onReorderTasks={handleReorderTasks}
           onReorderSubtasks={handleReorderSubtasks}
+          onReorderPhases={handleReorderPhases}
           hasCycle={hasCycle}
           assignmentNames={assignmentNames}
         />

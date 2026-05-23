@@ -78,6 +78,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
       case 'task.dependency.linked': return 'Linked dependency'
       case 'task.dependency.unlinked': return 'Unlinked dependency'
       case 'task.reordered': return 'Reordered tasks'
+      case 'roadmap.phases_reordered': return 'Reordered phases'
       case 'participant.joined': return `Joined as ${metadata?.role || 'contributor'}`
       case 'participant.revoked': return 'Revoked participant'
       case 'share_link.rotated': return `Rotated ${metadata?.role || ''} link`
@@ -108,6 +109,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
     add('dependencies_unlinked', 'dependency unlinked', 'dependencies unlinked')
     add('tasks_updated', 'task updated', 'tasks updated')
     add('tasks_reordered', 'task reorder', 'task reorders')
+    add('phases_reordered', 'phase reorder', 'phase reorders')
     add('imports', 'import')
     return parts.length ? parts.join(' · ') : null
   }

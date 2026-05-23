@@ -21,6 +21,7 @@ import {
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 
+import React from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Toast } from '@/components/ui/Toast'
 import { SortableTaskItem } from './SortableTaskItem'
@@ -50,6 +51,7 @@ interface PhaseProps {
   allTasks: Task[]
   readOnly: boolean
   assignmentNames: string[]
+  dragHandleProps?: React.HTMLAttributes<Element>
 }
 
 function phaseStatusLabel(status: PhaseType['status']): string {
@@ -92,6 +94,7 @@ export function Phase({
   allTasks,
   readOnly,
   assignmentNames,
+  dragHandleProps,
 }: PhaseProps) {
   const doneCount = phase.tasks.filter((t) => t.done).length
   const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
@@ -255,6 +258,15 @@ export function Phase({
       style={headStyle}
     >
       <div className="phase-head" onClick={() => onToggle(phase.id)}>
+        {dragHandleProps && (
+          <span
+            className="phase-drag-handle"
+            onClick={(e) => e.stopPropagation()}
+            {...(dragHandleProps as React.HTMLAttributes<HTMLSpanElement>)}
+          >
+            <Icon name="grip" size={14} />
+          </span>
+        )}
         <span className="chev">
           <Icon name="chevron-right" size={16} />
         </span>

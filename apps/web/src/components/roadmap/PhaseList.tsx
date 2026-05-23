@@ -1,7 +1,27 @@
 'use client'
 
+import { useState } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  defaultDropAnimationSideEffects,
+  DragStartEvent,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { Icon } from '@/components/ui/Icon'
-import { Phase } from './Phase'
+import { SortablePhaseItem } from './SortablePhaseItem'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 
 interface PhaseListProps {
@@ -10,6 +30,7 @@ interface PhaseListProps {
   expandedTaskId: string | null
   allTasks: Task[]
   readOnly: boolean
+  isFiltering: boolean
   onTogglePhase: (id: string) => void
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
@@ -21,6 +42,7 @@ interface PhaseListProps {
   onUnlinkDependency: (taskId: string, depId: string) => void
   onReorderTasks: (phaseId: string, taskIds: string[]) => void
   onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
+  onReorderPhases: (phaseIds: string[]) => void
   hasCycle: (taskId: string, depId: string) => boolean
   assignmentNames: string[]
 }
@@ -31,6 +53,7 @@ export function PhaseList({
   expandedTaskId,
   allTasks,
   readOnly,
+  isFiltering,
   onTogglePhase,
   onToggleTask,
   onCheckTask,
@@ -42,36 +65,97 @@ export function PhaseList({
   onUnlinkDependency,
   onReorderTasks,
   onReorderSubtasks,
+  onReorderPhases,
   hasCycle,
   assignmentNames,
 }: PhaseListProps) {
+  const [activePhaseId, setActivePhaseId] = useState<string | null>(null)
+
+  const phaseDragDisabled = readOnly || isFiltering
+  const phaseIds = phases.map((p) => p.id)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActivePhaseId(event.active.id as string)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActivePhaseId(null)
+    if (over && active.id !== over.id) {
+      const oldIndex = phaseIds.indexOf(active.id as string)
+      const newIndex = phaseIds.indexOf(over.id as string)
+      onReorderPhases(arrayMove(phaseIds, oldIndex, newIndex))
+    }
+  }
+
+  const handleDragCancel = () => {
+    setActivePhaseId(null)
+  }
+
+  const activePhase = activePhaseId ? phases.find((p) => p.id === activePhaseId) : null
+
   return (
     <>
-      <div className="phases">
-        {phases.map((p) => (
-          <Phase
-            key={p.id}
-            phase={p}
-            isOpen={openPhases.includes(p.id)}
-            onToggle={onTogglePhase}
-            expandedTaskId={expandedTaskId}
-            onToggleTask={onToggleTask}
-            onCheckTask={onCheckTask}
-            onUpdateTask={onUpdateTask}
-            onUpdatePhaseColor={onUpdatePhaseColor}
-            onAddTask={onAddTask}
-            onAddSubtask={onAddSubtask}
-            onLinkDependency={onLinkDependency}
-            onUnlinkDependency={onUnlinkDependency}
-            onReorderTasks={onReorderTasks}
-            onReorderSubtasks={onReorderSubtasks}
-            hasCycle={hasCycle}
-            allTasks={allTasks}
-            readOnly={readOnly}
-            assignmentNames={assignmentNames}
-          />
-        ))}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+        modifiers={[restrictToVerticalAxis]}
+      >
+        <SortableContext items={phaseIds} strategy={verticalListSortingStrategy}>
+          <div className="phases">
+            {phases.map((p) => (
+              <SortablePhaseItem
+                key={p.id}
+                phase={p}
+                dragDisabled={phaseDragDisabled}
+                isOpen={openPhases.includes(p.id)}
+                onToggle={onTogglePhase}
+                expandedTaskId={expandedTaskId}
+                onToggleTask={onToggleTask}
+                onCheckTask={onCheckTask}
+                onUpdateTask={onUpdateTask}
+                onUpdatePhaseColor={onUpdatePhaseColor}
+                onAddTask={onAddTask}
+                onAddSubtask={onAddSubtask}
+                onLinkDependency={onLinkDependency}
+                onUnlinkDependency={onUnlinkDependency}
+                onReorderTasks={onReorderTasks}
+                onReorderSubtasks={onReorderSubtasks}
+                hasCycle={hasCycle}
+                allTasks={allTasks}
+                readOnly={readOnly}
+                assignmentNames={assignmentNames}
+              />
+            ))}
+          </div>
+        </SortableContext>
+        <DragOverlay
+          dropAnimation={{
+            duration: 110,
+            easing: 'cubic-bezier(0.2, 0, 0, 1)',
+            sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
+          }}
+        >
+          {activePhase ? (
+            <div className="phase-sortable-overlay">
+              <span className="phase-overlay-num">{activePhase.num}</span>
+              <span className="phase-overlay-name">{activePhase.name}</span>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
       {!readOnly && (
         <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
           <button className="btn ghost">
