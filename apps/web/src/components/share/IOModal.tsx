@@ -7,6 +7,7 @@ import { exportRoadmap } from '@/services/roadmap.service'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { parseImportedRoadmapJson, IMPORT_MAX_BYTES } from '@/lib/roadmap-validation'
 import type { ImportedRoadmap } from '@/lib/roadmap-validation'
+import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
 import type { Phase } from '@/types/roadmap'
 
 interface IOModalProps {
@@ -112,6 +113,7 @@ Return only the final JSON. Do not wrap it in Markdown. Do not include comments.
 interface PendingImport {
   result: ImportedRoadmap
   mode: ImportMode
+  upgradeNotices: RoadmapUpgradeNotice[]
 }
 
 export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalProps) {
@@ -224,10 +226,19 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     const reader = new FileReader()
     reader.onload = (ev) => {
       try {
-        const imported = parseImportedRoadmapJson(ev.target?.result as string)
+        const parsed = parseImportedRoadmapJson(ev.target?.result as string)
+        const upgraded = upgradeRoadmapSnapshot({
+          roadmapName: parsed.roadmapName,
+          phases: parsed.phases,
+        })
+        const imported: ImportedRoadmap = {
+          ...parsed,
+          roadmapName: upgraded.roadmapName || parsed.roadmapName,
+          phases: upgraded.phases,
+        }
         const mode = importModeRef.current
-        if (imported.warnings.length > 0 || imported.repairs.length > 0) {
-          setPendingImport({ result: imported, mode })
+        if (imported.warnings.length > 0 || imported.repairs.length > 0 || upgraded.notices.length > 0) {
+          setPendingImport({ result: imported, mode, upgradeNotices: upgraded.notices })
         } else {
           executeImport(imported, mode)
         }
@@ -352,6 +363,13 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
                 <ul style={{ margin: '0 0 6px', paddingLeft: 16, fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55 }}>
                   {pendingImport.result.warnings.map((w, i) => (
                     <li key={i}>{w.message}</li>
+                  ))}
+                </ul>
+              )}
+              {pendingImport.upgradeNotices.length > 0 && (
+                <ul style={{ margin: '0 0 6px', paddingLeft: 16, fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55 }}>
+                  {pendingImport.upgradeNotices.map((notice, i) => (
+                    <li key={i}>{notice.message}</li>
                   ))}
                 </ul>
               )}

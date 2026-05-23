@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/Icon'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { storage } from '@/lib/storage'
+import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { joinRoadmap, getRoadmap } from '@/services/roadmap.service'
 import type { ShareRole } from '@/types/roadmap'
 
@@ -23,6 +24,7 @@ export function JoinPage() {
     setRole,
     setRoadmapName,
     setPhases,
+    setSaved,
     setOwnerDisplayName,
   } = useRoadmap()
 
@@ -93,14 +95,22 @@ export function JoinPage() {
 
       try {
         const roadmap = await getRoadmap(roadmapId, sessionToken)
-        setRoadmapName(roadmap.roadmap.name)
-        setPhases(roadmap.phases)
+        const upgraded = upgradeRoadmapSnapshot({
+          roadmapName: roadmap.roadmap.name,
+          phases: roadmap.phases,
+        })
+        const nextRoadmapName = upgraded.roadmapName || roadmap.roadmap.name
+        const canPersistUpgrade = role === 'owner' || role === 'editor'
+        const nextSaved = !(upgraded.changed && canPersistUpgrade)
+        setRoadmapName(nextRoadmapName)
+        setPhases(upgraded.phases)
+        setSaved(nextSaved)
         setOwnerDisplayName(roadmap.ownerDisplayName)
         
         storage.setRoadmapCache(roadmapId, {
-          roadmapName: roadmap.roadmap.name,
-          phases: roadmap.phases,
-          saved: true,
+          roadmapName: nextRoadmapName,
+          phases: upgraded.phases,
+          saved: nextSaved,
           ownerDisplayName: roadmap.ownerDisplayName,
           updatedAt: roadmap.updatedAt,
           isPasswordEnabled: !!roadmap.roadmap.isPasswordEnabled,

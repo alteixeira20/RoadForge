@@ -19,6 +19,7 @@ import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { createRoadmap, getParticipants, getRoadmap, isApiConnectionError, revokeParticipant, saveToServer } from '@/services/roadmap.service'
 import { normalizePhasesProgress, renumberPhases } from '@/lib/phase-progress'
+import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
 import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
 
@@ -78,6 +79,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setUpdatedAt,
     accessRevokedEvent,
     clearAccessRevokedEvent,
+    roadmapUpgradeNotice,
+    dismissRoadmapUpgradeNotice,
+    downloadRoadmapUpgradeBackup,
   } = useRoadmap()
   const readOnly = mode === 'viewer'
   const canManageShare = role === 'owner'
@@ -906,11 +910,15 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   }
 
   const handleRoadmapRestored = (restored: Roadmap) => {
-    setRoadmapName(restored.roadmap.name)
-    setPhases(restored.phases)
+    const upgraded = upgradeRoadmapSnapshot({
+      roadmapName: restored.roadmap.name,
+      phases: restored.phases,
+    })
+    setRoadmapName(upgraded.roadmapName || restored.roadmap.name)
+    setPhases(upgraded.phases)
     setOwnerDisplayName(restored.ownerDisplayName)
     setUpdatedAt(restored.updatedAt)
-    setSaved(true)
+    setSaved(!upgraded.changed)
     setIsOffline(false)
     setIsConflict(false)
     if (showActivity) setActivityRefreshKey((k) => k + 1)
@@ -921,12 +929,16 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     if (!window.confirm('Reload the latest server version? Your unsynced local edits will be discarded.')) return
     try {
       const loaded = await getRoadmap(serverRoadmapId, sessionToken)
-      setRoadmapName(loaded.roadmap.name)
-      setPhases(normalizePhasesProgress(loaded.phases))
+      const upgraded = upgradeRoadmapSnapshot({
+        roadmapName: loaded.roadmap.name,
+        phases: loaded.phases,
+      })
+      setRoadmapName(upgraded.roadmapName || loaded.roadmap.name)
+      setPhases(normalizePhasesProgress(upgraded.phases))
       setOwnerDisplayName(loaded.ownerDisplayName)
       setUpdatedAt(loaded.updatedAt)
       setPendingActivityChanges([])
-      setSaved(true)
+      setSaved(!upgraded.changed)
       setIsConflict(false)
       setIsOffline(false)
       showToast('Reloaded server version.')
@@ -1019,6 +1031,28 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       )}
 
       <div className="workspace">
+        {roadmapUpgradeNotice && (
+          <div className="upgrade-notice" role="status">
+            <div className="upgrade-notice-icon">
+              <Icon name="shield" size={16} />
+            </div>
+            <div className="upgrade-notice-copy">
+              <strong>Roadmap updated for this version</strong>
+              <span>RoadForge repaired older roadmap data so it works with the current app.</span>
+              {roadmapUpgradeNotice.notices.length > 0 && (
+                <small>{roadmapUpgradeNotice.notices[0].message} Some older or unsupported fields may not be preserved.</small>
+              )}
+            </div>
+            <div className="upgrade-notice-actions">
+              <button type="button" className="btn sm ghost" onClick={downloadRoadmapUpgradeBackup}>
+                <Icon name="export" size={13} /> Download backup
+              </button>
+              <button type="button" className="iconbtn" aria-label="Dismiss schema upgrade notice" onClick={dismissRoadmapUpgradeNotice}>
+                <Icon name="x" size={15} />
+              </button>
+            </div>
+          </div>
+        )}
         <WorkspaceHead
           roadmapName={roadmapName}
           totalDone={totalDone}

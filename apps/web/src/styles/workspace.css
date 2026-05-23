@@ -246,6 +246,53 @@
   padding: 40px 32px 80px;
   width: 100%;
 }
+.upgrade-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 24px;
+  padding: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+}
+.upgrade-notice-icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--ember);
+  background: color-mix(in oklab, var(--ember-2) 12%, var(--bg-2));
+  border: 1px solid color-mix(in oklab, var(--ember-2) 36%, var(--border));
+}
+.upgrade-notice-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.upgrade-notice-copy strong {
+  color: var(--ink);
+  font-size: 13.5px;
+}
+.upgrade-notice-copy small {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.upgrade-notice-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
 .workspace-head { margin-bottom: 32px; }
 .workspace-head .crumbline {
   font-family: var(--font-mono);
@@ -1381,6 +1428,15 @@
   .app-header .badge { font-size: 11px; }
   .app-header .header-save-btn { min-width: auto; }
   .workspace { padding: 28px 18px 60px; }
+  .upgrade-notice {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .upgrade-notice-copy { flex-basis: calc(100% - 42px); }
+  .upgrade-notice-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
   .workspace-head h1 { font-size: 28px; }
   .roadmap-title-edit { opacity: 1; width: 34px; height: 34px; }
   .phase-head { padding: 14px 16px; gap: 10px; }

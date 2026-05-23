@@ -8,6 +8,7 @@
 import type { Roadmap, Phase, Task, ShareLink, ShareRole, ExportFormat, ActivityLogList, ChangeSummary, Participant, RoadmapVersionDetail, RoadmapVersionSummary } from '@/types/roadmap'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
+import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 
 // ─── API configuration ─────────────────────────────────────────────────────────
 
@@ -603,7 +604,8 @@ export async function exportRoadmap(
     role?: ShareRole | null
   } = {},
 ): Promise<Blob> {
-  const json = JSON.stringify(buildRoadmapExport(normalizePhasesProgress(phases), metadata), null, 2)
+  const upgraded = upgradeRoadmapSnapshot({ roadmapName: metadata.roadmapName, phases })
+  const json = JSON.stringify(buildRoadmapExport(normalizePhasesProgress(upgraded.phases), metadata), null, 2)
   return new Blob([json], { type: 'application/json' })
 }
 
@@ -643,7 +645,8 @@ export async function importRoadmap(
   data: string,
   _format: 'json',
 ): Promise<Phase[]> {
-  return parseImportedRoadmapJson(data).phases
+  const imported = parseImportedRoadmapJson(data)
+  return upgradeRoadmapSnapshot({ roadmapName: imported.roadmapName, phases: imported.phases }).phases
 }
 
 // ─── Invite / join ─────────────────────────────────────────────────────────────
