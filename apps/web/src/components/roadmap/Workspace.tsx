@@ -17,7 +17,8 @@ import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
-import { createRoadmap, getParticipants, isApiConnectionError, saveToServer } from '@/services/roadmap.service'
+import { createRoadmap, getParticipants, getRoadmap, isApiConnectionError, saveToServer } from '@/services/roadmap.service'
+import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
 import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
 
@@ -82,6 +83,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const [isSyncing, setIsSyncing] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
+  const [isConflict, setIsConflict] = useState(false)
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Ref prevents concurrent autosync calls without adding isSyncing to effect deps
   const isSyncingRef = useRef(false)
@@ -92,9 +94,11 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     ? 'local'
     : isSyncing
       ? 'syncing'
-      : isOffline
-        ? 'offline'
-        : 'live'
+      : isConflict
+        ? 'conflict'
+        : isOffline
+          ? 'offline'
+          : 'live'
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>('RF-05')
   const { openPhases, togglePhase, allOpen, collapseAll, expandAll } = usePhaseCollapse(phases)
@@ -323,11 +327,13 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         setSaved(true)
         setPendingActivityChanges([])
         setIsOffline(false)
+        setIsConflict(false)
         if (showAct) setActivityRefreshKey((k) => k + 1)
       } catch (err) {
         if (err instanceof Error && err.message.includes('409')) {
-          setIsOffline(true)
-          showToast('Roadmap changed elsewhere — review your edits and retry sync')
+          setIsConflict(true)
+          setIsOffline(false)
+          showToast('The roadmap changed elsewhere. Your edits are preserved locally.')
         } else if (isApiConnectionError(err)) {
           setIsOffline(true)
         } else if (err instanceof Error && (err.message.includes('401') || err.message.includes('403'))) {
@@ -380,12 +386,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       }
       setSaved(true)
       setIsOffline(false)
+      setIsConflict(false)
       if (showActivity) setActivityRefreshKey((k) => k + 1)
       showToast('Saved · collaboration enabled')
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('409')) {
-        showToast('This roadmap changed elsewhere — reload before saving')
+        setIsConflict(true)
+        showToast('The roadmap changed elsewhere. Your edits are preserved locally.')
       } else if (msg.includes('401')) {
         showToast('Session expired — rejoin from the invite link')
       } else if (msg.includes('403')) {
@@ -825,7 +833,34 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setUpdatedAt(restored.updatedAt)
     setSaved(true)
     setIsOffline(false)
+    setIsConflict(false)
     if (showActivity) setActivityRefreshKey((k) => k + 1)
+  }
+
+  const handleReloadServerVersion = async () => {
+    if (!serverRoadmapId || !sessionToken) return
+    if (!window.confirm('Reload the latest server version? Your unsynced local edits will be discarded.')) return
+    try {
+      const loaded = await getRoadmap(serverRoadmapId, sessionToken)
+      setRoadmapName(loaded.roadmap.name)
+      setPhases(normalizePhasesProgress(loaded.phases))
+      setOwnerDisplayName(loaded.ownerDisplayName)
+      setUpdatedAt(loaded.updatedAt)
+      setPendingActivityChanges([])
+      setSaved(true)
+      setIsConflict(false)
+      setIsOffline(false)
+      showToast('Reloaded server version.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (isApiConnectionError(err)) {
+        showToast('Could not reach the server — try again later.')
+      } else if (msg.includes('401') || msg.includes('403')) {
+        showToast('Session expired — rejoin from the invite link.')
+      } else {
+        showToast('Could not reload server version.')
+      }
+    }
   }
 
   return (
@@ -840,6 +875,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         onShare={openShare}
         onIO={openIO}
         onCreateOwn={onCreateOwn}
+        onReloadServerVersion={handleReloadServerVersion}
       />
 
       {readOnly && (
@@ -854,6 +890,21 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           <span className="spacer" />
           <button className="btn sm" onClick={onCreateOwn}>
             <Icon name="plus" size={13} /> Create your own roadmap
+          </button>
+        </div>
+      )}
+
+      {isConflict && !readOnly && (
+        <div className="conflict-banner">
+          <span className="pill">
+            <Icon name="shield" size={11} /> Conflict
+          </span>
+          <span className="msg">
+            The roadmap changed elsewhere. Your edits are preserved locally.
+          </span>
+          <span className="spacer" />
+          <button className="btn sm" onClick={handleReloadServerVersion}>
+            <Icon name="cloud" size={13} /> Reload server version
           </button>
         </div>
       )}

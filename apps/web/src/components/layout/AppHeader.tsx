@@ -11,6 +11,7 @@ const BADGE_LABEL: Record<SyncStatus, string> = {
   live: 'LIVE',
   syncing: 'SYNCING',
   offline: 'OFFLINE',
+  conflict: 'CONFLICT',
 }
 
 interface AppHeaderProps {
@@ -23,6 +24,7 @@ interface AppHeaderProps {
   onShare?: () => void
   onIO?: () => void
   onCreateOwn?: () => void
+  onReloadServerVersion?: () => void
 }
 
 export function AppHeader({
@@ -34,6 +36,7 @@ export function AppHeader({
   onShare,
   onIO,
   onCreateOwn,
+  onReloadServerVersion,
 }: AppHeaderProps) {
   const isServerBacked = syncStatus !== 'local'
 
@@ -46,7 +49,14 @@ export function AppHeader({
       </div>
 
       {!readOnly && (
-        <span className={`badge ${syncStatus}`} title={syncStatus === 'offline' ? 'API unreachable — changes saved locally' : undefined}>
+        <span
+          className={`badge ${syncStatus}`}
+          title={
+            syncStatus === 'offline' ? 'API unreachable — changes saved locally' :
+            syncStatus === 'conflict' ? 'Roadmap changed elsewhere — local edits preserved' :
+            undefined
+          }
+        >
           <span className="dot" />
           {BADGE_LABEL[syncStatus]}
         </span>
@@ -84,6 +94,16 @@ export function AppHeader({
               >
                 <Icon name="cloud" size={14} />
                 <span className="header-save-label">Save</span>
+              </button>
+            ) : syncStatus === 'conflict' ? (
+              <button
+                className="btn sm header-save-btn"
+                onClick={onReloadServerVersion}
+                title="Reload server version"
+                aria-label="Reload server version"
+              >
+                <Icon name="cloud" size={14} />
+                <span className="header-save-label">Reload</span>
               </button>
             ) : syncStatus === 'offline' ? (
               <button

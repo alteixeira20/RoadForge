@@ -100,6 +100,14 @@
 }
 .app-header .badge.offline .dot { background: var(--ink-3, #888); box-shadow: none; }
 
+/* Conflict badge variant */
+.app-header .badge.conflict {
+  background: linear-gradient(180deg, rgba(234,179,8,0.12), rgba(234,179,8,0.05));
+  border-color: rgba(234,179,8,0.35);
+  color: #ca8a04;
+}
+.app-header .badge.conflict .dot { background: #ca8a04; box-shadow: 0 0 8px rgba(234,179,8,0.5); }
+
 @keyframes badge-dot-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.25; }
@@ -125,6 +133,28 @@
 }
 .readonly-banner .who b { color: var(--ink); font-weight: 600; }
 .readonly-banner .spacer { flex: 1; }
+
+/* ─── Conflict banner ──────────────────────────────────────────────────────── */
+.conflict-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 24px;
+  background: linear-gradient(180deg, rgba(234,179,8,0.08), rgba(234,179,8,0.02));
+  border-bottom: 1px solid rgba(234,179,8,0.25);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.conflict-banner .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: #ca8a04;
+  background: rgba(234,179,8,0.10);
+  border: 1px solid rgba(234,179,8,0.30);
+  padding: 3px 8px; border-radius: 999px;
+  flex-shrink: 0;
+}
+.conflict-banner .msg { color: var(--ink-2); }
+.conflict-banner .spacer { flex: 1; }
 
 /* ─── Roadmap layout ───────────────────────────────────────────────────────── */
 .workspace {
