@@ -248,13 +248,68 @@
   letter-spacing: 0.08em;
   margin-bottom: 10px;
 }
+.roadmap-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
 .workspace-head h1 {
-  margin: 0 0 10px;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   font-family: var(--font-display);
   font-size: 34px;
   font-weight: 500;
   letter-spacing: -0.025em;
   line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.roadmap-title-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: -3px 0;
+  padding: 2px 8px 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--ink-1);
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  outline: none;
+}
+.roadmap-title-input:focus {
+  border-color: var(--ember);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ember) 18%, transparent);
+}
+.roadmap-title-edit {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.16s ease, color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+.workspace-head:hover .roadmap-title-edit,
+.roadmap-title-edit:focus-visible {
+  opacity: 1;
+}
+.roadmap-title-edit:hover,
+.roadmap-title-edit:focus-visible {
+  background: var(--bg-2);
+  border-color: var(--border);
+  color: var(--ink-1);
 }
 .workspace-head .meta {
   display: flex; gap: 18px;
@@ -1318,6 +1373,7 @@
   .app-header .header-save-btn { min-width: auto; }
   .workspace { padding: 28px 18px 60px; }
   .workspace-head h1 { font-size: 28px; }
+  .roadmap-title-edit { opacity: 1; width: 34px; height: 34px; }
   .phase-head { padding: 14px 16px; gap: 10px; }
   .phase-color-trigger { opacity: 1; }
   .phase-head .progress-mini { display: none; }

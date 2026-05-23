@@ -63,6 +63,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
     switch (action) {
       case 'roadmap.created': return 'Created roadmap'
       case 'roadmap.updated': return 'Saved roadmap'
+      case 'roadmap.renamed': return 'Renamed roadmap'
       case 'roadmap.imported': return 'Imported roadmap'
       case 'roadmap.restored': return 'Restored roadmap'
       case 'roadmap.batch_changed': {
@@ -108,6 +109,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
     add('dependencies_linked', 'dependency linked', 'dependencies linked')
     add('dependencies_unlinked', 'dependency unlinked', 'dependencies unlinked')
     add('tasks_updated', 'task updated', 'tasks updated')
+    add('roadmaps_renamed', 'roadmap renamed', 'roadmaps renamed')
     add('tasks_reordered', 'task reorder', 'task reorders')
     add('phases_reordered', 'phase reorder', 'phase reorders')
     add('imports', 'import')
@@ -140,6 +142,15 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
         return <span>Version {metadata_json.version_number}</span>
       }
       return <span className="dim">Roadmap snapshot restored</span>
+    }
+    if (action === 'roadmap.renamed') {
+      const previousName = metadata_json?.previousRoadmapName
+      const nextName = metadata_json?.nextRoadmapName || metadata_json?.roadmapName
+      if (previousName && nextName) {
+        return <span>&ldquo;{String(previousName)}&rdquo; to &ldquo;{String(nextName)}&rdquo;</span>
+      }
+      if (nextName) return <span>&ldquo;{String(nextName)}&rdquo;</span>
+      return <span className="dim">Roadmap title changed</span>
     }
     if (action === 'roadmap.batch_changed') {
       const details = getBatchDetails(metadata_json)

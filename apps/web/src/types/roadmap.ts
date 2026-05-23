@@ -60,6 +60,7 @@ export interface Roadmap {
 
 export type ActivityAction =
   | 'roadmap.updated'
+  | 'roadmap.renamed'
   | 'roadmap.imported'
   | 'roadmap.restored'
   | 'roadmap.batch_changed'
@@ -87,6 +88,8 @@ export interface ActivityChange {
   dependencyId?: string
   dependencyTitle?: string
   roadmapName?: string
+  previousRoadmapName?: string
+  nextRoadmapName?: string
   phase_count?: number
   task_count?: number
   phaseCount?: number

@@ -29,6 +29,7 @@ interface WorkspaceProps {
 
 const normalizeFilterValue = (value: string) => value.trim().toLowerCase()
 const TAB_TITLE_MAX = 48
+const ROADMAP_NAME_MAX = 120
 
 function getShortRoadmapTitle(name: string): string {
   const normalized = name.trim().replace(/\s+/g, ' ')
@@ -80,6 +81,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   } = useRoadmap()
   const readOnly = mode === 'viewer'
   const canManageShare = role === 'owner'
+  const canRenameRoadmap = !readOnly && (!serverRoadmapId || role !== 'viewer')
 
   const [isSyncing, setIsSyncing] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
@@ -252,6 +254,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     'task.reopened': 4,
     'task.dependency.linked': 5,
     'task.dependency.unlinked': 5,
+    'roadmap.renamed': 6,
     'task.updated': 6,
     'task.reordered': 7,
     'roadmap.phases_reordered': 7,
@@ -263,6 +266,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     switch (action) {
       case 'roadmap.imported': return 'imports'
       case 'roadmap.restored': return 'restores'
+      case 'roadmap.renamed': return 'roadmaps_renamed'
       case 'phase.completed': return 'phases_completed'
       case 'phase.reopened': return 'phases_reopened'
       case 'task.created': return 'tasks_added'
@@ -280,6 +284,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const dedupeKey = (change: ActivityChange) => {
     if (change.taskId) return `task:${change.taskId}`
     if (change.phaseId) return `phase:${change.phaseId}`
+    if (change.action === 'roadmap.renamed') return 'roadmap:renamed'
     return `${change.action}:${change.entity_id || change.roadmapName || 'roadmap'}`
   }
 
@@ -434,6 +439,34 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         showToast('Save failed — check backend connection')
       }
     }
+  }
+
+  const handleRenameRoadmap = (name: string) => {
+    if (!canRenameRoadmap) return false
+
+    const nextName = name.trim()
+    if (!nextName) {
+      showToast('Roadmap name cannot be empty.')
+      return false
+    }
+    if (nextName.length > ROADMAP_NAME_MAX) {
+      showToast(`Roadmap name must be ${ROADMAP_NAME_MAX} characters or fewer.`)
+      return false
+    }
+    if (nextName === roadmapName) return true
+
+    const previousName = roadmapName
+    setRoadmapName(nextName)
+    addPendingActivityChange({
+      action: 'roadmap.renamed',
+      entity_type: 'roadmap',
+      entity_id: serverRoadmapId || undefined,
+      roadmapName: nextName,
+      previousRoadmapName: previousName,
+      nextRoadmapName: nextName,
+    })
+    setSaved(false)
+    return true
   }
 
   const onCheckTask = (id: string) => {
@@ -993,6 +1026,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           phaseCount={phases.length}
           saved={saved}
           nextReadyCount={nextReadyCount}
+          canRename={canRenameRoadmap}
+          maxNameLength={ROADMAP_NAME_MAX}
+          onRename={handleRenameRoadmap}
         />
         <WorkspaceToolbar
           searchQuery={searchQuery}
