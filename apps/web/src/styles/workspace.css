@@ -283,10 +283,6 @@
   color: var(--ink);
   font-size: 13.5px;
 }
-.upgrade-notice-copy small {
-  color: var(--ink-3);
-  font-size: 12px;
-}
 .upgrade-notice-actions {
   display: flex;
   align-items: center;
@@ -1429,14 +1425,9 @@
   .app-header .header-save-btn { min-width: auto; }
   .workspace { padding: 28px 18px 60px; }
   .upgrade-notice {
-    align-items: stretch;
-    flex-wrap: wrap;
+    align-items: flex-start;
   }
-  .upgrade-notice-copy { flex-basis: calc(100% - 42px); }
-  .upgrade-notice-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
+  .upgrade-notice-copy { flex-basis: auto; }
   .workspace-head h1 { font-size: 28px; }
   .roadmap-title-edit { opacity: 1; width: 34px; height: 34px; }
   .phase-head { padding: 14px 16px; gap: 10px; }

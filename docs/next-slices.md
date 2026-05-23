@@ -66,7 +66,7 @@ The main workspace title supports double-click rename, mobile/tablet edit button
 
 ## E7. ✅ Roadmap schema auto-upgrade — Done
 
-`apps/web/src/lib/roadmap-upgrade.ts` upgrades old local/server/join/import/export snapshots through a shared client-side pipeline. It repairs old booleans/arrays, legacy assignment tags, stale progress, phase numbering, and stale references where safe. Local roadmaps write upgraded snapshots back to cache; editable synced roadmaps mark unsaved so autosync persists; viewers upgrade in memory only. Users see a **Roadmap updated for this version** notice with backup download. Automatic upgrades do not create Activity entries or version checkpoints.
+`apps/web/src/lib/roadmap-upgrade.ts` upgrades old local/server/join/import/export snapshots through a shared client-side pipeline. It repairs old booleans/arrays, legacy assignment tags, stale progress, phase numbering, and stale references where safe. Local roadmaps write upgraded snapshots back to cache; editable synced roadmaps mark unsaved so autosync persists; viewers upgrade in memory only. Users see a short **Roadmap updated** notice. Automatic upgrades do not create Activity entries or version checkpoints.
 
 ---
 

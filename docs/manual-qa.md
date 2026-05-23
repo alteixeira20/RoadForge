@@ -302,11 +302,11 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ---
 
-## 21b — Schema auto-upgrade notice and backup
+## 21b — Schema auto-upgrade notice
 
 - [ ] Seed/load an old local roadmap cache with `task.next: null` or missing `task.assignees`, `task.tags`, or `task.deps`.
-- [ ] Open the roadmap. It loads without error and shows **Roadmap updated for this version** near the workspace top.
-- [ ] Click **Download backup**. A `roadforge-backup-before-upgrade-YYYYMMDD-HHMM.roadforge.json` file downloads with the pre-upgrade snapshot.
+- [ ] Open the roadmap. It loads without error and shows **Roadmap updated** near the workspace top.
+- [ ] Notice copy says RoadForge updated the roadmap for the latest version. It does not show technical repair details or a backup/download button.
 - [ ] Click **Dismiss**. The notice does not reappear for that active roadmap/session.
 - [ ] Reload the local roadmap and confirm the cache has the repaired current shape.
 - [ ] Load an old synced roadmap as owner/editor. It repairs, marks local state unsaved, and autosync persists the upgraded snapshot.

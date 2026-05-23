@@ -81,7 +81,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     clearAccessRevokedEvent,
     roadmapUpgradeNotice,
     dismissRoadmapUpgradeNotice,
-    downloadRoadmapUpgradeBackup,
   } = useRoadmap()
   const readOnly = mode === 'viewer'
   const canManageShare = role === 'owner'
@@ -1037,16 +1036,10 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
               <Icon name="shield" size={16} />
             </div>
             <div className="upgrade-notice-copy">
-              <strong>Roadmap updated for this version</strong>
-              <span>RoadForge repaired older roadmap data so it works with the current app.</span>
-              {roadmapUpgradeNotice.notices.length > 0 && (
-                <small>{roadmapUpgradeNotice.notices[0].message} Some older or unsupported fields may not be preserved.</small>
-              )}
+              <strong>Roadmap updated</strong>
+              <span>RoadForge updated this roadmap so it works with the latest version. No action is required.</span>
             </div>
             <div className="upgrade-notice-actions">
-              <button type="button" className="btn sm ghost" onClick={downloadRoadmapUpgradeBackup}>
-                <Icon name="export" size={13} /> Download backup
-              </button>
               <button type="button" className="iconbtn" aria-label="Dismiss schema upgrade notice" onClick={dismissRoadmapUpgradeNotice}>
                 <Icon name="x" size={15} />
               </button>

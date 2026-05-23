@@ -20,7 +20,6 @@ export interface RoadmapUpgradeResult {
   roadmapName?: string
   notices: RoadmapUpgradeNotice[]
   changed: boolean
-  preUpgradeSnapshot: unknown
 }
 
 const DEFAULT_PHASE_COLOR = '#808080'
@@ -28,14 +27,6 @@ const VALID_STATUSES = new Set<PhaseStatus>(['done', 'active', 'next', 'future']
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function cloneJson(value: unknown): unknown {
-  try {
-    return JSON.parse(JSON.stringify(value))
-  } catch {
-    return value
-  }
 }
 
 function dedupeStrings(values: string[]): string[] {
@@ -196,7 +187,6 @@ function addCanonicalNotices(
 }
 
 export function upgradeRoadmapSnapshot(input: unknown): RoadmapUpgradeResult {
-  const preUpgradeSnapshot = cloneJson(input)
   const snapshot = snapshotFromInput(input)
   const parsed = parseImportedRoadmapJson(JSON.stringify(snapshot))
   const seenNoticeCodes = new Set<string>()
@@ -223,6 +213,5 @@ export function upgradeRoadmapSnapshot(input: unknown): RoadmapUpgradeResult {
     roadmapName: parsed.roadmapName,
     notices,
     changed: beforeJson !== afterJson || parsed.repairs.length > 0,
-    preUpgradeSnapshot,
   }
 }

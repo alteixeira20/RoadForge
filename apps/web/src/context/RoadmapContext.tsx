@@ -47,15 +47,12 @@ interface RoadmapContextValue {
   clearAccessRevokedEvent: () => void
   roadmapUpgradeNotice: RoadmapUpgradeState | null
   dismissRoadmapUpgradeNotice: () => void
-  downloadRoadmapUpgradeBackup: () => void
 }
 
 const RoadmapContext = createContext<RoadmapContextValue | null>(null)
 
 interface RoadmapUpgradeState {
   roadmapId: string
-  notices: RoadmapUpgradeNotice[]
-  preUpgradeSnapshot: unknown
 }
 
 function isAuthError(error: unknown): boolean {
@@ -98,14 +95,12 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   // Keep ref current so SSE callbacks always read the latest value
   savedRef.current = saved
 
-  const showUpgradeNoticeOnce = useCallback((targetId: string, result: { changed: boolean; notices: RoadmapUpgradeNotice[]; preUpgradeSnapshot: unknown }) => {
+  const showUpgradeNoticeOnce = useCallback((targetId: string, result: { changed: boolean; notices: RoadmapUpgradeNotice[] }) => {
     if (!result.changed || result.notices.length === 0) return
     if (shownUpgradeNoticeIdsRef.current.has(targetId)) return
     shownUpgradeNoticeIdsRef.current.add(targetId)
     setRoadmapUpgradeNotice({
       roadmapId: targetId,
-      notices: result.notices,
-      preUpgradeSnapshot: result.preUpgradeSnapshot,
     })
   }, [])
 
@@ -673,32 +668,9 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setRoadmapUpgradeNotice(null)
   }, [])
 
-  const downloadRoadmapUpgradeBackup = useCallback(() => {
-    if (!roadmapUpgradeNotice || typeof document === 'undefined') return
-    const now = new Date()
-    const stamp = [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, '0'),
-      String(now.getDate()).padStart(2, '0'),
-      '-',
-      String(now.getHours()).padStart(2, '0'),
-      String(now.getMinutes()).padStart(2, '0'),
-    ].join('')
-    const blob = new Blob(
-      [JSON.stringify(roadmapUpgradeNotice.preUpgradeSnapshot, null, 2)],
-      { type: 'application/json;charset=utf-8' },
-    )
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `roadforge-backup-before-upgrade-${stamp}.roadforge.json`
-    a.click()
-    URL.revokeObjectURL(url)
-  }, [roadmapUpgradeNotice])
-
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, createLocalRoadmap, resetToSample, removeRoadmapFromBrowser, accessRevokedEvent, clearAccessRevokedEvent, roadmapUpgradeNotice, dismissRoadmapUpgradeNotice, downloadRoadmapUpgradeBackup }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, createLocalRoadmap, resetToSample, removeRoadmapFromBrowser, accessRevokedEvent, clearAccessRevokedEvent, roadmapUpgradeNotice, dismissRoadmapUpgradeNotice }}
     >
       {children}
     </RoadmapContext.Provider>
