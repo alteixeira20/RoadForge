@@ -226,7 +226,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
       try {
         const imported = parseImportedRoadmapJson(ev.target?.result as string)
         const mode = importModeRef.current
-        if (imported.warnings.length > 0) {
+        if (imported.warnings.length > 0 || imported.repairs.length > 0) {
           setPendingImport({ result: imported, mode })
         } else {
           executeImport(imported, mode)
@@ -334,13 +334,27 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
             </span>
             <div>
               <strong style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--ink)' }}>
-                Compatibility notice
+                Import notice
               </strong>
-              <ul style={{ margin: '0 0 6px', paddingLeft: 16, fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55 }}>
-                {pendingImport.result.warnings.map((w, i) => (
-                  <li key={i}>{w.message}</li>
-                ))}
-              </ul>
+              {pendingImport.result.repairs.length > 0 && (
+                <>
+                  <span style={{ display: 'block', fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 4 }}>
+                    RoadForge repaired minor compatibility issues so this file can be imported safely.
+                  </span>
+                  <ul style={{ margin: '0 0 6px', paddingLeft: 16, fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55 }}>
+                    {pendingImport.result.repairs.map((r, i) => (
+                      <li key={i}>{r.message}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {pendingImport.result.warnings.length > 0 && (
+                <ul style={{ margin: '0 0 6px', paddingLeft: 16, fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55 }}>
+                  {pendingImport.result.warnings.map((w, i) => (
+                    <li key={i}>{w.message}</li>
+                  ))}
+                </ul>
+              )}
               <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
                 This file will still import successfully.
               </span>

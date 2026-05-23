@@ -1,3 +1,4 @@
+import { isAssignmentTag, assignmentNameFromTag } from '@/lib/task-assignment'
 import type { Phase, PhaseStatus, Task } from '@/types/roadmap'
 
 // ─── Compatibility warnings ───────────────────────────────────────────────────
@@ -11,6 +12,45 @@ export type CompatibilityWarningCode =
 export interface CompatibilityWarning {
   code: CompatibilityWarningCode
   message: string
+}
+
+// ─── Import repairs ───────────────────────────────────────────────────────────
+
+export type ImportRepairCode =
+  | 'generated_required'
+  | 'coerced_boolean'
+  | 'null_optional'
+  | 'coerced_array'
+  | 'progress_recalculated'
+  | 'inferred_phase_field'
+  | 'legacy_assignees'
+  | 'duplicate_ids'
+  | 'stale_parent_removed'
+
+export interface ImportRepair {
+  code: ImportRepairCode
+  message: string
+}
+
+const REPAIR_MESSAGES: Record<ImportRepairCode, string> = {
+  generated_required:
+    'Missing required task fields (id or title) were generated automatically.',
+  coerced_boolean:
+    'Boolean task fields (done, next) were coerced from non-boolean values.',
+  null_optional:
+    'Null values on optional fields were cleared.',
+  coerced_array:
+    'Non-array fields (tags, deps, assignees, or tasks) were replaced with empty arrays.',
+  progress_recalculated:
+    'Phase progress percentages were recalculated from task completion.',
+  inferred_phase_field:
+    'Missing or invalid phase fields (num, status, color, or name) were inferred automatically.',
+  legacy_assignees:
+    'Assignment tags (owner:, review:) were migrated to the assignees field.',
+  duplicate_ids:
+    'Duplicate task IDs were renamed to be unique.',
+  stale_parent_removed:
+    'parentId references to non-existent tasks were removed.',
 }
 
 // ─── Constants (mirrored from apps/api/src/api/schemas/limits.py) ─────────────
@@ -242,12 +282,295 @@ function detectCompatibilityWarnings(raw: unknown): CompatibilityWarning[] {
   return warnings
 }
 
+// ─── Import repair pipeline ───────────────────────────────────────────────────
+
+let _repairSeq = 0
+function genTaskId(): string {
+  return `rf-t-${(++_repairSeq).toString(36)}`
+}
+
+function genPhaseId(index: number): string {
+  return `rf-p-${index + 1}`
+}
+
+type RepairCounts = Partial<Record<ImportRepairCode, number>>
+
+function bump(counts: RepairCounts, code: ImportRepairCode): void {
+  counts[code] = (counts[code] ?? 0) + 1
+}
+
+function repairTaskRaw(
+  raw: unknown,
+  seenIds: Set<string>,
+  counts: RepairCounts,
+): Record<string, unknown> {
+  if (!isPlainObject(raw)) {
+    bump(counts, 'generated_required')
+    const id = genTaskId()
+    seenIds.add(id)
+    return { id, title: 'Untitled task', done: false }
+  }
+
+  const t: Record<string, unknown> = { ...raw }
+
+  // id: must be non-empty string
+  if (typeof t.id !== 'string' || !t.id.trim()) {
+    bump(counts, 'generated_required')
+    t.id = genTaskId()
+  } else {
+    const trimmed = t.id.trim()
+    if (seenIds.has(trimmed)) {
+      bump(counts, 'duplicate_ids')
+      let suffix = 2
+      let candidate = `${trimmed}-dup${suffix}`
+      while (seenIds.has(candidate)) { suffix++; candidate = `${trimmed}-dup${suffix}` }
+      t.id = candidate
+    } else {
+      t.id = trimmed
+    }
+  }
+  seenIds.add(t.id as string)
+
+  // title: must be non-empty string
+  if (typeof t.title !== 'string' || !t.title.trim()) {
+    bump(counts, 'generated_required')
+    t.title = 'Untitled task'
+  }
+
+  // done: must be boolean
+  if (typeof t.done !== 'boolean') {
+    bump(counts, 'coerced_boolean')
+    t.done = Boolean(t.done)
+  }
+
+  // next: optional boolean
+  if (t.next !== undefined) {
+    if (t.next === null) {
+      bump(counts, 'null_optional')
+      delete t.next
+    } else if (typeof t.next !== 'boolean') {
+      bump(counts, 'coerced_boolean')
+      t.next = Boolean(t.next)
+    }
+  }
+
+  // est: optional string — null → remove
+  if (t.est === null) {
+    bump(counts, 'null_optional')
+    delete t.est
+  }
+
+  // desc: optional string — null → remove
+  if (t.desc === null) {
+    bump(counts, 'null_optional')
+    delete t.desc
+  }
+
+  // parentId: optional string — null → remove (stale refs handled in pass 2)
+  if (t.parentId === null) {
+    bump(counts, 'null_optional')
+    delete t.parentId
+  }
+
+  // tags: optional array
+  if (t.tags !== undefined) {
+    if (t.tags === null) {
+      bump(counts, 'null_optional')
+      delete t.tags
+    } else if (!Array.isArray(t.tags)) {
+      bump(counts, 'coerced_array')
+      t.tags = typeof t.tags === 'string' ? [t.tags] : []
+    }
+  }
+
+  // assignees: optional array
+  if (t.assignees !== undefined) {
+    if (t.assignees === null) {
+      bump(counts, 'null_optional')
+      delete t.assignees
+    } else if (!Array.isArray(t.assignees)) {
+      bump(counts, 'coerced_array')
+      t.assignees = typeof t.assignees === 'string' ? [t.assignees] : []
+    }
+  }
+
+  // deps: optional array
+  if (t.deps !== undefined) {
+    if (t.deps === null) {
+      bump(counts, 'null_optional')
+      delete t.deps
+    } else if (!Array.isArray(t.deps)) {
+      bump(counts, 'coerced_array')
+      t.deps = typeof t.deps === 'string' ? [t.deps] : []
+    }
+  }
+
+  // Legacy assignment tags → migrate to assignees
+  if (Array.isArray(t.tags)) {
+    const legacyTags = (t.tags as unknown[]).filter(
+      (tag): tag is string => typeof tag === 'string' && isAssignmentTag(tag),
+    )
+    if (legacyTags.length > 0) {
+      bump(counts, 'legacy_assignees')
+      const migrated = legacyTags
+        .map(assignmentNameFromTag)
+        .filter((n): n is string => n !== null)
+      const existing = Array.isArray(t.assignees)
+        ? (t.assignees as unknown[]).filter((a): a is string => typeof a === 'string')
+        : []
+      t.assignees = [...new Set([...existing, ...migrated])]
+      t.tags = (t.tags as unknown[]).filter(
+        (tag) => typeof tag !== 'string' || !isAssignmentTag(tag),
+      )
+    }
+  }
+
+  return t
+}
+
+function repairPhaseRaw(
+  raw: unknown,
+  index: number,
+  seenIds: Set<string>,
+  counts: RepairCounts,
+): Record<string, unknown> {
+  if (!isPlainObject(raw)) {
+    bump(counts, 'inferred_phase_field')
+    const num = String(index + 1).padStart(2, '0')
+    return {
+      id: genPhaseId(index),
+      num,
+      name: `Phase ${num}`,
+      color: '#808080',
+      status: 'future',
+      progress: 0,
+      tasks: [],
+    }
+  }
+
+  const p: Record<string, unknown> = { ...raw }
+
+  // id: must be non-empty string
+  if (typeof p.id !== 'string' || !p.id.trim()) {
+    bump(counts, 'inferred_phase_field')
+    p.id = genPhaseId(index)
+  }
+
+  // num: must be non-empty string
+  if (typeof p.num !== 'string' || !p.num.trim()) {
+    bump(counts, 'inferred_phase_field')
+    p.num = String(index + 1).padStart(2, '0')
+  }
+
+  // name: must be non-empty string
+  if (typeof p.name !== 'string' || !p.name.trim()) {
+    bump(counts, 'inferred_phase_field')
+    p.name = `Phase ${p.num}`
+  }
+
+  // color: must be non-empty string
+  if (typeof p.color !== 'string' || !p.color.trim()) {
+    bump(counts, 'inferred_phase_field')
+    p.color = '#808080'
+  }
+
+  // status: must be a valid value
+  if (typeof p.status !== 'string' || !VALID_STATUSES.has(p.status)) {
+    bump(counts, 'inferred_phase_field')
+    p.status = 'future'
+  }
+
+  // tasks: null → [] ; non-array → []
+  if (p.tasks === null) {
+    bump(counts, 'null_optional')
+    p.tasks = []
+  } else if (!Array.isArray(p.tasks)) {
+    bump(counts, 'coerced_array')
+    p.tasks = []
+  }
+
+  // Repair tasks (pass 1)
+  const repairedTasks = (p.tasks as unknown[]).map((task) =>
+    repairTaskRaw(task, seenIds, counts),
+  )
+  p.tasks = repairedTasks
+
+  // progress: recompute if invalid
+  const progressOk =
+    typeof p.progress === 'number' && p.progress >= 0 && p.progress <= 100
+  if (!progressOk) {
+    bump(counts, 'progress_recalculated')
+    const total = repairedTasks.length
+    const done = repairedTasks.filter((t) => t.done === true).length
+    p.progress = total === 0 ? 0 : Math.round((done / total) * 100)
+  }
+
+  return p
+}
+
+function repairImportedRoadmap(
+  raw: unknown,
+): { repairedRaw: unknown; repairs: ImportRepair[] } {
+  const counts: RepairCounts = {}
+  const seenIds = new Set<string>()
+
+  // Determine the phases array
+  let phasesArray: unknown[]
+  let isTopLevelArray = false
+
+  if (Array.isArray(raw)) {
+    phasesArray = raw
+    isTopLevelArray = true
+  } else if (isPlainObject(raw)) {
+    if (raw.phases === null) {
+      bump(counts, 'null_optional')
+      phasesArray = []
+    } else if (!Array.isArray(raw.phases)) {
+      if (raw.phases !== undefined) bump(counts, 'coerced_array')
+      phasesArray = []
+    } else {
+      phasesArray = raw.phases as unknown[]
+    }
+  } else {
+    // Not recoverable at top level — let validator throw
+    return { repairedRaw: raw, repairs: [] }
+  }
+
+  // Pass 1: repair each phase and all tasks, collect all task IDs
+  const repairedPhases = phasesArray.map((phase, i) =>
+    repairPhaseRaw(phase, i, seenIds, counts),
+  )
+
+  // Pass 2: remove stale parentId references
+  for (const phase of repairedPhases) {
+    if (Array.isArray(phase.tasks)) {
+      for (const task of phase.tasks as Record<string, unknown>[]) {
+        if (typeof task.parentId === 'string' && !seenIds.has(task.parentId)) {
+          bump(counts, 'stale_parent_removed')
+          delete task.parentId
+        }
+      }
+    }
+  }
+
+  const repairs: ImportRepair[] = (Object.keys(counts) as ImportRepairCode[])
+    .filter((code) => (counts[code] ?? 0) > 0)
+    .map((code) => ({ code, message: REPAIR_MESSAGES[code] }))
+
+  const repairedRaw = isTopLevelArray
+    ? repairedPhases
+    : { ...(raw as Record<string, unknown>), phases: repairedPhases }
+
+  return { repairedRaw, repairs }
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export interface ImportedRoadmap {
   phases: Phase[]
   roadmapName?: string
   warnings: CompatibilityWarning[]
+  repairs: ImportRepair[]
 }
 
 function roadmapNameFromPayload(value: unknown): string | undefined {
@@ -282,6 +605,7 @@ export function validateImportedRoadmap(value: unknown): ImportedRoadmap {
     phases: validateImportedPhases(value),
     roadmapName: roadmapNameFromPayload(value),
     warnings: detectCompatibilityWarnings(value),
+    repairs: [],
   }
 }
 
@@ -290,7 +614,15 @@ export function parseImportedRoadmapJson(text: string): ImportedRoadmap {
   if (!trimmed) throw new Error('Import failed: invalid JSON.')
 
   try {
-    return validateImportedRoadmap(JSON.parse(trimmed))
+    const raw = JSON.parse(trimmed)
+    const warnings = detectCompatibilityWarnings(raw)
+    const { repairedRaw, repairs } = repairImportedRoadmap(raw)
+    return {
+      phases: validateImportedPhases(repairedRaw),
+      roadmapName: roadmapNameFromPayload(repairedRaw),
+      warnings,
+      repairs,
+    }
   } catch (err) {
     if (err instanceof SyntaxError) {
       throw new Error('Import failed: invalid JSON.')
