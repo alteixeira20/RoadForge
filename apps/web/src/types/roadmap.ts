@@ -62,6 +62,7 @@ export type ActivityAction =
   | 'roadmap.imported'
   | 'roadmap.restored'
   | 'roadmap.batch_changed'
+  | 'roadmap.phases_reordered'
   | 'phase.completed'
   | 'phase.reopened'
   | 'task.created'
