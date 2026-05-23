@@ -856,18 +856,36 @@
 }
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
+
+/* ── 580px — reduce padding, wrap footer ──────────────────────────────── */
 @media (max-width: 580px) {
-  .modal-head { padding: 20px 22px 8px; }
-  .modal-body { padding: 6px 22px 18px; }
-  .modal-foot { padding: 14px 22px; flex-wrap: wrap; }
+  .modal-head { padding: 18px 18px 10px; }
+  .modal-body { padding: 10px 18px 14px; }
+  .modal-foot { padding: 12px 18px 14px; flex-wrap: wrap; }
   .wizard-step { padding: 22px 22px 6px; }
   .wizard-foot { padding: 14px 22px; }
-  .io-action {
-    grid-template-columns: 30px 1fr 20px;
-    padding: 10px;
-  }
-  .io-action-icon {
-    width: 28px;
-    height: 28px;
-  }
+  .io-action { grid-template-columns: 30px 1fr 20px; padding: 10px; }
+  .io-action-icon { width: 28px; height: 28px; }
+}
+
+/* ── 480px — small mobile: shrink scrim padding for max content width ──── */
+@media (max-width: 480px) {
+  .modal-scrim { padding: 12px; }
+  .wizard-scrim { padding: 12px; }
+  .modal-head { padding: 14px 14px 8px; }
+  .modal-body { padding: 8px 14px 12px; }
+  .modal-foot { padding: 10px 14px 12px; flex-wrap: wrap; gap: 8px; }
+  .wizard-step { padding: 18px 16px 6px; }
+  .wizard-foot { padding: 12px 16px; flex-wrap: wrap; }
+  /* Share modal: ensure role actions wrap cleanly */
+  .share-row { padding: 10px 10px 10px 10px; }
+  .share-role-body { padding: 0 8px 8px; }
+  .share-row .actions { flex-wrap: wrap; }
+  /* Participant list: let long names and badges wrap */
+  .participant-row { flex-wrap: wrap; gap: 6px; }
+  /* Version row: let restore button wrap below metadata */
+  .version-row { flex-wrap: wrap; padding: 12px 14px; }
+  /* IO action: already handled above */
+  .io-action-title { font-size: 13px; }
+  .io-action-desc { font-size: 12px; }
 }
