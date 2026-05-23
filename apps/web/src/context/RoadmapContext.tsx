@@ -41,6 +41,8 @@ interface RoadmapContextValue {
   createLocalRoadmap: (name: string, phases: Phase[]) => string
   resetToSample: () => void
   removeRoadmapFromBrowser: (id: string) => void
+  accessRevokedEvent: 'revoked' | 'deleted' | null
+  clearAccessRevokedEvent: () => void
 }
 
 const RoadmapContext = createContext<RoadmapContextValue | null>(null)
@@ -78,6 +80,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [activeRoadmapId, setActiveRoadmapIdState] = useState<string | null>(null)
   const [isHydratingServer, setIsHydratingServer] = useState(false)
   const [backendUnavailableRoadmapId, setBackendUnavailableRoadmapId] = useState<string | null>(null)
+  const [accessRevokedEvent, setAccessRevokedEvent] = useState<'revoked' | 'deleted' | null>(null)
 
   // Keep ref current so SSE callbacks always read the latest value
   savedRef.current = saved
@@ -203,6 +206,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     let hiddenAt: number | null = null
 
     const startSync = async () => {
+      const subscribedActiveId = activeRoadmapId
       try {
         const activeLocks = await getLocks(serverRoadmapId, sessionToken)
         const lockMap: Record<string, { participantId: string; displayName: string }> = {}
@@ -259,6 +263,39 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
               delete next[payload.target]
               return next
             })
+          },
+          onParticipantRevoked: (payload) => {
+            if (payload.roadmap_id !== serverRoadmapId) return
+            if (payload.participant_id !== participantId) return
+            // Close EventSource immediately — auth is no longer valid.
+            if (unsubscribe) { unsubscribe(); unsubscribe = null }
+            if (subscribedActiveId) {
+              storage.setAuthCache(subscribedActiveId, null)
+              const rc = storage.getRoadmapCache(subscribedActiveId)
+              if (rc) storage.setRoadmapCache(subscribedActiveId, { ...rc, saved: false })
+            }
+            setServerRoadmapIdState(null)
+            setSessionTokenState(null)
+            setParticipantIdState(null)
+            setRoleState(null)
+            setSavedState(false)
+            setAccessRevokedEvent('revoked')
+          },
+          onRoadmapDeleted: (payload) => {
+            if (payload.roadmap_id !== serverRoadmapId) return
+            // Close EventSource — the roadmap no longer exists on the server.
+            if (unsubscribe) { unsubscribe(); unsubscribe = null }
+            if (subscribedActiveId) {
+              storage.setAuthCache(subscribedActiveId, null)
+              const rc = storage.getRoadmapCache(subscribedActiveId)
+              if (rc) storage.setRoadmapCache(subscribedActiveId, { ...rc, saved: false })
+            }
+            setServerRoadmapIdState(null)
+            setSessionTokenState(null)
+            setParticipantIdState(null)
+            setRoleState(null)
+            setSavedState(false)
+            setAccessRevokedEvent('deleted')
           },
         })
       } catch (err) {
@@ -526,9 +563,13 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     loadRoadmapIntoState(id, { value: false })
   }, [loadRoadmapIntoState])
 
+  const clearAccessRevokedEvent = useCallback(() => {
+    setAccessRevokedEvent(null)
+  }, [])
+
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, createLocalRoadmap, resetToSample, removeRoadmapFromBrowser }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, createLocalRoadmap, resetToSample, removeRoadmapFromBrowser, accessRevokedEvent, clearAccessRevokedEvent }}
     >
       {children}
     </RoadmapContext.Provider>

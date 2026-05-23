@@ -74,6 +74,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setOwnerDisplayName,
     updatedAt,
     setUpdatedAt,
+    accessRevokedEvent,
+    clearAccessRevokedEvent,
   } = useRoadmap()
   const readOnly = mode === 'viewer'
   const canManageShare = role === 'owner'
@@ -184,6 +186,20 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       document.title = 'RoadForge'
     }
   }, [roadmapName])
+
+  // ─── Access-revoked / roadmap-deleted notifications ────────────────────────
+  useEffect(() => {
+    if (!accessRevokedEvent) return
+    showToast(
+      accessRevokedEvent === 'revoked'
+        ? 'Your access was revoked.'
+        : 'This roadmap was deleted.',
+    )
+    clearAccessRevokedEvent()
+    // showToast is intentionally omitted from deps (no useCallback in useToastState).
+    // clearAccessRevokedEvent is stable (useCallback with empty deps).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessRevokedEvent])
 
   const onToggleTask = (id: string) => setExpandedTaskId((prev) => (prev === id ? null : id))
 

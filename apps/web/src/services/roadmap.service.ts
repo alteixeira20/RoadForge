@@ -142,6 +142,8 @@ export interface RealtimeHandlers {
   onUpdated?: (payload: { roadmap_id: string; updated_at: string; participant_id: string }) => void
   onLockAcquired?: (payload: { roadmap_id: string; target: string; participant_id: string; display_name: string }) => void
   onLockReleased?: (payload: { roadmap_id: string; target: string; participant_id: string }) => void
+  onParticipantRevoked?: (payload: { roadmap_id: string; participant_id: string; revoked_at: string }) => void
+  onRoadmapDeleted?: (payload: { roadmap_id: string; updated_at: string; participant_id: string }) => void
   onError?: (err: Event) => void
 }
 
@@ -387,6 +389,24 @@ export function subscribeToRoadmapEvents(
       handlers.onLockReleased?.(data)
     } catch (err) {
       console.error('Failed to parse lock.released event', err)
+    }
+  })
+
+  es.addEventListener('participant.revoked', (e) => {
+    try {
+      const data = JSON.parse(e.data)
+      handlers.onParticipantRevoked?.(data)
+    } catch (err) {
+      console.error('Failed to parse participant.revoked event', err)
+    }
+  })
+
+  es.addEventListener('roadmap.deleted', (e) => {
+    try {
+      const data = JSON.parse(e.data)
+      handlers.onRoadmapDeleted?.(data)
+    } catch (err) {
+      console.error('Failed to parse roadmap.deleted event', err)
     }
   })
 
