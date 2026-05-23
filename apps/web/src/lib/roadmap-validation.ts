@@ -1,5 +1,18 @@
 import type { Phase, PhaseStatus, Task } from '@/types/roadmap'
 
+// ─── Compatibility warnings ───────────────────────────────────────────────────
+
+export type CompatibilityWarningCode =
+  | 'schema_unknown'
+  | 'version_future'
+  | 'missing_assignees'
+  | 'unknown_fields'
+
+export interface CompatibilityWarning {
+  code: CompatibilityWarningCode
+  message: string
+}
+
 // ─── Constants (mirrored from apps/api/src/api/schemas/limits.py) ─────────────
 
 export const IMPORT_MAX_BYTES = 512 * 1024
@@ -128,11 +141,113 @@ function validatePhase(value: unknown): Phase {
   return { id, num, name, color, status: value.status as PhaseStatus, progress: value.progress as number, tasks }
 }
 
+// ─── Compatibility detection ──────────────────────────────────────────────────
+
+const CURRENT_SCHEMA_VERSION = 1
+const KNOWN_SCHEMAS = new Set([
+  'roadforge.roadmap.import',
+  'roadforge.roadmap.export',
+])
+const KNOWN_TOP_LEVEL_KEYS = new Set([
+  'schema', 'version', 'exportedAt', 'roadmap', 'collaborator', 'phases',
+])
+const KNOWN_PHASE_KEYS = new Set([
+  'id', 'num', 'name', 'color', 'status', 'progress', 'tasks',
+])
+const KNOWN_TASK_KEYS = new Set([
+  'id', 'title', 'done', 'next', 'est', 'tags', 'assignees', 'deps', 'desc', 'parentId',
+])
+
+function detectCompatibilityWarnings(raw: unknown): CompatibilityWarning[] {
+  const warnings: CompatibilityWarning[] = []
+  if (!isPlainObject(raw)) return warnings
+
+  const schema = raw.schema
+  const version = raw.version
+  const schemaKnown = typeof schema === 'string' && KNOWN_SCHEMAS.has(schema)
+  const versionIsNumber = typeof version === 'number'
+  const versionIsCurrent = versionIsNumber && version === CURRENT_SCHEMA_VERSION
+
+  // A+B: Schema or version mismatch
+  if (versionIsNumber && version > CURRENT_SCHEMA_VERSION) {
+    warnings.push({
+      code: 'version_future',
+      message: `This file was created with a newer version of RoadForge (v${version}). Some data may not be recognized.`,
+    })
+  } else if (!schemaKnown || !versionIsCurrent) {
+    warnings.push({
+      code: 'schema_unknown',
+      message: 'This file was created with an older or different RoadForge format. Some newer metadata may be missing.',
+    })
+  }
+
+  // D: Unknown top-level, phase, or task fields (aggregate)
+  let foundUnknown = false
+  for (const key of Object.keys(raw)) {
+    if (!KNOWN_TOP_LEVEL_KEYS.has(key)) { foundUnknown = true; break }
+  }
+  if (!foundUnknown && Array.isArray(raw.phases)) {
+    outer: for (const phase of raw.phases as unknown[]) {
+      if (!isPlainObject(phase)) continue
+      for (const key of Object.keys(phase)) {
+        if (!KNOWN_PHASE_KEYS.has(key)) { foundUnknown = true; break outer }
+      }
+      if (Array.isArray(phase.tasks)) {
+        for (const task of phase.tasks as unknown[]) {
+          if (!isPlainObject(task)) continue
+          for (const key of Object.keys(task)) {
+            if (!KNOWN_TASK_KEYS.has(key)) { foundUnknown = true; break outer }
+          }
+        }
+      }
+    }
+  }
+  if (foundUnknown) {
+    warnings.push({
+      code: 'unknown_fields',
+      message: 'Some fields in this file are not supported by this version and may be ignored.',
+    })
+  }
+
+  // C: Missing assignment metadata — only relevant for older-format files
+  const hasOlderFormat = warnings.some((w) => w.code === 'schema_unknown')
+  if (hasOlderFormat && Array.isArray(raw.phases)) {
+    let hasTasks = false
+    let hasAssignmentInfo = false
+    assigneeCheck: for (const phase of raw.phases as unknown[]) {
+      if (!isPlainObject(phase) || !Array.isArray(phase.tasks)) continue
+      for (const task of phase.tasks as unknown[]) {
+        if (!isPlainObject(task)) continue
+        hasTasks = true
+        if (Array.isArray(task.assignees) && task.assignees.length > 0) {
+          hasAssignmentInfo = true; break assigneeCheck
+        }
+        if (Array.isArray(task.tags)) {
+          for (const tag of task.tags) {
+            if (typeof tag === 'string' && (tag.startsWith('owner:') || tag.startsWith('review:'))) {
+              hasAssignmentInfo = true; break assigneeCheck
+            }
+          }
+        }
+      }
+    }
+    if (hasTasks && !hasAssignmentInfo) {
+      warnings.push({
+        code: 'missing_assignees',
+        message: 'No assignment metadata found. Tasks may not have assignees in this roadmap.',
+      })
+    }
+  }
+
+  return warnings
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export interface ImportedRoadmap {
   phases: Phase[]
   roadmapName?: string
+  warnings: CompatibilityWarning[]
 }
 
 function roadmapNameFromPayload(value: unknown): string | undefined {
@@ -166,6 +281,7 @@ export function validateImportedRoadmap(value: unknown): ImportedRoadmap {
   return {
     phases: validateImportedPhases(value),
     roadmapName: roadmapNameFromPayload(value),
+    warnings: detectCompatibilityWarnings(value),
   }
 }
 
