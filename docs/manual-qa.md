@@ -245,11 +245,12 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 - [ ] Open **Import / Export** → Import tab.
 - [ ] Click **Replace current roadmap** → select the `.roadforge.json` file from §18.
-- [ ] No warning shown (clean format). Roadmap phases replace current phases immediately.
+- [ ] No notice shown (clean format, own export). Roadmap phases replace current phases immediately.
 - [ ] **Server roadmap:** toast "Roadmap replaced — syncing after autosave". ID, session, switcher entry unchanged.
 - [ ] Save → server reflects imported data.
 - [ ] **Viewer cannot** use "Replace current roadmap" (button disabled).
-- [ ] Import a file with an old/unknown schema → Compatibility notice appears → click "Replace current roadmap" → import proceeds.
+- [ ] Import a file with an old/unknown schema → **Import notice** appears listing the compatibility warning → click "Replace current roadmap" → import proceeds.
+- [ ] Import a file with auto-repaired issues (see §21) → **Import notice** appears listing what was repaired → confirm → roadmap loads.
 
 ---
 
@@ -265,15 +266,24 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ---
 
-## 21 — Import compatibility warnings
+## 21 — Import compatibility warnings and auto-repair
 
+**Compatibility warnings** (schema/version issues — shown when valid but non-canonical format):
 - [ ] Create a JSON file with `"schema": "roadforge.roadmap.v0"` (unknown schema) and valid phases.
-- [ ] Import it → Compatibility notice appears listing the warning message.
-- [ ] "This file will still import successfully." shown.
-- [ ] Confirm import → roadmap loads correctly.
+- [ ] Import it → **Import notice** appears with the compatibility warning. "This file will still import successfully." shown. Confirm → roadmap loads.
 - [ ] Create a JSON file with `"version": 99` (future version) → warning: "This file was created with a newer version..."
 - [ ] Create a file with an extra unknown field on a task (`"foo": "bar"`) → "Some fields in this file are not supported..."
-- [ ] Import own exported file (§18) → **no warnings**.
+- [ ] Import own exported file (§18) → **no notice at all** (clean schema, version 1, no unknown fields).
+
+**Auto-repair** (safe structural fixes applied silently before validation):
+- [ ] Create a JSON with a task where `"done": 1` (integer, not boolean) → Import notice lists "Boolean task fields (done, next) were coerced from non-boolean values."
+- [ ] Create a JSON with a task where `"tags": null` → Import notice lists "Null values on optional fields were cleared."
+- [ ] Create a JSON with a task where `"tags": "planning"` (string, not array) → Import notice lists "Non-array fields (tags, deps, assignees, or tasks) were replaced with empty arrays."
+- [ ] Create a JSON with two tasks sharing the same `id` → Import notice lists "Duplicate task IDs were renamed to be unique."
+- [ ] Create a JSON with a task `"parentId"` referencing a non-existent task ID → Import notice lists "parentId references to non-existent tasks were removed."
+- [ ] Create a JSON with a task using legacy assignment tags (`"tags": ["owner:Alice"]`) → Import notice lists "Assignment tags (owner:, review:) were migrated to the assignees field."
+- [ ] In all auto-repair cases: confirm import → roadmap loads with repaired data.
+- [ ] **Truly malformed input** (not a JSON object/array, `{}` with no phases key, garbage text) → hard failure toast "Import failed: …". No notice panel shown.
 
 ---
 
@@ -321,10 +331,14 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 Set browser devtools to 375×812 (iPhone SE / 13 mini):
 
 - [ ] **No horizontal overflow** — no horizontal scrollbar on any page.
-- [ ] Workspace header: roadmap name wraps to second row (below action buttons). Badges still on first row.
+- [ ] Workspace header is a single compact row: brand mark, sync badge, spacer, primary action (Save/Share/Reload icon), More (···) button. No roadmap name in the header row.
+- [ ] Roadmap name appears in the workspace `<h1>` below the header — it is **not** duplicated in the header.
+- [ ] More (···) menu button is tappable (≥36px touch target). Tapping opens a panel with: Import/Export, Theme toggle, Roadmap switcher.
+- [ ] More menu closes on outside tap and on Escape.
+- [ ] Save / Share / Reload primary action remains visible as a compact icon button (≥36px) in the header row without opening More.
 - [ ] Search bar stretches full width.
-- [ ] Filter dropdown opens toward right (no off-screen clipping).
-- [ ] Phase list renders correctly. Phase status badge hidden if configured.
+- [ ] Filter dropdown opens without off-screen clipping.
+- [ ] Phase list renders correctly. Phase status badge hidden.
 - [ ] Phase drag handle visible and usable on touch.
 - [ ] Task rows readable — no text clipped or overflowing card edges.
 - [ ] **Share modal:** fits within viewport. Footer buttons wrap if needed. Participant rows wrap.

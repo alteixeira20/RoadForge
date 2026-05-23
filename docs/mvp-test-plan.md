@@ -86,11 +86,11 @@ curl http://localhost:7878/api/health
 
 ---
 
-## 5. Rotate and copy links
+## 5b. Rotate and copy links
 
-1. Click **Regenerate** on the Editor row.
+1. Click **Rotate link** on the Editor row.
 2. Confirm the editor row shows a copyable URL. Copy it.
-3. Click **Regenerate** on the Viewer row. Copy the viewer link.
+3. Click **Rotate link** on the Viewer row. Copy the viewer link.
 
 ---
 
@@ -185,11 +185,13 @@ curl http://localhost:7878/api/health
 2. Open a local unsaved roadmap.
 3. Open **Import / Export**.
 4. Export JSON and confirm a `.roadforge.json` file downloads.
-5. Import that JSON and confirm the roadmap name and phases load.
+5. Import that JSON — no notice appears (own clean export). Roadmap name and phases load.
 6. Import a raw JSON phase array and confirm it loads.
-7. Import invalid JSON and confirm the error says `Import failed: invalid JSON.`
+7. Import invalid JSON and confirm the error toast says `Import failed: invalid JSON.`
+8. Import a JSON with `"done": 1` on a task (integer instead of boolean) → **Import notice** appears: "Boolean task fields (done, next) were coerced from non-boolean values." Confirm → import proceeds.
+9. Import a JSON with `"schema": "roadforge.roadmap.v0"` → Import notice appears with a compatibility warning. Confirm → import proceeds.
 
-**Expected:** JSON is currently the only exposed import/export format. Markdown, PDF, and agent bundle are intentionally not exposed yet.
+**Expected:** Import auto-repair handles minor structural issues (null/wrong-type fields, duplicate IDs, legacy assignment tags) before validation. Users see an Import notice listing what was fixed. Truly malformed or unrelated JSON still fails with a toast error.
 
 ---
 

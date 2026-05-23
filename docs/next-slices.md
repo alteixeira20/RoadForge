@@ -28,7 +28,19 @@ SSE-based update broadcast, short-lived ticket auth, and in-memory soft locks (3
 
 ---
 
-## E. Polish save/share/join UX (partial)
+## E. ✅ Responsive header and mobile More menu — Done
+
+At ≤640px, secondary header controls (Theme toggle, Roadmap switcher, Import/Export) collapse into a More (···) menu. Primary action (Save/Share/Reload) stays visible. Roadmap title is shown in the workspace `<h1>`, not duplicated in the header. Header buttons use consistent 36px height and `inline-flex` alignment with `line-height: 1` to prevent baseline drift.
+
+---
+
+## E2. ✅ Import auto-repair pipeline — Done
+
+`apps/web/src/lib/roadmap-validation.ts` — `repairImportedRoadmap()` runs before strict validation. Repairs: null/missing optional fields, boolean coercion for `done`/`next`, array coercion for `tags`/`deps`/`assignees`, phase field inference, progress recalculation, legacy `owner:`/`review:` tag migration, duplicate ID renaming, stale `parentId` removal. Users see an **Import notice** listing repairs. Malformed or unrelated JSON still fails hard.
+
+---
+
+## E3. Polish save/share/join UX (partial)
 
 Remaining items:
 - Share modal: after revoking, if the link was the only one, show a prompt to regenerate.

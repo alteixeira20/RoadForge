@@ -73,15 +73,30 @@ apps/web/src/
 
 ## Backend route list (source of truth)
 
+Full reference: `docs/backend-api.md`
+
 ```
 GET    /api/health
-POST   /api/roadmaps                                   create roadmap
-POST   /api/roadmaps/join                              accept invite token
-GET    /api/roadmaps/{roadmap_id}                      fetch roadmap + phases
-PUT    /api/roadmaps/{roadmap_id}                      update name and/or phases
-GET    /api/roadmaps/{roadmap_id}/share-links          list active share links
+POST   /api/roadmaps                                          create roadmap
+POST   /api/roadmaps/join                                     accept invite token
+GET    /api/roadmaps/{roadmap_id}                             fetch roadmap + phases
+PUT    /api/roadmaps/{roadmap_id}                             update name and/or phases
+DELETE /api/roadmaps/{roadmap_id}                             soft-delete roadmap
+GET    /api/roadmaps/{roadmap_id}/share-links                 list active share links
 POST   /api/roadmaps/{roadmap_id}/share-links/{role}/rotate   rotate link token
 DELETE /api/roadmaps/{roadmap_id}/share-links/{role}          revoke share link
+GET    /api/roadmaps/{roadmap_id}/participants                 list participants (owner)
+POST   /api/roadmaps/{roadmap_id}/participants/{pid}/revoke   revoke a participant
+GET    /api/roadmaps/{roadmap_id}/versions                    list version history
+POST   /api/roadmaps/{roadmap_id}/versions/checkpoint         create manual checkpoint
+GET    /api/roadmaps/{roadmap_id}/versions/{vid}              fetch a version snapshot
+POST   /api/roadmaps/{roadmap_id}/versions/{vid}/restore      restore a version
+GET    /api/roadmaps/{roadmap_id}/activity                    paginated activity log
+POST   /api/roadmaps/{roadmap_id}/events/ticket               request SSE ticket
+GET    /api/roadmaps/{roadmap_id}/events                      SSE stream (ticket auth)
+POST   /api/roadmaps/{roadmap_id}/locks                       acquire/refresh lock
+DELETE /api/roadmaps/{roadmap_id}/locks/{target}              release a lock
+GET    /api/roadmaps/{roadmap_id}/locks                       list active locks
 ```
 
 All business logic lives in `apps/api/src/api/services/roadmap_service.py`. Route handlers in `routers/roadmaps.py` are thin wrappers. Note: `/join` must be registered before `/{roadmap_id}` in the router to avoid path capture.
@@ -95,11 +110,15 @@ All business logic lives in `apps/api/src/api/services/roadmap_service.py`. Rout
 | Share modal — load links → GET /api/roadmaps/{id}/share-links | Wired |
 | Share modal — rotate → POST …/share-links/{role}/rotate | Wired |
 | Share modal — revoke → DELETE …/share-links/{role} | Wired |
+| Participant list → GET /api/roadmaps/{id}/participants | Wired |
+| Participant revoke → POST …/participants/{pid}/revoke | Wired |
 | Join page — POST /api/roadmaps/join | Wired |
 | Join page — hydrate roadmap → GET /api/roadmaps/{id} | Wired (non-fatal) |
 | Reload server roadmap on app refresh → GET /api/roadmaps/{id} | Wired (non-fatal) |
-| Password field in Save/Settings flow | Not implemented |
-| Session token sent as bearer on requests | Not implemented |
+| Password field in Save flow | Wired |
+| Session token sent as bearer on requests | Wired |
+| Import auto-repair pipeline (roadmap-validation.ts) | Wired |
+| Responsive header — More menu collapses secondary actions ≤640px | Wired |
 | Markdown/PDF export | Not implemented (toasts) |
 
 ## Service layer conventions
@@ -108,25 +127,25 @@ All business logic lives in `apps/api/src/api/services/roadmap_service.py`. Rout
 
 ## Context and storage conventions
 
-- `RoadmapContext` owns: `displayName`, `roadmapName`, `phases`, `saved`, `serverRoadmapId`, `sessionToken`, `participantId`, `role`
+- `RoadmapContext` owns: `displayName`, `roadmapName`, `phases`, `saved`, `serverRoadmapId`, `sessionToken`, `participantId`, `role`, `ownerDisplayName`, `updatedAt`, `locks`, `activeRoadmapId`
 - `ThemeContext` owns: `theme`
-- All context setters call the matching `storage.*` helper to persist
+- Context setters call the matching `storage.*` helper to persist
 - `storage.ts` is SSR-safe (`typeof window` guard) and parse-safe (try/catch)
-- `clearAll()` clears every key — used by `resetToSample`
+- Roadmap data is stored per-roadmap in scoped keys; flat legacy keys are migrated on first read
 
-## localStorage keys
+## localStorage / sessionStorage keys
 
+Current keys (scoped per roadmap):
 ```
-rf:theme
-rf:displayName
-rf:roadmapName
-rf:phases
-rf:saved
-rf:serverRoadmapId
-rf:sessionToken
-rf:participantId
-rf:role
+localStorage  rf:theme                  — dark/light theme
+localStorage  rf:displayName            — user's display name
+localStorage  rf:lastRoadmapId          — last active roadmap ID
+localStorage  rf:roadmap:{id}           — RoadmapCache JSON (name, phases, saved, etc.)
+localStorage  rf:auth:{id}              — AuthCache JSON (serverRoadmapId, sessionToken, participantId, role)
+sessionStorage rf:activeRoadmapId       — active roadmap for this tab session
 ```
+
+Legacy flat keys (`rf:roadmapName`, `rf:phases`, `rf:saved`, `rf:serverRoadmapId`, `rf:sessionToken`, `rf:participantId`, `rf:role`, etc.) are migrated to the scoped format on first access and then removed.
 
 ## CSS conventions
 
