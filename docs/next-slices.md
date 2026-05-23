@@ -40,7 +40,37 @@ At ≤640px, secondary header controls (Theme toggle, Roadmap switcher, Import/E
 
 ---
 
-## E3. Polish save/share/join UX (partial)
+## E3. ✅ Team/collaboration model cleanup — Done
+
+Assignees are task-local names used for filters. Participants/collaborators are server-side joined users with roles and sessions. Local-only roadmaps do not show Team/collaboration management. Person filter options derive only from active-roadmap task assignees. Team is now a main workspace view for synced owner roadmaps and shows actual participants only; owners can invite via Share and revoke non-current participants.
+
+---
+
+## E4. ✅ Phase reorder numbering — Done
+
+Phase drag/drop preserves phase IDs, tasks, name, color, and status, but recomputes `phase.num` from the new order using zero-based padded numbering: `00`, `01`, `02`, etc. Saves and exports persist the recomputed numbers.
+
+---
+
+## E5. ✅ Stable public viewer/demo link — Done
+
+Viewer links are read-only and suitable for README/portfolio/demo sharing. Owner/editor invite URLs remain private and are only exposed immediately after create/rotate. Active viewer URLs remain copyable from the owner-only Share modal. Backend migration `0005_add_public_viewer_tokens.py` is required; deploys must run `make migrate`.
+
+---
+
+## E6. ✅ Inline roadmap title editing — Done
+
+The main workspace title supports double-click rename, mobile/tablet edit button, Enter save, Escape cancel, blur save, empty-title rejection, and viewer lockout. Rename autosyncs through the normal save path, logs `roadmap.renamed` in Activity, and does not create a version checkpoint.
+
+---
+
+## E7. ✅ Roadmap schema auto-upgrade — Done
+
+`apps/web/src/lib/roadmap-upgrade.ts` upgrades old local/server/join/import/export snapshots through a shared client-side pipeline. It repairs old booleans/arrays, legacy assignment tags, stale progress, phase numbering, and stale references where safe. Local roadmaps write upgraded snapshots back to cache; editable synced roadmaps mark unsaved so autosync persists; viewers upgrade in memory only. Users see a **Roadmap updated for this version** notice with backup download. Automatic upgrades do not create Activity entries or version checkpoints.
+
+---
+
+## E8. Polish save/share/join UX (partial)
 
 Remaining items:
 - Share modal: after revoking, if the link was the only one, show a prompt to regenerate.
@@ -104,5 +134,5 @@ This is a pure opt-in security layer. It does not affect the accountless model �
 ## K. Quality & Testing
 
 - **Backend tests:** Implement unit and integration tests for FastAPI services and routers.
-- **CI/CD:** Set up GitHub Actions for linting, typechecking, and testing.
+- **CI/CD:** GitHub Actions exists, but backend coverage is still lightweight syntax-level. Expand it with real backend tests before treating CI as full coverage.
 - **Documentation:** Expand deployment guides for specific platforms (Hetzner, DigitalOcean, etc.).

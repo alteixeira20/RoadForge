@@ -1,6 +1,6 @@
 # RoadForge
 
-A structured roadmap planning tool for indie hackers and small teams. Break a release into phases, track task dependencies, and share access via private invite links. No accounts required.
+A structured roadmap planning tool for indie hackers and small teams. Break a release into phases, track task dependencies, and share access through private owner/editor invite links or a stable public read-only viewer link. No accounts required.
 
 **Current status:** v0.1 manual-testing candidate. Core create/save/share/join flow is wired, and realtime collaboration (SSE) is active. Security and UX hardening are still in progress.
 
@@ -11,13 +11,18 @@ A structured roadmap planning tool for indie hackers and small teams. Break a re
 RoadForge is accountless. There are no logins, user records, or dashboards.
 
 - **Create** — owner saves a roadmap, receives a session token and three role-specific share links.
-- **Share** — send an invite link to collaborators. Links are role-scoped (owner / editor / viewer) and revocable.
+- **Share** — send private owner/editor invite links to collaborators, or copy a stable public viewer/demo link for read-only sharing. Links are role-scoped and revocable.
 - **Join** — visitor opens the link, optionally enters a display name, and receives a session token for that role.
 - **Password gate** — roadmaps can optionally require a password before a join token is issued.
-- **Session token** — stored in `localStorage` after create or join and sent as a Bearer token for authorized actions.
+- **Session token** — stored in scoped `localStorage` after create or join and sent as a Bearer token for authorized actions.
 - **Display name** — optional, used only as a collaboration label. Blank joins get a role-based default ("Guest Editor", etc.).
 
-Nothing is emailed. Nothing is verified. The invite link is the durable access handle.
+Nothing is emailed. Nothing is verified. Private owner/editor invite links are sensitive credentials. The public viewer link is intentionally read-only and suitable for a README, portfolio, or live demo.
+
+Assignees and collaborators are separate concepts:
+
+- **Assignees** are task-local names used for filters and workload views. They can exist in local-only roadmaps.
+- **Participants / collaborators** are server-side joined users with roles and sessions. Team management is shown only for synced owner roadmaps.
 
 ---
 
@@ -82,6 +87,7 @@ Before self-hosting or releasing RoadForge publicly:
 - **Single-worker API** — the API uses in-memory singletons for locks, SSE, and realtime state. Always run exactly one Uvicorn worker (`--workers 1` is set in the Dockerfile CMD). Do not override this in compose files or orchestration configs.
 - **Run `make check` before deploying** — this runs `pnpm lint`, `pnpm typecheck`, and `pnpm build`. All three must pass with zero errors and zero warnings.
 - **Database migrations before rollback** — Alembic migrations are not reversible by default. Take a Postgres snapshot before any release that includes new files under `apps/api/alembic/versions/`.
+- **Run migrations on deploy** — releases at or after `0005_add_public_viewer_tokens.py` require `make migrate` so active viewer links can remain copyable as public read-only demo links.
 
 ---
 
@@ -133,7 +139,7 @@ curl http://localhost:7878/api/health
 # Interactive docs
 open http://localhost:7878/api/docs
 
-# Run migrations (after adding new models)
+# Run migrations (required after schema releases such as 0005_add_public_viewer_tokens.py)
 docker compose exec api alembic upgrade head
 
 # View API logs
@@ -225,6 +231,8 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 - **Email verification** — not implemented. Planned as an optional future security layer.
 - **Rate limiting** — invite token brute-force on `/api/roadmaps/join` is unthrottled. Do not deploy publicly without adding rate limiting.
 - **Content Security Policy** — CSP is deferred. Do not deploy publicly at scale without it.
+- **No CRDT merge UI** — conflict recovery reloads the server version; there is no three-way merge.
+- **Single API worker required** — realtime locks, SSE, and tickets are process-local.
 
 ---
 

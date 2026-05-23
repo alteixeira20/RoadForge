@@ -26,7 +26,18 @@ http://localhost:3020/join?token=ed_<43-char-random-token>
 - Once a link is rotated or revoked, the old token hash is overwritten or deactivated. Old links immediately stop working.
 - `GET /api/roadmaps/{id}/share-links` keeps owner/editor `url: null`; active viewer links may return a copyable public read-only URL.
 
-The invite link is the durable access handle. Losing it means losing that role's access path (until the owner rotates a new one).
+The invite link is the durable access handle. Losing a private owner/editor link means losing that role's access path until the owner rotates a new one. The active viewer link is intentionally stable and copyable for public demos.
+
+## Assignees vs participants
+
+RoadForge keeps task assignment and collaboration access separate.
+
+| Concept | Source | Scope | Used for |
+|---|---|---|---|
+| Assignee | `task.assignees` or legacy `owner:` / `review:` tags | The active roadmap's task data only | Task filters, "My tasks", workload context |
+| Participant / collaborator | Server-side `Participant` row created by joining a link | A synced roadmap only | Role, session, access source, last seen, revoke state |
+
+Local-only roadmaps can have assignees, but they do not have participants or Team management. The Team workspace view is available only for synced owner roadmaps and shows actual participants only; it must not invent collaborators from task assignee names.
 
 ---
 
@@ -60,7 +71,7 @@ The token is:
 - Generated with `secrets.token_urlsafe(32)` prefixed with `sess_`
 - Stored as a SHA-256 hex hash on the `Participant` row
 - Returned once in the response and never re-exposed
-- Stored in `localStorage` under key `rf:sessionToken`
+- Stored in scoped local storage under `rf:auth:{roadmapId}` alongside the participant role and server roadmap ID
 
 **Enforcement:** Accountless access does not mean unauthenticated writes. The session token is stored in `localStorage` and must be sent in the `Authorization: Bearer <session_token>` header for all protected write operations:
 - `PUT /api/roadmaps/{id}` — requires **owner** or **editor** role.

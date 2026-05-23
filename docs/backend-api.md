@@ -6,6 +6,8 @@ All request and response bodies are JSON.
 
 Import/export note: RoadForge currently exposes JSON import/export only in the browser client. There are no backend import/export endpoints for Markdown, PDF, or agent bundles yet.
 
+Deployment note: deployments at or after `apps/api/alembic/versions/0005_add_public_viewer_tokens.py` must run `make migrate` / `alembic upgrade head`. That migration adds storage for active public viewer tokens so owner-only share-link listing can return a copyable read-only viewer URL.
+
 ---
 
 ## GET /api/health
@@ -169,6 +171,7 @@ Batch activity summaries are also supported:
 - `phases` — optional, array of phase objects
 - `last_updated_at` — optional, optimistic concurrency check
 - `change_summary` — optional, dictionary used to customize the single activity log entry for this save. If provided, `action` is required. Clients should accumulate local changes and send either one high-signal action or one `roadmap.batch_changed` summary on explicit Save.
+- `roadmap.renamed` is a supported client activity action for inline title edits. It is logged in Activity but is not a version/checkpoint action under the current version policy.
 
 **Response 200:** Same shape as `GET /api/roadmaps/{roadmap_id}`.
 
@@ -433,9 +436,11 @@ interface Task {
   done: boolean
   next?: boolean
   est?: string         // e.g. "2d", "1w"
+  assignees?: string[] // task-local names, not participants
   tags?: string[]
   deps?: string[]      // task IDs this task depends on
   desc?: string
+  parentId?: string
 }
 
 interface Phase {
@@ -448,6 +453,8 @@ interface Phase {
   tasks: Task[]
 }
 ```
+
+Client compatibility note: old local/server/imported snapshots are upgraded in the browser before rendering. The upgrade path repairs missing/null booleans and arrays, migrates legacy `owner:` / `review:` assignment tags to `assignees`, recomputes progress, normalizes phase numbers, and removes stale dependency/parent references where safe. This is client-side compatibility handling, not a backend import endpoint.
 
 ---
 

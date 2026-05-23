@@ -2,9 +2,9 @@
 
 ## What RoadForge is
 
-An accountless, self-hostable, local-first roadmap planning tool. Users create roadmaps without registering. Access is controlled by private invite links (one per role). Session tokens stored in `localStorage` identify participants. No accounts. No login. No user dashboard.
+An accountless, self-hostable, local-first roadmap planning tool. Users create roadmaps without registering. Access is controlled by private owner/editor invite links and a public read-only viewer link. Session tokens stored in `localStorage` identify participants. No accounts. No login. No user dashboard.
 
-RoadForge has a Next.js frontend and a FastAPI/PostgreSQL backend. The MVP flow is partially wired and is being hardened before the first public demo.
+RoadForge has a Next.js frontend and a FastAPI/PostgreSQL backend. The v0.1 flow is wired as a manual-testing candidate and is being hardened before the first public demo.
 
 ## Stack
 
@@ -46,7 +46,7 @@ apps/web/src/
 ├── context/        # RoadmapContext, ThemeContext
 ├── data/           # sample-roadmap.ts, EXPORT_OPTIONS
 ├── hooks/          # useWorkspaceModals, usePhaseCollapse, usePhaseSearch, useToastState
-├── lib/            # storage.ts (localStorage helpers), roadmap-validation.ts (import validation)
+├── lib/            # storage.ts, roadmap-validation.ts, roadmap-upgrade.ts, assignment helpers
 ├── services/       # roadmap.service.ts (all HTTP calls live here)
 ├── styles/         # CSS split: tokens, base, ui, site, workspace, modals, join
 └── types/          # roadmap.ts, ui.ts
@@ -118,6 +118,11 @@ All business logic lives in `apps/api/src/api/services/roadmap_service.py`. Rout
 | Password field in Save flow | Wired |
 | Session token sent as bearer on requests | Wired |
 | Import auto-repair pipeline (roadmap-validation.ts) | Wired |
+| Roadmap schema auto-upgrade (roadmap-upgrade.ts) | Wired |
+| Public read-only viewer/demo link | Wired |
+| Team main workspace view for participants | Wired for synced owner roadmaps |
+| Inline roadmap title rename | Wired |
+| Phase reorder renumbering | Wired |
 | Responsive header — More menu collapses secondary actions ≤640px | Wired |
 | Markdown/PDF export | Not implemented (toasts) |
 
@@ -132,6 +137,8 @@ All business logic lives in `apps/api/src/api/services/roadmap_service.py`. Rout
 - Context setters call the matching `storage.*` helper to persist
 - `storage.ts` is SSR-safe (`typeof window` guard) and parse-safe (try/catch)
 - Roadmap data is stored per-roadmap in scoped keys; flat legacy keys are migrated on first read
+- Old roadmap snapshots are upgraded through `lib/roadmap-upgrade.ts` before rendering. Local cache writes back upgraded data; editable synced roadmaps mark `saved=false` so autosync persists the upgraded shape; viewers upgrade in memory only.
+- Do not confuse task assignees with participants. Assignees are task-local strings used for filters. Participants are server rows created by joining owner/editor/viewer links.
 
 ## localStorage / sessionStorage keys
 
@@ -146,6 +153,8 @@ sessionStorage rf:activeRoadmapId       — active roadmap for this tab session
 ```
 
 Legacy flat keys (`rf:roadmapName`, `rf:phases`, `rf:saved`, `rf:serverRoadmapId`, `rf:sessionToken`, `rf:participantId`, `rf:role`, etc.) are migrated to the scoped format on first access and then removed.
+
+Current roadmap upgrade behavior also repairs older phase/task shapes: missing/null booleans and arrays, legacy `owner:` / `review:` tags, stale progress, phase numbering, duplicate/missing task IDs where import repair supports it, and stale `deps` / `parentId`. Automatic upgrades do not create Activity rows or version checkpoints.
 
 ## CSS conventions
 

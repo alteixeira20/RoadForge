@@ -63,6 +63,12 @@ under `apps/api/alembic/versions/`, the migration step is critical. The sequence
 is already enforced by `make update` (rebuild → up → migrate), but do not
 interrupt it between the `up` and `migrate` steps.
 
+Current required migration note:
+
+- `0005_add_public_viewer_tokens.py` adds storage for active public viewer/demo
+  tokens. Run `make migrate` before validating Share modal behavior, otherwise
+  active viewer links may not remain copyable after reopening the modal.
+
 **Single-worker API:** The RoadForge API must run exactly one Uvicorn worker.
 The in-memory lock service, SSE event bus, and realtime ticket service are
 process-local singletons — multiple workers would give each request its own

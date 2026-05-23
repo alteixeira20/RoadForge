@@ -66,6 +66,8 @@ curl http://localhost:7878/api/health
 
 **Expected behavior:** On refresh, the app hydrates immediately from scoped `localStorage` via the active ID in `sessionStorage`. `RoadmapContext` also calls `GET /api/roadmaps/{id}` in the background and replaces roadmap name, phases, and `ownerDisplayName` with the server snapshot.
 
+**Schema upgrade check:** If the cached or server snapshot is from an older RoadForge shape, the client upgrades it before rendering. Local caches are written back, owner/editor synced roadmaps autosync the upgraded shape, and viewers upgrade in memory only.
+
 ---
 
 ## 4. Multi-Roadmap Isolation
@@ -81,8 +83,8 @@ curl http://localhost:7878/api/health
 ## 5. Open share modal
 
 1. Click **Share** in the app header.
-2. Confirm the modal loads three share links: Owner, Editor invite, Viewer (read-only).
-3. All three show "Rotate to generate a copyable link".
+2. Confirm the modal loads three share rows: Private owner link, Private editor invite, Public viewer link.
+3. Owner/editor rows do not persistently expose raw URLs. Active viewer row can show a copyable public read-only URL.
 
 ---
 
@@ -90,7 +92,8 @@ curl http://localhost:7878/api/health
 
 1. Click **Rotate link** on the Editor row.
 2. Confirm the editor row shows a copyable URL. Copy it.
-3. Click **Rotate link** on the Viewer row. Copy the viewer link.
+3. Click **Generate** or **Reset link** on the Viewer row. Copy the viewer link.
+4. Close and reopen Share. Confirm the editor URL is hidden again and the active viewer URL remains copyable.
 
 ---
 
@@ -160,22 +163,31 @@ curl http://localhost:7878/api/health
 2. **Editor:** Confirm you cannot see "Share" or management tools reserved for the owner.
 3. **Viewer:** Confirm you cannot edit tasks or see management tools.
 
+## 11b. Verify Team and assignee separation
+
+1. Add a task assignee that has not joined the roadmap.
+2. Confirm that name appears as a task/person filter option.
+3. As Owner, open **Team**. Confirm Team is a main workspace view and shows only joined server participants.
+4. Confirm local-only roadmaps do not show Team/collaboration management.
+
 ---
 
 ## 12. Verify Activity Logs (Save-Level Summaries)
 
 1. **Owner/Editor:** Open the **Activity** panel.
-2. **Action:** Complete the last unfinished task in a phase.
-3. **Click Save.**
-4. **Confirm Activity:** One new entry `Completed phase` appears with the phase number/name.
-5. **Action:** Reopen a task in that completed phase and click Save.
-6. **Confirm Activity:** One new entry `Reopened phase` appears.
-7. **Action:** Add a task and click Save.
-8. **Confirm Activity:** One new entry `Added task` appears with task ID/title.
-9. **Action:** Import a JSON roadmap, then click Save.
-10. **Confirm Activity:** One new entry `Imported roadmap` appears with phase/task counts.
-11. **Action:** Make several meaningful changes before clicking Save.
-12. **Confirm Activity:** One compact `Saved N changes` batch entry appears, not one row per local click.
+2. **Action:** Double-click the roadmap title, rename it, and save/autosync.
+3. **Confirm Activity:** One new entry `Renamed roadmap` appears. Confirm Versions count does not increase from the rename alone.
+4. **Action:** Complete the last unfinished task in a phase.
+5. **Click Save.**
+6. **Confirm Activity:** One new entry `Completed phase` appears with the phase number/name.
+7. **Action:** Reopen a task in that completed phase and click Save.
+8. **Confirm Activity:** One new entry `Reopened phase` appears.
+9. **Action:** Add a task and click Save.
+10. **Confirm Activity:** One new entry `Added task` appears with task ID/title.
+11. **Action:** Import a JSON roadmap, then click Save.
+12. **Confirm Activity:** One new entry `Imported roadmap` appears with phase/task counts.
+13. **Action:** Make several meaningful changes before clicking Save.
+14. **Confirm Activity:** One compact `Saved N changes` batch entry appears, not one row per local click.
 
 ---
 
@@ -193,6 +205,15 @@ curl http://localhost:7878/api/health
 
 **Expected:** Import auto-repair handles minor structural issues (null/wrong-type fields, duplicate IDs, legacy assignment tags) before validation. Users see an Import notice listing what was fixed. Truly malformed or unrelated JSON still fails with a toast error.
 
+## 14. Verify phase reorder numbering and schema upgrade notice
+
+1. Drag phase `01` above phase `00`.
+2. Confirm the moved phase now displays `00`, the next displays `01`, and phase IDs/tasks stayed with their phase.
+3. Save, reload, and export JSON. Confirm `phase.num` values persist in visible order.
+4. Load/import an old roadmap with missing/null task defaults.
+5. Confirm **Roadmap updated for this version** appears with **Download backup**.
+6. Confirm automatic upgrade does not create an Activity entry or version checkpoint.
+
 ---
 
 ## Validation checklist
@@ -209,3 +230,6 @@ curl http://localhost:7878/api/health
 - [ ] Revoke invalidates the link immediately
 - [ ] Activity panel shows creation, updates, and joins correctly
 - [ ] JSON export/import works without the backend running
+- [ ] Public viewer link remains copyable after reopening Share
+- [ ] Team view shows participants only, not task assignees
+- [ ] Schema auto-upgrade notice and backup download work

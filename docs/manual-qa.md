@@ -33,7 +33,9 @@ Open four browser contexts and keep them active throughout:
 
 - [ ] Complete wizard → name "Local QA Roadmap" → start blank.
 - [ ] Workspace loads. Roadmap name appears in header. No sync badge visible (local state = LOCAL).
+- [ ] Team button is hidden. No participant/collaborator management appears for this local-only roadmap.
 - [ ] Add a phase. Add two tasks to it. Mark one done.
+- [ ] Add an assignee named "Farreca" to one local task. Confirm Farreca appears only as a task/person filter option, not as a collaborator.
 - [ ] Close and reopen the tab. Phase and tasks persist (localStorage).
 - [ ] **Expected:** Everything loads from localStorage without an API call. No "Save" button shows a server ID.
 
@@ -46,7 +48,7 @@ Open four browser contexts and keep them active throughout:
 - [ ] Save modal opens. Submit without a password (leave blank).
 - [ ] Toast: "Saved · collaboration enabled".
 - [ ] Header badge changes to **LIVE**.
-- [ ] `localStorage` contains `rf:serverRoadmapId` = `rm_...` and `rf:sessionToken` = `sess_...`.
+- [ ] `localStorage` contains scoped entries: `rf:roadmap:rm_...` and `rf:auth:rm_...` with a session token and owner role.
 
 ---
 
@@ -72,6 +74,7 @@ Open four browser contexts and keep them active throughout:
 - [ ] Click **Reset link** or **Generate public link** on Viewer row → URL appears. Copy it (viewer link).
 - [ ] Owner row: only shows current session info; no join URL exposed.
 - [ ] Close and reopen Share modal. Editor row shows "Active link" but NOT the raw URL. Viewer row still shows a copyable public read-only URL.
+- [ ] Copy the viewer URL after reopening the modal and save it somewhere temporary. It should be the stable public read-only demo link for this roadmap.
 
 ---
 
@@ -81,13 +84,13 @@ Open four browser contexts and keep them active throughout:
 - [ ] Open editor link.
 - [ ] Enter display name "Jordan". Submit (no password).
 - [ ] Routed to `/workspace`. Workspace loads. No viewer banner.
-- [ ] `rf:role` = `editor` in localStorage.
+- [ ] `rf:auth:rm_...` role = `editor` in localStorage.
 
 **Viewer (second private window):**
 - [ ] Open viewer link.
 - [ ] Enter display name "Sam". Submit.
 - [ ] Routed to `/shared`. Read-only banner visible.
-- [ ] `rf:role` = `viewer` in localStorage.
+- [ ] `rf:auth:rm_...` role = `viewer` in localStorage.
 - [ ] Task checkboxes are disabled. Share/Save buttons absent.
 
 ---
@@ -185,7 +188,10 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 - [ ] Drag a phase to a new position (drag handle appears on hover).
 - [ ] Phases reorder immediately with animation.
+- [ ] Phase display numbers are recomputed from the new order: first phase `00`, second `01`, third `02`, etc.
+- [ ] Phase IDs and tasks stay with their moved phase.
 - [ ] Save → reload → order persists.
+- [ ] Export JSON after reorder and confirm phase `num` values match the visible order.
 - [ ] With search/filter active → drag handle is hidden (disabled). No reordering while filtered.
 - [ ] Viewer sees phases in correct order but no drag handles.
 
@@ -198,7 +204,7 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 - [ ] **Done:** only completed tasks visible.
 - [ ] **Open:** only incomplete tasks visible.
 - [ ] **Next:** only tasks marked `next` visible.
-- [ ] **Mine/Pair:** requires assignees — tested in §17.
+- [ ] **Mine/Pair:** requires assignees — tested in §16.
 - [ ] Search bar: type a keyword → only matching task titles shown.
 - [ ] Filter + search work together (AND logic).
 - [ ] With active filter: phase drag handle hidden (cannot reorder).
@@ -206,20 +212,28 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ---
 
-## 16 — First-class assignees and Team panel
+## 16 — Assignees, filters, and Team view
 
 - [ ] Edit a task → add assignees (by name/handle).
 - [ ] Assignee names appear on the task row.
-- [ ] Open **Team** panel → shows all unique assignees extracted from tasks.
-- [ ] Click an assignee in Team panel → filter switches to `person:<name>` — only that person's tasks shown.
+- [ ] Filter dropdown shows person options derived only from assignees on the active roadmap's tasks.
 - [ ] **Mine** filter: shows tasks where current participant's display name matches an assignee.
-- [ ] Remove assignee from task → Team panel updates on next open.
+- [ ] Remove assignee from task → matching person filter option disappears after the active filter is cleared or reset.
+- [ ] Owner opens synced roadmap → click **Team** in the toolbar.
+- [ ] Team opens as a main workspace view, replacing the phase list until returning to Roadmap.
+- [ ] Team shows actual server participants only: display name, role, access source, last seen, current-session marker.
+- [ ] Owner can click Invite/Add team member and the existing Share modal opens.
+- [ ] Owner can revoke a non-current participant from Team.
+- [ ] Task assignees who have not joined through a share link do **not** appear as Team collaborators.
+- [ ] Editor/viewer do not see owner-only Team management controls.
 
 ---
 
 ## 17 — Activity panel and anti-spam behavior
 
 - [ ] Open **Activity** panel.
+- [ ] Double-click the roadmap title, rename it, press Enter, then Save/autosync.
+- [ ] Activity shows "Renamed roadmap"; Versions count does not increase from the rename alone.
 - [ ] Complete one task → Save → one activity entry appears (e.g., "Completed task RF-101").
 - [ ] Immediately uncheck and recheck the same task several times before saving → Save → still ONE consolidated entry (anti-spam deduplication), not one per tick.
 - [ ] Add a new task → Save → "Added task RF-..." entry appears.
@@ -288,13 +302,26 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ---
 
+## 21b — Schema auto-upgrade notice and backup
+
+- [ ] Seed/load an old local roadmap cache with `task.next: null` or missing `task.assignees`, `task.tags`, or `task.deps`.
+- [ ] Open the roadmap. It loads without error and shows **Roadmap updated for this version** near the workspace top.
+- [ ] Click **Download backup**. A `roadforge-backup-before-upgrade-YYYYMMDD-HHMM.roadforge.json` file downloads with the pre-upgrade snapshot.
+- [ ] Click **Dismiss**. The notice does not reappear for that active roadmap/session.
+- [ ] Reload the local roadmap and confirm the cache has the repaired current shape.
+- [ ] Load an old synced roadmap as owner/editor. It repairs, marks local state unsaved, and autosync persists the upgraded snapshot.
+- [ ] Load an old synced roadmap as viewer. It repairs in memory for UI safety but does not attempt to save.
+- [ ] Confirm automatic schema upgrade does not create an Activity entry or a version checkpoint.
+
+---
+
 ## 22 — Version history
 
-- [ ] Open **Versions** panel (owner or editor with access).
+- [ ] Open **Versions** panel (owner only).
 - [ ] After saving §11 edits: one "Updated" version entry appears.
 - [ ] After importing §19: one "Imported" or "Updated" entry appears.
 - [ ] Task tick/untick/tick cycle before save → still ONE version created on save (not one per toggle).
-- [ ] Viewer does not see Versions panel (owner-only UI).
+- [ ] Editor/viewer do not see Versions panel (owner-only UI).
 
 ---
 
@@ -334,6 +361,7 @@ Set browser devtools to 375×812 (iPhone SE / 13 mini):
 - [ ] **No horizontal overflow** — no horizontal scrollbar on any page.
 - [ ] Workspace header is a single compact row: brand mark, sync badge, spacer, primary action (Save/Share/Reload icon), More (···) button. No roadmap name in the header row.
 - [ ] Roadmap name appears in the workspace `<h1>` below the header — it is **not** duplicated in the header.
+- [ ] Tap the title edit button near the workspace `<h1>`; input opens, Enter/blur save a valid title, Escape cancels, empty title is rejected.
 - [ ] More (···) menu button is tappable (≥36px touch target). Tapping opens a panel with: Import/Export, Theme toggle, Roadmap switcher.
 - [ ] More menu closes on outside tap and on Escape.
 - [ ] Save / Share / Reload primary action remains visible as a compact icon button (≥36px) in the header row without opening More.
@@ -345,7 +373,7 @@ Set browser devtools to 375×812 (iPhone SE / 13 mini):
 - [ ] **Share modal:** fits within viewport. Footer buttons wrap if needed. Participant rows wrap.
 - [ ] **IO modal:** fits within viewport. Import/export action buttons readable.
 - [ ] **Save modal:** readable and submittable.
-- [ ] Activity/Versions/Team panels: full-width overlay; scrollable.
+- [ ] Activity/Versions panels: full-width overlay; scrollable. Team remains a main workspace view when available.
 - [ ] Join page: form fits without overflow.
 
 ---
@@ -361,7 +389,7 @@ Set browser devtools to 375×812 (iPhone SE / 13 mini):
 
 ## 28 — Data safety
 
-- [ ] **Import replace does not create a new roadmap:** after replacing, `rf:serverRoadmapId` is unchanged. Only one entry in roadmap switcher for this roadmap.
+- [ ] **Import replace does not create a new roadmap:** after replacing, active `rf:auth:rm_...` still points to the same server roadmap. Only one entry in roadmap switcher for this roadmap.
 - [ ] **Import as local does not affect collaborators:** Editor/Viewer windows show original server data; only the importer's tab switches to the new local roadmap.
 - [ ] **Versions do not spam:** 10 task ticks before one save → activity shows max one new version entry, not 10.
 - [ ] **Checkpoint idempotent:** double-clicking Checkpoint does not create duplicate entries.
@@ -389,6 +417,7 @@ Run on hosting-bay (or a staging clone of the deploy setup):
 - [ ] GitHub Actions CI is green for latest commit (Quality Gate + API Syntax Check jobs both pass).
 - [ ] `make update` completes: git pull → build → up → migrate → ps all succeed.
 - [ ] `make migrate` run standalone shows "Running upgrade" or "Already up to date."
+- [ ] Confirm migration `0005_add_public_viewer_tokens.py` has been applied before testing persistent public viewer links.
 - [ ] `make ps` shows `api` container as `Up`. No restart loops.
 - [ ] `docker compose logs --tail=40 api` shows `Application startup complete.` No ERROR lines at startup.
 - [ ] `curl https://roadforge.alexandreteixeira.dev/api/health` → `{"status":"ok","version":"0.1.0"}`.
