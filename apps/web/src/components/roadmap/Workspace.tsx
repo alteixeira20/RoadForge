@@ -18,7 +18,7 @@ import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { createRoadmap, getParticipants, getRoadmap, isApiConnectionError, revokeParticipant, saveToServer } from '@/services/roadmap.service'
-import { normalizePhasesProgress } from '@/lib/phase-progress'
+import { normalizePhasesProgress, renumberPhases } from '@/lib/phase-progress'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
 import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
 
@@ -848,9 +848,11 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const handleReorderPhases = (phaseIds: string[]) => {
     if (readOnly) return
-    const reordered = phaseIds
-      .map((id) => phases.find((p) => p.id === id))
-      .filter((p): p is PhaseType => !!p)
+    const reordered = renumberPhases(
+      phaseIds
+        .map((id) => phases.find((p) => p.id === id))
+        .filter((p): p is PhaseType => !!p),
+    )
     setPhases(reordered)
     addPendingActivityChange({
       action: 'roadmap.phases_reordered',

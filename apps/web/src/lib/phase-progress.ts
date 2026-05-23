@@ -16,3 +16,11 @@ export function normalizePhaseProgress(phase: Phase): Phase {
 export function normalizePhasesProgress(phases: Phase[]): Phase[] {
   return phases.map(normalizePhaseProgress)
 }
+
+export function renumberPhases(phases: Phase[]): Phase[] {
+  return phases.map((phase, index) => {
+    const num = String(index).padStart(2, '0')
+    if (phase.num === num) return phase
+    return { ...phase, num }
+  })
+}
