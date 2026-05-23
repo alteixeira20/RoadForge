@@ -60,6 +60,9 @@
 }
 .app-header .spacer { flex: 1; }
 .app-header .actions { display: flex; align-items: center; gap: 6px; }
+.app-header .actions > * {
+  align-self: center;
+}
 .app-header .header-save-btn {
   height: 36px;
   min-width: 78px;
@@ -82,8 +85,12 @@
    proper flex item; without this, inline-level content inside the block div
    can cause the button to appear slightly above the flex midline. */
 .app-header .roadmap-switcher {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  align-self: center;
+  line-height: 1;
+  box-sizing: border-box;
 }
 /* Secondary controls group — flex row on desktop, hidden on mobile */
 .header-secondary {
@@ -1263,12 +1270,14 @@
   width: 36px; height: 36px;
   display: inline-flex; align-items: center; justify-content: center;
   line-height: 1;
+  box-sizing: border-box;
   color: var(--ink-4);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
   transition: all 160ms;
 }
+.iconbtn svg { display: block; flex: 0 0 auto; }
 .iconbtn:hover { color: var(--ember); background: var(--bg-3); border-color: var(--border); }
 
 /* ─── Task Action Forms ────────────────────────────────────────────────────── */

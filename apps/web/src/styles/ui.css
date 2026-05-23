@@ -36,11 +36,13 @@
   width: 36px; height: 36px;
   display: inline-flex; align-items: center; justify-content: center;
   line-height: 1;
+  box-sizing: border-box;
   background: transparent; border: 1px solid transparent;
   border-radius: 8px;
   color: var(--ink-2);
   transition: all 160ms;
 }
+.iconbtn svg { display: block; flex: 0 0 auto; }
 .iconbtn:hover { background: var(--bg-2); border-color: var(--border); color: var(--ink); }
 
 /* ─── Brand ────────────────────────────────────────────────────────────────── */
@@ -130,8 +132,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   gap: 3px;
   line-height: 1;
+  vertical-align: middle;
   color: var(--ember-2);
   background: color-mix(in oklab, var(--ember-2) 12%, var(--bg-2));
   border: 1px solid color-mix(in oklab, var(--ember-2) 44%, var(--border));
@@ -139,6 +143,7 @@
   box-shadow: 0 0 0 1px rgba(0,0,0,0.06) inset;
   transition: background 160ms, border-color 160ms, color 160ms, box-shadow 160ms;
 }
+.roadmap-menu-trigger svg { display: block; flex: 0 0 auto; }
 .roadmap-menu-trigger:hover,
 .roadmap-menu-trigger[aria-expanded="true"] {
   color: var(--molten);
