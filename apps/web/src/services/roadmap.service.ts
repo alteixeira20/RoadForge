@@ -101,6 +101,9 @@ interface ApiParticipantResponse {
   last_seen_at: string | null
   revoked_at: string | null
   is_current_participant: boolean
+  share_link_id: string | null
+  joined_via_role: string | null
+  access_source_label: string
 }
 
 interface ApiRoadmapVersionSummaryResponse {
@@ -186,6 +189,9 @@ function toParticipant(r: ApiParticipantResponse): Participant {
     lastSeenAt: r.last_seen_at,
     revokedAt: r.revoked_at,
     isCurrentParticipant: r.is_current_participant,
+    shareLinkId: r.share_link_id ?? null,
+    joinedViaRole: (r.joined_via_role ?? null) as ShareRole | null,
+    accessSourceLabel: r.access_source_label ?? 'Legacy / unknown link',
   }
 }
 

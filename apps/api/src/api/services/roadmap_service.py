@@ -203,6 +203,7 @@ async def create_roadmap(
 
 
 _ROLE_ORDER: dict[str, int] = {"owner": 0, "editor": 1, "viewer": 2}
+_ROLE_LABELS: dict[str, str] = {"owner": "Owner link", "editor": "Editor link", "viewer": "Viewer link"}
 
 
 def _phases_from_snapshot(snapshot_json: dict) -> list[PhaseDTO]:
@@ -618,12 +619,15 @@ async def get_participants(
     await _fetch_active_roadmap(db, roadmap_id)
 
     result = await db.execute(
-        select(Participant)
+        select(Participant, ShareLink)
+        .outerjoin(ShareLink, Participant.share_link_id == ShareLink.id)
         .where(Participant.roadmap_id == roadmap_id)
         .order_by(Participant.created_at.asc())
     )
-    return [
-        ParticipantResponse(
+    responses: list[ParticipantResponse] = []
+    for participant, share_link in result.all():
+        joined_via_role = share_link.role if share_link else None
+        responses.append(ParticipantResponse(
             id=participant.id,
             display_name=participant.display_name,
             role=participant.role,  # type: ignore[arg-type]
@@ -631,9 +635,11 @@ async def get_participants(
             last_seen_at=participant.last_seen_at,
             revoked_at=participant.revoked_at,
             is_current_participant=participant.id == current_participant.id,
-        )
-        for participant in result.scalars().all()
-    ]
+            share_link_id=participant.share_link_id,
+            joined_via_role=joined_via_role,  # type: ignore[arg-type]
+            access_source_label=_ROLE_LABELS.get(joined_via_role, "Legacy / unknown link"),
+        ))
+    return responses
 
 
 async def revoke_participant(
@@ -776,6 +782,7 @@ async def join_roadmap(db: AsyncSession, payload: JoinRoadmapRequest) -> JoinRoa
         roadmap_id=roadmap.id,
         display_name=display_name,
         role=share_link.role,
+        share_link_id=share_link.id,
         session_token_hash=hash_token(session_token),
     )
     db.add(participant)

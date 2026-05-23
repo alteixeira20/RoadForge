@@ -72,6 +72,7 @@ class ShareLink(Base):
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
 
     roadmap: Mapped[Roadmap] = relationship("Roadmap", back_populates="share_links")
+    participants: Mapped[list[Participant]] = relationship("Participant", back_populates="share_link")
 
     __table_args__ = (
         _ROLE_CHECK,
@@ -91,6 +92,9 @@ class Participant(Base):
     )
     display_name: Mapped[str] = mapped_column(sa.Text, nullable=False)
     role: Mapped[str] = mapped_column(sa.String(16), nullable=False)
+    share_link_id: Mapped[str | None] = mapped_column(
+        sa.String, sa.ForeignKey("share_links.id", ondelete="SET NULL"), nullable=True
+    )
     # SHA-256 hex digest of the session token returned to the client.
     # Uniqueness enforced by uq_participants_session_token_hash in __table_args__.
     session_token_hash: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -101,6 +105,7 @@ class Participant(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
 
     roadmap: Mapped[Roadmap] = relationship("Roadmap", back_populates="participants")
+    share_link: Mapped[ShareLink | None] = relationship("ShareLink", back_populates="participants")
     activity_logs: Mapped[list[ActivityLog]] = relationship(
         "ActivityLog", back_populates="participant"
     )
@@ -110,6 +115,7 @@ class Participant(Base):
         sa.UniqueConstraint("session_token_hash", name="uq_participants_session_token_hash"),
         sa.Index("ix_participants_roadmap_id", "roadmap_id"),
         sa.Index("ix_participants_roadmap_revoked", "roadmap_id", "revoked_at"),
+        sa.Index("ix_participants_share_link_id", "share_link_id"),
     )
 
 

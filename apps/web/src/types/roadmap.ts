@@ -122,6 +122,9 @@ export interface Participant {
   lastSeenAt: string | null
   revokedAt: string | null
   isCurrentParticipant: boolean
+  shareLinkId: string | null
+  joinedViaRole: ShareRole | null
+  accessSourceLabel: string
 }
 
 export interface RoadmapVersionSummary {

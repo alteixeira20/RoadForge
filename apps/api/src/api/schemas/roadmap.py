@@ -238,6 +238,9 @@ class ParticipantResponse(BaseModel):
     last_seen_at: datetime | None = None
     revoked_at: datetime | None = None
     is_current_participant: bool = False
+    share_link_id: str | None = None
+    joined_via_role: ShareRole | None = None
+    access_source_label: str = "Legacy / unknown link"
 
 
 # ─── Join flow ────────────────────────────────────────────────────────────────

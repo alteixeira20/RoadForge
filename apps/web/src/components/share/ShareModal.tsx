@@ -9,6 +9,14 @@ import { useRoadmap } from '@/context/RoadmapContext'
 import type { Participant, ShareLink, ShareRole } from '@/types/roadmap'
 import type { IconName } from '@/components/ui/Icon'
 
+const SHARE_ROLES: ShareRole[] = ['owner', 'editor', 'viewer']
+
+const ROLE_COPY: Record<ShareRole, { title: string; peopleTitle: string }> = {
+  owner: { title: 'Owner link', peopleTitle: 'Owner' },
+  editor: { title: 'Editor link', peopleTitle: 'Editor' },
+  viewer: { title: 'Viewer link', peopleTitle: 'Viewer' },
+}
+
 interface ShareModalProps {
   open: boolean
   onClose: () => void
@@ -23,6 +31,11 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
   const [participantsLoading, setParticipantsLoading] = useState(false)
   const [ownerOnly, setOwnerOnly] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [expandedRoles, setExpandedRoles] = useState<Record<ShareRole, boolean>>({
+    owner: true,
+    editor: true,
+    viewer: true,
+  })
   const canManageShare = role === 'owner'
   const roadmapUrl = serverRoadmapId && typeof window !== 'undefined'
     ? `${window.location.origin}/workspace?roadmap=${encodeURIComponent(serverRoadmapId)}`
@@ -101,6 +114,40 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const toggleRole = (targetRole: ShareRole) => {
+    setExpandedRoles((prev) => ({ ...prev, [targetRole]: !prev[targetRole] }))
+  }
+
+  const linkForRole = (targetRole: ShareRole): ShareLink => (
+    links.find((link) => link.role === targetRole) ?? {
+      id: null,
+      role: targetRole,
+      icon: targetRole === 'owner' ? 'shield' : targetRole === 'editor' ? 'users' : 'circle',
+      desc: targetRole === 'owner'
+        ? 'Full control — manage settings, links, and members.'
+        : targetRole === 'editor'
+        ? 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.'
+        : 'Can read everything but not change anything. Good for stakeholders.',
+      url: '',
+      isActive: false,
+    }
+  )
+
+  const activeParticipantsForRole = (targetRole: ShareRole, link: ShareLink) => (
+    participants.filter((participant) => (
+      !participant.revokedAt && (
+        participant.role === targetRole ||
+        (!!link.id && participant.shareLinkId === link.id)
+      )
+    ))
+  )
+
+  const linkStateLabel = (link: ShareLink) => {
+    if (link.isActive) return 'active'
+    if (link.id) return 'revoked/inactive'
+    return 'not generated'
   }
 
   const replaceRoleLink = (updated: ShareLink) => {
@@ -262,108 +309,123 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
             Owner only
           </div>
         )}
-        {!loading &&
-          !ownerOnly &&
-          links.map((link) => (
-            <div key={link.role} className={`share-row ${link.recommended ? 'recommended' : ''}`}>
-              <div className="ic">
-                <Icon name={link.icon as IconName} size={16} />
-              </div>
-              <div className="meta">
-                <div className="h">
-                  {link.role === 'owner'
-                    ? 'Owner'
-                    : link.role === 'editor'
-                    ? 'Editor invite'
-                    : 'Viewer (read-only)'}
-                  {link.recommended && <span className="badge ember">Recommended</span>}
-                </div>
-                <div className="d">{link.desc}</div>
-              </div>
-              <div className="link-line">
-                {link.isActive && link.url ? (
-                  <>
-                    <code>{link.url}</code>
-                    <button
-                      className={`copy ${copied === link.role ? 'copied' : ''}`}
-                      onClick={() => copy(link.role, link.url)}
-                    >
-                      {copied === link.role ? (
+        {!loading && !ownerOnly && SHARE_ROLES.map((targetRole) => {
+          const link = linkForRole(targetRole)
+          const roleParticipants = activeParticipantsForRole(targetRole, link)
+          return (
+            <section key={targetRole} className={`share-role-section ${link.recommended ? 'recommended' : ''}`}>
+              <button
+                type="button"
+                className="share-role-head"
+                onClick={() => toggleRole(targetRole)}
+                aria-expanded={expandedRoles[targetRole]}
+              >
+                <span className="ic">
+                  <Icon name={link.icon as IconName} size={16} />
+                </span>
+                <span className="share-role-title">
+                  <span>{ROLE_COPY[targetRole].title}</span>
+                  <span className={`link-state ${link.isActive ? 'active' : ''}`}>
+                    {linkStateLabel(link)}
+                  </span>
+                </span>
+                <Icon name={expandedRoles[targetRole] ? 'chevron-up' : 'chevron-down'} size={14} />
+              </button>
+
+              {expandedRoles[targetRole] && (
+                <div className="share-role-body">
+                  <div className="share-row compact">
+                    <div className="meta">
+                      <div className="h">
+                        {ROLE_COPY[targetRole].title}
+                        {link.recommended && <span className="badge ember">Recommended</span>}
+                      </div>
+                      <div className="d">{link.desc}</div>
+                    </div>
+                    <div className="link-line">
+                      {link.isActive && link.url ? (
                         <>
-                          <Icon name="check" size={13} /> Copied
+                          <code>{link.url}</code>
+                          <button
+                            className={`copy ${copied === link.role ? 'copied' : ''}`}
+                            onClick={() => copy(link.role, link.url)}
+                          >
+                            {copied === link.role ? (
+                              <>
+                                <Icon name="check" size={13} /> Copied
+                              </>
+                            ) : (
+                              <>
+                                <Icon name="link" size={13} /> Copy
+                              </>
+                            )}
+                          </button>
+                        </>
+                      ) : link.isActive ? (
+                        <span className="link-hint">Rotate to reveal a new link</span>
+                      ) : (
+                        <span className="link-hint">No active invite link</span>
+                      )}
+                    </div>
+                    <div className="actions">
+                      {link.isActive ? (
+                        <>
+                          <button className="mini" onClick={() => handleRegenerate(link.role)}>
+                            <Icon name="link" size={12} /> Rotate link
+                          </button>
+                          <button className="mini" onClick={() => handleRevoke(link.role)}>
+                            <Icon name="x" size={12} /> Revoke link
+                          </button>
                         </>
                       ) : (
-                        <>
-                          <Icon name="link" size={13} /> Copy
-                        </>
+                        <button className="mini" onClick={() => handleRegenerate(link.role)}>
+                          <Icon name="link" size={12} /> Generate link
+                        </button>
                       )}
-                    </button>
-                  </>
-                ) : link.isActive ? (
-                  <span style={{ fontSize: 12, color: 'var(--ink-4)', fontStyle: 'italic' }}>
-                    Rotate to reveal a new link
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 12, color: 'var(--ink-4)', fontStyle: 'italic' }}>
-                    No active invite link
-                  </span>
-                )}
-              </div>
-              <div className="actions">
-                {link.isActive ? (
-                  <>
-                    <button className="mini" onClick={() => handleRegenerate(link.role)}>
-                      <Icon name="link" size={12} /> Rotate
-                    </button>
-                    <button className="mini" onClick={() => handleRevoke(link.role)}>
-                      <Icon name="x" size={12} /> Revoke
-                    </button>
-                  </>
-                ) : (
-                  <button className="mini" onClick={() => handleRegenerate(link.role)}>
-                    <Icon name="link" size={12} /> Generate link
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-      </div>
-
-      {!ownerOnly && serverRoadmapId && (
-        <div className="participants-section">
-          <div className="section-heading">
-            <span>Participants</span>
-            {participantsLoading && <span className="muted">Loading…</span>}
-          </div>
-          <div className="participants-list">
-            {!participantsLoading && participants.length === 0 && (
-              <div className="participant-row muted">No participants yet.</div>
-            )}
-            {participants.map((participant) => (
-              <div
-                key={participant.id}
-                className={`participant-row ${participant.revokedAt ? 'revoked' : ''}`}
-              >
-                <div className="participant-main">
-                  <div className="participant-name">
-                    {participant.displayName}
-                    {participant.isCurrentParticipant && <span className="badge ember">Current</span>}
-                    {participant.revokedAt && <span className="badge">Revoked</span>}
+                    </div>
+                    {!link.isActive && roleParticipants.length > 0 && (
+                      <div className="share-role-note">
+                        Existing users keep access until revoked individually.
+                      </div>
+                    )}
                   </div>
-                  <div className="participant-meta">
-                    {participant.role} · Joined {formatDate(participant.createdAt)} · Last seen {formatDate(participant.lastSeenAt)}
+
+                  <div className="participants-section">
+                    <div className="section-heading">
+                      <span>Joined users</span>
+                      {participantsLoading && <span className="muted">Loading…</span>}
+                    </div>
+                    <div className="participants-list">
+                      {!participantsLoading && roleParticipants.length === 0 && (
+                        <div className="participant-row muted">No joined users for this role.</div>
+                      )}
+                      {roleParticipants.map((participant) => (
+                        <div key={participant.id} className="participant-row">
+                          <div className="participant-main">
+                            <div className="participant-name">
+                              {participant.displayName}
+                              <span className="badge">{ROLE_COPY[participant.role].peopleTitle}</span>
+                              {participant.isCurrentParticipant && <span className="badge ember">Current session</span>}
+                            </div>
+                            <div className="participant-meta">
+                              {participant.accessSourceLabel || 'Legacy / unknown link'} · Joined {formatDate(participant.createdAt)} · Last seen {formatDate(participant.lastSeenAt)}
+                            </div>
+                          </div>
+                          {!participant.isCurrentParticipant && (
+                            <button className="mini" onClick={() => handleRevokeParticipant(participant)}>
+                              <Icon name="x" size={12} /> Revoke user
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                {!participant.revokedAt && !participant.isCurrentParticipant && (
-                  <button className="mini" onClick={() => handleRevokeParticipant(participant)}>
-                    <Icon name="x" size={12} /> Revoke
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              )}
+            </section>
+          )
+        })}
+      </div>
     </Modal>
   )
 }
