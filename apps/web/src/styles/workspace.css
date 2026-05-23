@@ -65,9 +65,17 @@
   min-width: 78px;
   white-space: nowrap;
   flex: 0 0 auto;
+  line-height: 1;
 }
 .app-header .header-save-label {
   display: inline-block;
+  line-height: 1;
+}
+/* Force consistent line-height on every interactive element in the header */
+.app-header .btn,
+.app-header .iconbtn,
+.app-header .roadmap-menu-trigger,
+.app-header .theme-toggle {
   line-height: 1;
 }
 /* Ensure the roadmap-switcher div (which wraps the trigger button) aligns as a
@@ -1083,7 +1091,8 @@
 
 .iconbtn {
   width: 36px; height: 36px;
-  display: flex; align-items: center; justify-content: center;
+  display: inline-flex; align-items: center; justify-content: center;
+  line-height: 1;
   color: var(--ink-4);
   background: transparent;
   border: 1px solid transparent;
@@ -1174,8 +1183,8 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 480px — mobile: collapse secondary controls into More menu ──────────── */
-@media (max-width: 480px) {
+/* ── 640px — mobile: collapse secondary controls into More menu ──────────── */
+@media (max-width: 640px) {
   .header-secondary { display: none; }
   .header-more { display: flex; }
 }
@@ -1208,44 +1217,16 @@
   }
 }
 
-/* ── 600px — mobile: stacked header, full-width search, full-width panels ── */
+/* ── 600px — mobile: compact single-row header, full-width search, full-width panels ── */
 @media (max-width: 600px) {
-  /* Header: two-row stacked layout
-     Row 1: [Brand] [badge] [→spacer] [actions]
-     Row 2: [roadmap name — full width]
-  */
+  /* Header: single compact row — roadmap title lives in the workspace H1 below */
   .app-header {
-    flex-wrap: wrap;
-    align-items: center;
     padding: 10px 16px;
     gap: 6px;
-    row-gap: 0;
   }
-  /* Explicit ordering so crumbs wraps to its own row */
-  .app-header .brand-mini { order: 1; flex: 0 0 auto; }
-  .app-header .badge      { order: 2; flex: 0 0 auto; font-size: 10.5px; padding: 3px 8px; }
-  .app-header .spacer     { order: 3; flex: 1; min-width: 0; }
-  .app-header .actions    { order: 4; flex: 0 0 auto; gap: 4px; }
-  /* Override tablet's display:none — show name in row 2 */
-  .app-header .crumbs {
-    order: 5;
-    flex-basis: 100%;
-    display: flex;
-    border-left: none;
-    margin-left: 0;
-    padding-left: 0;
-    padding-bottom: 6px;
-    max-width: 100%;
-    font-size: 15px;
-    font-weight: 600;
-  }
-  .app-header .crumbs .active {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    white-space: normal;
-  }
+  /* Crumbs already hidden by the 760px rule; ensure no second row appears */
+  .app-header .badge { font-size: 10.5px; padding: 3px 8px; }
+  .app-header .actions { gap: 4px; }
   .app-header .header-save-btn { width: 36px; min-width: 36px; padding: 0; }
   .app-header .header-save-label { display: none; }
 
