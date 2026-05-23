@@ -161,6 +161,12 @@ Defined in `.env.example`. Copy to `.env.local` for local overrides.
 
 ---
 
+## Manual QA
+
+See [docs/manual-qa.md](docs/manual-qa.md) for the full pre-release QA checklist (30 sections, covers all features, blocker criteria, known limitations, and deployment verification).
+
+---
+
 ## Manual MVP test flow
 
 Quick path:
