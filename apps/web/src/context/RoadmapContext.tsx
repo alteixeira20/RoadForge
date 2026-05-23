@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, ty
 import type { Phase, ShareRole } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage, type RoadmapCache } from '@/lib/storage'
+import { normalizePhasesProgress } from '@/lib/phase-progress'
 import {
   getRoadmap,
   getEventTicket,
@@ -92,7 +93,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
     if (rc) {
       setRoadmapNameState(rc.roadmapName)
-      setPhasesState(rc.phases)
+      setPhasesState(normalizePhasesProgress(rc.phases))
       setSavedState(rc.saved)
       setOwnerDisplayNameState(rc.ownerDisplayName)
       setUpdatedAtState(rc.updatedAt)
@@ -112,7 +113,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
           setIsHydratingServer(false)
           setBackendUnavailableRoadmapId(null)
           setRoadmapNameState(loaded.roadmap.name)
-          setPhasesState(loaded.phases)
+          const normalizedLoadedPhases = normalizePhasesProgress(loaded.phases)
+          setPhasesState(normalizedLoadedPhases)
           setOwnerDisplayNameState(loaded.ownerDisplayName)
           setUpdatedAtState(loaded.updatedAt)
           setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
@@ -120,7 +122,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
           storage.setRoadmapCache(targetId, {
             roadmapName: loaded.roadmap.name,
-            phases: loaded.phases,
+            phases: normalizedLoadedPhases,
             saved: true,
             ownerDisplayName: loaded.ownerDisplayName,
             updatedAt: loaded.updatedAt,
@@ -229,8 +231,9 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
             }
 
             getRoadmap(serverRoadmapId, sessionToken).then((loaded) => {
+              const normalizedSsePhases = normalizePhasesProgress(loaded.phases)
               setRoadmapNameState(loaded.roadmap.name)
-              setPhasesState(loaded.phases)
+              setPhasesState(normalizedSsePhases)
               setOwnerDisplayNameState(loaded.ownerDisplayName)
               setUpdatedAtState(loaded.updatedAt)
               setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
@@ -242,7 +245,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
                   storage.setRoadmapCache(activeId, {
                     ...rc,
                     roadmapName: loaded.roadmap.name,
-                    phases: loaded.phases,
+                    phases: normalizedSsePhases,
                     ownerDisplayName: loaded.ownerDisplayName,
                     updatedAt: loaded.updatedAt,
                     isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
@@ -345,11 +348,12 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setPhases = useCallback((p: Phase[]) => {
-    setPhasesState(p)
+    const normalized = normalizePhasesProgress(p)
+    setPhasesState(normalized)
     const id = storage.getActiveRoadmapId()
     if (id) {
       const rc = storage.getRoadmapCache(id)
-      if (rc) storage.setRoadmapCache(id, { ...rc, phases: p })
+      if (rc) storage.setRoadmapCache(id, { ...rc, phases: normalized })
     }
   }, [])
 
@@ -481,9 +485,10 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
   const createLocalRoadmap = useCallback((name: string, nextPhases: Phase[]) => {
     const newId = storage.createLocalDraftId()
+    const normalizedPhases = normalizePhasesProgress(nextPhases)
     const cache: RoadmapCache = {
       roadmapName: name,
-      phases: nextPhases,
+      phases: normalizedPhases,
       saved: false,
       ownerDisplayName: null,
       updatedAt: null,
@@ -500,7 +505,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setLocks({})
     setActiveRoadmapIdState(newId)
     setRoadmapNameState(name)
-    setPhasesState(nextPhases)
+    setPhasesState(normalizedPhases)
     setSavedState(false)
     setServerRoadmapIdState(null)
     setSessionTokenState(null)
