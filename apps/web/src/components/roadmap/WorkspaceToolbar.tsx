@@ -132,7 +132,7 @@ export function WorkspaceToolbar({
         <button
           className="collapse-all"
           onClick={onOpenTeam}
-          title="View assigned work by person"
+          title="View joined collaborators"
         >
           <Icon name="users" size={14} /> Team
         </button>

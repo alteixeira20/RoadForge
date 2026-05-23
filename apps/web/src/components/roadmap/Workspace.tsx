@@ -126,12 +126,13 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
   const totalDone = allTasks.filter((t) => t.done).length
   const nextReadyCount = allTasks.filter((t) => t.next && !t.done).length
+  const canViewTeam = !!serverRoadmapId && !!sessionToken
 
   // ─── Effective State ───────────────────────────────────────────────────────
 
   useEffect(() => {
+    setParticipants([])
     if (!serverRoadmapId || !sessionToken || role !== 'owner') {
-      setParticipants([])
       return
     }
     let cancelled = false
@@ -145,13 +146,22 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     return () => { cancelled = true }
   }, [serverRoadmapId, sessionToken, role])
 
+  useEffect(() => {
+    if (!canViewTeam && showTeam) setShowTeam(false)
+  }, [canViewTeam, showTeam])
+
   const assignmentNames = useMemo(() => (
+    dedupeNames(allTasks.flatMap((task) => getTaskAssignees(task)))
+      .sort((a, b) => a.localeCompare(b))
+  ), [allTasks])
+
+  const taskEditorAssigneeNames = useMemo(() => (
     dedupeNames([
       ...participants.filter((p) => !p.revokedAt).map((p) => p.displayName),
-      ...allTasks.flatMap((task) => getTaskAssignees(task)),
+      ...assignmentNames,
       displayName,
     ]).sort((a, b) => a.localeCompare(b))
-  ), [participants, allTasks, displayName])
+  ), [participants, assignmentNames, displayName])
 
   const peopleFilterOptions = useMemo(() => {
     return assignmentNames.map((person) => ({
@@ -159,6 +169,13 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       label: person,
     }))
   }, [assignmentNames])
+
+  useEffect(() => {
+    if (!taskFilter.startsWith('person:')) return
+    const selectedName = taskFilter.slice('person:'.length).toLowerCase()
+    const stillExists = assignmentNames.some((name) => name.toLowerCase() === selectedName)
+    if (!stillExists) setTaskFilter('all')
+  }, [assignmentNames, taskFilter])
 
   const taskFilterOptions = useMemo(() => ([
     { value: 'all' as TaskFilter, label: 'All' },
@@ -947,7 +964,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onOpenTeam={() => setShowTeam(true)}
           onOpenVersions={() => setShowVersions(true)}
           hasServerActivity={!!serverRoadmapId && !!sessionToken}
-          canViewTeam={!readOnly}
+          canViewTeam={canViewTeam}
           canViewVersions={role === 'owner' && !!serverRoadmapId && !!sessionToken}
         />
         <PhaseList
@@ -970,7 +987,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onReorderSubtasks={handleReorderSubtasks}
           onReorderPhases={handleReorderPhases}
           hasCycle={hasCycle}
-          assignmentNames={assignmentNames}
+          assignmentNames={taskEditorAssigneeNames}
         />
       </div>
 
@@ -997,9 +1014,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         />
       )}
 
-      {showTeam && (
+      {showTeam && canViewTeam && (
         <TeamPanel
-          tasks={allTasks}
           participants={participants}
           onClose={() => setShowTeam(false)}
         />
