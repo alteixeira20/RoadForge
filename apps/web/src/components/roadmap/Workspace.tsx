@@ -27,6 +27,21 @@ interface WorkspaceProps {
 }
 
 const normalizeFilterValue = (value: string) => value.trim().toLowerCase()
+const TAB_TITLE_MAX = 48
+
+function getShortRoadmapTitle(name: string): string {
+  const normalized = name.trim().replace(/\s+/g, ' ')
+  if (!normalized) return ''
+
+  const withoutTrailingRoadmap = normalized.replace(/\s+Roadmap$/i, '')
+  const base = withoutTrailingRoadmap.length >= 8 ? withoutTrailingRoadmap : normalized
+  if (base.length <= TAB_TITLE_MAX) return base
+
+  const clipped = base.slice(0, TAB_TITLE_MAX - 3)
+  const wordBoundary = clipped.lastIndexOf(' ')
+  const safeClip = wordBoundary >= 24 ? clipped.slice(0, wordBoundary) : clipped
+  return `${safeClip.trimEnd()}...`
+}
 
 const taskMatchesFilter = (task: Task, filter: TaskFilter, displayName: string) => {
   if (filter === 'all') return true
@@ -162,7 +177,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const effectiveOpenPhases = isFiltering ? visiblePhases.map((phase) => phase.id) : openPhases
 
   useEffect(() => {
-    const title = roadmapName.trim()
+    const title = getShortRoadmapTitle(roadmapName)
     document.title = title ? `${title} · RoadForge` : 'RoadForge'
     return () => {
       document.title = 'RoadForge'

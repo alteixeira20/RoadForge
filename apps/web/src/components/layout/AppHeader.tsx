@@ -42,8 +42,6 @@ export function AppHeader({
       <Brand href="/" className="brand-mini" />
 
       <div className="crumbs">
-        <span>RoadForge</span>
-        <span className="sep">/</span>
         <span className="active">{roadmapName}</span>
       </div>
 

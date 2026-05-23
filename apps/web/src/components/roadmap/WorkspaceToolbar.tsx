@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import type { TaskFilter } from '@/types/roadmap'
 
@@ -41,6 +42,31 @@ export function WorkspaceToolbar({
   canViewTeam,
   canViewVersions,
 }: WorkspaceToolbarProps) {
+  const [filterOpen, setFilterOpen] = useState(false)
+  const filterRef = useRef<HTMLDivElement | null>(null)
+  const selectedFilter = taskFilterOptions.find((option) => option.value === taskFilter) ?? taskFilterOptions[0]
+
+  useEffect(() => {
+    if (!filterOpen) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (target instanceof Node && filterRef.current?.contains(target)) return
+      setFilterOpen(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFilterOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [filterOpen])
+
   return (
     <div className="workspace-bar">
       <div className="search">
@@ -53,19 +79,39 @@ export function WorkspaceToolbar({
         <span className="kbd">⌘ K</span>
       </div>
 
-      <label className="task-filter">
-        <span>Filter</span>
-        <select
-          value={taskFilter}
-          onChange={(e) => onTaskFilterChange(e.target.value as TaskFilter)}
+      <div className="task-filter" ref={filterRef}>
+        <span className="task-filter-label">Filter</span>
+        <button
+          type="button"
+          className={`task-filter-trigger ${filterOpen ? 'open' : ''}`}
+          aria-haspopup="listbox"
+          aria-expanded={filterOpen}
+          onClick={() => setFilterOpen((open) => !open)}
         >
-          {taskFilterOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+          <span className="task-filter-current">{selectedFilter?.label ?? 'All'}</span>
+          <Icon name="chevron-down" size={13} />
+        </button>
+        {filterOpen && (
+          <div className="task-filter-menu" role="listbox" aria-label="Task filter">
+            {taskFilterOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={option.value === taskFilter}
+                className={option.value === taskFilter ? 'selected' : ''}
+                onClick={() => {
+                  onTaskFilterChange(option.value)
+                  setFilterOpen(false)
+                }}
+              >
+                <span>{option.label}</span>
+                {option.value === taskFilter && <Icon name="check" size={13} />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       
       <button
         className="collapse-all"
