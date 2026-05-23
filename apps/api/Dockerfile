@@ -31,4 +31,6 @@ ENV PYTHONPATH=/app/src
 
 EXPOSE 7878
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7878"]
+# Must run a single worker. lock_service, event_bus, and ticket_service are
+# in-memory singletons that cannot be shared across workers or processes.
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7878", "--workers", "1"]

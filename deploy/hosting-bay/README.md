@@ -58,6 +58,18 @@ make update
 `make update` runs `git pull --ff-only`, rebuilds images, updates containers,
 runs Alembic migrations, and prints container status plus log hints.
 
+**Schema-sensitive releases:** If the release you are pulling includes new files
+under `apps/api/alembic/versions/`, the migration step is critical. The sequence
+is already enforced by `make update` (rebuild → up → migrate), but do not
+interrupt it between the `up` and `migrate` steps.
+
+**Single-worker API:** The RoadForge API must run exactly one Uvicorn worker.
+The in-memory lock service, SSE event bus, and realtime ticket service are
+process-local singletons — multiple workers would give each request its own
+isolated copy, breaking collaboration. The `--workers 1` flag is set in the
+Dockerfile CMD and must not be overridden in compose overrides or orchestration
+configs.
+
 ## Validation
 
 ```bash

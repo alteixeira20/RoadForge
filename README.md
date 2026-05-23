@@ -79,6 +79,9 @@ Before self-hosting or releasing RoadForge publicly:
 - **Configure proxy logs** — invite tokens appear in URLs; ensure your proxy is configured not to log full query strings if possible, or restrict log access.
 - **Run security audits** — regularly run `make audit` and address high-severity vulnerabilities.
 - **CSP required** — a strict Content Security Policy is deferred in the current MVP but should be implemented before any multi-user public deployment.
+- **Single-worker API** — the API uses in-memory singletons for locks, SSE, and realtime state. Always run exactly one Uvicorn worker (`--workers 1` is set in the Dockerfile CMD). Do not override this in compose files or orchestration configs.
+- **Run `make check` before deploying** — this runs `pnpm lint`, `pnpm typecheck`, and `pnpm build`. All three must pass with zero errors and zero warnings.
+- **Database migrations before rollback** — Alembic migrations are not reversible by default. Take a Postgres snapshot before any release that includes new files under `apps/api/alembic/versions/`.
 
 ---
 
