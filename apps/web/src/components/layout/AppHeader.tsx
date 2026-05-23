@@ -4,6 +4,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Brand } from '@/components/ui/Brand'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { RoadmapSwitcher } from '@/components/roadmap/RoadmapSwitcher'
+import { HeaderMoreMenu } from '@/components/layout/HeaderMoreMenu'
 import type { SyncStatus } from '@/types/roadmap'
 
 const BADGE_LABEL: Record<SyncStatus, string> = {
@@ -73,18 +74,22 @@ export function AppHeader({
       <div className="actions">
         {!readOnly && (
           <>
-            <button className="iconbtn" title="Import / Export" onClick={onIO}>
-              <Icon name="export" size={16} />
-            </button>
-            {(!isServerBacked || canManageShare) && (
-              <button
-                className="iconbtn"
-                title={isServerBacked ? 'Share' : 'Save to RoadForge'}
-                onClick={isServerBacked ? onShare : onSave}
-              >
-                <Icon name={isServerBacked ? 'share' : 'cloud'} size={16} />
+            {/* Secondary icon buttons — hidden on mobile, surfaced in More menu */}
+            <div className="header-secondary">
+              <button className="iconbtn" title="Import / Export" onClick={onIO}>
+                <Icon name="export" size={16} />
               </button>
-            )}
+              {(!isServerBacked || canManageShare) && (
+                <button
+                  className="iconbtn"
+                  title={isServerBacked ? 'Share' : 'Save to RoadForge'}
+                  onClick={isServerBacked ? onShare : onSave}
+                >
+                  <Icon name={isServerBacked ? 'share' : 'cloud'} size={16} />
+                </button>
+              )}
+            </div>
+            {/* Primary action — always visible */}
             {!isServerBacked ? (
               <button
                 className="btn sm header-save-btn"
@@ -127,8 +132,13 @@ export function AppHeader({
             <Icon name="plus" size={14} stroke="#fff" /> Create your own
           </button>
         )}
-        <ThemeToggle />
-        <RoadmapSwitcher />
+        {/* Desktop secondary controls — hidden on mobile, surfaced in More menu */}
+        <div className="header-secondary">
+          <ThemeToggle />
+          <RoadmapSwitcher />
+        </div>
+        {/* Mobile collapsed menu — hidden on desktop */}
+        <HeaderMoreMenu onIO={!readOnly ? onIO : undefined} />
       </div>
     </header>
   )

@@ -70,6 +70,74 @@
   display: inline-block;
   line-height: 1;
 }
+/* Ensure the roadmap-switcher div (which wraps the trigger button) aligns as a
+   proper flex item; without this, inline-level content inside the block div
+   can cause the button to appear slightly above the flex midline. */
+.app-header .roadmap-switcher {
+  display: flex;
+  align-items: center;
+}
+/* Secondary controls group — flex row on desktop, hidden on mobile */
+.header-secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* More menu — hidden on desktop, visible on mobile */
+.header-more {
+  display: none;
+  align-items: center;
+  position: relative;
+}
+/* More panel dropdown */
+.header-more-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  max-width: calc(100vw - 24px);
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+}
+.header-more-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  color: var(--ink-2);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.header-more-row:hover { background: var(--bg-3); color: var(--ink); }
+.header-more-sep { height: 1px; background: var(--border); margin: 4px 0; }
+.header-more-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+}
+.header-more-label {
+  font-size: 11px;
+  color: var(--ink-4);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 /* Synced/live badge variant */
 .app-header .badge.synced,
@@ -1014,8 +1082,8 @@
 .dep-row .dst.done { color: var(--ink-3); }
 
 .iconbtn {
-  width: 32px; height: 32px;
-  display: grid; place-items: center;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
   color: var(--ink-4);
   background: transparent;
   border: 1px solid transparent;
@@ -1105,6 +1173,12 @@
 .dep-row .btn-remove:hover { color: var(--ember); background: rgba(217,116,66,0.1); }
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
+
+/* ── 480px — mobile: collapse secondary controls into More menu ──────────── */
+@media (max-width: 480px) {
+  .header-secondary { display: none; }
+  .header-more { display: flex; }
+}
 
 /* ── 720px — minor banner polish ────────────────────────────────────────── */
 @media (max-width: 720px) {
