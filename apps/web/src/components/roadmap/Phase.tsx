@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -97,20 +97,49 @@ export function Phase({
   const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
   const isActive = phase.status === 'active'
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [ownsColorLock, setOwnsColorLock] = useState(false)
+  const colorControlRef = useRef<HTMLDivElement | null>(null)
+  const ownsColorLockRef = useRef(false)
 
   const { locks, serverRoadmapId, sessionToken, participantId } = useRoadmap()
   const { toast, showToast } = useToastState()
 
   const colorLockTarget = `phase:${phase.id}`
   const colorLock = locks[colorLockTarget]
-  const isColorLockedByMe = colorLock?.participantId === participantId
+  const isColorLockedByMe = ownsColorLock || (!!participantId && colorLock?.participantId === participantId)
   const isColorLockedByOther = !!colorLock && !isColorLockedByMe
+
+  const releaseColorLock = useCallback(async () => {
+    if (!ownsColorLockRef.current) return
+
+    ownsColorLockRef.current = false
+    setOwnsColorLock(false)
+
+    if (readOnly || !serverRoadmapId || !sessionToken) return
+
+    try {
+      await releaseLock(serverRoadmapId, colorLockTarget, sessionToken)
+    } catch {
+      // Local UI recovers immediately; the server TTL handles any missed cleanup.
+    }
+  }, [readOnly, serverRoadmapId, sessionToken, colorLockTarget])
+
+  const closeColorPicker = useCallback(() => {
+    setShowColorPicker(false)
+    void releaseColorLock()
+  }, [releaseColorLock])
 
   const tryAcquireColorLock = async (): Promise<boolean> => {
     if (readOnly) return false
-    if (!serverRoadmapId || !sessionToken) return true
+    if (!serverRoadmapId || !sessionToken) {
+      ownsColorLockRef.current = true
+      setOwnsColorLock(true)
+      return true
+    }
     try {
       await acquireLock(serverRoadmapId, colorLockTarget, sessionToken)
+      ownsColorLockRef.current = true
+      setOwnsColorLock(true)
       return true
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
@@ -139,9 +168,32 @@ export function Phase({
 
     return () => {
       clearInterval(interval)
-      releaseLock(serverRoadmapId, colorLockTarget, sessionToken).catch(() => {})
+      void releaseColorLock()
     }
-  }, [showColorPicker, readOnly, serverRoadmapId, sessionToken, colorLockTarget])
+  }, [showColorPicker, readOnly, serverRoadmapId, sessionToken, colorLockTarget, releaseColorLock])
+
+  useEffect(() => {
+    if (!showColorPicker) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (target instanceof Node && colorControlRef.current?.contains(target)) return
+      closeColorPicker()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [showColorPicker, closeColorPicker])
+
+  useEffect(() => {
+    if (!isOpen && showColorPicker) closeColorPicker()
+  }, [isOpen, showColorPicker, closeColorPicker])
+
+  useEffect(() => {
+    return () => {
+      void releaseColorLock()
+    }
+  }, [releaseColorLock])
 
   const displayStatus = allDone ? 'done' : (phase.status === 'done' ? 'active' : phase.status)
 
@@ -223,7 +275,7 @@ export function Phase({
           </span>
         )}
         {!readOnly && !isColorLockedByOther && (
-          <div className="phase-color-control" onClick={(e) => e.stopPropagation()}>
+          <div ref={colorControlRef} className="phase-color-control" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               className="phase-color-trigger"
@@ -232,7 +284,7 @@ export function Phase({
               aria-expanded={showColorPicker}
               onClick={async () => {
                 if (showColorPicker) {
-                  setShowColorPicker(false)
+                  closeColorPicker()
                   return
                 }
                 const success = await tryAcquireColorLock()
@@ -252,7 +304,7 @@ export function Phase({
                     aria-label={preset.label}
                     onClick={() => {
                       onUpdatePhaseColor(phase.id, preset.value)
-                      setShowColorPicker(false)
+                      closeColorPicker()
                     }}
                   >
                     <span style={{ backgroundColor: preset.value }} />
