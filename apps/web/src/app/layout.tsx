@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Lexend, JetBrains_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { RoadmapProvider } from '@/context/RoadmapContext'
+import { ThemeAwareFavicon } from '@/components/ui/ThemeAwareFavicon'
 import './globals.css'
 
 const lexend = Lexend({
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="dark" className={`${lexend.variable} ${jetbrainsMono.variable}`}>
       <body>
+        <ThemeAwareFavicon />
         <ThemeProvider>
           <RoadmapProvider>{children}</RoadmapProvider>
         </ThemeProvider>
