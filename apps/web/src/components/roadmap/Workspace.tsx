@@ -59,6 +59,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const {
     displayName,
     roadmapName,
+    setRoadmapName,
     phases,
     setPhases,
     saved,
