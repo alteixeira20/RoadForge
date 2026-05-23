@@ -225,7 +225,9 @@ class ShareLinkResponse(BaseModel):
     role: ShareRole
     # Readable prefix shown in UI; not the secret token.
     token_prefix: str | None = None
-    # Full join URL with the raw token embedded; returned only on create/rotate.
+    # Full join URL with the raw token embedded.
+    # Owner/editor URLs are returned only on create/rotate.
+    # Active viewer URLs may also be returned by owner-only share-link listing.
     url: str | None = None
     is_active: bool
     created_at: datetime | None = None

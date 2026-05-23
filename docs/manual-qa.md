@@ -65,12 +65,13 @@ Open four browser contexts and keep them active throughout:
 ## 4 — Share modal (Owner)
 
 - [ ] Click **Share**. Modal opens.
-- [ ] Three role rows visible: Owner, Editor, Viewer.
-- [ ] All three show "Rotate to reveal a new link" (no URL yet).
+- [ ] Three role rows visible: Private owner link, Private editor invite, Public viewer link.
+- [ ] Owner/editor active links do not reveal raw URLs after fetch.
+- [ ] Public viewer link explains that anyone with the link can view read-only.
 - [ ] Click **Rotate link** on Editor row → URL appears. Copy it (editor link).
-- [ ] Click **Rotate link** on Viewer row → URL appears. Copy it (viewer link).
+- [ ] Click **Reset link** or **Generate public link** on Viewer row → URL appears. Copy it (viewer link).
 - [ ] Owner row: only shows current session info; no join URL exposed.
-- [ ] Close and reopen Share modal. Editor and Viewer rows show "Active link" but NOT the raw URL (url is null after re-fetch from server).
+- [ ] Close and reopen Share modal. Editor row shows "Active link" but NOT the raw URL. Viewer row still shows a copyable public read-only URL.
 
 ---
 

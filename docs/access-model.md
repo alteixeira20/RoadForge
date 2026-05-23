@@ -21,9 +21,10 @@ http://localhost:3020/join?token=ed_<43-char-random-token>
 ```
 
 **Security properties:**
-- The raw token is generated with `secrets.token_urlsafe(32)` and only returned in the HTTP response at creation or rotation time. It is never stored raw — only a SHA-256 hex digest is persisted in the database.
-- Once a link is rotated or revoked, the old token hash is overwritten. Old links immediately stop working.
-- `GET /api/roadmaps/{id}/share-links` returns `url: null` — the join URL is only available at create/rotate time.
+- Owner/editor raw tokens are generated with `secrets.token_urlsafe(32)` and only returned in the HTTP response at creation or rotation time. They are never stored raw — only SHA-256 hex digests are persisted.
+- Viewer links are public read-only demo links. The active viewer token may be stored so owners can re-copy the same public URL later.
+- Once a link is rotated or revoked, the old token hash is overwritten or deactivated. Old links immediately stop working.
+- `GET /api/roadmaps/{id}/share-links` keeps owner/editor `url: null`; active viewer links may return a copyable public read-only URL.
 
 The invite link is the durable access handle. Losing it means losing that role's access path (until the owner rotates a new one).
 

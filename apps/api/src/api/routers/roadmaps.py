@@ -108,7 +108,8 @@ async def fetch_share_links(
     authorization: str | None = Header(default=None),
 ) -> list[ShareLinkResponse]:
     await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
-    return await get_share_links(db, roadmap_id)
+    settings = get_settings()
+    return await get_share_links(db, roadmap_id, settings.web_base_url)
 
 
 @router.post(

@@ -12,9 +12,9 @@ import type { IconName } from '@/components/ui/Icon'
 const SHARE_ROLES: ShareRole[] = ['owner', 'editor', 'viewer']
 
 const ROLE_COPY: Record<ShareRole, { title: string; peopleTitle: string }> = {
-  owner: { title: 'Owner link', peopleTitle: 'Owner' },
-  editor: { title: 'Editor link', peopleTitle: 'Editor' },
-  viewer: { title: 'Viewer link', peopleTitle: 'Viewer' },
+  owner: { title: 'Private owner link', peopleTitle: 'Owner' },
+  editor: { title: 'Private editor invite', peopleTitle: 'Editor' },
+  viewer: { title: 'Public viewer link', peopleTitle: 'Viewer' },
 }
 
 interface ShareModalProps {
@@ -150,6 +150,27 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
     return 'not generated'
   }
 
+  const linkHint = (targetRole: ShareRole, link: ShareLink) => {
+    if (link.isActive && targetRole === 'viewer') {
+      return 'Reset link to make this public viewer URL copyable'
+    }
+    if (link.isActive) return 'Rotate to reveal a new link'
+    if (targetRole === 'viewer') return 'No active public viewer link'
+    return 'No active invite link'
+  }
+
+  const rotateLabel = (targetRole: ShareRole) => (
+    targetRole === 'viewer' ? 'Reset link' : 'Rotate link'
+  )
+
+  const revokeLabel = (targetRole: ShareRole) => (
+    targetRole === 'viewer' ? 'Disable link' : 'Revoke link'
+  )
+
+  const generateLabel = (targetRole: ShareRole) => (
+    targetRole === 'viewer' ? 'Generate public link' : 'Generate link'
+  )
+
   const replaceRoleLink = (updated: ShareLink) => {
     setLinks((prev) => prev.map((l) => (l.role === updated.role ? updated : l)))
   }
@@ -231,14 +252,14 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       width={580}
       icon={{ name: 'share', plain: true }}
       title="Share this roadmap"
-      sub="Anyone with a link can join with the role you choose. Links are signed and revocable."
+      sub="Use private invite links for collaborators and a public read-only link for demos."
       footer={
         <>
           <span className="note">
             <Icon name="lock" size={12} />{' '}
             {isPasswordEnabled
               ? 'This roadmap is password protected — people need both the invite link and the password to join.'
-              : 'Share links carefully — anyone with a link can join with that role.'}
+              : 'The public viewer link is read-only. Owner and editor links are private credentials.'}
           </span>
           <span className="spacer" />
           <button className="btn" onClick={onClose}>
@@ -362,27 +383,32 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
                           </button>
                         </>
                       ) : link.isActive ? (
-                        <span className="link-hint">Rotate to reveal a new link</span>
+                        <span className="link-hint">{linkHint(targetRole, link)}</span>
                       ) : (
-                        <span className="link-hint">No active invite link</span>
+                        <span className="link-hint">{linkHint(targetRole, link)}</span>
                       )}
                     </div>
                     <div className="actions">
                       {link.isActive ? (
                         <>
                           <button className="mini" onClick={() => handleRegenerate(link.role)}>
-                            <Icon name="link" size={12} /> Rotate link
+                            <Icon name="link" size={12} /> {rotateLabel(targetRole)}
                           </button>
                           <button className="mini" onClick={() => handleRevoke(link.role)}>
-                            <Icon name="x" size={12} /> Revoke link
+                            <Icon name="x" size={12} /> {revokeLabel(targetRole)}
                           </button>
                         </>
                       ) : (
                         <button className="mini" onClick={() => handleRegenerate(link.role)}>
-                          <Icon name="link" size={12} /> Generate link
+                          <Icon name="link" size={12} /> {generateLabel(targetRole)}
                         </button>
                       )}
                     </div>
+                    {targetRole === 'viewer' && link.isActive && link.url && (
+                      <div className="share-role-note neutral">
+                        Anyone with this link can view this roadmap read-only. It is suitable for a README, portfolio, or live demo.
+                      </div>
+                    )}
                     {!link.isActive && roleParticipants.length > 0 && (
                       <div className="share-role-note">
                         Existing users keep access until revoked individually.

@@ -127,8 +127,9 @@ async def create_roadmap(
     """Persist a new roadmap from a local frontend snapshot.
 
     Writes one Roadmap, one owner Participant, three ShareLinks (owner/editor/
-    viewer), and one ActivityLog row in a single transaction. Raw tokens are
-    held only in local variables and returned in the response — never stored.
+    viewer), and one ActivityLog row in a single transaction. Owner/editor
+    raw tokens are held only in local variables and returned in the response.
+    Viewer raw tokens may be persisted because they are public read-only demo links.
     """
     now = datetime.now(timezone.utc)
     roadmap_id = generate_id("rm_")
@@ -157,7 +158,7 @@ async def create_roadmap(
     db.add(participant)
 
     # ── Share links — one per role ────────────────────────────────────────────
-    # Raw tokens live only in this dict and the response; only hashes are persisted.
+    # Owner/editor raw tokens live only in this dict and the response.
     raw_tokens: dict[str, str] = {}
     share_link_rows: list[ShareLink] = []
     for role, prefix in _SHARE_PREFIXES.items():
@@ -168,6 +169,7 @@ async def create_roadmap(
             roadmap_id=roadmap_id,
             role=role,
             token_hash=hash_token(raw),
+            public_token=raw if role == "viewer" else None,
             token_prefix=make_token_prefix(raw),
         )
         db.add(sl)
@@ -577,7 +579,11 @@ async def delete_roadmap(
     return {"ok": True}
 
 
-async def get_share_links(db: AsyncSession, roadmap_id: str) -> list[ShareLinkResponse]:
+async def get_share_links(
+    db: AsyncSession,
+    roadmap_id: str,
+    web_base_url: str,
+) -> list[ShareLinkResponse]:
     exists = await db.execute(
         select(Roadmap.id).where(Roadmap.id == roadmap_id, Roadmap.deleted_at.is_(None))
     )
@@ -607,8 +613,12 @@ async def get_share_links(db: AsyncSession, roadmap_id: str) -> list[ShareLinkRe
             ShareLinkResponse(
                 id=sl.id,
                 role=sl.role,  # type: ignore[arg-type]
-                token_prefix=None,
-                url=None,
+                token_prefix=sl.token_prefix,
+                url=(
+                    f"{web_base_url}/join?token={sl.public_token}"
+                    if sl.role == "viewer" and sl.is_active and sl.public_token
+                    else None
+                ),
                 is_active=sl.is_active,
                 created_at=sl.created_at,
                 rotated_at=sl.rotated_at,
@@ -643,6 +653,7 @@ async def rotate_share_link(
             roadmap_id=roadmap_id,
             role=role,
             token_hash=hash_token(raw_token),
+            public_token=raw_token if role == "viewer" else None,
             token_prefix=make_token_prefix(raw_token),
             is_active=True,
             rotated_at=now,
@@ -650,6 +661,7 @@ async def rotate_share_link(
         db.add(share_link)
     else:
         share_link.token_hash = hash_token(raw_token)
+        share_link.public_token = raw_token if role == "viewer" else None
         share_link.token_prefix = make_token_prefix(raw_token)
         share_link.is_active = True
         share_link.rotated_at = now
@@ -700,6 +712,8 @@ async def revoke_share_link(
         raise HTTPException(status_code=404, detail="Share link not found")
 
     share_link.is_active = False
+    if role == "viewer":
+        share_link.public_token = None
 
     db.add(ActivityLog(
         id=generate_id("al_"),

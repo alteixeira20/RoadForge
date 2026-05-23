@@ -164,7 +164,7 @@ function toRoadmap(r: ApiRoadmapResponse): Roadmap {
 const _LINK_META: Record<string, { icon: string; desc: string; recommended?: true }> = {
   owner:  { icon: 'shield', desc: 'Full control — manage settings, links, and members.' },
   editor: { icon: 'users',  desc: 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.', recommended: true },
-  viewer: { icon: 'circle', desc: 'Can read everything but not change anything. Good for stakeholders.' },
+  viewer: { icon: 'circle', desc: 'Anyone with this link can view this roadmap read-only. Good for public demos.' },
 }
 
 function toShareLink(r: ApiShareLinkResponse): ShareLink {

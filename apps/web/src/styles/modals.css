@@ -647,6 +647,11 @@
   font-size: 12px;
   line-height: 1.45;
 }
+.share-role-note.neutral {
+  border-color: var(--border-faint);
+  background: var(--bg-2);
+  color: var(--ink-3);
+}
 
 .participants-section {
   display: flex;

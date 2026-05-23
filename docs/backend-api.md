@@ -21,7 +21,7 @@ Health check. No body.
 
 ## POST /api/roadmaps
 
-Create a new roadmap. Returns the roadmap, three share links with raw join URLs, and the owner's session token. **The raw tokens in this response are never returned again.**
+Create a new roadmap. Returns the roadmap, three share links with raw join URLs, and the owner's session token. **Owner/editor raw tokens are never returned again after create or rotate. Viewer tokens may be returned later as a public read-only demo link.**
 
 **Request:**
 ```json
@@ -89,7 +89,7 @@ Create a new roadmap. Returns the roadmap, three share links with raw join URLs,
 ```
 
 **Security:**
-- Raw tokens exist only in this response and in local memory during the request. Only SHA-256 hashes are stored in the database.
+- Owner/editor raw tokens exist only in this response and in local memory during the request. Viewer raw tokens may be stored for active public read-only demo links. Token hashes are still used for join lookup.
 - `owner_session_token` is a one-time return. Store it client-side; it cannot be recovered.
 
 ---
@@ -193,7 +193,9 @@ Soft-delete a roadmap. Sets `deleted_at` timestamp. Broadcasts a `roadmap.delete
 
 ## GET /api/roadmaps/{roadmap_id}/share-links
 
-List active share links for a roadmap. **`url` is always `null` here** — join URLs containing raw tokens are only returned at create or rotate time.
+List share links for a roadmap. **Owner/editor `url` is always `null` here** — private invite URLs containing raw owner/editor tokens are only returned at create or rotate time. Active viewer links may include a public read-only `url` so owners can re-copy a stable demo link.
+
+**Requires:** `Authorization: Bearer <session_token>` with owner role.
 
 **Response 200:**
 ```json
@@ -215,11 +217,20 @@ List active share links for a roadmap. **`url` is always `null` here** — join 
     "is_active": true,
     "created_at": "2026-05-08T10:00:00Z",
     "rotated_at": "2026-05-08T11:00:00Z"
+  },
+  {
+    "id": "sl_wvu",
+    "role": "viewer",
+    "token_prefix": "vi_Mn3P",
+    "url": "http://localhost:3020/join?token=vi_<REDACTED>",
+    "is_active": true,
+    "created_at": "2026-05-08T10:00:00Z",
+    "rotated_at": null
   }
 ]
 ```
 
-Links are sorted owner → editor → viewer. Revoked links are excluded.
+Links are sorted owner → editor → viewer. Inactive links are returned with `is_active: false` and `url: null`.
 
 **Response 404:** Roadmap not found.
 
@@ -227,7 +238,7 @@ Links are sorted owner → editor → viewer. Revoked links are excluded.
 
 ## POST /api/roadmaps/{roadmap_id}/share-links/{role}/rotate
 
-Generate a new invite token for the given role. Invalidates the previous token immediately. Returns the new join URL with the raw token — **this is the only time the new token is exposed**.
+Generate a new invite token for the given role. Invalidates the previous token immediately. Returns the new join URL with the raw token. For owner/editor links, this is the only time the new token is exposed. For viewer links, the active read-only URL remains copyable from the owner-only share-link listing.
 
 `role` must be one of `owner`, `editor`, `viewer`. Other values return 422.
 
@@ -591,7 +602,7 @@ The token is returned once at roadmap creation (`owner_session_token`) or invite
 | `POST /api/roadmaps/{id}/locks` | owner or editor |
 | `DELETE /api/roadmaps/{id}/locks/{target}` | lock owner only |
 
-Public endpoints (no token required): `POST /api/roadmaps`, `POST /api/roadmaps/join`, `GET /api/roadmaps/{id}`, `GET /api/roadmaps/{id}/share-links`.
+Public endpoints (no token required): `POST /api/roadmaps`, `POST /api/roadmaps/join`, `GET /api/roadmaps/{id}`.
 
 ---
 
@@ -600,7 +611,7 @@ Public endpoints (no token required): `POST /api/roadmaps`, `POST /api/roadmaps/
 - **Session tokens enforced** — write endpoints verify `Authorization: Bearer` against hashed token in the database. Missing or invalid token returns 401; wrong role returns 403.
 - **Short-lived tickets** — SSE connections use 30-second tickets to avoid exposing long-lived session tokens in URLs.
 - **Optimistic Concurrency** — `PUT /api/roadmaps/{id}` accepts `last_updated_at`. Returns 409 if the database has a newer version.
-- **Raw tokens never stored** — only SHA-256 hex digests are in the database. Even a full DB dump does not expose working invite tokens.
+- **Private raw tokens not stored** — owner/editor invite tokens are stored only as SHA-256 hex digests. Viewer tokens may be stored while active because they are public read-only demo links.
 - **Passwords hashed** — PBKDF2-SHA256, 260,000 iterations, 16-byte random salt per password. Compared with `hmac.compare_digest`.
 - **Body size limit** — requests larger than 512 KB are rejected with 413 before parsing.
 - **Soft deletes** — roadmaps use `deleted_at` timestamp; no hard purge yet.

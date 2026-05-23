@@ -190,7 +190,7 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 | `GET` | `/api/roadmaps/{id}` | Fetch roadmap and phases |
 | `PUT` | `/api/roadmaps/{id}` | Update name and/or phases (full snapshot replace) |
 | `DELETE` | `/api/roadmaps/{id}` | Soft-delete roadmap; broadcasts `roadmap.deleted` SSE event |
-| `GET` | `/api/roadmaps/{id}/share-links` | List active share links (url is null — tokens not re-exposed) |
+| `GET` | `/api/roadmaps/{id}/share-links` | Owner-only share-link list; owner/editor URLs stay hidden, active viewer URL is copyable |
 | `POST` | `/api/roadmaps/{id}/share-links/{role}/rotate` | Generate new token for role, returns join URL |
 | `DELETE` | `/api/roadmaps/{id}/share-links/{role}` | Revoke share link (soft-deactivate) |
 | `GET` | `/api/roadmaps/{id}/participants` | List participants (owner only) |
