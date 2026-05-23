@@ -27,6 +27,17 @@ from api.services.password_service import hash_password, verify_password
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
 
+def _ensure_aware_utc(dt: datetime) -> datetime:
+    """Return dt as a timezone-aware UTC datetime.
+
+    If dt is naive (no tzinfo), treat it as UTC.
+    If dt already carries timezone info, convert to UTC.
+    """
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 # Role → invite-token prefix (non-secret hint only).
 _SHARE_PREFIXES: dict[str, str] = {
     "owner": "ow_",
@@ -265,7 +276,9 @@ async def update_roadmap(
     if payload.last_updated_at:
         # DB updated_at might have more precision than the client's version,
         # so we check if the DB is strictly newer.
-        if roadmap.updated_at > payload.last_updated_at:
+        # Coerce naive client timestamps to UTC to avoid TypeError on comparison.
+        client_ts = _ensure_aware_utc(payload.last_updated_at)
+        if roadmap.updated_at > client_ts:
             raise HTTPException(status_code=409, detail="Roadmap changed elsewhere")
 
     before_json: dict = {}

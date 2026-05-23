@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,5 +47,8 @@ async def require_participant(
 
     if participant.role not in allowed_roles:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    participant.last_seen_at = datetime.now(timezone.utc)
+    await db.flush()
 
     return participant
