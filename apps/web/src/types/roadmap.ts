@@ -4,6 +4,7 @@
 
 export type PhaseStatus = 'done' | 'active' | 'next' | 'future'
 export type WorkspaceMode = 'owner' | 'viewer'
+export type WorkspaceView = 'roadmap' | 'team'
 export type ExportFormat = 'json'
 export type ShareRole = 'owner' | 'editor' | 'viewer'
 export type Theme = 'dark' | 'light'

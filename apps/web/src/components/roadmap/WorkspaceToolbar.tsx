@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import type { TaskFilter } from '@/types/roadmap'
+import type { TaskFilter, WorkspaceView } from '@/types/roadmap'
 
 interface TaskFilterOption {
   value: TaskFilter
@@ -15,11 +15,12 @@ interface WorkspaceToolbarProps {
   taskFilter: TaskFilter
   taskFilterOptions: TaskFilterOption[]
   onTaskFilterChange: (filter: TaskFilter) => void
+  workspaceView: WorkspaceView
+  onWorkspaceViewChange: (view: WorkspaceView) => void
   allOpen: boolean
   onCollapseAll: () => void
   onExpandAll: () => void
   onOpenActivity: () => void
-  onOpenTeam: () => void
   onOpenVersions: () => void
   hasServerActivity: boolean
   canViewTeam: boolean
@@ -32,11 +33,12 @@ export function WorkspaceToolbar({
   taskFilter,
   taskFilterOptions,
   onTaskFilterChange,
+  workspaceView,
+  onWorkspaceViewChange,
   allOpen,
   onCollapseAll,
   onExpandAll,
   onOpenActivity,
-  onOpenTeam,
   onOpenVersions,
   hasServerActivity,
   canViewTeam,
@@ -69,56 +71,80 @@ export function WorkspaceToolbar({
 
   return (
     <div className="workspace-bar">
-      <div className="search">
-        <Icon name="search" size={15} stroke="var(--ink-3)" />
-        <input
-          placeholder="Search this roadmap…"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-        <span className="kbd">⌘ K</span>
-      </div>
-
-      <div className="task-filter" ref={filterRef}>
-        <span className="task-filter-label">Filter</span>
+      <div className="workspace-view-tabs" aria-label="Workspace views">
         <button
           type="button"
-          className={`task-filter-trigger ${filterOpen ? 'open' : ''}`}
-          aria-haspopup="listbox"
-          aria-expanded={filterOpen}
-          onClick={() => setFilterOpen((open) => !open)}
+          className={`workspace-view-tab ${workspaceView === 'roadmap' ? 'active' : ''}`}
+          onClick={() => onWorkspaceViewChange('roadmap')}
         >
-          <span className="task-filter-current">{selectedFilter?.label ?? 'All'}</span>
-          <Icon name="chevron-down" size={13} />
+          <Icon name="fold" size={14} /> Roadmap
         </button>
-        {filterOpen && (
-          <div className="task-filter-menu" role="listbox" aria-label="Task filter">
-            {taskFilterOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="option"
-                aria-selected={option.value === taskFilter}
-                className={option.value === taskFilter ? 'selected' : ''}
-                onClick={() => {
-                  onTaskFilterChange(option.value)
-                  setFilterOpen(false)
-                }}
-              >
-                <span>{option.label}</span>
-                {option.value === taskFilter && <Icon name="check" size={13} />}
-              </button>
-            ))}
-          </div>
+        {canViewTeam && (
+          <button
+            type="button"
+            className={`workspace-view-tab ${workspaceView === 'team' ? 'active' : ''}`}
+            onClick={() => onWorkspaceViewChange('team')}
+            title="View joined collaborators"
+          >
+            <Icon name="users" size={14} /> Team
+          </button>
         )}
       </div>
-      
-      <button
-        className="collapse-all"
-        onClick={allOpen ? onCollapseAll : onExpandAll}
-      >
-        <Icon name="fold" size={14} /> {allOpen ? 'Collapse all' : 'Expand all'}
-      </button>
+
+      {workspaceView === 'roadmap' && (
+        <>
+          <div className="search">
+            <Icon name="search" size={15} stroke="var(--ink-3)" />
+            <input
+              placeholder="Search this roadmap…"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+            <span className="kbd">⌘ K</span>
+          </div>
+
+          <div className="task-filter" ref={filterRef}>
+            <span className="task-filter-label">Filter</span>
+            <button
+              type="button"
+              className={`task-filter-trigger ${filterOpen ? 'open' : ''}`}
+              aria-haspopup="listbox"
+              aria-expanded={filterOpen}
+              onClick={() => setFilterOpen((open) => !open)}
+            >
+              <span className="task-filter-current">{selectedFilter?.label ?? 'All'}</span>
+              <Icon name="chevron-down" size={13} />
+            </button>
+            {filterOpen && (
+              <div className="task-filter-menu" role="listbox" aria-label="Task filter">
+                {taskFilterOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="option"
+                    aria-selected={option.value === taskFilter}
+                    className={option.value === taskFilter ? 'selected' : ''}
+                    onClick={() => {
+                      onTaskFilterChange(option.value)
+                      setFilterOpen(false)
+                    }}
+                  >
+                    <span>{option.label}</span>
+                    {option.value === taskFilter && <Icon name="check" size={13} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            className="collapse-all"
+            onClick={allOpen ? onCollapseAll : onExpandAll}
+          >
+            <Icon name="fold" size={14} /> {allOpen ? 'Collapse all' : 'Expand all'}
+          </button>
+        </>
+      )}
 
       <button
         className="collapse-all"
@@ -127,16 +153,6 @@ export function WorkspaceToolbar({
       >
         <Icon name="activity" size={14} /> Activity
       </button>
-
-      {canViewTeam && (
-        <button
-          className="collapse-all"
-          onClick={onOpenTeam}
-          title="View joined collaborators"
-        >
-          <Icon name="users" size={14} /> Team
-        </button>
-      )}
 
       {canViewVersions && (
         <button

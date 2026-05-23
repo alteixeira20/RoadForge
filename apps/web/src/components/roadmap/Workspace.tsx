@@ -17,10 +17,10 @@ import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
-import { createRoadmap, getParticipants, getRoadmap, isApiConnectionError, saveToServer } from '@/services/roadmap.service'
+import { createRoadmap, getParticipants, getRoadmap, isApiConnectionError, revokeParticipant, saveToServer } from '@/services/roadmap.service'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
-import type { WorkspaceMode, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
+import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -105,6 +105,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const { searchQuery, setSearchQuery, filteredPhases } = usePhaseSearch(phases)
   const { toast, showToast } = useToastState()
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('roadmap')
   const {
     showSave,
     showShare,
@@ -117,38 +118,48 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     closeIO,
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
-  const [showTeam, setShowTeam] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
   const [participants, setParticipants] = useState<Participant[]>([])
+  const [participantsLoading, setParticipantsLoading] = useState(false)
+  const [participantsError, setParticipantsError] = useState<string | null>(null)
   const [activityRefreshKey, setActivityRefreshKey] = useState(0)
   const [pendingActivityChanges, setPendingActivityChanges] = useState<ActivityChange[]>([])
 
   const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
   const totalDone = allTasks.filter((t) => t.done).length
   const nextReadyCount = allTasks.filter((t) => t.next && !t.done).length
-  const canViewTeam = !!serverRoadmapId && !!sessionToken
+  const canViewTeam = role === 'owner' && !!serverRoadmapId && !!sessionToken
 
   // ─── Effective State ───────────────────────────────────────────────────────
 
   useEffect(() => {
     setParticipants([])
+    setParticipantsError(null)
     if (!serverRoadmapId || !sessionToken || role !== 'owner') {
+      setParticipantsLoading(false)
       return
     }
     let cancelled = false
+    setParticipantsLoading(true)
     getParticipants(serverRoadmapId, sessionToken)
       .then((data) => {
         if (!cancelled) setParticipants(data)
       })
       .catch(() => {
-        if (!cancelled) setParticipants([])
+        if (!cancelled) {
+          setParticipants([])
+          setParticipantsError('Could not load team members.')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setParticipantsLoading(false)
       })
     return () => { cancelled = true }
   }, [serverRoadmapId, sessionToken, role])
 
   useEffect(() => {
-    if (!canViewTeam && showTeam) setShowTeam(false)
-  }, [canViewTeam, showTeam])
+    if (!canViewTeam && workspaceView === 'team') setWorkspaceView('roadmap')
+  }, [canViewTeam, workspaceView])
 
   const assignmentNames = useMemo(() => (
     dedupeNames(allTasks.flatMap((task) => getTaskAssignees(task)))
@@ -896,6 +907,36 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     }
   }
 
+  const handleRevokeTeamParticipant = async (participant: Participant) => {
+    if (!serverRoadmapId || !sessionToken) return
+    if (participant.isCurrentParticipant) {
+      showToast('You cannot revoke your current owner session.')
+      return
+    }
+    if (!window.confirm(`Revoke access for ${participant.displayName}?`)) return
+
+    try {
+      await revokeParticipant(serverRoadmapId, participant.id, sessionToken)
+      showToast('Participant revoked')
+      setParticipants((current) => current.map((item) => (
+        item.id === participant.id
+          ? { ...item, revokedAt: new Date().toISOString() }
+          : item
+      )))
+      setParticipantsError(null)
+      try {
+        setParticipants(await getParticipants(serverRoadmapId, sessionToken))
+      } catch {
+        setParticipantsError('Could not refresh team members.')
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('401') || msg.includes('403')) showToast('Only the owner can manage participants.')
+      else if (msg.includes('400')) showToast('You cannot revoke your current owner session.')
+      else showToast('Could not revoke participant')
+    }
+  }
+
   return (
     <div className="app-shell">
       <AppHeader
@@ -957,38 +998,51 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           taskFilter={taskFilter}
           taskFilterOptions={taskFilterOptions}
           onTaskFilterChange={setTaskFilter}
+          workspaceView={workspaceView}
+          onWorkspaceViewChange={(view) => setWorkspaceView(view === 'team' && !canViewTeam ? 'roadmap' : view)}
           allOpen={allOpen}
           onCollapseAll={collapseAll}
           onExpandAll={expandAll}
           onOpenActivity={() => setShowActivity(true)}
-          onOpenTeam={() => setShowTeam(true)}
           onOpenVersions={() => setShowVersions(true)}
           hasServerActivity={!!serverRoadmapId && !!sessionToken}
           canViewTeam={canViewTeam}
           canViewVersions={role === 'owner' && !!serverRoadmapId && !!sessionToken}
         />
-        <PhaseList
-          phases={visiblePhases}
-          openPhases={effectiveOpenPhases}
-          expandedTaskId={expandedTaskId}
-          allTasks={allTasks}
-          readOnly={readOnly}
-          isFiltering={isFiltering}
-          onTogglePhase={togglePhase}
-          onToggleTask={onToggleTask}
-          onCheckTask={onCheckTask}
-          onUpdateTask={handleUpdateTask}
-          onUpdatePhaseColor={handleUpdatePhaseColor}
-          onAddTask={handleAddTask}
-          onAddSubtask={handleAddSubtask}
-          onLinkDependency={handleLinkDependency}
-          onUnlinkDependency={handleUnlinkDependency}
-          onReorderTasks={handleReorderTasks}
-          onReorderSubtasks={handleReorderSubtasks}
-          onReorderPhases={handleReorderPhases}
-          hasCycle={hasCycle}
-          assignmentNames={taskEditorAssigneeNames}
-        />
+        {workspaceView === 'team' && canViewTeam ? (
+          <TeamPanel
+            participants={participants}
+            loading={participantsLoading}
+            error={participantsError}
+            canManageParticipants={canManageShare}
+            onInvite={openShare}
+            onRevokeParticipant={handleRevokeTeamParticipant}
+            onBack={() => setWorkspaceView('roadmap')}
+          />
+        ) : (
+          <PhaseList
+            phases={visiblePhases}
+            openPhases={effectiveOpenPhases}
+            expandedTaskId={expandedTaskId}
+            allTasks={allTasks}
+            readOnly={readOnly}
+            isFiltering={isFiltering}
+            onTogglePhase={togglePhase}
+            onToggleTask={onToggleTask}
+            onCheckTask={onCheckTask}
+            onUpdateTask={handleUpdateTask}
+            onUpdatePhaseColor={handleUpdatePhaseColor}
+            onAddTask={handleAddTask}
+            onAddSubtask={handleAddSubtask}
+            onLinkDependency={handleLinkDependency}
+            onUnlinkDependency={handleUnlinkDependency}
+            onReorderTasks={handleReorderTasks}
+            onReorderSubtasks={handleReorderSubtasks}
+            onReorderPhases={handleReorderPhases}
+            hasCycle={hasCycle}
+            assignmentNames={taskEditorAssigneeNames}
+          />
+        )}
       </div>
 
       <WorkspaceModals
@@ -1011,13 +1065,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           sessionToken={sessionToken}
           onClose={() => setShowActivity(false)}
           refreshKey={activityRefreshKey}
-        />
-      )}
-
-      {showTeam && canViewTeam && (
-        <TeamPanel
-          participants={participants}
-          onClose={() => setShowTeam(false)}
         />
       )}
 
