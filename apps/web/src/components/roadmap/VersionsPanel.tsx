@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import { getRoadmapVersions, restoreRoadmapVersion } from '@/services/roadmap.service'
+import { createRoadmapCheckpoint, getRoadmapVersions, restoreRoadmapVersion } from '@/services/roadmap.service'
 import type { Roadmap, RoadmapVersionSummary } from '@/types/roadmap'
 
 interface VersionsPanelProps {
@@ -18,9 +18,21 @@ function actionLabel(action: string | null): string {
     case 'roadmap.created': return 'Created'
     case 'roadmap.imported': return 'Imported'
     case 'roadmap.restored': return 'Restored'
+    case 'roadmap.checkpoint': return 'Checkpoint'
     case 'roadmap.updated': return 'Updated'
     case 'roadmap.batch_changed': return 'Updated'
-    default: return action || 'Updated'
+    // Legacy task-level snapshots from before version policy was introduced
+    case 'task.completed':
+    case 'task.reopened':
+    case 'task.created':
+    case 'task.updated':
+    case 'task.reordered':
+    case 'task.dependency.linked':
+    case 'task.dependency.unlinked':
+    case 'phase.completed':
+    case 'phase.reopened':
+      return 'Legacy snapshot'
+    default: return action ? 'Legacy snapshot' : 'Updated'
   }
 }
 
@@ -43,6 +55,8 @@ export function VersionsPanel({
   const [versions, setVersions] = useState<RoadmapVersionSummary[]>([])
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [restoringId, setRestoringId] = useState<string | null>(null)
+  const [checkpointLoading, setCheckpointLoading] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -58,7 +72,27 @@ export function VersionsPanel({
         setState('error')
       })
     return () => { cancelled = true }
-  }, [roadmapId, sessionToken])
+  }, [roadmapId, sessionToken, refreshKey])
+
+  const handleCreateCheckpoint = async () => {
+    setCheckpointLoading(true)
+    try {
+      const result = await createRoadmapCheckpoint(roadmapId, sessionToken)
+      if (result.created) {
+        onToast('Checkpoint created.')
+        setRefreshKey((k) => k + 1)
+      } else {
+        onToast('Latest version already matches current roadmap.')
+      }
+    } catch (err) {
+      const msg = err instanceof Error && (err.message.includes('401') || err.message.includes('403'))
+        ? 'Only the owner can create checkpoints.'
+        : 'Could not create checkpoint.'
+      onToast(msg)
+    } finally {
+      setCheckpointLoading(false)
+    }
+  }
 
   const handleRestore = async (version: RoadmapVersionSummary) => {
     const ok = window.confirm('Restore this version? Current roadmap will be replaced for all collaborators.')
@@ -84,6 +118,14 @@ export function VersionsPanel({
     <div className="activity-panel versions-panel">
       <div className="panel-head">
         <h3>Versions</h3>
+        <button
+          className="btn sm ghost"
+          onClick={handleCreateCheckpoint}
+          disabled={checkpointLoading}
+          title="Save a restore point with the current roadmap state"
+        >
+          {checkpointLoading ? 'Saving…' : 'Create checkpoint'}
+        </button>
         <button className="close-btn" onClick={onClose}>
           <Icon name="x" size={18} />
         </button>

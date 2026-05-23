@@ -212,6 +212,11 @@ class RoadmapVersionDetailResponse(BaseModel):
     metadata_json: dict[str, Any] | None = None
 
 
+class CheckpointResponse(BaseModel):
+    created: bool
+    version: RoadmapVersionSummaryResponse
+
+
 # ─── Share link ───────────────────────────────────────────────────────────────
 
 

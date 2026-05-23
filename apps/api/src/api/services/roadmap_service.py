@@ -36,6 +36,21 @@ _SHARE_PREFIXES: dict[str, str] = {
 
 _MAX_ROADMAP_VERSIONS = 100
 
+# Actions that warrant a restore point in version history.
+# Default is False for any unknown action — version history is conservative.
+_VERSION_WORTHY_ACTIONS: frozenset[str] = frozenset({
+    "roadmap.created",
+    "roadmap.imported",
+    "roadmap.restored",
+    "roadmap.checkpoint",
+})
+
+
+def _should_create_version(action: str | None, metadata: dict | None) -> bool:
+    if action is None:
+        return False
+    return action in _VERSION_WORTHY_ACTIONS
+
 
 def _snapshot_from_phases(phases: list[PhaseDTO]) -> dict:
     return {"phases": [p.model_dump(exclude_none=True) for p in phases]}
@@ -289,7 +304,8 @@ async def update_roadmap(
         after_json=after_json or None,
         metadata_json=metadata_json,
     ))
-    await _create_roadmap_version(db, roadmap, participant, action, metadata_json)
+    if _should_create_version(action, metadata_json):
+        await _create_roadmap_version(db, roadmap, participant, action, metadata_json)
 
     await db.commit()
     await db.refresh(roadmap)
@@ -427,6 +443,81 @@ async def restore_roadmap_version(
     ))
 
     return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+
+
+async def create_roadmap_checkpoint(
+    db: AsyncSession,
+    roadmap_id: str,
+    participant: Participant,
+) -> tuple[bool, "RoadmapVersionSummaryResponse"]:
+    """Create a manual checkpoint version.
+
+    Returns (created=True, version) when a new checkpoint is written, or
+    (created=False, latest) when the current snapshot already matches the
+    latest version and no new version is needed.
+    """
+    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+
+    latest_result = await db.execute(
+        select(RoadmapVersion)
+        .where(RoadmapVersion.roadmap_id == roadmap_id)
+        .order_by(RoadmapVersion.version_number.desc())
+        .limit(1)
+    )
+    latest = latest_result.scalar_one_or_none()
+
+    # Return latest unchanged when snapshot is identical to current state
+    if latest and latest.roadmap_name == roadmap.name and latest.snapshot_json == roadmap.snapshot_json:
+        phase_count, task_count = _snapshot_counts(latest.snapshot_json)
+        return False, RoadmapVersionSummaryResponse(
+            id=latest.id,
+            version_number=latest.version_number,
+            created_at=latest.created_at,
+            actor_name=latest.actor_name,
+            action=latest.action,
+            phase_count=phase_count,
+            task_count=task_count,
+        )
+
+    next_number = (latest.version_number if latest else 0) + 1
+    metadata_json: dict = {"label": "Manual checkpoint"}
+    new_version = RoadmapVersion(
+        id=generate_id("rv_"),
+        roadmap_id=roadmap_id,
+        version_number=next_number,
+        roadmap_name=roadmap.name,
+        snapshot_json=roadmap.snapshot_json,
+        participant_id=participant.id,
+        actor_name=participant.display_name,
+        action="roadmap.checkpoint",
+        metadata_json=metadata_json,
+    )
+    db.add(new_version)
+    await db.flush()
+
+    old_ids_result = await db.execute(
+        select(RoadmapVersion.id)
+        .where(RoadmapVersion.roadmap_id == roadmap_id)
+        .order_by(RoadmapVersion.version_number.desc())
+        .offset(_MAX_ROADMAP_VERSIONS)
+    )
+    old_ids = old_ids_result.scalars().all()
+    if old_ids:
+        await db.execute(delete(RoadmapVersion).where(RoadmapVersion.id.in_(old_ids)))
+
+    await db.commit()
+    await db.refresh(new_version)
+
+    phase_count, task_count = _snapshot_counts(new_version.snapshot_json)
+    return True, RoadmapVersionSummaryResponse(
+        id=new_version.id,
+        version_number=new_version.version_number,
+        created_at=new_version.created_at,
+        actor_name=new_version.actor_name,
+        action=new_version.action,
+        phase_count=phase_count,
+        task_count=task_count,
+    )
 
 
 async def delete_roadmap(

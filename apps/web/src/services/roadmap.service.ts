@@ -300,6 +300,28 @@ export async function restoreRoadmapVersion(
   return toRoadmap(data)
 }
 
+interface ApiCheckpointResponse {
+  created: boolean
+  version: ApiRoadmapVersionSummaryResponse
+}
+
+export interface CheckpointResult {
+  created: boolean
+  version: RoadmapVersionSummary
+}
+
+export async function createRoadmapCheckpoint(
+  roadmapId: string,
+  sessionToken: string,
+): Promise<CheckpointResult> {
+  const data = await requestJson<ApiCheckpointResponse>(
+    `/api/roadmaps/${roadmapId}/versions/checkpoint`,
+    { method: 'POST' },
+    sessionToken,
+  )
+  return { created: data.created, version: toRoadmapVersionSummary(data.version) }
+}
+
 // ─── Task mutations ────────────────────────────────────────────────────────────
 
 /**

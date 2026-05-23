@@ -7,6 +7,7 @@ from api.config import get_settings
 from api.database import get_db
 from api.schemas.roadmap import (
     ActivityLogListResponse,
+    CheckpointResponse,
     CreateRoadmapRequest,
     CreateRoadmapResponse,
     DeleteRoadmapResponse,
@@ -28,6 +29,7 @@ from api.services.event_bus import event_bus
 from api.services.lock_service import lock_service
 from api.services.roadmap_service import (
     create_roadmap,
+    create_roadmap_checkpoint,
     delete_roadmap,
     get_activity_logs,
     get_participants,
@@ -144,6 +146,17 @@ async def fetch_roadmap_versions(
 ) -> list[RoadmapVersionSummaryResponse]:
     await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
     return await get_roadmap_versions(db, roadmap_id)
+
+
+@router.post("/{roadmap_id}/versions/checkpoint", response_model=CheckpointResponse)
+async def post_checkpoint(
+    roadmap_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> CheckpointResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    created, version = await create_roadmap_checkpoint(db, roadmap_id, participant)
+    return CheckpointResponse(created=created, version=version)
 
 
 @router.get("/{roadmap_id}/versions/{version_id}", response_model=RoadmapVersionDetailResponse)
