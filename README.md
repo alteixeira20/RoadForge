@@ -180,16 +180,31 @@ Quick path:
 
 ## Backend API summary
 
+Full reference: [docs/backend-api.md](docs/backend-api.md)
+
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/health` | Health check |
 | `POST` | `/api/roadmaps` | Create roadmap, returns share links + owner session token |
+| `POST` | `/api/roadmaps/join` | Accept invite token, create participant, return session token |
 | `GET` | `/api/roadmaps/{id}` | Fetch roadmap and phases |
 | `PUT` | `/api/roadmaps/{id}` | Update name and/or phases (full snapshot replace) |
+| `DELETE` | `/api/roadmaps/{id}` | Soft-delete roadmap; broadcasts `roadmap.deleted` SSE event |
 | `GET` | `/api/roadmaps/{id}/share-links` | List active share links (url is null — tokens not re-exposed) |
 | `POST` | `/api/roadmaps/{id}/share-links/{role}/rotate` | Generate new token for role, returns join URL |
 | `DELETE` | `/api/roadmaps/{id}/share-links/{role}` | Revoke share link (soft-deactivate) |
-| `POST` | `/api/roadmaps/join` | Accept invite token, create participant, return session token |
+| `GET` | `/api/roadmaps/{id}/participants` | List participants (owner only) |
+| `POST` | `/api/roadmaps/{id}/participants/{pid}/revoke` | Revoke participant session; broadcasts `participant.revoked` |
+| `GET` | `/api/roadmaps/{id}/versions` | List version history summaries |
+| `POST` | `/api/roadmaps/{id}/versions/checkpoint` | Create a manual checkpoint snapshot |
+| `GET` | `/api/roadmaps/{id}/versions/{vid}` | Fetch a specific version's full phase snapshot |
+| `POST` | `/api/roadmaps/{id}/versions/{vid}/restore` | Restore roadmap to a previous version |
+| `GET` | `/api/roadmaps/{id}/activity` | Paginated activity log (newest first) |
+| `POST` | `/api/roadmaps/{id}/events/ticket` | Request a short-lived SSE ticket |
+| `GET` | `/api/roadmaps/{id}/events` | SSE stream (ticket auth via query param) |
+| `POST` | `/api/roadmaps/{id}/locks` | Acquire or refresh an in-memory edit lock |
+| `DELETE` | `/api/roadmaps/{id}/locks/{target}` | Release a lock |
+| `GET` | `/api/roadmaps/{id}/locks` | List active locks |
 
 ---
 
@@ -207,9 +222,9 @@ Quick path:
 ## Current limitations / deferred features
 
 - **Markdown/PDF export** — requires backend; currently shows a toast.
-- **Activity log UI** — the backend logs all events; there is no frontend view yet.
 - **Email verification** — not implemented. Planned as an optional future security layer.
-- **Deployment hardening** — rate limiting, HTTPS enforcement, and CSP are pending before public production-ready deployment.
+- **Rate limiting** — invite token brute-force on `/api/roadmaps/join` is unthrottled. Do not deploy publicly without adding rate limiting.
+- **Content Security Policy** — CSP is deferred. Do not deploy publicly at scale without it.
 
 ---
 

@@ -176,6 +176,21 @@ Batch activity summaries are also supported:
 
 ---
 
+## DELETE /api/roadmaps/{roadmap_id}
+
+Soft-delete a roadmap. Sets `deleted_at` timestamp. Broadcasts a `roadmap.deleted` SSE event to all connected participants.
+
+**Requires:** `Authorization: Bearer <session_token>` with owner role.
+
+**Response 200:**
+```json
+{"ok": true}
+```
+
+**Response 404:** Roadmap not found.
+
+---
+
 ## GET /api/roadmaps/{roadmap_id}/share-links
 
 List active share links for a roadmap. **`url` is always `null` here** — join URLs containing raw tokens are only returned at create or rotate time.
@@ -247,6 +262,46 @@ Soft-revoke a share link. The link's `is_active` is set to `false`. Any join att
 
 ---
 
+## Participants
+
+### GET /api/roadmaps/{roadmap_id}/participants
+
+List all participants for a roadmap (including revoked).
+**Requires:** `Authorization: Bearer <session_token>` with owner role.
+
+**Response 200:**
+```json
+[
+  {
+    "id": "pt_def456",
+    "display_name": "Jordan",
+    "role": "editor",
+    "created_at": "2026-05-08T10:05:00Z",
+    "last_seen_at": "2026-05-08T14:00:00Z",
+    "revoked_at": null,
+    "is_current_participant": false,
+    "share_link_id": "sl_yzw",
+    "joined_via_role": "editor",
+    "access_source_label": "Editor link"
+  }
+]
+```
+
+`is_current_participant` is `true` for the participant matching the caller's session token. `access_source_label` describes the share link used to join, or `"Legacy / unknown link"` if the link was rotated or revoked since joining.
+
+### POST /api/roadmaps/{roadmap_id}/participants/{participant_id}/revoke
+
+Revoke a participant's session. Broadcasts a `participant.revoked` SSE event to the target participant's active connections. Does not prevent them from re-joining via an active share link.
+**Requires:** `Authorization: Bearer <session_token>` with owner role.
+
+**Response 204:** No content.
+
+**Response 400:** Cannot revoke your own current session.
+
+**Response 404:** Participant not found.
+
+---
+
 ## POST /api/roadmaps/join
 
 Accept an invite token and join the roadmap. Creates a `Participant` row and returns a session token. The raw session token is only in this response.
@@ -280,6 +335,79 @@ Accept an invite token and join the roadmap. Creates a `Participant` row and ret
 - `"Invalid invite token or password"` — roadmap has password enabled and the supplied password is wrong or missing
 
 **Note:** The 401 message does not reveal which check failed.
+
+---
+
+## Version History
+
+Versions are saved automatically on every successful `PUT /api/roadmaps/{id}` save (subject to the snapshot policy — tiny edits within a short window are coalesced). Manual checkpoints bypass the policy.
+
+All version endpoints require `Authorization: Bearer <session_token>` with owner role.
+
+### GET /api/roadmaps/{roadmap_id}/versions
+
+List version history summaries, newest first.
+
+**Response 200:**
+```json
+[
+  {
+    "id": "rv_abc123",
+    "version_number": 5,
+    "created_at": "2026-05-08T14:00:00Z",
+    "actor_name": "Ada",
+    "action": "roadmap.updated",
+    "phase_count": 3,
+    "task_count": 12
+  }
+]
+```
+
+### POST /api/roadmaps/{roadmap_id}/versions/checkpoint
+
+Create a manual checkpoint. Returns the new version, or `created: false` if the latest version already matches the current roadmap (idempotent double-click guard).
+
+**Response 200:**
+```json
+{
+  "created": true,
+  "version": {
+    "id": "rv_abc124",
+    "version_number": 6,
+    "created_at": "2026-05-08T15:00:00Z",
+    "actor_name": "Ada",
+    "action": "roadmap.checkpoint",
+    "phase_count": 3,
+    "task_count": 12
+  }
+}
+```
+
+### GET /api/roadmaps/{roadmap_id}/versions/{version_id}
+
+Fetch a specific version's full phase snapshot.
+
+**Response 200:**
+```json
+{
+  "id": "rv_abc123",
+  "version_number": 5,
+  "roadmap_name": "v1.0 Public Launch",
+  "phases": [ /* phase objects */ ],
+  "created_at": "2026-05-08T14:00:00Z",
+  "actor_name": "Ada",
+  "action": "roadmap.updated",
+  "phase_count": 3,
+  "task_count": 12,
+  "metadata_json": null
+}
+```
+
+### POST /api/roadmaps/{roadmap_id}/versions/{version_id}/restore
+
+Restore the roadmap to a previous version. Replaces the current phases with the version snapshot, creates a new `roadmap.restored` version entry, and broadcasts `roadmap.updated` to all connected participants.
+
+**Response 200:** Same shape as `GET /api/roadmaps/{roadmap_id}`.
 
 ---
 
@@ -336,6 +464,8 @@ Open the SSE event stream. Validates and consumes the ticket.
 
 **Events:**
 - `roadmap.updated` — `{ "roadmap_id": "...", "updated_at": "...", "participant_id": "..." }`
+- `roadmap.deleted` — `{ "roadmap_id": "..." }` — fired when the owner deletes the roadmap
+- `participant.revoked` — `{ "roadmap_id": "...", "participant_id": "..." }` — fired only to the revoked participant's connections
 - `lock.acquired` — `{ "roadmap_id": "...", "target": "...", "participant_id": "...", "display_name": "..." }`
 - `lock.released` — `{ "roadmap_id": "...", "target": "...", "participant_id": "..." }`
 
@@ -447,8 +577,19 @@ The token is returned once at roadmap creation (`owner_session_token`) or invite
 | Endpoint | Required role |
 |---|---|
 | `PUT /api/roadmaps/{id}` | owner or editor |
+| `DELETE /api/roadmaps/{id}` | owner |
 | `POST /api/roadmaps/{id}/share-links/{role}/rotate` | owner |
 | `DELETE /api/roadmaps/{id}/share-links/{role}` | owner |
+| `GET /api/roadmaps/{id}/participants` | owner |
+| `POST /api/roadmaps/{id}/participants/{pid}/revoke` | owner |
+| `GET /api/roadmaps/{id}/versions` | owner |
+| `POST /api/roadmaps/{id}/versions/checkpoint` | owner |
+| `GET /api/roadmaps/{id}/versions/{vid}` | owner |
+| `POST /api/roadmaps/{id}/versions/{vid}/restore` | owner |
+| `GET /api/roadmaps/{id}/activity` | any authenticated participant |
+| `POST /api/roadmaps/{id}/events/ticket` | any authenticated participant |
+| `POST /api/roadmaps/{id}/locks` | owner or editor |
+| `DELETE /api/roadmaps/{id}/locks/{target}` | lock owner only |
 
 Public endpoints (no token required): `POST /api/roadmaps`, `POST /api/roadmaps/join`, `GET /api/roadmaps/{id}`, `GET /api/roadmaps/{id}/share-links`.
 

@@ -197,7 +197,7 @@ curl http://localhost:7878/api/health
 
 - [ ] `make reset` starts clean
 - [ ] Roadmap saves with password
-- [ ] `rf:sessionToken` stored in localStorage
+- [ ] `rf:auth:rm_...` in localStorage contains `sessionToken` and `role`
 - [ ] Share modal generates valid links
 - [ ] Viewer join routes to `/shared` after password gate
 - [ ] Editor join routes to `/workspace`

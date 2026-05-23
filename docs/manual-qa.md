@@ -66,9 +66,9 @@ Open four browser contexts and keep them active throughout:
 
 - [ ] Click **Share**. Modal opens.
 - [ ] Three role rows visible: Owner, Editor, Viewer.
-- [ ] All three show "Rotate to generate a copyable link" (no URL yet).
-- [ ] Click **Regenerate** on Editor row → URL appears. Copy it (editor link).
-- [ ] Click **Regenerate** on Viewer row → URL appears. Copy it (viewer link).
+- [ ] All three show "Rotate to reveal a new link" (no URL yet).
+- [ ] Click **Rotate link** on Editor row → URL appears. Copy it (editor link).
+- [ ] Click **Rotate link** on Viewer row → URL appears. Copy it (viewer link).
 - [ ] Owner row: only shows current session info; no join URL exposed.
 - [ ] Close and reopen Share modal. Editor and Viewer rows show "Active link" but NOT the raw URL (url is null after re-fetch from server).
 
@@ -121,7 +121,7 @@ Open four browser contexts and keep them active throughout:
 - [ ] Sam (already joined Viewer) is **not** revoked — still connected.
 
 **Rotate editor link:**
-- [ ] Owner clicks **Regenerate** on Editor row → new URL generated.
+- [ ] Owner clicks **Rotate link** on Editor row → new URL generated.
 - [ ] Old editor URL no longer works in a new private window.
 - [ ] New editor URL works and routes to `/workspace`.
 

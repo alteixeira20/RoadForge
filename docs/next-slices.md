@@ -43,28 +43,25 @@ Run the full `docs/mvp-test-plan.md` in a clean browser profile and fix any issu
 
 ---
 
-## G. Activity log UI
+## G. ✅ Activity log UI — Done
 
-**Problem:** The backend logs every significant event (`roadmap.created`, `roadmap.updated`, `participant.joined`, `share_link.rotated`, `share_link.revoked`) in the `activity_logs` table. There is no frontend view.
-
-**Scope:**
-- Add `GET /api/roadmaps/{id}/activity` endpoint (paginated).
-- Add an "Activity" tab or panel in the workspace, accessible to the owner.
-- Display: actor name, action description, relative timestamp.
+`GET /api/roadmaps/{id}/activity` endpoint (paginated) is wired. An Activity panel in the workspace shows actor name, action description, and relative timestamp. Anti-spam batching prevents one entry per toggle; saves accumulate changes into one summary entry per save.
 
 ---
 
-## H. Deployment hardening
+## H. Deployment hardening (partial)
 
-Items needed before any public deployment:
-- TLS termination (nginx reverse proxy or Caddy)
-- Rate limiting on `/api/roadmaps/join` and `/api/roadmaps` (prevent token brute-force and spam)
-- `ROADFORGE_ENVIRONMENT=production` disables SQL echo and debug details in error responses
-- Postgres credentials rotated from dev defaults
-- `ROADFORGE_WEB_BASE_URL` set to the public domain (affects join URL generation)
-- Health check endpoint monitored by an uptime service
-- Docker Compose volume backup strategy for `postgres_data`
-- Strict Content Security Policy (CSP) implementation.
+**Done:**
+- TLS termination — nginx reverse proxy configured in `deploy/hosting-bay/`.
+- `ROADFORGE_ENVIRONMENT=production` — config key wired; set in hosting-bay `.env`.
+- Postgres credentials rotation — documented in `deploy/hosting-bay/README.md`.
+- `ROADFORGE_WEB_BASE_URL` — documented and set for the public domain.
+- Health check endpoint live at `/api/health`.
+- Docker Compose volume mount documented under `/opt/data/apps/roadforge/postgres`.
+
+**Remaining before public production deployment:**
+- Rate limiting on `/api/roadmaps/join` and `/api/roadmaps` (invite token brute-force is unthrottled).
+- Strict Content Security Policy (CSP) — deferred from MVP.
 
 ---
 
