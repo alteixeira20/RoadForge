@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEditLock } from '@/hooks/useEditLock'
 import {
   DndContext,
   closestCenter,
@@ -27,7 +28,6 @@ import { Toast } from '@/components/ui/Toast'
 import { SortableTaskItem } from './SortableTaskItem'
 import { TaskRow } from './TaskRow'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { acquireLock, releaseLock } from '@/services/roadmap.service'
 import { useToastState } from '@/hooks/useToastState'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 import type { ForgeStyle } from '@/types/ui'
@@ -100,80 +100,50 @@ export function Phase({
   const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
   const isActive = phase.status === 'active'
   const [showColorPicker, setShowColorPicker] = useState(false)
-  const [ownsColorLock, setOwnsColorLock] = useState(false)
   const colorControlRef = useRef<HTMLDivElement | null>(null)
-  const ownsColorLockRef = useRef(false)
 
   const { locks, serverRoadmapId, sessionToken, participantId } = useRoadmap()
   const { toast, showToast } = useToastState()
 
   const colorLockTarget = `phase:${phase.id}`
   const colorLock = locks[colorLockTarget]
+
+  const colorLockRef = useRef(colorLock)
+  colorLockRef.current = colorLock
+
+  const handleColorLockError = useCallback((isConflict: boolean) => {
+    if (isConflict) {
+      const holder = colorLockRef.current?.displayName || 'Another participant'
+      showToast(`${holder} is editing this phase.`)
+    } else {
+      showToast('Could not acquire lock.')
+    }
+  }, [showToast])
+
+  const {
+    ownsLock: ownsColorLock,
+    tryAcquire: tryAcquireColorLock,
+    release: releaseColorLock,
+  } = useEditLock({
+    target: colorLockTarget,
+    active: showColorPicker && !readOnly,
+    serverRoadmapId,
+    sessionToken,
+    onAcquireError: handleColorLockError,
+  })
+
   const isColorLockedByMe = ownsColorLock || (!!participantId && colorLock?.participantId === participantId)
   const isColorLockedByOther = !!colorLock && !isColorLockedByMe
-
-  const releaseColorLock = useCallback(async () => {
-    if (!ownsColorLockRef.current) return
-
-    ownsColorLockRef.current = false
-    setOwnsColorLock(false)
-
-    if (readOnly || !serverRoadmapId || !sessionToken) return
-
-    try {
-      await releaseLock(serverRoadmapId, colorLockTarget, sessionToken)
-    } catch {
-      // Local UI recovers immediately; the server TTL handles any missed cleanup.
-    }
-  }, [readOnly, serverRoadmapId, sessionToken, colorLockTarget])
 
   const closeColorPicker = useCallback(() => {
     setShowColorPicker(false)
     void releaseColorLock()
   }, [releaseColorLock])
 
-  const tryAcquireColorLock = async (): Promise<boolean> => {
+  const handleTryAcquireColorLock = async (): Promise<boolean> => {
     if (readOnly) return false
-    if (!serverRoadmapId || !sessionToken) {
-      ownsColorLockRef.current = true
-      setOwnsColorLock(true)
-      return true
-    }
-    try {
-      await acquireLock(serverRoadmapId, colorLockTarget, sessionToken)
-      ownsColorLockRef.current = true
-      setOwnsColorLock(true)
-      return true
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('409')) {
-        const holder = colorLock?.displayName || 'Another participant'
-        showToast(`${holder} is editing this phase.`)
-      } else {
-        showToast('Could not acquire lock.')
-      }
-      return false
-    }
+    return tryAcquireColorLock()
   }
-
-  useEffect(() => {
-    if (!showColorPicker || readOnly || !serverRoadmapId || !sessionToken) return
-
-    const tryRefresh = async () => {
-      try {
-        await acquireLock(serverRoadmapId, colorLockTarget, sessionToken)
-      } catch {
-        // Silently fail on refresh; TTL handles expiry
-      }
-    }
-
-    const interval = setInterval(tryRefresh, 20_000)
-
-    return () => {
-      clearInterval(interval)
-      void releaseColorLock()
-    }
-  }, [showColorPicker, readOnly, serverRoadmapId, sessionToken, colorLockTarget, releaseColorLock])
 
   useEffect(() => {
     if (!showColorPicker) return
@@ -191,12 +161,6 @@ export function Phase({
   useEffect(() => {
     if (!isOpen && showColorPicker) closeColorPicker()
   }, [isOpen, showColorPicker, closeColorPicker])
-
-  useEffect(() => {
-    return () => {
-      void releaseColorLock()
-    }
-  }, [releaseColorLock])
 
   const displayStatus = allDone ? 'done' : (phase.status === 'done' ? 'active' : phase.status)
 
@@ -299,7 +263,7 @@ export function Phase({
                   closeColorPicker()
                   return
                 }
-                const success = await tryAcquireColorLock()
+                const success = await handleTryAcquireColorLock()
                 if (success) setShowColorPicker(true)
               }}
             >

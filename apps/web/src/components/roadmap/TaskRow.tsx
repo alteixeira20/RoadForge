@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { acquireLock, releaseLock } from '@/services/roadmap.service'
 import { cleanAssigneeName, dedupeNames, getTaskAssignees, getVisibleTaskTags, removeAssignmentTags } from '@/lib/task-assignment'
 import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import { useToastState } from '@/hooks/useToastState'
+import { useEditLock } from '@/hooks/useEditLock'
 import { Toast } from '@/components/ui/Toast'
 import type { Task } from '@/types/roadmap'
 
@@ -117,48 +117,30 @@ export function TaskRow({
 
   const activeForm = isEditing || showSubtaskForm || showDepPicker
 
+  const lockRef = useRef(lock)
+  lockRef.current = lock
+
+  const handleEditLockError = useCallback((isConflict: boolean) => {
+    if (isConflict) {
+      const holder = lockRef.current?.displayName || 'Another participant'
+      showToast(`${holder} is editing this task.`)
+    } else {
+      showToast('Could not acquire lock.')
+    }
+  }, [showToast])
+
+  const { tryAcquire: tryAcquireLock } = useEditLock({
+    target,
+    active: activeForm && !readOnly,
+    serverRoadmapId,
+    sessionToken,
+    onAcquireError: handleEditLockError,
+  })
+
   const tryAcquireEditLock = async (): Promise<boolean> => {
     if (readOnly) return false
-    if (!serverRoadmapId || !sessionToken) return true
-    
-    try {
-      await acquireLock(serverRoadmapId, target, sessionToken)
-      return true
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('409')) {
-        const holder = lock?.displayName || 'Another participant'
-        showToast(`${holder} is editing this task.`)
-      } else {
-        showToast('Could not acquire lock.')
-      }
-      return false
-    }
+    return tryAcquireLock()
   }
-
-  useEffect(() => {
-    if (!activeForm || readOnly || !serverRoadmapId || !sessionToken) return
-
-    let interval: ReturnType<typeof setInterval> | null = null
-
-    const tryAcquire = async () => {
-      try {
-        await acquireLock(serverRoadmapId, target, sessionToken)
-      } catch (_err) {
-        // Silently fail on refresh
-      }
-    }
-
-    // Refresh lock every 20s (TTL is 30s)
-    interval = setInterval(tryAcquire, 20_000)
-
-    return () => {
-      if (interval) clearInterval(interval)
-      releaseLock(serverRoadmapId, target, sessionToken).catch(() => {
-        // Silently fail on release (TTL will handle it)
-      })
-    }
-  }, [activeForm, readOnly, serverRoadmapId, sessionToken, target])
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
