@@ -21,7 +21,8 @@ import { createRoadmap, getParticipants, getRoadmap, isApiConnectionError, revok
 import { normalizePhasesProgress, renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
-import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, ActivityChange, ActivityAction, ChangeSummary, SyncStatus, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
+import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-changes'
+import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, ActivityChange, SyncStatus, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -247,94 +248,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     phaseList.find((phase) => phase.tasks.some((task) => task.id === taskId))
   )
 
-  const changePriority: Record<ActivityAction, number> = {
-    'roadmap.imported': 1,
-    'roadmap.restored': 1,
-    'phase.completed': 2,
-    'phase.reopened': 2,
-    'task.created': 3,
-    'task.completed': 4,
-    'task.reopened': 4,
-    'task.dependency.linked': 5,
-    'task.dependency.unlinked': 5,
-    'roadmap.renamed': 6,
-    'task.updated': 6,
-    'task.reordered': 7,
-    'roadmap.phases_reordered': 7,
-    'roadmap.batch_changed': 8,
-    'roadmap.updated': 9,
-  }
-
-  const countKeyForAction = (action: ActivityAction): string => {
-    switch (action) {
-      case 'roadmap.imported': return 'imports'
-      case 'roadmap.restored': return 'restores'
-      case 'roadmap.renamed': return 'roadmaps_renamed'
-      case 'phase.completed': return 'phases_completed'
-      case 'phase.reopened': return 'phases_reopened'
-      case 'task.created': return 'tasks_added'
-      case 'task.completed': return 'tasks_completed'
-      case 'task.reopened': return 'tasks_reopened'
-      case 'task.dependency.linked': return 'dependencies_linked'
-      case 'task.dependency.unlinked': return 'dependencies_unlinked'
-      case 'task.updated': return 'tasks_updated'
-      case 'task.reordered': return 'tasks_reordered'
-      case 'roadmap.phases_reordered': return 'phases_reordered'
-      default: return 'updates'
-    }
-  }
-
-  const dedupeKey = (change: ActivityChange) => {
-    if (change.taskId) return `task:${change.taskId}`
-    if (change.phaseId) return `phase:${change.phaseId}`
-    if (change.action === 'roadmap.renamed') return 'roadmap:renamed'
-    return `${change.action}:${change.entity_id || change.roadmapName || 'roadmap'}`
-  }
-
-  const areOppositeActions = (a: ActivityAction, b: ActivityAction) => (
-    (a === 'task.completed' && b === 'task.reopened') ||
-    (a === 'task.reopened' && b === 'task.completed') ||
-    (a === 'phase.completed' && b === 'phase.reopened') ||
-    (a === 'phase.reopened' && b === 'phase.completed')
-  )
-
   const addPendingActivityChange = (change: ActivityChange) => {
-    setPendingActivityChanges((prev) => {
-      const key = dedupeKey(change)
-      const existing = prev.find((item) => dedupeKey(item) === key)
-      if (existing && areOppositeActions(existing.action, change.action)) {
-        return prev.filter((item) => dedupeKey(item) !== key)
-      }
-      if (existing?.action === 'task.created' && change.action === 'task.updated') {
-        return prev.map((item) => (
-          dedupeKey(item) === key ? { ...item, taskTitle: change.taskTitle || item.taskTitle } : item
-        ))
-      }
-      if (existing && existing.action === change.action) {
-        return prev.map((item) => (dedupeKey(item) === key ? change : item))
-      }
-      return [...prev, change]
-    })
-  }
-
-  const buildChangeSummary = (changes: ActivityChange[]): ChangeSummary | null => {
-    if (changes.length === 0) return null
-    if (changes.length === 1) return changes[0]
-
-    const counts = changes.reduce<Record<string, number>>((acc, change) => {
-      const key = countKeyForAction(change.action)
-      acc[key] = (acc[key] || 0) + 1
-      return acc
-    }, {})
-    const primaryChange = [...changes].sort((a, b) => changePriority[a.action] - changePriority[b.action])[0]
-    return {
-      action: 'roadmap.batch_changed',
-      entity_type: 'roadmap',
-      entity_id: serverRoadmapId || undefined,
-      changes,
-      counts,
-      primary_change: primaryChange,
-    }
+    setPendingActivityChanges((prev) => mergePendingActivityChange(prev, change))
   }
 
   // Keep ref fresh so the debounced callback always reads the latest values
@@ -358,7 +273,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         return
       }
 
-      const changeSummary = buildChangeSummary(pac)
+      const changeSummary = buildChangeSummary(pac, rid)
       try {
         const data = await saveToServer(rid, n, p, tok, ua || undefined, changeSummary)
         setUpdatedAt(data.updated_at)
@@ -394,7 +309,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const handleConfirmSave = async (password?: string) => {
     closeSave()
-    const changeSummary = buildChangeSummary(pendingActivityChanges)
+    const changeSummary = buildChangeSummary(pendingActivityChanges, serverRoadmapId)
     try {
       if (!serverRoadmapId) {
         // First save: no bearer token needed — create returns a new owner session.
