@@ -6,6 +6,7 @@ import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { storage, type AuthCache, type RoadmapCache } from '@/lib/storage'
 import { deleteRoadmap, getRoadmap, isApiConnectionError, joinRoadmap } from '@/services/roadmap.service'
+import { Modal } from '@/components/ui/Modal'
 import type { ShareRole } from '@/types/roadmap'
 
 interface RoadmapSwitcherProps {
@@ -383,66 +384,57 @@ export function RoadmapSwitcher({
           </div>
         </div>
       )}
-      {deleteTarget && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 300,
-          display: 'grid',
-          placeItems: 'center',
-          background: 'rgba(0,0,0,0.48)',
-          padding: 24,
-        }}>
-          <div style={{
-            width: 'min(440px, 100%)',
-            background: 'var(--panel)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 12,
-            boxShadow: 'var(--shadow-lg)',
-            padding: 20,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 14,
-          }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: 20, color: 'var(--ink)' }}>
-                {deleteTarget.mode === 'server'
-                  ? 'Delete roadmap?'
-                  : deleteTarget.cache.saved
-                    ? 'Remove from this browser?'
-                    : 'Remove local draft?'}
-              </h2>
-              <p style={{ margin: '8px 0 0', color: 'var(--ink-2)', fontSize: 14, lineHeight: 1.5 }}>
-                {deleteTarget.mode === 'server'
-                  ? 'This will delete the RoadForge server copy and disable access for collaborators. This cannot be undone.'
-                  : deleteTarget.cache.saved
-                    ? 'This removes the cached roadmap and session from this browser only. The RoadForge server copy is not deleted.'
-                    : 'This removes the draft from this browser only. It has not been saved to RoadForge.'}
-              </p>
-            </div>
+      <Modal
+        open={deleteTarget !== null}
+        onClose={() => { setDeleteTarget(null); setError(null) }}
+        icon={{ name: 'trash', plain: true }}
+        title={
+          deleteTarget === null
+            ? ''
+            : deleteTarget.mode === 'server'
+              ? 'Delete roadmap?'
+              : deleteTarget.cache.saved
+                ? 'Remove from this browser?'
+                : 'Remove local draft?'
+        }
+        sub={
+          deleteTarget === null
+            ? undefined
+            : deleteTarget.mode === 'server'
+              ? 'This will delete the RoadForge server copy and disable access for collaborators. This cannot be undone.'
+              : deleteTarget.cache.saved
+                ? 'This removes the cached roadmap and session from this browser only. The RoadForge server copy is not deleted.'
+                : 'This removes the draft from this browser only. It has not been saved to RoadForge.'
+        }
+        footer={
+          <>
+            <button className="back" onClick={() => { setDeleteTarget(null); setError(null) }} disabled={deleting}>
+              Cancel
+            </button>
+            <span className="spacer" />
+            <button className="btn primary" onClick={handleConfirmDelete} disabled={deleting}>
+              {deleting
+                ? 'Deleting...'
+                : deleteTarget?.mode === 'server'
+                  ? 'Delete roadmap'
+                  : deleteTarget?.cache.saved
+                    ? 'Remove from browser'
+                    : 'Remove draft'}
+            </button>
+          </>
+        }
+      >
+        {deleteTarget !== null && (
+          <>
             <div style={{ padding: '10px 12px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--ink)', fontSize: 14 }}>
               {deleteTarget.cache.roadmapName || 'Untitled Roadmap'}
             </div>
             {error && (
               <div style={{ fontSize: 13, color: 'var(--ember)' }}>{error}</div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button className="btn sm ghost" onClick={() => { setDeleteTarget(null); setError(null) }} disabled={deleting}>
-                Cancel
-              </button>
-              <button className="btn sm primary" onClick={handleConfirmDelete} disabled={deleting}>
-                {deleting
-                  ? 'Deleting...'
-                  : deleteTarget.mode === 'server'
-                    ? 'Delete roadmap'
-                    : deleteTarget.cache.saved
-                      ? 'Remove from browser'
-                      : 'Remove draft'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   )
 }
