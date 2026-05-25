@@ -37,5 +37,3 @@ export function persistJoinResult(result: JoinResult): void {
     isPasswordEnabled: false,
   })
 }
-
-}
