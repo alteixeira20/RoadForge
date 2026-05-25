@@ -1,4 +1,4 @@
-.PHONY: help install dev api-up api-down api-reset api-migrate api-health web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -23,6 +23,7 @@ help:
 	@echo "  make install       Install frontend dependencies"
 	@echo "  make dev           Run Next.js frontend in the foreground"
 	@echo "  make check         Run linting, typechecking, and production build"
+	@echo "  make diff          Show working tree status, diff stats, and full diff"
 	@echo "  make audit         Run dependency security audit"
 	@echo "  make audit-prod    Run dependency security audit (production only)"
 	@echo ""
@@ -69,6 +70,11 @@ dev:
 
 check:
 	pnpm lint && pnpm typecheck && pnpm build
+
+diff:
+	@git status --short
+	@git diff --stat -- $(DIFF_FILES)
+	@git diff -- $(DIFF_FILES)
 
 audit:
 	pnpm audit
