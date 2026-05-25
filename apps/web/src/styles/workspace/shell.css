@@ -1,0 +1,8 @@
+/* ─── App shell ────────────────────────────────────────────────────────────── */
+.app-shell {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  background:
+    radial-gradient(1000px 500px at 100% -10%, var(--lava-glow), transparent 60%),
+    var(--bg);
+}

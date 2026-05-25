@@ -1,0 +1,243 @@
+/* ─── App header ───────────────────────────────────────────────────────────── */
+.app-header {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg) 90%, transparent);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 20;
+}
+.app-header .brand-mini {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.app-header .crumbs {
+  display: flex; align-items: center; gap: 10px;
+  margin-left: 4px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 14px;
+  min-width: 0;
+  max-width: min(42vw, 560px);
+}
+.app-header .crumbs .active {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-weight: 500;
+}
+.app-header .badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+}
+.app-header .badge .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 8px var(--ember);
+}
+.app-header .spacer { flex: 1; }
+.app-header .actions { display: flex; align-items: center; gap: 6px; }
+.app-header .actions > * {
+  align-self: center;
+}
+.app-header .header-save-btn {
+  height: 36px;
+  min-width: 78px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  line-height: 1;
+}
+.app-header .header-save-label {
+  display: inline-block;
+  line-height: 1;
+}
+/* Force consistent line-height on every interactive element in the header */
+.app-header .btn,
+.app-header .iconbtn,
+.app-header .roadmap-menu-trigger,
+.app-header .theme-toggle {
+  line-height: 1;
+}
+/* Ensure the roadmap-switcher div (which wraps the trigger button) aligns as a
+   proper flex item; without this, inline-level content inside the block div
+   can cause the button to appear slightly above the flex midline. */
+.app-header .roadmap-switcher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  max-width: none;
+  line-height: 1;
+  box-sizing: border-box;
+}
+/* Secondary controls group */
+.header-secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* More menu — hidden always (kept in DOM for potential reuse) */
+.header-more {
+  display: none;
+  align-items: center;
+  position: relative;
+}
+/* Desktop visual order: .actions first, then RoadmapSwitcher (direct child) last */
+.app-header .actions { order: 1; }
+.app-header > .roadmap-switcher { order: 2; }
+/* More panel dropdown */
+.header-more-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  max-width: calc(100vw - 24px);
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+}
+.header-more-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  color: var(--ink-2);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.header-more-row:hover { background: var(--bg-3); color: var(--ink); }
+.header-more-sep { height: 1px; background: var(--border); margin: 4px 0; }
+.header-more-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+}
+.header-more-label {
+  font-size: 11px;
+  color: var(--ink-4);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Synced/live badge variant */
+.app-header .badge.synced,
+.app-header .badge.live {
+  background: linear-gradient(180deg, rgba(217,116,66,0.10), rgba(217,116,66,0.04));
+  border-color: rgba(217,116,66,0.30);
+  color: var(--ember);
+}
+.app-header .badge.synced .dot,
+.app-header .badge.live .dot { background: var(--ember); box-shadow: 0 0 8px var(--ember); }
+
+/* Syncing badge variant — pulsing dot */
+.app-header .badge.syncing {
+  background: linear-gradient(180deg, rgba(217,116,66,0.10), rgba(217,116,66,0.04));
+  border-color: rgba(217,116,66,0.30);
+  color: var(--ember);
+}
+.app-header .badge.syncing .dot {
+  background: var(--ember);
+  animation: badge-dot-pulse 1s ease-in-out infinite;
+}
+
+/* Offline badge variant */
+.app-header .badge.offline {
+  background: var(--bg-2);
+  border-color: var(--border);
+  color: var(--ink-2);
+}
+.app-header .badge.offline .dot { background: var(--ink-3, #888); box-shadow: none; }
+
+/* Conflict badge variant */
+.app-header .badge.conflict {
+  background: linear-gradient(180deg, rgba(234,179,8,0.12), rgba(234,179,8,0.05));
+  border-color: rgba(234,179,8,0.35);
+  color: #ca8a04;
+}
+.app-header .badge.conflict .dot { background: #ca8a04; box-shadow: 0 0 8px rgba(234,179,8,0.5); }
+
+@keyframes badge-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* ─── Icon button — app-header scoped variant ───────────────────────────────── */
+.app-header .iconbtn { color: var(--ink-4); }
+.app-header .iconbtn svg { display: block; flex: 0 0 auto; }
+.app-header .iconbtn:hover { color: var(--ember); background: var(--bg-3); border-color: var(--border); }
+
+/* ─── Responsive ───────────────────────────────────────────────────────────── */
+
+/* ── 760px — tablet: tighten header spacing, hide crumbs ───────────────── */
+@media (max-width: 760px) {
+  .app-header { padding: 12px 20px; gap: 10px; }
+  .app-header .crumbs { display: none; }
+  .app-header .badge { font-size: 11px; }
+  .app-header .header-save-btn { min-width: auto; }
+}
+
+/* ── 640px — mobile: intentional two-row grid header ───────────────────── */
+@media (max-width: 640px) {
+  /* Show secondary controls inline — no More menu */
+  .header-secondary { display: flex; }
+  /* Grid replaces flex so the spacer cannot steal the row before the switcher */
+  .app-header {
+    display: grid;
+    grid-template-areas:
+      "brand badge . switcher"
+      "actions actions actions actions";
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 10px 16px;
+  }
+  .app-header .brand-mini          { grid-area: brand; }
+  .app-header .badge               { grid-area: badge; }
+  .app-header > .roadmap-switcher  { grid-area: switcher; }
+  .app-header .actions             { grid-area: actions; justify-content: flex-end; gap: 6px; }
+  /* Flex-only helpers that have no grid role */
+  .app-header .spacer              { display: none; }
+}
+
+/* ── 600px — mobile: compact header ────────────────────────────────────── */
+@media (max-width: 600px) {
+  .app-header {
+    padding: 10px 16px;
+    gap: 6px;
+  }
+  .app-header .badge { font-size: 10.5px; padding: 3px 8px; }
+  .app-header .actions { gap: 4px; }
+  .app-header .header-save-btn { width: 36px; min-width: 36px; padding: 0; }
+  .app-header .header-save-label { display: none; }
+}

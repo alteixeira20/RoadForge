@@ -1,0 +1,21 @@
+/* ─── Brand ────────────────────────────────────────────────────────────────── */
+.brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-weight: 600; font-size: 17px;
+  letter-spacing: -0.015em;
+}
+.brand .mark {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: linear-gradient(180deg, #2a2018 0%, #161114 100%);
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  position: relative;
+  overflow: hidden;
+}
+.brand .mark::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 115%, var(--molten) 0%, transparent 58%);
+  opacity: 0.95;
+}
+.brand .mark svg { position: relative; z-index: 1; }
