@@ -20,7 +20,6 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
-import { Icon } from '@/components/ui/Icon'
 import { SortablePhaseItem } from './SortablePhaseItem'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 
@@ -156,13 +155,6 @@ export function PhaseList({
           ) : null}
         </DragOverlay>
       </DndContext>
-      {!readOnly && (
-        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
-          <button className="btn ghost">
-            <Icon name="plus" size={14} /> Add phase
-          </button>
-        </div>
-      )}
     </>
   )
 }
