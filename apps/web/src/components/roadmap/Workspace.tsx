@@ -23,6 +23,7 @@ import { normalizePhasesProgress, renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
 import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-changes'
+import { getTaskCompletionBlocker } from '@/lib/task-completion'
 import { generateTaskId, hasCycle as hasCycleGraph } from '@/lib/task-graph'
 import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, ActivityChange, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
 
@@ -377,46 +378,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
     // ─── Completion Guard ────────────────────────────────────────────────────
 
-    const subtasks = allTasks.filter((st) => st.parentId === id)
-    const unfinishedSubtasks = subtasks.filter((st) => !st.done)
-
-    const depIds = task.deps || []
-    const unfinishedDeps: Task[] = []
-    const missingDepIds: string[] = []
-
-    depIds.forEach((dId) => {
-      const d = allTasks.find((at) => at.id === dId)
-      if (!d) {
-        missingDepIds.push(dId)
-      } else if (!d.done) {
-        unfinishedDeps.push(d)
-      }
-    })
-
-    if (unfinishedSubtasks.length > 0 || unfinishedDeps.length > 0 || missingDepIds.length > 0) {
-      if (missingDepIds.length > 0) {
-        showToast(`Cannot complete task: missing dependency ${missingDepIds[0]}`)
-        return
-      }
-
-      if (unfinishedSubtasks.length > 0 && unfinishedDeps.length > 0) {
-        showToast('Complete all subtasks and dependencies first.')
-        return
-      }
-
-      if (unfinishedSubtasks.length > 0) {
-        showToast('Complete all subtasks first.')
-        return
-      }
-
-      if (unfinishedDeps.length === 1) {
-        showToast(`Complete ${unfinishedDeps[0].id} — ${unfinishedDeps[0].title} first.`)
-        return
-      }
-
-      const count = unfinishedDeps.length
-      const ids = unfinishedDeps.map((d) => d.id).join(', ')
-      showToast(`Complete ${count} blockers first: ${ids}`)
+    const blocker = getTaskCompletionBlocker(task, allTasks)
+    if (blocker) {
+      showToast(blocker)
       return
     }
 
