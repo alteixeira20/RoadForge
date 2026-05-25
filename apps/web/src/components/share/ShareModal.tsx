@@ -6,6 +6,7 @@ import { Icon } from '@/components/ui/Icon'
 import { MOCK_SHARE_LINKS } from '@/data/sample-roadmap'
 import { getParticipants, getShareLinks, regenerateShareLink, revokeParticipant, revokeShareLink } from '@/services/roadmap.service'
 import { useRoadmap } from '@/context/RoadmapContext'
+import { ParticipantRow } from '@/components/share/ParticipantRow'
 import type { Participant, ShareLink, ShareRole } from '@/types/roadmap'
 import type { IconName } from '@/components/ui/Icon'
 
@@ -426,23 +427,14 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
                         <div className="participant-row muted">No joined users for this role.</div>
                       )}
                       {roleParticipants.map((participant) => (
-                        <div key={participant.id} className="participant-row">
-                          <div className="participant-main">
-                            <div className="participant-name">
-                              {participant.displayName}
-                              <span className="badge">{ROLE_COPY[participant.role].peopleTitle}</span>
-                              {participant.isCurrentParticipant && <span className="badge ember">Current session</span>}
-                            </div>
-                            <div className="participant-meta">
-                              {participant.accessSourceLabel || 'Legacy / unknown link'} · Joined {formatDate(participant.createdAt)} · Last seen {formatDate(participant.lastSeenAt)}
-                            </div>
-                          </div>
-                          {!participant.isCurrentParticipant && (
-                            <button className="mini" onClick={() => handleRevokeParticipant(participant)}>
-                              <Icon name="x" size={12} /> Revoke user
-                            </button>
-                          )}
-                        </div>
+                        <ParticipantRow
+                          key={participant.id}
+                          participant={participant}
+                          roleTitle={ROLE_COPY[participant.role].peopleTitle}
+                          formattedCreatedAt={formatDate(participant.createdAt)}
+                          formattedLastSeenAt={formatDate(participant.lastSeenAt)}
+                          onRevoke={handleRevokeParticipant}
+                        />
                       ))}
                     </div>
                   </div>
