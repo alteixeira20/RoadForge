@@ -6,9 +6,10 @@ import { Brand } from '@/components/ui/Brand'
 import { Icon } from '@/components/ui/Icon'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { storage } from '@/lib/storage'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
+import { persistJoinResult } from '@/lib/join-flow'
 import { joinRoadmap, getRoadmap } from '@/services/roadmap.service'
+import { storage } from '@/lib/storage'
 import type { ShareRole } from '@/types/roadmap'
 
 export function JoinPage() {
@@ -67,22 +68,7 @@ export function JoinPage() {
         password || undefined,
       )
       
-      storage.setActiveRoadmapId(roadmapId)
-      storage.setLastRoadmapId(roadmapId)
-      storage.setAuthCache(roadmapId, {
-        serverRoadmapId: roadmapId,
-        sessionToken,
-        participantId,
-        role: role as ShareRole,
-      })
-      storage.setRoadmapCache(roadmapId, {
-        roadmapName,
-        phases: [],
-        saved: true,
-        ownerDisplayName: null,
-        updatedAt: null,
-        isPasswordEnabled: false,
-      })
+      persistJoinResult({ roadmapId, roadmapName, role: role as ShareRole, sessionToken, participantId })
 
       setServerRoadmapId(roadmapId)
       setSessionToken(sessionToken)

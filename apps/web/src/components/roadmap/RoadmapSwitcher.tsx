@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { storage, type AuthCache, type RoadmapCache } from '@/lib/storage'
+import { persistJoinResult } from '@/lib/join-flow'
 import { deleteRoadmap, getRoadmap, isApiConnectionError, joinRoadmap } from '@/services/roadmap.service'
 import { Modal } from '@/components/ui/Modal'
 import type { ShareRole } from '@/types/roadmap'
@@ -113,22 +114,7 @@ export function RoadmapSwitcher({
         password || undefined,
       )
 
-      storage.setActiveRoadmapId(roadmapId)
-      storage.setLastRoadmapId(roadmapId)
-      storage.setAuthCache(roadmapId, {
-        serverRoadmapId: roadmapId,
-        sessionToken,
-        participantId,
-        role: role as ShareRole,
-      })
-      storage.setRoadmapCache(roadmapId, {
-        roadmapName,
-        phases: [],
-        saved: true,
-        ownerDisplayName: null,
-        updatedAt: null,
-        isPasswordEnabled: false,
-      })
+      persistJoinResult({ roadmapId, roadmapName, role: role as ShareRole, sessionToken, participantId })
 
       try {
         const roadmap = await getRoadmap(roadmapId, sessionToken)
