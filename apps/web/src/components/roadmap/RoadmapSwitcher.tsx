@@ -50,7 +50,7 @@ export function RoadmapSwitcher({
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [deleting, setDeleting] = useState(false)
-  
+
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -100,7 +100,7 @@ export function RoadmapSwitcher({
     if (!inviteLink.trim() || joining) return
     setJoining(true)
     setError(null)
-    
+
     try {
       let token = inviteLink.trim()
       try {
@@ -139,7 +139,7 @@ export function RoadmapSwitcher({
       setPassword('')
       setNeedsPassword(false)
       router.push(getRoadmapPath(roadmapId, role as ShareRole))
-      
+
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('password')) {
@@ -199,8 +199,8 @@ export function RoadmapSwitcher({
   const isWorkspaceVariant = variant === 'workspace'
 
   return (
-    <div className={`roadmap-switcher ${variant}`} ref={menuRef} style={{ position: 'relative' }}>
-      <button 
+    <div className={`roadmap-switcher ${variant}`} ref={menuRef}>
+      <button
         className={isWorkspaceVariant ? 'roadmap-menu-trigger' : 'iconbtn'}
         title={label}
         onClick={() => setIsOpen(!isOpen)}
@@ -218,28 +218,15 @@ export function RoadmapSwitcher({
       </button>
 
       {isOpen && (
-        <div className="switcher-dropdown" style={{
-          position: 'absolute',
-          top: 'calc(100% + 8px)',
-          right: 0,
-          width: 320,
-          background: 'var(--bg-2)',
-          border: '1px solid var(--border-strong)',
-          borderRadius: 8,
-          boxShadow: 'var(--shadow-lg)',
-          zIndex: 100,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden'
-        }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Your roadmaps</div>
-            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Stored on this browser</div>
+        <div className="switcher-dropdown">
+          <div className="switcher-head">
+            <div>Your roadmaps</div>
+            <div>Stored on this browser</div>
           </div>
-          
-          <div style={{ maxHeight: 300, overflowY: 'auto', padding: 8 }}>
+
+          <div className="switcher-list">
             {visibleCaches.length === 0 ? (
-              <div style={{ padding: '16px', textAlign: 'center', fontSize: 13, color: 'var(--ink-3)' }}>
+              <div className="switcher-empty">
                 No stored roadmaps.
               </div>
             ) : (
@@ -257,7 +244,7 @@ export function RoadmapSwitcher({
             )}
           </div>
 
-          <div style={{ padding: 8, borderTop: '1px solid var(--border)', background: 'var(--bg-1)' }}>
+          <div className="switcher-footer">
             {showAddForm ? (
               <RoadmapSwitcherInviteForm
                 inviteLink={inviteLink}
@@ -276,16 +263,16 @@ export function RoadmapSwitcher({
                 }}
               />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <button 
+              <div className="switcher-actions">
+                <button
+                  className="switcher-action"
                   onClick={handleCreateNew}
-                  style={{ width: '100%', textAlign: 'left', padding: '6px 8px', fontSize: 13, background: 'transparent', border: 'none', color: 'var(--ink-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 4 }}
                 >
                   <Icon name="plus" size={14} /> Create new roadmap
                 </button>
-                <button 
+                <button
+                  className="switcher-action"
                   onClick={() => setShowAddForm(true)}
-                  style={{ width: '100%', textAlign: 'left', padding: '6px 8px', fontSize: 13, background: 'transparent', border: 'none', color: 'var(--ink-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 4 }}
                 >
                   <Icon name="link" size={14} /> Add by invite link
                 </button>
@@ -336,11 +323,11 @@ export function RoadmapSwitcher({
       >
         {deleteTarget !== null && (
           <>
-            <div style={{ padding: '10px 12px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--ink)', fontSize: 14 }}>
+            <div className="switcher-modal-preview">
               {deleteTarget.cache.roadmapName || 'Untitled Roadmap'}
             </div>
             {error && (
-              <div style={{ fontSize: 13, color: 'var(--ember)' }}>{error}</div>
+              <div className="switcher-modal-error">{error}</div>
             )}
           </>
         )}
