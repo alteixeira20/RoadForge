@@ -89,6 +89,10 @@
   align-items: center;
   justify-content: center;
   align-self: center;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  max-width: none;
   line-height: 1;
   box-sizing: border-box;
 }
