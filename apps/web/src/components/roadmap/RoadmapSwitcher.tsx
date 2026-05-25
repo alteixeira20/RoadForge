@@ -9,6 +9,7 @@ import { persistJoinResult } from '@/lib/join-flow'
 import { deleteRoadmap, getRoadmap, isApiConnectionError, joinRoadmap } from '@/services/roadmap.service'
 import { Modal } from '@/components/ui/Modal'
 import { RoadmapSwitcherItem } from '@/components/roadmap/RoadmapSwitcherItem'
+import { RoadmapSwitcherInviteForm } from '@/components/roadmap/RoadmapSwitcherInviteForm'
 import type { ShareRole } from '@/types/roadmap'
 
 interface RoadmapSwitcherProps {
@@ -258,43 +259,22 @@ export function RoadmapSwitcher({
 
           <div style={{ padding: 8, borderTop: '1px solid var(--border)', background: 'var(--bg-1)' }}>
             {showAddForm ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px' }}>
-                <input
-                  type="text"
-                  placeholder="Paste invite link or token..."
-                  value={inviteLink}
-                  onChange={(e) => {
-                    setInviteLink(e.target.value)
-                    setError(null)
-                  }}
-                  style={{ width: '100%', fontSize: 12, padding: '6px 8px', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--bg-3)', color: 'var(--ink)' }}
-                  autoFocus
-                />
-                {needsPassword && (
-                  <input
-                    type="password"
-                    placeholder="Roadmap password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value)
-                      setError(null)
-                    }}
-                    style={{ width: '100%', fontSize: 12, padding: '6px 8px', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--bg-3)', color: 'var(--ink)' }}
-                  />
-                )}
-                {error && <div style={{ fontSize: 11, color: 'var(--ember)' }}>{error}</div>}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button className="btn sm primary" onClick={handleJoin} disabled={joining} style={{ flex: 1 }}>
-                    {joining ? 'Joining...' : 'Join'}
-                  </button>
-                  <button className="btn sm ghost" onClick={() => {
-                    setShowAddForm(false)
-                    setError(null)
-                    setNeedsPassword(false)
-                    setPassword('')
-                  }}>Cancel</button>
-                </div>
-              </div>
+              <RoadmapSwitcherInviteForm
+                inviteLink={inviteLink}
+                password={password}
+                needsPassword={needsPassword}
+                joining={joining}
+                error={error}
+                onInviteLinkChange={(value) => { setInviteLink(value); setError(null) }}
+                onPasswordChange={(value) => { setPassword(value); setError(null) }}
+                onJoin={handleJoin}
+                onCancel={() => {
+                  setShowAddForm(false)
+                  setError(null)
+                  setNeedsPassword(false)
+                  setPassword('')
+                }}
+              />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <button 
