@@ -1412,18 +1412,6 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 640px — mobile: two-row inline header, no More menu ────────────────── */
-@media (max-width: 640px) {
-  /* Show all controls directly */
-  .header-secondary { display: flex; }
-  .header-more { display: none; }
-  /* Row 1: Brand + badge + spacer + RoadmapSwitcher */
-  .app-header { flex-wrap: wrap; }
-  .app-header > .roadmap-switcher { order: 0; }
-  /* Row 2: icon buttons + primary action + ThemeToggle */
-  .app-header .actions { order: 2; flex-basis: 100%; justify-content: flex-end; }
-}
-
 /* ── 720px — minor banner polish ────────────────────────────────────────── */
 @media (max-width: 720px) {
   .readonly-banner .who { font-size: 12px; }
@@ -1455,6 +1443,29 @@
     color: var(--ink-3); font-size: 12px;
     text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px;
   }
+}
+
+/* ── 640px — mobile: intentional two-row grid header ────────────────────── */
+@media (max-width: 640px) {
+  /* Show secondary controls inline — no More menu */
+  .header-secondary { display: flex; }
+  /* Grid replaces flex so the spacer cannot steal the row before the switcher */
+  .app-header {
+    display: grid;
+    grid-template-areas:
+      "brand badge . switcher"
+      "actions actions actions actions";
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 10px 16px;
+  }
+  .app-header .brand-mini          { grid-area: brand; }
+  .app-header .badge               { grid-area: badge; }
+  .app-header > .roadmap-switcher  { grid-area: switcher; }
+  .app-header .actions             { grid-area: actions; justify-content: flex-end; gap: 6px; }
+  /* Flex-only helpers that have no grid role */
+  .app-header .spacer              { display: none; }
 }
 
 /* ── 600px — mobile: compact single-row header, full-width search, full-width panels ── */
