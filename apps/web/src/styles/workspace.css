@@ -96,18 +96,21 @@
   line-height: 1;
   box-sizing: border-box;
 }
-/* Secondary controls group — flex row on desktop, hidden on mobile */
+/* Secondary controls group */
 .header-secondary {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-/* More menu — hidden on desktop, visible on mobile */
+/* More menu — hidden always (kept in DOM for potential reuse) */
 .header-more {
   display: none;
   align-items: center;
   position: relative;
 }
+/* Desktop visual order: .actions first, then RoadmapSwitcher (direct child) last */
+.app-header .actions { order: 1; }
+.app-header > .roadmap-switcher { order: 2; }
 /* More panel dropdown */
 .header-more-panel {
   position: absolute;
@@ -1409,10 +1412,16 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 640px — mobile: collapse secondary controls into More menu ──────────── */
+/* ── 640px — mobile: two-row inline header, no More menu ────────────────── */
 @media (max-width: 640px) {
-  .header-secondary { display: none; }
-  .header-more { display: flex; }
+  /* Show all controls directly */
+  .header-secondary { display: flex; }
+  .header-more { display: none; }
+  /* Row 1: Brand + badge + spacer + RoadmapSwitcher */
+  .app-header { flex-wrap: wrap; }
+  .app-header > .roadmap-switcher { order: 0; }
+  /* Row 2: icon buttons + primary action + ThemeToggle */
+  .app-header .actions { order: 2; flex-basis: 100%; justify-content: flex-end; }
 }
 
 /* ── 720px — minor banner polish ────────────────────────────────────────── */

@@ -71,10 +71,13 @@ export function AppHeader({
 
       <span className="spacer" />
 
+      {/* Session switcher — row 1 right on mobile, ordered after .actions on desktop */}
+      <RoadmapSwitcher />
+
       <div className="actions">
         {!readOnly && (
           <>
-            {/* Secondary icon buttons — hidden on mobile, surfaced in More menu */}
+            {/* Secondary icon buttons */}
             <div className="header-secondary">
               <button className="iconbtn" title="Import / Export" onClick={onIO}>
                 <Icon name="export" size={16} />
@@ -132,12 +135,11 @@ export function AppHeader({
             <Icon name="plus" size={14} stroke="#fff" /> Create your own
           </button>
         )}
-        {/* Desktop secondary controls — hidden on mobile, surfaced in More menu */}
+        {/* Theme toggle */}
         <div className="header-secondary">
           <ThemeToggle />
-          <RoadmapSwitcher />
         </div>
-        {/* Mobile collapsed menu — hidden on desktop */}
+        {/* More menu — hidden on mobile and desktop, kept for potential reuse */}
         <HeaderMoreMenu onIO={!readOnly ? onIO : undefined} />
       </div>
     </header>
