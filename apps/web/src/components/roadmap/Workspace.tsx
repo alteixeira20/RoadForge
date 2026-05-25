@@ -18,7 +18,8 @@ import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { useAutoSync } from '@/hooks/useAutoSync'
-import { createRoadmap, getParticipants, getRoadmap, isApiConnectionError, revokeParticipant, saveToServer } from '@/services/roadmap.service'
+import { useWorkspaceParticipants } from '@/hooks/useWorkspaceParticipants'
+import { createRoadmap, getRoadmap, isApiConnectionError, revokeParticipant, saveToServer } from '@/services/roadmap.service'
 import { normalizePhasesProgress, renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
@@ -109,9 +110,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
-  const [participants, setParticipants] = useState<Participant[]>([])
-  const [participantsLoading, setParticipantsLoading] = useState(false)
-  const [participantsError, setParticipantsError] = useState<string | null>(null)
+  const {
+    participants,
+    participantsLoading,
+    participantsError,
+    setParticipants,
+    setParticipantsError,
+    refreshParticipants,
+  } = useWorkspaceParticipants({ serverRoadmapId, sessionToken, role })
   const [activityRefreshKey, setActivityRefreshKey] = useState(0)
   const [pendingActivityChanges, setPendingActivityChanges] = useState<ActivityChange[]>([])
 
@@ -121,31 +127,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const canViewTeam = role === 'owner' && !!serverRoadmapId && !!sessionToken
 
   // ─── Effective State ───────────────────────────────────────────────────────
-
-  useEffect(() => {
-    setParticipants([])
-    setParticipantsError(null)
-    if (!serverRoadmapId || !sessionToken || role !== 'owner') {
-      setParticipantsLoading(false)
-      return
-    }
-    let cancelled = false
-    setParticipantsLoading(true)
-    getParticipants(serverRoadmapId, sessionToken)
-      .then((data) => {
-        if (!cancelled) setParticipants(data)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setParticipants([])
-          setParticipantsError('Could not load team members.')
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setParticipantsLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [serverRoadmapId, sessionToken, role])
 
   useEffect(() => {
     if (!canViewTeam && workspaceView === 'team') setWorkspaceView('roadmap')
@@ -764,11 +745,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           : item
       )))
       setParticipantsError(null)
-      try {
-        setParticipants(await getParticipants(serverRoadmapId, sessionToken))
-      } catch {
-        setParticipantsError('Could not refresh team members.')
-      }
+      await refreshParticipants()
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('401') || msg.includes('403')) showToast('Only the owner can manage participants.')
