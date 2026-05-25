@@ -38,3 +38,6 @@ Thumbs.db
 
 # Local agent handoff (not for commit)
 .agent-handoff/
+
+# Local rebranding prep packs
+rebranding/
