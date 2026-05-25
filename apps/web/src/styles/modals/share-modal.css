@@ -1,0 +1,298 @@
+/* ─── Share modal — share roles, link rows, participant / team sections ──────── */
+
+/* ─── Owner access ─────────────────────────────────────────────────────────── */
+.owner-access {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── Share role sections ──────────────────────────────────────────────────── */
+.share-list { display: flex; flex-direction: column; gap: 10px; }
+.share-role-section {
+  background: var(--bg-2);
+  border: 1px solid var(--border-faint);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.share-role-section.recommended {
+  border-color: rgba(217,116,66,0.30);
+  background: linear-gradient(180deg, var(--bg-2), rgba(217,116,66,0.04));
+}
+.share-role-head {
+  width: 100%;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 32px 1fr 18px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.share-role-head:hover {
+  background: color-mix(in oklab, var(--bg) 52%, transparent);
+}
+.share-role-head .ic {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--bg-3);
+  border: 1px solid var(--border-faint);
+  display: grid; place-items: center;
+  color: var(--ink-2);
+}
+.share-role-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 650;
+}
+.link-state {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--bg-inset);
+  color: var(--ink-3);
+  border: 1px solid var(--border-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 650;
+}
+.link-state.active {
+  color: var(--ember);
+  border-color: rgba(217,116,66,0.25);
+  background: var(--lava-glow);
+}
+.share-role-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+/* ─── Share rows ───────────────────────────────────────────────────────────── */
+.share-row {
+  position: relative;
+  padding: 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-faint);
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 4px 12px;
+}
+.share-row.compact {
+  padding: 12px;
+}
+.share-role-body .share-row.compact {
+  border-radius: 8px;
+  background: var(--bg);
+}
+.share-role-body .share-row.compact .meta,
+.share-role-body .share-row.compact .link-line,
+.share-role-body .share-row.compact .actions,
+.share-role-body .share-row.compact .share-role-note {
+  grid-column: 1 / -1;
+}
+.share-row.recommended {
+  border-color: rgba(217,116,66,0.30);
+  background: linear-gradient(180deg, var(--bg-2), rgba(217,116,66,0.04));
+}
+.share-row > .ic {
+  grid-row: 1 / 2;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--bg-3);
+  border: 1px solid var(--border-faint);
+  display: grid; place-items: center;
+  color: var(--ink-2);
+}
+.share-row.recommended > .ic { color: var(--ember); border-color: rgba(217,116,66,0.25); }
+.share-row .meta { grid-column: 2 / 3; }
+.share-row .meta .h {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: var(--ink);
+}
+.share-row .badge.ember {
+  font-size: 10px; padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--lava-glow);
+  color: var(--ember);
+  border: 1px solid rgba(217,116,66,0.25);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.share-row .meta .d { font-size: 12.5px; color: var(--ink-3); line-height: 1.5; margin-top: 2px; }
+.share-row .link-line {
+  grid-column: 2 / 3;
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  padding: 6px 6px 6px 10px;
+  min-width: 0;
+}
+.share-row .link-line code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.share-row .link-line .copy {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11.5px; font-weight: 500;
+  color: var(--ink-2);
+  transition: all 140ms ease;
+  flex: 0 0 auto;
+}
+.share-row .link-line .copy:hover { color: var(--ink); border-color: var(--border-strong); }
+.share-row .link-line .copy.copied { color: var(--ember); border-color: rgba(217,116,66,0.40); background: var(--lava-glow); }
+.share-row .link-hint {
+  font-size: 12px;
+  color: var(--ink-4);
+  font-style: italic;
+}
+.share-row .actions {
+  grid-column: 2 / 3;
+  display: flex; gap: 6px;
+  margin-top: 8px;
+}
+.share-row .mini {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 9px;
+  background: transparent;
+  border: 1px solid var(--border-faint);
+  border-radius: 6px;
+  font-size: 11.5px; color: var(--ink-3); font-weight: 500;
+  transition: all 140ms ease;
+}
+.share-row .mini:hover { color: var(--ink-2); border-color: var(--border); }
+.share-role-note {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid rgba(217,116,66,0.22);
+  border-radius: 7px;
+  background: rgba(217,116,66,0.06);
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.share-role-note.neutral {
+  border-color: var(--border-faint);
+  background: var(--bg-2);
+  color: var(--ink-3);
+}
+
+/* ─── Participants section ─────────────────────────────────────────────────── */
+.participants-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.section-heading .muted,
+.participant-row.muted {
+  color: var(--ink-4);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.participants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.participant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+}
+.participant-row.revoked {
+  opacity: 0.62;
+}
+.participant-main {
+  min-width: 0;
+}
+.participant-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.participant-meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+.participant-row .badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--bg-inset);
+  color: var(--ink-3);
+  border: 1px solid var(--border-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 650;
+}
+.participant-row .badge.ember {
+  color: var(--ember);
+  border-color: rgba(217,116,66,0.25);
+  background: var(--lava-glow);
+}
+.participant-row .mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  background: transparent;
+  border: 1px solid var(--border-faint);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-weight: 500;
+  transition: all 140ms ease;
+}
+.participant-row .mini:hover {
+  color: var(--ink-2);
+  border-color: var(--border);
+}
+
+/* ─── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  /* Share modal: ensure role actions wrap cleanly */
+  .share-row { padding: 10px 10px 10px 10px; }
+  .share-role-body { padding: 0 8px 8px; }
+  .share-row .actions { flex-wrap: wrap; }
+  /* Participant list: let long names and badges wrap */
+  .participant-row { flex-wrap: wrap; gap: 6px; }
+}

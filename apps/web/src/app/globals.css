@@ -26,5 +26,10 @@
 @import '../styles/workspace/task-row.css';
 @import '../styles/workspace/task-edit.css';
 @import '../styles/workspace-panels.css';
+@import '../styles/modals/modal-shell.css';
+@import '../styles/modals/create-wizard.css';
+@import '../styles/modals/share-modal.css';
+@import '../styles/modals/io-modal.css';
+@import '../styles/modals/password-gate.css';
 @import '../styles/modals.css';
 @import '../styles/join.css';
