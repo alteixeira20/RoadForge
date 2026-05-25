@@ -1,0 +1,215 @@
+/* ─── Task container ───────────────────────────────────────────────────────── */
+.task {
+  display: flex; flex-direction: column;
+  border-bottom: 1px solid var(--border-faint);
+  transition: background 160ms;
+}
+.task:last-child { border-bottom: none; }
+.task.expanded { background: var(--bg-2); }
+.task.next { background: linear-gradient(180deg, rgba(217,116,66,0.04), transparent 30%); }
+
+/* ─── Task row ─────────────────────────────────────────────────────────────── */
+.task-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 22px;
+}
+.task-row .check {
+  width: 20px; height: 20px;
+  border: 1.5px solid var(--ink-4);
+  border-radius: 6px;
+  flex-shrink: 0;
+  position: relative;
+  transition: all 160ms;
+  cursor: pointer;
+}
+.task-row .check:hover { border-color: var(--ember); }
+.task.done .check { background: var(--ember); border-color: var(--ember); }
+.task.done .check::after {
+  content: ""; position: absolute;
+  left: 5px; top: 1px; width: 5px; height: 11px;
+  border: solid #fff; border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.task-row .title {
+  flex: 1;
+  font-size: 15.5px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+.task.done .title { text-decoration: line-through; color: var(--ink-3); }
+.task-row .id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-4);
+}
+.task-row .toggle-btn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  color: var(--ink-4);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  transition: all 160ms;
+  cursor: pointer;
+  margin-right: -8px;
+}
+.task-row .toggle-btn:hover { color: var(--ember); background: var(--bg-3); }
+.task-row .toggle-btn[aria-expanded="true"] { color: var(--ember); }
+
+.task-row .meta-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+}
+.task-row .meta-pill.dep { color: var(--ember); }
+.task-row .meta-pill.blocked { color: var(--ink-4); }
+
+.task-row .next-pip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  background: rgba(217,116,66,0.12);
+  border: 1px solid rgba(217,116,66,0.30);
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--ember);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+[data-theme="light"] .task-row .next-pip { background: rgba(184,88,42,0.10); }
+
+/* ─── Task detail panel ────────────────────────────────────────────────────── */
+.task-detail {
+  padding: 4px 22px 22px 56px;
+  display: flex; flex-direction: column;
+  gap: 16px;
+  animation: detailIn 240ms cubic-bezier(.2,.8,.2,1);
+}
+
+.task-detail { position: relative; }
+
+.task-detail .desc {
+  font-size: 14.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  text-wrap: pretty;
+  margin-bottom: 4px;
+}
+.task-detail .grid {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  row-gap: 8px;
+  column-gap: 14px;
+  font-size: 13.5px;
+}
+.task-detail .grid .label { color: var(--ink-4); font-weight: 500; }
+.task-detail .grid .value { color: var(--ink-2); }
+
+.task-actions-footer {
+  margin-top: 12px;
+  display: flex; align-items: center;
+  justify-content: flex-end;
+}
+
+.task-detail .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ─── Task detail sections ─────────────────────────────────────────────────── */
+.task-detail-section { margin-top: 12px; }
+.section-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-4); margin-bottom: 8px;
+}
+
+/* ─── Subtasks ─────────────────────────────────────────────────────────────── */
+.subtasks {
+  display: flex; flex-direction: column;
+  padding-left: 12px;
+  border-left: 2px solid var(--border-faint);
+  margin-left: -2px;
+}
+.task.nested { border-bottom: none; background: transparent; }
+.task.nested .task-row { padding: 6px 12px; min-height: 40px; }
+.task.nested .task-detail { padding-left: 48px; padding-bottom: 8px; gap: 10px; }
+.task.nested .task-row .title { font-size: 14.5px; }
+
+/* ─── Tags and assignees (display) ────────────────────────────────────────── */
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.assignees { display: flex; flex-wrap: wrap; gap: 6px; }
+.assignee-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-faint);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 550;
+}
+.value .muted { color: var(--ink-4); }
+.tag-pill {
+  display: inline-flex; align-items: center;
+  padding: 1.5px 7px; border-radius: 4px;
+  font-size: 11px; font-weight: 500;
+  background: color-mix(in srgb, var(--tag-bg, var(--ink-4)), transparent 88%);
+  color: var(--tag-bg, var(--ink-2));
+  border: 1px solid color-mix(in srgb, var(--tag-bg, var(--ink-4)), transparent 75%);
+}
+
+/* ─── Drag handles (task-level) ────────────────────────────────────────────── */
+.drag-handle {
+  width: 24px; height: 32px;
+  display: grid; place-items: center;
+  color: var(--ink-4);
+  cursor: grab;
+  margin-left: -12px;
+  transition: all 160ms;
+  touch-action: none;
+}
+.drag-handle:hover { color: var(--ember); }
+.drag-handle:active { cursor: grabbing; color: var(--ember); }
+
+.drag-handle.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.drag-handle.disabled:hover { color: var(--ink-4); }
+
+/* ─── Task-level sortable drag states ─────────────────────────────────────── */
+.sortable-dragging {
+  opacity: 0.3;
+}
+
+.sortable-dragging-overlay {
+  box-shadow: var(--shadow-md);
+  border-radius: 8px;
+  background: var(--bg);
+  cursor: grabbing;
+}
+.sortable-dragging-overlay .drag-handle {
+  cursor: grabbing;
+  color: var(--ember);
+}
+
+/* ─── Animations ───────────────────────────────────────────────────────────── */
+@keyframes detailIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Responsive ───────────────────────────────────────────────────────────── */
+
+/* ── 760px — tablet: tighten task row and detail layout ─────────────────── */
+@media (max-width: 760px) {
+  .task-row { padding: 14px 16px; gap: 10px; flex-wrap: wrap; }
+  .task-row .meta-pill { display: none; }
+  .task-detail { padding-left: 16px; padding-right: 16px; }
+  .task-detail .grid { grid-template-columns: 1fr; }
+  .task-detail .grid .label {
+    color: var(--ink-3); font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px;
+  }
+}

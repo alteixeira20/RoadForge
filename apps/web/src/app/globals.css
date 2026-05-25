@@ -21,7 +21,10 @@
 @import '../styles/workspace/header.css';
 @import '../styles/workspace/banners.css';
 @import '../styles/workspace-toolbar.css';
-@import '../styles/workspace-roadmap.css';
+@import '../styles/workspace/roadmap.css';
+@import '../styles/workspace/phase.css';
+@import '../styles/workspace/task-row.css';
+@import '../styles/workspace/task-edit.css';
 @import '../styles/workspace-panels.css';
 @import '../styles/modals.css';
 @import '../styles/join.css';

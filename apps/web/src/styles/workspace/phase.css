@@ -1,0 +1,256 @@
+/* ─── Phase card ───────────────────────────────────────────────────────────── */
+.phase {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+.phase:hover { border-color: var(--border-strong); }
+.phase.expanded { box-shadow: var(--shadow-sm); }
+.phase.active-phase { border-color: rgba(217,116,66,0.40); }
+.phase.phase-color-open { overflow: visible; }
+
+/* ─── Phase header ─────────────────────────────────────────────────────────── */
+.phase-head {
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px 22px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 160ms;
+  position: relative;
+}
+.phase-head:hover { background: var(--bg-2); }
+.phase-head::before {
+  content: ""; position: absolute;
+  left: 0; top: 14px; bottom: 14px; width: 3px;
+  background: var(--phase-color, var(--ink-4));
+  border-radius: 0 2px 2px 0;
+  opacity: 0.85;
+}
+.phase-head .chev {
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  color: var(--ink-3);
+  transition: transform 280ms cubic-bezier(.2,.8,.2,1);
+}
+.phase.expanded .phase-head .chev { transform: rotate(90deg); }
+.phase-head .num {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-4);
+  letter-spacing: 0.04em;
+  width: 28px;
+}
+.phase-head .name {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  flex: 1;
+}
+.phase-head .status {
+  font-size: 13px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+}
+.phase-head .status.active { color: var(--ember); }
+.phase-head .progress-mini {
+  width: 80px; height: 4px;
+  background: var(--border-faint);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.phase-head .progress-mini > i {
+  display: block;
+  height: 100%;
+  width: var(--p, 0%);
+  background: var(--phase-color, var(--ember));
+  border-radius: 999px;
+}
+.phase-head .count {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-3);
+  min-width: 38px;
+  text-align: right;
+}
+
+/* Phase-level lock indicator — mirrors task meta-pill style */
+.phase-head .phase-lock-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+}
+
+/* ─── Phase color picker ───────────────────────────────────────────────────── */
+.phase-color-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: -6px;
+}
+.phase-color-trigger {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-3);
+  opacity: 0;
+  transition: opacity 160ms, background 160ms, border-color 160ms;
+}
+.phase:hover .phase-color-trigger,
+.phase-color-trigger:focus-visible,
+.phase-color-trigger[aria-expanded="true"] {
+  opacity: 1;
+}
+.phase-color-trigger:hover,
+.phase-color-trigger[aria-expanded="true"] {
+  background: var(--bg);
+  border-color: var(--border);
+}
+.phase-color-trigger > span,
+.phase-color-popover button > span {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.35);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.18);
+}
+.phase-color-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  width: 132px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+}
+.phase-color-popover button {
+  width: 34px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+}
+.phase-color-popover button:hover,
+.phase-color-popover button.selected {
+  background: var(--bg-3);
+  border-color: var(--border);
+}
+
+/* ─── Phase body / foot ────────────────────────────────────────────────────── */
+.phase-body {
+  border-top: 1px solid var(--border-faint);
+  display: flex; flex-direction: column;
+  animation: phaseExpand 320ms cubic-bezier(.2,.8,.2,1);
+  overflow: hidden;
+}
+
+.empty-phase {
+  padding: 32px 24px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 12px;
+  text-align: center;
+  color: var(--ink-4);
+  font-size: 14px;
+}
+.empty-phase p { margin: 0; }
+
+.phase-foot {
+  padding: 8px;
+  border-top: 1px solid var(--border-faint);
+  display: flex; justify-content: center;
+}
+.add-task-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 36px; padding: 0 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  color: var(--ink-3);
+  transition: all 160ms;
+  cursor: pointer;
+}
+.add-task-btn:hover { color: var(--ink); background: var(--bg-2); border-color: var(--border); }
+
+/* ─── Phase drag handles ───────────────────────────────────────────────────── */
+.phase-drag-handle {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 32px;
+  color: var(--ink-4);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 160ms, color 160ms;
+  touch-action: none;
+  flex-shrink: 0;
+}
+.phase-head:hover .phase-drag-handle { opacity: 1; }
+.phase-drag-handle:hover { color: var(--ember); }
+.phase-drag-handle:active { cursor: grabbing; color: var(--ember); }
+
+/* ─── Phase sortable drag states ───────────────────────────────────────────── */
+.phase-sortable-dragging { opacity: 0.35; }
+
+.phase-sortable-overlay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  cursor: grabbing;
+}
+.phase-overlay-num {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--ink-3);
+}
+.phase-overlay-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-1);
+}
+
+/* ─── Animations ───────────────────────────────────────────────────────────── */
+@keyframes phaseExpand { from { opacity: 0; } to { opacity: 1; } }
+
+/* ─── Responsive ───────────────────────────────────────────────────────────── */
+
+/* ── 760px — tablet: tighten phase layout ───────────────────────────────── */
+@media (max-width: 760px) {
+  .phase-head { padding: 14px 16px; gap: 10px; }
+  .phase-color-trigger { opacity: 1; }
+  .phase-head .progress-mini { display: none; }
+  .phase-head .name { font-size: 17px; }
+}
+
+/* ── 600px — mobile: compact phase layout ───────────────────────────────── */
+@media (max-width: 600px) {
+  .phase-head .status { display: none; }
+  .phase-head .name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .phase-drag-handle { opacity: 1; width: 24px; height: 36px; }
+}
