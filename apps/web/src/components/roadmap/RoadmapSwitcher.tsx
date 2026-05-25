@@ -8,6 +8,7 @@ import { storage, type AuthCache, type RoadmapCache } from '@/lib/storage'
 import { persistJoinResult } from '@/lib/join-flow'
 import { deleteRoadmap, getRoadmap, isApiConnectionError, joinRoadmap } from '@/services/roadmap.service'
 import { Modal } from '@/components/ui/Modal'
+import { RoadmapSwitcherItem } from '@/components/roadmap/RoadmapSwitcherItem'
 import type { ShareRole } from '@/types/roadmap'
 
 interface RoadmapSwitcherProps {
@@ -17,7 +18,7 @@ interface RoadmapSwitcherProps {
   onCreate?: () => void
 }
 
-interface DeleteTarget {
+export interface DeleteTarget {
   id: string
   cache: RoadmapCache
   auth: AuthCache | null
@@ -241,74 +242,17 @@ export function RoadmapSwitcher({
                 No stored roadmaps.
               </div>
             ) : (
-              visibleCaches.map(({ id, cache, auth }) => {
-                const canDeleteServer = cache.saved && auth?.role === 'owner'
-                const canRemoveLocal = !canDeleteServer
-                return (
-                <div
+              visibleCaches.map(({ id, cache, auth }) => (
+                <RoadmapSwitcherItem
                   key={id}
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    borderRadius: 6,
-                    background: activeRoadmapId === id ? 'var(--bg-3)' : 'transparent',
-                    display: 'flex',
-                    gap: 6,
-                    alignItems: 'stretch',
-                    boxShadow: activeRoadmapId === id ? '0 0 0 1px var(--molten-dim) inset' : 'none'
-                  }}
-                >
-                  <button
-                    onClick={() => handleActivateRoadmap(id)}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      textAlign: 'left',
-                      background: 'transparent',
-                      border: 'none',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4,
-                      cursor: 'pointer',
-                      padding: '2px 4px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 500, color: activeRoadmapId === id ? 'var(--ember)' : 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {cache.roadmapName || 'Untitled Roadmap'}
-                      </span>
-                      {auth ? (
-                        <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--ink-3)', background: 'var(--bg-1)', padding: '2px 6px', borderRadius: 4 }}>
-                          {auth.role}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--molten)', background: 'var(--molten-dim)', padding: '2px 6px', borderRadius: 4 }}>
-                          Local
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-4)' }}>
-                      {cache.updatedAt ? new Date(cache.updatedAt).toLocaleDateString() : 'Draft'}
-                    </div>
-                  </button>
-                  {(canDeleteServer || canRemoveLocal) && (
-                    <button
-                      className="iconbtn"
-                      title={canDeleteServer ? 'Delete roadmap' : cache.saved ? 'Remove from this browser' : 'Remove local draft'}
-                      aria-label={canDeleteServer ? 'Delete roadmap' : cache.saved ? 'Remove from this browser' : 'Remove local draft'}
-                      onClick={() => handleRequestDelete({
-                        id,
-                        cache,
-                        auth,
-                        mode: canDeleteServer ? 'server' : 'local',
-                      })}
-                      style={{ color: 'var(--ember)' }}
-                    >
-                      <Icon name="trash" size={14} />
-                    </button>
-                  )}
-                </div>
-              )})
+                  id={id}
+                  cache={cache}
+                  auth={auth}
+                  active={activeRoadmapId === id}
+                  onActivate={handleActivateRoadmap}
+                  onRequestDelete={handleRequestDelete}
+                />
+              ))
             )}
           </div>
 
