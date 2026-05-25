@@ -22,6 +22,7 @@ import { normalizePhasesProgress, renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
 import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-changes'
+import { generateTaskId, hasCycle as hasCycleGraph } from '@/lib/task-graph'
 import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, ActivityChange, SyncStatus, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
 
 interface WorkspaceProps {
@@ -507,39 +508,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   // ─── Task Mutations ──────────────────────────────────────────────────────────
 
-  const generateTaskId = (allTasks: Task[]): string => {
-    const rfIds = allTasks
-      .map((t) => t.id)
-      .filter((id) => id.startsWith('RF-'))
-      .map((id) => parseInt(id.replace('RF-', ''), 10))
-      .filter((n) => !isNaN(n))
-
-    if (rfIds.length === 0) return `TASK-${Date.now().toString().slice(-6)}`
-
-    const nextId = Math.max(...rfIds) + 1
-    return `RF-${nextId.toString().padStart(2, '0')}`
-  }
-
-  const hasCycle = (taskId: string, depId: string): boolean => {
-    const taskMap = new Map(allTasks.map((t) => [t.id, t]))
-    const visited = new Set<string>()
-
-    const isReachable = (startId: string, targetId: string): boolean => {
-      if (startId === targetId) return true
-      if (visited.has(startId)) return false
-      visited.add(startId)
-
-      const task = taskMap.get(startId)
-      if (!task?.deps) return false
-
-      for (const d of task.deps) {
-        if (isReachable(d, targetId)) return true
-      }
-      return false
-    }
-
-    return isReachable(depId, taskId)
-  }
+  const hasCycle = (taskId: string, depId: string): boolean => hasCycleGraph(taskId, depId, allTasks)
 
   const handleAddSubtask = (parentId: string, title: string) => {
     if (readOnly) return
