@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { cleanAssigneeName, dedupeNames, getTaskAssignees, getVisibleTaskTags, removeAssignmentTags } from '@/lib/task-assignment'
+import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-assignment'
 import { SubtaskForm, DependencyPicker } from './TaskActionForms'
+import { TaskEditForm } from './TaskEditForm'
 import { useToastState } from '@/hooks/useToastState'
 import { useEditLock } from '@/hooks/useEditLock'
 import { Toast } from '@/components/ui/Toast'
@@ -92,8 +93,6 @@ export function TaskRow({
   const [showSubtaskForm, setShowSubtaskForm] = useState(false)
   const [showDepPicker, setShowDepPicker] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [editDraft, setEditDraft] = useState<Partial<Task>>({})
-  const [assigneeDraft, setAssigneeDraft] = useState('')
 
   const { toast, showToast } = useToastState()
 
@@ -147,47 +146,7 @@ export function TaskRow({
   const handleStartEdit = async () => {
     const success = await tryAcquireEditLock()
     if (!success) return
-
-    setEditDraft({
-      title: task.title,
-      est: task.est,
-      desc: task.desc,
-      assignees: getTaskAssignees(task),
-      tags: getVisibleTaskTags(task),
-    })
-    setAssigneeDraft('')
     setIsEditing(true)
-  }
-
-  const handleSaveEdit = () => {
-    const assignees = dedupeNames(editDraft.assignees ?? [])
-    onUpdateTask(task.id, {
-      ...editDraft,
-      title: editDraft.title?.trim(),
-      assignees,
-      tags: removeAssignmentTags((editDraft.tags || []).map((t) => t.trim().toLowerCase()).filter(Boolean)),
-    })
-    setIsEditing(false)
-  }
-
-  const toggleAssignee = (name: string) => {
-    const clean = cleanAssigneeName(name)
-    if (!clean) return
-    const current = editDraft.assignees ?? []
-    const exists = current.some((item) => item.toLowerCase() === clean.toLowerCase())
-    setEditDraft({
-      ...editDraft,
-      assignees: exists
-        ? current.filter((item) => item.toLowerCase() !== clean.toLowerCase())
-        : dedupeNames([...current, clean]),
-    })
-  }
-
-  const handleAddAssignee = () => {
-    const clean = cleanAssigneeName(assigneeDraft)
-    if (!clean) return
-    setEditDraft({ ...editDraft, assignees: dedupeNames([...(editDraft.assignees ?? []), clean]) })
-    setAssigneeDraft('')
   }
 
   const navigateToTask = (id: string) => {
@@ -288,89 +247,16 @@ export function TaskRow({
       {expanded && (
         <div className="task-detail" onClick={(e) => e.stopPropagation()}>
           {isEditing ? (
-            <div className="edit-form">
-              <div className="field">
-                <label>Title</label>
-                <input
-                  autoFocus
-                  value={editDraft.title || ''}
-                  onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })}
-                  placeholder="Task title..."
-                />
-              </div>
-              {!isNested && (
-                <div className="field">
-                  <label>Estimate</label>
-                  <input
-                    value={editDraft.est || ''}
-                    onChange={(e) => setEditDraft({ ...editDraft, est: e.target.value })}
-                    placeholder="e.g. 2d, 5h..."
-                  />
-                </div>
-              )}
-              <div className="field full">
-                <label>Description</label>
-                <textarea
-                  value={editDraft.desc || ''}
-                  onChange={(e) => setEditDraft({ ...editDraft, desc: e.target.value })}
-                  placeholder="Task details..."
-                  rows={3}
-                />
-              </div>
-              <div className="field full">
-                <label>Assigned</label>
-                <div className="assignee-editor">
-                  {availableAssignees.length > 0 && (
-                    <div className="assignee-options">
-                      {availableAssignees.map((name) => {
-                        const selected = (editDraft.assignees ?? []).some((item) => item.toLowerCase() === name.toLowerCase())
-                        return (
-                          <button
-                            key={name}
-                            type="button"
-                            className={`assignee-option ${selected ? 'selected' : ''}`}
-                            onClick={() => toggleAssignee(name)}
-                          >
-                            {name}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                  <div className="add-assignee-row">
-                    <input
-                      value={assigneeDraft}
-                      onChange={(e) => setAssigneeDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          handleAddAssignee()
-                        }
-                      }}
-                      placeholder="Add assignee"
-                    />
-                    <button type="button" className="btn sm ghost" onClick={handleAddAssignee}>
-                      Add assignee
-                    </button>
-                  </div>
-                  {(editDraft.assignees ?? []).length === 0 && (
-                    <span className="empty-assignees">None</span>
-                  )}
-                </div>
-              </div>
-              <div className="field full">
-                <label>Tags (comma separated)</label>
-                <input
-                  value={(editDraft.tags || []).join(', ')}
-                  onChange={(e) => setEditDraft({ ...editDraft, tags: e.target.value.split(',') })}
-                  placeholder="infra, design..."
-                />
-              </div>
-              <div className="edit-actions">
-                <button className="btn sm ghost" onClick={() => setIsEditing(false)}>Discard</button>
-                <button className="btn sm primary" onClick={handleSaveEdit}>Save</button>
-              </div>
-            </div>
+            <TaskEditForm
+              task={task}
+              isNested={isNested}
+              availableAssignees={availableAssignees}
+              onSave={(updates) => {
+                onUpdateTask(task.id, updates)
+                setIsEditing(false)
+              }}
+              onCancel={() => setIsEditing(false)}
+            />
           ) : (
             <>
               {task.desc && <div className="desc">{task.desc}</div>}
