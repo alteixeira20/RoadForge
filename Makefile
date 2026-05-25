@@ -75,6 +75,11 @@ diff:
 	@git status --short
 	@git diff --stat -- $(DIFF_FILES)
 	@git diff -- $(DIFF_FILES)
+	@git ls-files --others --exclude-standard $(DIFF_FILES) | while read file; do \
+		echo ""; \
+		echo "Untracked: $$file"; \
+		git diff --no-index /dev/null "$$file" || true; \
+	done
 
 audit:
 	pnpm audit
