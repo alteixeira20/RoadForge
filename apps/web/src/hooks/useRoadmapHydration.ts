@@ -111,6 +111,39 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     setRoadmapUpgradeNotice({ roadmapId: targetId })
   }, [setRoadmapUpgradeNotice])
 
+  const resetAllState = useCallback((
+    cache: RoadmapCache,
+    activeRoadmapId?: string,
+  ) => {
+    setBackendUnavailableRoadmapId(null)
+    setIsHydratingServer(false)
+    if (activeRoadmapId) setActiveRoadmapIdState(activeRoadmapId)
+    setRoadmapUpgradeNotice(null)
+    setRoadmapNameState(cache.roadmapName)
+    setPhasesState(cache.phases)
+    setSavedState(cache.saved)
+    setServerRoadmapIdState(null)
+    setSessionTokenState(null)
+    setParticipantIdState(null)
+    setRoleState(null)
+    setIsPasswordEnabledState(cache.isPasswordEnabled)
+    setOwnerDisplayNameState(cache.ownerDisplayName)
+    setUpdatedAtState(cache.updatedAt)
+  }, [
+    setActiveRoadmapIdState,
+    setRoadmapUpgradeNotice,
+    setRoadmapNameState,
+    setPhasesState,
+    setSavedState,
+    setServerRoadmapIdState,
+    setSessionTokenState,
+    setParticipantIdState,
+    setRoleState,
+    setIsPasswordEnabledState,
+    setOwnerDisplayNameState,
+    setUpdatedAtState,
+  ])
+
   const loadRoadmapIntoState = useCallback((targetId: string, cancelled: { value: boolean }) => {
     const rc = storage.getRoadmapCache(targetId)
     const ac = storage.getAuthCache(targetId)
@@ -294,37 +327,13 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     storage.setRoadmapCache(newId, cache)
     storage.setAuthCache(newId, null)
 
-    setBackendUnavailableRoadmapId(null)
-    setIsHydratingServer(false)
     setLocks({})
-    setActiveRoadmapIdState(newId)
-    setRoadmapUpgradeNotice(null)
-    setRoadmapNameState(nextName)
-    setPhasesState(normalizedPhases)
-    setSavedState(false)
-    setServerRoadmapIdState(null)
-    setSessionTokenState(null)
-    setParticipantIdState(null)
-    setRoleState(null)
-    setIsPasswordEnabledState(false)
-    setOwnerDisplayNameState(null)
-    setUpdatedAtState(null)
+    resetAllState(cache, newId)
 
     return newId
   }, [
+    resetAllState,
     setLocks,
-    setActiveRoadmapIdState,
-    setRoadmapUpgradeNotice,
-    setRoadmapNameState,
-    setPhasesState,
-    setSavedState,
-    setServerRoadmapIdState,
-    setSessionTokenState,
-    setParticipantIdState,
-    setRoleState,
-    setIsPasswordEnabledState,
-    setOwnerDisplayNameState,
-    setUpdatedAtState,
   ])
 
   const resetToSample = useCallback(() => {
@@ -335,32 +344,10 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     storage.setRoadmapCache(newId, cache)
     storage.setAuthCache(newId, null)
     // Note: We intentionally don't wipe other roadmap caches.
-    setRoadmapUpgradeNotice(null)
-    setBackendUnavailableRoadmapId(null)
-    setIsHydratingServer(false)
-    setRoadmapNameState(cache.roadmapName)
-    setPhasesState(cache.phases)
-    setSavedState(false)
-    setServerRoadmapIdState(null)
-    setSessionTokenState(null)
-    setParticipantIdState(null)
-    setRoleState(null)
-    setIsPasswordEnabledState(false)
-    setOwnerDisplayNameState(null)
-    setUpdatedAtState(null)
+    resetAllState(cache)
     setLocks({})
   }, [
-    setRoadmapUpgradeNotice,
-    setRoadmapNameState,
-    setPhasesState,
-    setSavedState,
-    setServerRoadmapIdState,
-    setSessionTokenState,
-    setParticipantIdState,
-    setRoleState,
-    setIsPasswordEnabledState,
-    setOwnerDisplayNameState,
-    setUpdatedAtState,
+    resetAllState,
     setLocks,
   ])
 
@@ -386,33 +373,12 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     storage.setRoadmapCache(newId, cache)
     storage.setAuthCache(newId, null)
 
-    setActiveRoadmapIdState(newId)
-    setRoadmapUpgradeNotice(null)
-    setRoadmapNameState(cache.roadmapName)
-    setPhasesState(cache.phases)
-    setSavedState(false)
-    setServerRoadmapIdState(null)
-    setSessionTokenState(null)
-    setParticipantIdState(null)
-    setRoleState(null)
-    setIsPasswordEnabledState(false)
-    setOwnerDisplayNameState(null)
-    setUpdatedAtState(null)
+    resetAllState(cache, newId)
   }, [
     loadRoadmapIntoState,
+    resetAllState,
     setLocks,
     setActiveRoadmapIdState,
-    setRoadmapUpgradeNotice,
-    setRoadmapNameState,
-    setPhasesState,
-    setSavedState,
-    setServerRoadmapIdState,
-    setSessionTokenState,
-    setParticipantIdState,
-    setRoleState,
-    setIsPasswordEnabledState,
-    setOwnerDisplayNameState,
-    setUpdatedAtState,
   ])
 
   return {
