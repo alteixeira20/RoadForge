@@ -95,10 +95,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       })
       .finally(() => { if (!cancelled) setParticipantsLoading(false) })
     return () => { cancelled = true }
-    // onToast identity is not stable (no useCallback in useToastState); omitting
-    // it is safe because its behaviour never changes, only its reference.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, serverRoadmapId, sessionToken, canManageShare])
+  }, [open, serverRoadmapId, sessionToken, canManageShare, onToast])
 
   const copy = (role: string, url: string) => {
     if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {})

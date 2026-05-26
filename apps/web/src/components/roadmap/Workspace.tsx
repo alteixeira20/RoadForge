@@ -199,10 +199,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         : 'This roadmap was deleted.',
     )
     clearAccessRevokedEvent()
-    // showToast is intentionally omitted from deps (no useCallback in useToastState).
-    // clearAccessRevokedEvent is stable (useCallback with empty deps).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessRevokedEvent])
+  }, [accessRevokedEvent, showToast, clearAccessRevokedEvent])
 
   const onToggleTask = (id: string) => setExpandedTaskId((prev) => (prev === id ? null : id))
 
