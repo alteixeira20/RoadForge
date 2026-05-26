@@ -45,30 +45,6 @@ export function AppHeader({
     <header className="app-header">
       <Brand href="/" className="brand-mini" />
 
-      <div className="crumbs">
-        <span className="active">{roadmapName}</span>
-      </div>
-
-      {!readOnly && (
-        <span
-          className={`badge ${syncStatus}`}
-          title={
-            syncStatus === 'offline' ? 'API unreachable — changes saved locally' :
-            syncStatus === 'conflict' ? 'Roadmap changed elsewhere — local edits preserved' :
-            undefined
-          }
-        >
-          <span className="dot" />
-          {BADGE_LABEL[syncStatus]}
-        </span>
-      )}
-      {readOnly && (
-        <span className="badge">
-          <span className="dot" />
-          READ ONLY
-        </span>
-      )}
-
       <span className="spacer" />
 
       {/* Session switcher — row 1 right on mobile, ordered after .actions on desktop */}

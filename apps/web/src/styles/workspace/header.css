@@ -1,6 +1,6 @@
 /* ─── App header ───────────────────────────────────────────────────────────── */
 .app-header {
-  display: flex; align-items: center; gap: 16px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: nowrap;
   padding: 16px 32px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklab, var(--bg) 90%, transparent);
@@ -215,15 +215,14 @@
   .app-header {
     display: grid;
     grid-template-areas:
-      "brand badge . switcher"
-      "actions actions actions actions";
-    grid-template-columns: auto auto 1fr auto;
+      "brand . switcher"
+      "actions actions actions";
+    grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: 6px 8px;
     padding: 10px 16px;
   }
   .app-header .brand-mini          { grid-area: brand; }
-  .app-header .badge               { grid-area: badge; }
   .app-header > .roadmap-switcher  { grid-area: switcher; }
   .app-header .actions             { grid-area: actions; justify-content: flex-end; gap: 6px; }
   /* Flex-only helpers that have no grid role */
