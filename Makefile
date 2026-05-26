@@ -1,4 +1,4 @@
-.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -6,7 +6,7 @@ WEB_PORT ?= 3020
 WEB_HOST ?= localhost
 WEB_URL  := http://localhost:$(WEB_PORT)
 API_URL  := http://localhost:7878
-PNPM_VERSION ?= latest-10
+PNPM_VERSION ?= 9.15.9
 
 APP_NAME ?= roadforge
 DEPLOY_ROOT ?= /opt/stacks/roadforge
@@ -22,7 +22,7 @@ help:
 	@echo ""
 	@echo "Usage:"
 	@echo "  make install       Install frontend dependencies"
-	@echo "  (Frontend commands auto-bootstrap pnpm via Corepack when missing)"
+	@echo "  (Frontend commands auto-bootstrap pnpm and install dependencies when missing)"
 	@echo "  make dev           Run Next.js frontend in the foreground"
 	@echo "  make check         Run linting, typechecking, and production build"
 	@echo "  make diff          Show working tree status, diff stats, and full diff"
@@ -69,37 +69,52 @@ ensure-pnpm:
 	@if command -v pnpm >/dev/null 2>&1; then \
 		echo "pnpm: $$(pnpm -v)"; \
 	else \
-		echo "pnpm not found. Bootstrapping pnpm via Corepack ($(PNPM_VERSION))..."; \
+		echo "pnpm not found. Bootstrapping pnpm $(PNPM_VERSION)..."; \
 		if ! command -v node >/dev/null 2>&1; then \
 			echo "Error: Node.js is required before pnpm can be bootstrapped."; \
 			echo "Install Node.js first, then rerun make."; \
 			exit 1; \
 		fi; \
-		if ! command -v corepack >/dev/null 2>&1; then \
+		if command -v corepack >/dev/null 2>&1; then \
+			COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack enable; \
+			COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack prepare pnpm@$(PNPM_VERSION) --activate || true; \
+		fi; \
+		if ! command -v pnpm >/dev/null 2>&1; then \
 			if ! command -v npm >/dev/null 2>&1; then \
-				echo "Error: corepack and npm are missing."; \
+				echo "Error: pnpm is missing and npm is not available."; \
 				echo "Install Node.js/npm first, then rerun make."; \
 				exit 1; \
 			fi; \
-			echo "Corepack not found. Installing latest Corepack with npm..."; \
-			npm install --global corepack@latest || { \
-				echo "Error: Could not install Corepack globally."; \
-				echo "Try: sudo npm install -g corepack@latest"; \
+			echo "Corepack did not provide pnpm. Installing pnpm $(PNPM_VERSION) with npm..."; \
+			npm install --global pnpm@$(PNPM_VERSION) || { \
+				echo "Error: Could not install pnpm globally."; \
+				echo "Try: sudo npm install -g pnpm@$(PNPM_VERSION)"; \
 				echo "Then rerun make."; \
 				exit 1; \
 			}; \
 		fi; \
-		corepack enable pnpm; \
-		corepack prepare pnpm@$(PNPM_VERSION) --activate; \
+		command -v pnpm >/dev/null 2>&1 || { \
+			echo "Error: pnpm bootstrap finished, but pnpm is still not available in PATH."; \
+			echo "Try opening a new shell, or run: sudo npm install -g pnpm@$(PNPM_VERSION)"; \
+			exit 1; \
+		}; \
 		echo "pnpm: $$(pnpm -v)"; \
+	fi
+
+ensure-deps: ensure-pnpm
+	@if [ ! -d node_modules ] || [ ! -d apps/web/node_modules ]; then \
+		echo "node_modules missing. Installing workspace dependencies..."; \
+		pnpm install --frozen-lockfile; \
+	else \
+		echo "node_modules: present"; \
 	fi
 
 # ─── Foreground Development ───────────────────────────────────────────────────
 
-dev: ensure-pnpm
+dev: ensure-deps
 	NEXT_PUBLIC_API_URL=$(API_URL) pnpm --filter web dev --hostname $(WEB_HOST) --port $(WEB_PORT)
 
-check: ensure-pnpm
+check: ensure-deps
 	pnpm lint && pnpm typecheck && pnpm build
 
 diff:
@@ -112,10 +127,10 @@ diff:
 		git diff --no-index /dev/null "$$file" || true; \
 	done
 
-audit: ensure-pnpm
+audit: ensure-deps
 	pnpm audit
 
-audit-prod: ensure-pnpm
+audit-prod: ensure-deps
 	pnpm audit --prod
 
 # ─── App Lifecycle ────────────────────────────────────────────────────────────
@@ -181,7 +196,7 @@ api-reset: api-down
 
 # ─── Web (Background Process) ─────────────────────────────────────────────────
 
-web-start: ensure-pnpm
+web-start: ensure-deps
 	@mkdir -p .logs .pids
 	@if [ -f .pids/web.pid ] && kill -0 $$(cat .pids/web.pid) 2>/dev/null; then \
 		echo "Web is already running (PID $$(cat .pids/web.pid))"; \
