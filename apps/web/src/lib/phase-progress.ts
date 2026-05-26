@@ -19,7 +19,7 @@ export function normalizePhasesProgress(phases: Phase[]): Phase[] {
 
 export function renumberPhases(phases: Phase[]): Phase[] {
   return phases.map((phase, index) => {
-    const num = String(index).padStart(2, '0')
+    const num = String(index + 1).padStart(2, '0')
     if (phase.num === num) return phase
     return { ...phase, num }
   })
