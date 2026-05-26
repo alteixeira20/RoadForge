@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Toast } from '@/components/ui/Toast'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -15,8 +15,7 @@ import { TeamPanel } from './TeamPanel'
 import { VersionsPanel } from './VersionsPanel'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
-import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
-import { usePhaseSearch } from '@/hooks/usePhaseSearch'
+import { useWorkspaceViewModel } from '@/hooks/useWorkspaceViewModel'
 import { useToastState } from '@/hooks/useToastState'
 import { useSaveFlow } from '@/hooks/useSaveFlow'
 import { useWorkspaceParticipants } from '@/hooks/useWorkspaceParticipants'
@@ -24,15 +23,13 @@ import { createTaskMutations } from '@/hooks/useTaskMutations'
 import { revokeParticipant } from '@/services/roadmap-sharing.service'
 import { renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
-import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
-import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
+import type { WorkspaceMode, Phase as PhaseType, Participant, Roadmap } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
   onCreateOwn?: () => void
 }
 
-const normalizeFilterValue = (value: string) => value.trim().toLowerCase()
 const TAB_TITLE_MAX = 48
 const ROADMAP_NAME_MAX = 120
 
@@ -48,17 +45,6 @@ function getShortRoadmapTitle(name: string): string {
   const wordBoundary = clipped.lastIndexOf(' ')
   const safeClip = wordBoundary >= 24 ? clipped.slice(0, wordBoundary) : clipped
   return `${safeClip.trimEnd()}...`
-}
-
-const taskMatchesFilter = (task: Task, filter: TaskFilter, displayName: string) => {
-  if (filter === 'all') return true
-  if (filter === 'mine') return taskMatchesAssignee(task, displayName)
-  if (filter === 'pair') return getVisibleTaskTags(task).map(normalizeFilterValue).includes('pair')
-  if (filter === 'next') return task.next === true
-  if (filter === 'open') return task.done === false
-  if (filter === 'done') return task.done === true
-  if (filter.startsWith('person:')) return taskMatchesAssignee(task, filter.slice('person:'.length))
-  return true
 }
 
 export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
@@ -91,11 +77,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const canRenameRoadmap = !readOnly && (!serverRoadmapId || role !== 'viewer')
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>('RF-05')
-  const { openPhases, togglePhase, allOpen, collapseAll, expandAll } = usePhaseCollapse(phases)
-  const { searchQuery, setSearchQuery, filteredPhases } = usePhaseSearch(phases)
   const { toast, showToast } = useToastState()
-  const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
-  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('roadmap')
   const {
     showSave,
     showShare,
@@ -120,66 +102,36 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const [pendingRevokeParticipant, setPendingRevokeParticipant] = useState<Participant | null>(null)
   const [revokeLoading, setRevokeLoading] = useState(false)
 
-  const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
-  const totalDone = allTasks.filter((t) => t.done).length
-  const nextReadyCount = allTasks.filter((t) => t.next && !t.done).length
-  const canViewTeam = role === 'owner' && !!serverRoadmapId && !!sessionToken
-
   // ─── Effective State ───────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!canViewTeam && workspaceView === 'team') setWorkspaceView('roadmap')
-  }, [canViewTeam, workspaceView])
-
-  const assignmentNames = useMemo(() => (
-    dedupeNames(allTasks.flatMap((task) => getTaskAssignees(task)))
-      .sort((a, b) => a.localeCompare(b))
-  ), [allTasks])
-
-  const taskEditorAssigneeNames = useMemo(() => (
-    dedupeNames([
-      ...participants.filter((p) => !p.revokedAt).map((p) => p.displayName),
-      ...assignmentNames,
-      displayName,
-    ]).sort((a, b) => a.localeCompare(b))
-  ), [participants, assignmentNames, displayName])
-
-  const peopleFilterOptions = useMemo(() => {
-    return assignmentNames.map((person) => ({
-      value: `person:${person}` as TaskFilter,
-      label: person,
-    }))
-  }, [assignmentNames])
-
-  useEffect(() => {
-    if (!taskFilter.startsWith('person:')) return
-    const selectedName = taskFilter.slice('person:'.length).toLowerCase()
-    const stillExists = assignmentNames.some((name) => name.toLowerCase() === selectedName)
-    if (!stillExists) setTaskFilter('all')
-  }, [assignmentNames, taskFilter])
-
-  const taskFilterOptions = useMemo(() => ([
-    { value: 'all' as TaskFilter, label: 'All' },
-    { value: 'mine' as TaskFilter, label: 'My tasks' },
-    ...peopleFilterOptions,
-    { value: 'pair' as TaskFilter, label: 'Pair' },
-    { value: 'next' as TaskFilter, label: 'Next' },
-    { value: 'open' as TaskFilter, label: 'Open' },
-    { value: 'done' as TaskFilter, label: 'Done' },
-  ]), [peopleFilterOptions])
-
-  const visiblePhases = useMemo(() => {
-    if (taskFilter === 'all') return filteredPhases
-    return filteredPhases
-      .map((phase) => ({
-        ...phase,
-        tasks: phase.tasks.filter((task) => taskMatchesFilter(task, taskFilter, displayName)),
-      }))
-      .filter((phase) => phase.tasks.length > 0)
-  }, [filteredPhases, taskFilter, displayName])
-
-  const isFiltering = searchQuery.trim().length > 0 || taskFilter !== 'all'
-  const effectiveOpenPhases = isFiltering ? visiblePhases.map((phase) => phase.id) : openPhases
+  const {
+    allTasks,
+    totalDone,
+    nextReadyCount,
+    canViewTeam,
+    searchQuery,
+    setSearchQuery,
+    taskFilter,
+    setTaskFilter,
+    taskFilterOptions,
+    workspaceView,
+    setWorkspaceView,
+    visiblePhases,
+    isFiltering,
+    effectiveOpenPhases,
+    openPhases,
+    togglePhase,
+    allOpen,
+    collapseAll,
+    expandAll,
+    taskEditorAssigneeNames,
+  } = useWorkspaceViewModel({
+    phases,
+    participants,
+    displayName,
+    role,
+    serverRoadmapId,
+    sessionToken,
+  })
 
   useEffect(() => {
     const title = getShortRoadmapTitle(roadmapName)
@@ -421,7 +373,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           taskFilterOptions={taskFilterOptions}
           onTaskFilterChange={setTaskFilter}
           workspaceView={workspaceView}
-          onWorkspaceViewChange={(view) => setWorkspaceView(view === 'team' && !canViewTeam ? 'roadmap' : view)}
+          onWorkspaceViewChange={setWorkspaceView}
           allOpen={allOpen}
           onCollapseAll={collapseAll}
           onExpandAll={expandAll}
