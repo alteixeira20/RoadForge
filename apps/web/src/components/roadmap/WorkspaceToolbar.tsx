@@ -46,6 +46,7 @@ export function WorkspaceToolbar({
 }: WorkspaceToolbarProps) {
   const [filterOpen, setFilterOpen] = useState(false)
   const filterRef = useRef<HTMLDivElement | null>(null)
+  const searchRef = useRef<HTMLInputElement | null>(null)
   const selectedFilter = taskFilterOptions.find((option) => option.value === taskFilter) ?? taskFilterOptions[0]
 
   useEffect(() => {
@@ -68,6 +69,20 @@ export function WorkspaceToolbar({
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [filterOpen])
+
+  useEffect(() => {
+    if (workspaceView !== 'roadmap') return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+        event.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [workspaceView])
 
   return (
     <div className="workspace-bar">
@@ -92,10 +107,11 @@ export function WorkspaceToolbar({
       </div>
 
       {workspaceView === 'roadmap' && (
-        <>
+        <div className="toolbar-start">
           <div className="search">
             <Icon name="search" size={15} stroke="var(--ink-3)" />
             <input
+              ref={searchRef}
               placeholder="Search this roadmap…"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -138,31 +154,33 @@ export function WorkspaceToolbar({
           </div>
 
           <button
-            className="collapse-all"
+            className="toolbar-action"
             onClick={allOpen ? onCollapseAll : onExpandAll}
           >
             <Icon name="fold" size={14} /> {allOpen ? 'Collapse all' : 'Expand all'}
           </button>
-        </>
+        </div>
       )}
 
-      <button
-        className="collapse-all"
-        onClick={onOpenActivity}
-        title={hasServerActivity ? 'View recent activity' : 'Activity logs become available after saving to RoadForge.'}
-      >
-        <Icon name="activity" size={14} /> Activity
-      </button>
-
-      {canViewVersions && (
+      <div className="toolbar-end">
         <button
-          className="collapse-all"
-          onClick={onOpenVersions}
-          title="View and restore roadmap versions"
+          className="toolbar-action"
+          onClick={onOpenActivity}
+          title={hasServerActivity ? 'View recent activity' : 'Activity logs become available after saving to RoadForge.'}
         >
-          <Icon name="clock" size={14} /> Versions
+          <Icon name="activity" size={14} /> Activity
         </button>
-      )}
+
+        {canViewVersions && (
+          <button
+            className="toolbar-action"
+            onClick={onOpenVersions}
+            title="View and restore roadmap versions"
+          >
+            <Icon name="clock" size={14} /> Versions
+          </button>
+        )}
+      </div>
     </div>
   )
 }
