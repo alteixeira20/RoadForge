@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getParticipants } from '@/services/roadmap.service'
+import { getParticipants } from '@/services/roadmap-sharing.service'
 import type { Participant } from '@/types/roadmap'
 
 interface UseWorkspaceParticipantsParams {

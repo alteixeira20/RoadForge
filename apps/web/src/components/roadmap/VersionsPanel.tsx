@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { createRoadmapCheckpoint, getRoadmapVersions, restoreRoadmapVersion } from '@/services/roadmap.service'
+import { createRoadmapCheckpoint, getRoadmapVersions, restoreRoadmapVersion } from '@/services/roadmap-crud.service'
 import type { Roadmap, RoadmapVersionSummary } from '@/types/roadmap'
 
 interface VersionsPanelProps {

@@ -6,7 +6,8 @@ import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage, type RoadmapCache } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
-import { getRoadmap, isApiConnectionError } from '@/services/roadmap.service'
+import { getRoadmap } from '@/services/roadmap-crud.service'
+import { isApiConnectionError } from '@/services/roadmap-http'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

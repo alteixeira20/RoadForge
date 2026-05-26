@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { acquireLock, releaseLock } from '@/services/roadmap.service'
+import { acquireLock, releaseLock } from '@/services/roadmap-locks.service'
 
 interface UseEditLockParams {
   target: string

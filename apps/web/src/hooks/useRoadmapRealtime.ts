@@ -5,13 +5,10 @@ import type { Phase, ShareRole } from '@/types/roadmap'
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
-import {
-  getRoadmap,
-  getEventTicket,
-  subscribeToRoadmapEvents,
-  getLocks,
-  isApiConnectionError,
-} from '@/services/roadmap.service'
+import { getRoadmap } from '@/services/roadmap-crud.service'
+import { getEventTicket, subscribeToRoadmapEvents } from '@/services/roadmap-realtime.service'
+import { getLocks } from '@/services/roadmap-locks.service'
+import { isApiConnectionError } from '@/services/roadmap-http'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

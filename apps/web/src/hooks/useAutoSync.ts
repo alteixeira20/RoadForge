@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { saveToServer, isApiConnectionError } from '@/services/roadmap.service'
+import { saveToServer } from '@/services/roadmap-crud.service'
+import { isApiConnectionError } from '@/services/roadmap-http'
 import { buildChangeSummary } from '@/lib/activity-changes'
 import type { Phase, ActivityChange, SyncStatus } from '@/types/roadmap'
 

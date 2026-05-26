@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import { getRoadmapActivity, isApiConnectionError } from '@/services/roadmap.service'
+import { getRoadmapActivity } from '@/services/roadmap-realtime.service'
+import { isApiConnectionError } from '@/services/roadmap-http'
 import type { ActivityLog } from '@/types/roadmap'
 
 interface ActivityPanelProps {
