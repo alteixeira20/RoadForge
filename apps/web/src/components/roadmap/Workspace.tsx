@@ -20,13 +20,12 @@ import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { useWorkspaceParticipants } from '@/hooks/useWorkspaceParticipants'
+import { useTaskMutations } from '@/hooks/useTaskMutations'
 import { createRoadmap, getRoadmap, isApiConnectionError, revokeParticipant, saveToServer } from '@/services/roadmap.service'
 import { normalizePhasesProgress, renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
 import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-changes'
-import { getTaskCompletionBlocker } from '@/lib/task-completion'
-import { generateTaskId, hasCycle as hasCycleGraph } from '@/lib/task-graph'
 import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, ActivityChange, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
 
 interface WorkspaceProps {
@@ -207,12 +206,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const onToggleTask = (id: string) => setExpandedTaskId((prev) => (prev === id ? null : id))
 
-  const isPhaseComplete = (phase: PhaseType) => phase.tasks.length > 0 && phase.tasks.every((t) => t.done)
-  const phaseLabel = (phase: PhaseType) => `${phase.num} — ${phase.name}`
   const taskCountFor = (phaseList: PhaseType[]) => phaseList.reduce((count, phase) => count + phase.tasks.length, 0)
-  const findPhaseForTask = (taskId: string, phaseList: PhaseType[] = phases) => (
-    phaseList.find((phase) => phase.tasks.some((task) => task.id === taskId))
-  )
 
   const addPendingActivityChange = (change: ActivityChange) => {
     setPendingActivityChanges((prev) => mergePendingActivityChange(prev, change))
@@ -317,195 +311,25 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     return true
   }
 
-  const onCheckTask = (id: string) => {
-    if (readOnly) return
-
-    const task = allTasks.find((t) => t.id === id)
-    if (!task) return
-
-    // Reopening is always allowed
-    if (task.done) {
-      const affectedPhase = findPhaseForTask(id)
-      const wasPhaseComplete = affectedPhase ? isPhaseComplete(affectedPhase) : false
-      const nextPhases = phases.map((p) => ({
-        ...p,
-        tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: false } : t)),
-      }))
-      const nextPhase = affectedPhase ? nextPhases.find((p) => p.id === affectedPhase.id) : null
-      const isNowPhaseComplete = nextPhase ? isPhaseComplete(nextPhase) : false
-      setPhases(nextPhases)
-      addPendingActivityChange({
-        action: 'task.reopened',
-        entity_type: 'task',
-        entity_id: task.id,
-        taskId: task.id,
-        taskTitle: task.title,
-        phaseId: affectedPhase?.id,
-        phaseName: affectedPhase?.name,
-      })
-      if (affectedPhase && wasPhaseComplete && !isNowPhaseComplete) {
-        addPendingActivityChange({
-          action: 'phase.reopened',
-          entity_type: 'phase',
-          entity_id: affectedPhase.id,
-          phaseId: affectedPhase.id,
-          phaseName: affectedPhase.name,
-          phaseNum: affectedPhase.num,
-          details: phaseLabel(affectedPhase),
-        })
-      }
-      setSaved(false)
-      return
-    }
-
-    // ─── Completion Guard ────────────────────────────────────────────────────
-
-    const blocker = getTaskCompletionBlocker(task, allTasks)
-    if (blocker) {
-      showToast(blocker)
-      return
-    }
-
-    const affectedPhase = findPhaseForTask(id)
-    const wasPhaseComplete = affectedPhase ? isPhaseComplete(affectedPhase) : false
-    const nextPhases = phases.map((p) => ({
-      ...p,
-      tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: true } : t)),
-    }))
-    const nextPhase = affectedPhase ? nextPhases.find((p) => p.id === affectedPhase.id) : null
-    const isNowPhaseComplete = nextPhase ? isPhaseComplete(nextPhase) : false
-    setPhases(nextPhases)
-    addPendingActivityChange({
-      action: 'task.completed',
-      entity_type: 'task',
-      entity_id: task.id,
-      taskId: task.id,
-      taskTitle: task.title,
-      phaseId: affectedPhase?.id,
-      phaseName: affectedPhase?.name,
-    })
-    if (affectedPhase && !wasPhaseComplete && isNowPhaseComplete) {
-      addPendingActivityChange({
-        action: 'phase.completed',
-        entity_type: 'phase',
-        entity_id: affectedPhase.id,
-        phaseId: affectedPhase.id,
-        phaseName: affectedPhase.name,
-        phaseNum: affectedPhase.num,
-        details: phaseLabel(affectedPhase),
-      })
-    }
-    setSaved(false)
-  }
-
-  // ─── Task Mutations ──────────────────────────────────────────────────────────
-
-  const hasCycle = (taskId: string, depId: string): boolean => hasCycleGraph(taskId, depId, allTasks)
-
-  const handleAddSubtask = (parentId: string, title: string) => {
-    if (readOnly) return
-    const parent = allTasks.find((t) => t.id === parentId)
-    if (!parent) return
-
-    const newId = generateTaskId(allTasks)
-    const newSubtask: Task = {
-      id: newId,
-      title,
-      done: false,
-      next: false,
-      tags: ['subtask'],
-      deps: [],
-      desc: `Subtask of ${parent.id} — ${parent.title}`,
-      parentId: parentId,
-    }
-
-    setPhases(
-      phases.map((p) => {
-        // Find phase containing the parent
-        const parentIdx = p.tasks.findIndex((t) => t.id === parentId)
-        if (parentIdx === -1) return p
-
-        const newTasks = [...p.tasks]
-        // Insert after parent in flat storage
-        newTasks.splice(parentIdx + 1, 0, newSubtask)
-        return { ...p, tasks: newTasks }
-      }),
-    )
-
-    const phase = findPhaseForTask(parentId)
-    addPendingActivityChange({
-      action: 'task.created',
-      entity_type: 'task',
-      entity_id: newId,
-      taskId: newId,
-      taskTitle: title,
-      phaseId: phase?.id,
-      phaseName: phase?.name,
-      parentId,
-    })
-    setSaved(false)
-    setExpandedTaskId(newId)
-  }
-
-  const handleAddTask = (phaseId: string) => {
-    if (readOnly) return
-
-    const newId = generateTaskId(allTasks)
-    const newTask: Task = {
-      id: newId,
-      title: 'New task',
-      done: false,
-      next: false,
-      est: '',
-      tags: [],
-      deps: [],
-      desc: '',
-    }
-
-    const phase = phases.find((p) => p.id === phaseId)
-    setPhases(
-      phases.map((p) => {
-        if (p.id !== phaseId) return p
-        return { ...p, tasks: [...p.tasks, newTask] }
-      }),
-    )
-
-    addPendingActivityChange({
-      action: 'task.created',
-      entity_type: 'task',
-      entity_id: newId,
-      taskId: newId,
-      taskTitle: newTask.title,
-      phaseId: phase?.id,
-      phaseName: phase?.name,
-    })
-    setSaved(false)
-    setExpandedTaskId(newId)
-  }
-
-  const handleUpdateTask = (id: string, updates: Partial<Task>) => {
-    if (readOnly) return
-    const task = allTasks.find((t) => t.id === id)
-    const phase = findPhaseForTask(id)
-    setPhases(
-      phases.map((p) => ({
-        ...p,
-        tasks: p.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
-      })),
-    )
-    if (task) {
-      addPendingActivityChange({
-        action: 'task.updated',
-        entity_type: 'task',
-        entity_id: id,
-        taskId: id,
-        taskTitle: updates.title ?? task.title,
-        phaseId: phase?.id,
-        phaseName: phase?.name,
-      })
-    }
-    setSaved(false)
-  }
+  const {
+    hasCycle,
+    onCheckTask,
+    handleAddTask,
+    handleAddSubtask,
+    handleUpdateTask,
+    handleLinkDependency,
+    handleUnlinkDependency,
+    handleReorderTasks,
+    handleReorderSubtasks,
+  } = useTaskMutations({
+    phases,
+    setPhases,
+    setSaved,
+    addActivity: addPendingActivityChange,
+    showToast,
+    setExpandedTaskId,
+    readOnly,
+  })
 
   const handleUpdatePhaseColor = (phaseId: string, color: string) => {
     if (readOnly) return
@@ -516,145 +340,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setPhases(
       phases.map((p) => (p.id === phaseId ? { ...p, color } : p)),
     )
-    setSaved(false)
-  }
-
-  const handleLinkDependency = (taskId: string, depId: string) => {
-    if (readOnly) return
-    if (hasCycle(taskId, depId)) {
-      showToast('Circular dependency detected')
-      return
-    }
-
-    const task = allTasks.find(t => t.id === taskId)
-    const depTask = allTasks.find(t => t.id === depId)
-
-    setPhases(
-      phases.map((p) => ({
-        ...p,
-        tasks: p.tasks.map((t) => {
-          if (t.id !== taskId) return t
-          const deps = Array.from(new Set([...(t.deps || []), depId]))
-          return { ...t, deps }
-        }),
-      })),
-    )
-    const phase = findPhaseForTask(taskId)
-    addPendingActivityChange({
-      action: 'task.dependency.linked',
-      entity_type: 'task',
-      entity_id: taskId,
-      taskId,
-      taskTitle: task?.title,
-      dependencyId: depId,
-      dependencyTitle: depTask?.title,
-      phaseId: phase?.id,
-      phaseName: phase?.name,
-    })
-    setSaved(false)
-  }
-
-  const handleUnlinkDependency = (taskId: string, depId: string) => {
-    if (readOnly) return
-    const task = allTasks.find(t => t.id === taskId)
-    const depTask = allTasks.find(t => t.id === depId)
-
-    setPhases(
-      phases.map((p) => ({
-        ...p,
-        tasks: p.tasks.map((t) => {
-          if (t.id !== taskId) return t
-          const deps = (t.deps || []).filter((id) => id !== depId)
-          return { ...t, deps }
-        }),
-      })),
-    )
-    const phase = findPhaseForTask(taskId)
-    addPendingActivityChange({
-      action: 'task.dependency.unlinked',
-      entity_type: 'task',
-      entity_id: taskId,
-      taskId,
-      taskTitle: task?.title,
-      dependencyId: depId,
-      dependencyTitle: depTask?.title,
-      phaseId: phase?.id,
-      phaseName: phase?.name,
-    })
-    setSaved(false)
-  }
-
-  const handleReorderTasks = (phaseId: string, taskIds: string[]) => {
-    if (readOnly) return
-    setPhases(
-      phases.map((p) => {
-        if (p.id !== phaseId) return p
-        // Reconstruct the tasks array based on the new order of top-level tasks,
-        // but preserve the subtasks correctly under their parents.
-        // Actually, since tasks are flat in the phase.tasks array, reordering
-        // top-level tasks means we move the parent AND its following subtasks as a block.
-        
-        const orderedTasks: Task[] = []
-        taskIds.forEach(tid => {
-          const parent = p.tasks.find(t => t.id === tid)
-          if (parent) {
-            orderedTasks.push(parent)
-            // Add all its subtasks immediately after it
-            const subtasks = p.tasks.filter(t => t.parentId === tid)
-            orderedTasks.push(...subtasks)
-          }
-        })
-        
-        // Add any subtasks whose parents weren't in taskIds (shouldn't happen)
-        // or top-level tasks that were missed.
-        const handledIds = new Set(orderedTasks.map(t => t.id))
-        const remainingTasks = p.tasks.filter(t => !handledIds.has(t.id))
-        
-        return { ...p, tasks: [...orderedTasks, ...remainingTasks] }
-      }),
-    )
-    const phase = phases.find((p) => p.id === phaseId)
-    addPendingActivityChange({
-      action: 'task.reordered',
-      entity_type: 'phase',
-      entity_id: phaseId,
-      phaseId,
-      phaseName: phase?.name,
-    })
-    setSaved(false)
-  }
-
-  const handleReorderSubtasks = (parentId: string, subtaskIds: string[]) => {
-    if (readOnly) return
-    const parent = allTasks.find(t => t.id === parentId)
-    setPhases(
-      phases.map((p) => {
-        const hasParent = p.tasks.some(t => t.id === parentId)
-        if (!hasParent) return p
-
-        const otherTasks = p.tasks.filter(t => t.parentId !== parentId)
-        const orderedSubtasks = subtaskIds
-          .map(sid => p.tasks.find(t => t.id === sid))
-          .filter((t): t is Task => !!t)
-        
-        // We need to re-insert the subtasks after the parent in the flat array
-        const parentIdx = otherTasks.findIndex(t => t.id === parentId)
-        const newTasks = [...otherTasks]
-        newTasks.splice(parentIdx + 1, 0, ...orderedSubtasks)
-        
-        return { ...p, tasks: newTasks }
-      }),
-    )
-    const phase = findPhaseForTask(parentId)
-    addPendingActivityChange({
-      action: 'task.reordered',
-      entity_type: 'task',
-      entity_id: parentId,
-      taskId: parentId,
-      taskTitle: parent?.title,
-      phaseId: phase?.id,
-      phaseName: phase?.name,
-    })
     setSaved(false)
   }
 
