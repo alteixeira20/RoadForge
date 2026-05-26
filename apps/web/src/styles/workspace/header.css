@@ -1,23 +1,47 @@
 /* ─── App header ───────────────────────────────────────────────────────────── */
 .app-header {
-  display: flex; align-items: center; gap: 16px; flex-wrap: nowrap;
+  display: flex; align-items: center; justify-content: space-between;
   padding: 16px 32px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklab, var(--bg) 90%, transparent);
   backdrop-filter: blur(12px);
   position: sticky; top: 0; z-index: 20;
 }
+
+/* ─── Start zone: brand + roadmap name ──────────────────────────────────── */
+.header-start {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .app-header .brand-mini {
   display: inline-flex; align-items: center; gap: 10px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--ink);
+  flex-shrink: 0;
 }
-.app-header .spacer { flex: 1; }
-.app-header .actions { display: flex; align-items: center; gap: 6px; }
-.app-header .actions > * {
-  align-self: center;
+
+.header-roadmap-name {
+  font-size: 13px;
+  color: var(--ink-3);
+  max-width: 200px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-left: 1px solid var(--border);
+  padding-left: 10px;
 }
+
+/* ─── End zone: actions ─────────────────────────────────────────────────── */
+.header-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .app-header .header-save-btn {
   height: 36px;
   min-width: 78px;
@@ -51,70 +75,6 @@
   line-height: 1;
   box-sizing: border-box;
 }
-/* Secondary controls group */
-.header-secondary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-/* More menu — hidden always (kept in DOM for potential reuse) */
-.header-more {
-  display: none;
-  align-items: center;
-  position: relative;
-}
-/* Desktop visual order: .actions first, then RoadmapSwitcher (direct child) last */
-.app-header .actions { order: 1; }
-.app-header > .roadmap-switcher { order: 2; }
-/* More panel dropdown */
-.header-more-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  min-width: 220px;
-  max-width: calc(100vw - 24px);
-  background: var(--bg-2);
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  box-shadow: var(--shadow-lg);
-  z-index: 100;
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-  padding: 6px 0;
-}
-.header-more-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 14px;
-  background: transparent;
-  border: none;
-  color: var(--ink-2);
-  font-size: 14px;
-  text-align: left;
-  cursor: pointer;
-  transition: background 120ms, color 120ms;
-}
-.header-more-row:hover { background: var(--bg-3); color: var(--ink); }
-.header-more-sep { height: 1px; background: var(--border); margin: 4px 0; }
-.header-more-block {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 14px;
-}
-.header-more-label {
-  font-size: 11px;
-  color: var(--ink-4);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
 
 /* ─── Icon button — app-header scoped variant ───────────────────────────────── */
 .app-header .iconbtn { color: var(--ink-4); }
@@ -125,39 +85,20 @@
 
 /* ── 760px — tablet: tighten header spacing ─────────────────────────────── */
 @media (max-width: 760px) {
-  .app-header { padding: 12px 20px; gap: 10px; }
+  .app-header { padding: 12px 20px; }
   .app-header .header-save-btn { min-width: auto; }
 }
 
-/* ── 640px — mobile: intentional two-row grid header ───────────────────── */
+/* ── 640px — mobile: hide roadmap name, tighten gaps ───────────────────── */
 @media (max-width: 640px) {
-  /* Show secondary controls inline — no More menu */
-  .header-secondary { display: flex; }
-  /* Grid replaces flex so the spacer cannot steal the row before the switcher */
-  .app-header {
-    display: grid;
-    grid-template-areas:
-      "brand . switcher"
-      "actions actions actions";
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: 6px 8px;
-    padding: 10px 16px;
-  }
-  .app-header .brand-mini          { grid-area: brand; }
-  .app-header > .roadmap-switcher  { grid-area: switcher; }
-  .app-header .actions             { grid-area: actions; justify-content: flex-end; gap: 6px; }
-  /* Flex-only helpers that have no grid role */
-  .app-header .spacer              { display: none; }
+  .app-header { padding: 10px 16px; }
+  .header-start { gap: 8px; }
+  .header-end { gap: 6px; }
+  .header-roadmap-name { display: none; }
 }
 
-/* ── 600px — mobile: compact header ────────────────────────────────────── */
+/* ── 600px — mobile: compact save button ────────────────────────────────── */
 @media (max-width: 600px) {
-  .app-header {
-    padding: 10px 16px;
-    gap: 6px;
-  }
-  .app-header .actions { gap: 4px; }
   .app-header .header-save-btn { width: 36px; min-width: 36px; padding: 0; }
   .app-header .header-save-label { display: none; }
 }

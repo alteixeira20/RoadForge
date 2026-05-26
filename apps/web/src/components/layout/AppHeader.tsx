@@ -4,16 +4,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Brand } from '@/components/ui/Brand'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { RoadmapSwitcher } from '@/components/roadmap/RoadmapSwitcher'
-import { HeaderMoreMenu } from '@/components/layout/HeaderMoreMenu'
 import type { SyncStatus } from '@/types/roadmap'
-
-const BADGE_LABEL: Record<SyncStatus, string> = {
-  local: 'LOCAL',
-  live: 'LIVE',
-  syncing: 'SYNCING',
-  offline: 'OFFLINE',
-  conflict: 'CONFLICT',
-}
 
 interface AppHeaderProps {
   roadmapName: string
@@ -43,32 +34,28 @@ export function AppHeader({
 
   return (
     <header className="app-header">
-      <Brand href="/" className="brand-mini" />
+      <div className="header-start">
+        <Brand href="/" className="brand-mini" />
+        {roadmapName && (
+          <span className="header-roadmap-name">{roadmapName}</span>
+        )}
+      </div>
 
-      <span className="spacer" />
-
-      {/* Session switcher — row 1 right on mobile, ordered after .actions on desktop */}
-      <RoadmapSwitcher />
-
-      <div className="actions">
+      <div className="header-end">
         {!readOnly && (
           <>
-            {/* Secondary icon buttons */}
-            <div className="header-secondary">
-              <button className="iconbtn" title="Import / Export" onClick={onIO}>
-                <Icon name="export" size={16} />
+            <button className="iconbtn" title="Import / Export" onClick={onIO}>
+              <Icon name="export" size={16} />
+            </button>
+            {(!isServerBacked || canManageShare) && (
+              <button
+                className="iconbtn"
+                title={isServerBacked ? 'Share' : 'Save to RoadForge'}
+                onClick={isServerBacked ? onShare : onSave}
+              >
+                <Icon name={isServerBacked ? 'share' : 'cloud'} size={16} />
               </button>
-              {(!isServerBacked || canManageShare) && (
-                <button
-                  className="iconbtn"
-                  title={isServerBacked ? 'Share' : 'Save to RoadForge'}
-                  onClick={isServerBacked ? onShare : onSave}
-                >
-                  <Icon name={isServerBacked ? 'share' : 'cloud'} size={16} />
-                </button>
-              )}
-            </div>
-            {/* Primary action — always visible */}
+            )}
             {!isServerBacked ? (
               <button
                 className="btn sm header-save-btn"
@@ -111,12 +98,8 @@ export function AppHeader({
             <Icon name="plus" size={14} stroke="#fff" /> Create your own
           </button>
         )}
-        {/* Theme toggle */}
-        <div className="header-secondary">
-          <ThemeToggle />
-        </div>
-        {/* More menu — hidden on mobile and desktop, kept for potential reuse */}
-        <HeaderMoreMenu onIO={!readOnly ? onIO : undefined} />
+        <ThemeToggle />
+        <RoadmapSwitcher />
       </div>
     </header>
   )
