@@ -8,7 +8,6 @@ import type { SyncStatus } from '@/types/roadmap'
 
 interface AppHeaderProps {
   roadmapName: string
-  displayName: string
   syncStatus: SyncStatus
   readOnly?: boolean
   canManageShare?: boolean
@@ -47,15 +46,6 @@ export function AppHeader({
             <button className="iconbtn" title="Import / Export" onClick={onIO}>
               <Icon name="export" size={16} />
             </button>
-            {(!isServerBacked || canManageShare) && (
-              <button
-                className="iconbtn"
-                title={isServerBacked ? 'Share' : 'Save to RoadForge'}
-                onClick={isServerBacked ? onShare : onSave}
-              >
-                <Icon name={isServerBacked ? 'share' : 'cloud'} size={16} />
-              </button>
-            )}
             {!isServerBacked ? (
               <button
                 className="btn sm header-save-btn"

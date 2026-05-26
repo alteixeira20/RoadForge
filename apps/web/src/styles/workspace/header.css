@@ -25,14 +25,16 @@
 }
 
 .header-roadmap-name {
-  font-size: 13px;
-  color: var(--ink-3);
-  max-width: 200px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+  max-width: 240px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   border-left: 1px solid var(--border);
-  padding-left: 10px;
+  padding-left: 12px;
 }
 
 /* ─── End zone: actions ─────────────────────────────────────────────────── */

@@ -758,7 +758,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     <div className="app-shell">
       <AppHeader
         roadmapName={roadmapName}
-        displayName={displayName || 'You'}
         syncStatus={syncStatus}
         readOnly={readOnly}
         canManageShare={canManageShare}
