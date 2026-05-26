@@ -20,7 +20,7 @@ import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { useWorkspaceParticipants } from '@/hooks/useWorkspaceParticipants'
-import { useTaskMutations } from '@/hooks/useTaskMutations'
+import { createTaskMutations } from '@/hooks/useTaskMutations'
 import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
 import { isApiConnectionError } from '@/services/roadmap-http'
 import { revokeParticipant } from '@/services/roadmap-sharing.service'
@@ -323,7 +323,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     handleUnlinkDependency,
     handleReorderTasks,
     handleReorderSubtasks,
-  } = useTaskMutations({
+  } = createTaskMutations({
     phases,
     setPhases,
     setSaved,

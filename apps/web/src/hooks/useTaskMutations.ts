@@ -4,7 +4,7 @@ import type { Phase, Task, ActivityChange } from '@/types/roadmap'
 import { generateTaskId, hasCycle as hasCycleGraph } from '@/lib/task-graph'
 import { getTaskCompletionBlocker } from '@/lib/task-completion'
 
-interface UseTaskMutationsParams {
+interface CreateTaskMutationsParams {
   phases: Phase[]
   setPhases: (phases: Phase[]) => void
   setSaved: (saved: boolean) => void
@@ -26,7 +26,7 @@ export interface TaskMutations {
   handleReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
 }
 
-export function useTaskMutations({
+export function createTaskMutations({
   phases,
   setPhases,
   setSaved,
@@ -34,7 +34,7 @@ export function useTaskMutations({
   showToast,
   setExpandedTaskId,
   readOnly,
-}: UseTaskMutationsParams): TaskMutations {
+}: CreateTaskMutationsParams): TaskMutations {
   const allTasks = phases.flatMap((p) => p.tasks)
 
   const findPhaseForTask = (taskId: string) =>
