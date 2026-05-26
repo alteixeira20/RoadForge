@@ -86,6 +86,25 @@ export function useRoadmapRealtime({
 
     const startSync = async () => {
       const subscribedActiveId = activeRoadmapId
+
+      // Shared teardown for participant-revoked and roadmap-deleted events.
+      // Closes the EventSource first (auth is no longer valid), then clears
+      // auth/roadmap cache and resets all server-identity state.
+      const handleAccessLoss = (kind: 'revoked' | 'deleted') => {
+        if (unsubscribe) { unsubscribe(); unsubscribe = null }
+        if (subscribedActiveId) {
+          storage.setAuthCache(subscribedActiveId, null)
+          const rc = storage.getRoadmapCache(subscribedActiveId)
+          if (rc) storage.setRoadmapCache(subscribedActiveId, { ...rc, saved: false })
+        }
+        setServerRoadmapIdState(null)
+        setSessionTokenState(null)
+        setParticipantIdState(null)
+        setRoleState(null)
+        setSavedState(false)
+        setAccessRevokedEvent(kind)
+      }
+
       try {
         const activeLocks = await getLocks(serverRoadmapId, sessionToken)
         const lockMap: LockMap = {}
@@ -165,35 +184,11 @@ export function useRoadmapRealtime({
           onParticipantRevoked: (payload) => {
             if (payload.roadmap_id !== serverRoadmapId) return
             if (payload.participant_id !== participantId) return
-            // Close EventSource immediately — auth is no longer valid.
-            if (unsubscribe) { unsubscribe(); unsubscribe = null }
-            if (subscribedActiveId) {
-              storage.setAuthCache(subscribedActiveId, null)
-              const rc = storage.getRoadmapCache(subscribedActiveId)
-              if (rc) storage.setRoadmapCache(subscribedActiveId, { ...rc, saved: false })
-            }
-            setServerRoadmapIdState(null)
-            setSessionTokenState(null)
-            setParticipantIdState(null)
-            setRoleState(null)
-            setSavedState(false)
-            setAccessRevokedEvent('revoked')
+            handleAccessLoss('revoked')
           },
           onRoadmapDeleted: (payload) => {
             if (payload.roadmap_id !== serverRoadmapId) return
-            // Close EventSource — the roadmap no longer exists on the server.
-            if (unsubscribe) { unsubscribe(); unsubscribe = null }
-            if (subscribedActiveId) {
-              storage.setAuthCache(subscribedActiveId, null)
-              const rc = storage.getRoadmapCache(subscribedActiveId)
-              if (rc) storage.setRoadmapCache(subscribedActiveId, { ...rc, saved: false })
-            }
-            setServerRoadmapIdState(null)
-            setSessionTokenState(null)
-            setParticipantIdState(null)
-            setRoleState(null)
-            setSavedState(false)
-            setAccessRevokedEvent('deleted')
+            handleAccessLoss('deleted')
           },
         })
       } catch (err) {
