@@ -13,40 +13,6 @@
   letter-spacing: -0.01em;
   color: var(--ink);
 }
-.app-header .crumbs {
-  display: flex; align-items: center; gap: 10px;
-  margin-left: 4px;
-  padding-left: 16px;
-  border-left: 1px solid var(--border);
-  color: var(--ink);
-  font-size: 14px;
-  min-width: 0;
-  max-width: min(42vw, 560px);
-}
-.app-header .crumbs .active {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink);
-  font-weight: 500;
-}
-.app-header .badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px;
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 12px;
-  color: var(--ink-2);
-  font-family: var(--font-mono);
-}
-.app-header .badge .dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--ember);
-  box-shadow: 0 0 8px var(--ember);
-}
 .app-header .spacer { flex: 1; }
 .app-header .actions { display: flex; align-items: center; gap: 6px; }
 .app-header .actions > * {
@@ -150,48 +116,6 @@
   flex-shrink: 0;
 }
 
-/* Synced/live badge variant */
-.app-header .badge.synced,
-.app-header .badge.live {
-  background: linear-gradient(180deg, rgba(217,116,66,0.10), rgba(217,116,66,0.04));
-  border-color: rgba(217,116,66,0.30);
-  color: var(--ember);
-}
-.app-header .badge.synced .dot,
-.app-header .badge.live .dot { background: var(--ember); box-shadow: 0 0 8px var(--ember); }
-
-/* Syncing badge variant — pulsing dot */
-.app-header .badge.syncing {
-  background: linear-gradient(180deg, rgba(217,116,66,0.10), rgba(217,116,66,0.04));
-  border-color: rgba(217,116,66,0.30);
-  color: var(--ember);
-}
-.app-header .badge.syncing .dot {
-  background: var(--ember);
-  animation: badge-dot-pulse 1s ease-in-out infinite;
-}
-
-/* Offline badge variant */
-.app-header .badge.offline {
-  background: var(--bg-2);
-  border-color: var(--border);
-  color: var(--ink-2);
-}
-.app-header .badge.offline .dot { background: var(--ink-3, #888); box-shadow: none; }
-
-/* Conflict badge variant */
-.app-header .badge.conflict {
-  background: linear-gradient(180deg, rgba(234,179,8,0.12), rgba(234,179,8,0.05));
-  border-color: rgba(234,179,8,0.35);
-  color: #ca8a04;
-}
-.app-header .badge.conflict .dot { background: #ca8a04; box-shadow: 0 0 8px rgba(234,179,8,0.5); }
-
-@keyframes badge-dot-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.25; }
-}
-
 /* ─── Icon button — app-header scoped variant ───────────────────────────────── */
 .app-header .iconbtn { color: var(--ink-4); }
 .app-header .iconbtn svg { display: block; flex: 0 0 auto; }
@@ -199,11 +123,9 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 760px — tablet: tighten header spacing, hide crumbs ───────────────── */
+/* ── 760px — tablet: tighten header spacing ─────────────────────────────── */
 @media (max-width: 760px) {
   .app-header { padding: 12px 20px; gap: 10px; }
-  .app-header .crumbs { display: none; }
-  .app-header .badge { font-size: 11px; }
   .app-header .header-save-btn { min-width: auto; }
 }
 
@@ -235,7 +157,6 @@
     padding: 10px 16px;
     gap: 6px;
   }
-  .app-header .badge { font-size: 10.5px; padding: 3px 8px; }
   .app-header .actions { gap: 4px; }
   .app-header .header-save-btn { width: 36px; min-width: 36px; padding: 0; }
   .app-header .header-save-label { display: none; }
