@@ -56,7 +56,7 @@ export function WorkspaceBanners({
 }
 
 interface WorkspaceUpgradeNoticeProps {
-  roadmapUpgradeNotice: boolean
+  roadmapUpgradeNotice: unknown
   onDismissUpgradeNotice: () => void
 }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { createRoadmapCheckpoint, getRoadmapVersions, restoreRoadmapVersion } from '@/services/roadmap.service'
 import type { Roadmap, RoadmapVersionSummary } from '@/types/roadmap'
 
@@ -55,6 +56,7 @@ export function VersionsPanel({
   const [versions, setVersions] = useState<RoadmapVersionSummary[]>([])
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [restoringId, setRestoringId] = useState<string | null>(null)
+  const [pendingRestoreVersion, setPendingRestoreVersion] = useState<RoadmapVersionSummary | null>(null)
   const [checkpointLoading, setCheckpointLoading] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -94,27 +96,47 @@ export function VersionsPanel({
     }
   }
 
-  const handleRestore = async (version: RoadmapVersionSummary) => {
-    const ok = window.confirm('Restore this version? Current roadmap will be replaced for all collaborators.')
-    if (!ok) return
+  const handleRestoreRequest = (version: RoadmapVersionSummary) => {
+    setPendingRestoreVersion(version)
+  }
 
+  const handleRestoreConfirm = async () => {
+    if (!pendingRestoreVersion) return
+    const version = pendingRestoreVersion
     setRestoringId(version.id)
     try {
       const restored = await restoreRoadmapVersion(roadmapId, version.id, sessionToken)
       onRestored(restored)
       onToast('Restored roadmap')
+      setPendingRestoreVersion(null)
       onClose()
     } catch (err) {
       const msg = err instanceof Error && (err.message.includes('401') || err.message.includes('403'))
         ? 'Only the owner can restore versions.'
         : 'Could not restore version'
       onToast(msg)
+      setPendingRestoreVersion(null)
     } finally {
       setRestoringId(null)
     }
   }
 
+  const handleRestoreCancel = () => {
+    setPendingRestoreVersion(null)
+  }
+
   return (
+    <>
+    <ConfirmDialog
+      open={pendingRestoreVersion !== null}
+      title="Restore version"
+      message="Restore this version? The current roadmap will be replaced for all collaborators."
+      confirmLabel="Restore version"
+      tone="danger"
+      loading={restoringId !== null}
+      onConfirm={handleRestoreConfirm}
+      onClose={handleRestoreCancel}
+    />
     <div className="slide-panel versions-panel">
       <div className="panel-head">
         <h3>Versions</h3>
@@ -169,7 +191,7 @@ export function VersionsPanel({
                 </div>
                 <button
                   className="btn sm ghost"
-                  onClick={() => handleRestore(version)}
+                  onClick={() => handleRestoreRequest(version)}
                   disabled={restoringId === version.id}
                 >
                   Restore
@@ -180,5 +202,6 @@ export function VersionsPanel({
         )}
       </div>
     </div>
+    </>
   )
 }

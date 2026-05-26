@@ -30,6 +30,13 @@
 .btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
 .btn.ghost:hover { background: var(--bg-2); color: var(--ink); }
 
+.btn.danger {
+  background: var(--ember);
+  border-color: var(--ember-2);
+  color: #fff;
+}
+.btn.danger:hover { filter: brightness(1.08); }
+
 .iconbtn {
   width: 36px; height: 36px;
   display: inline-flex; align-items: center; justify-content: center;

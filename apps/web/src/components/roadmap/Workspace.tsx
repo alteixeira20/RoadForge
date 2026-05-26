@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Toast } from '@/components/ui/Toast'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { WorkspaceHead } from './WorkspaceHead'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
@@ -120,6 +121,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   } = useWorkspaceParticipants({ serverRoadmapId, sessionToken, role })
   const [activityRefreshKey, setActivityRefreshKey] = useState(0)
   const [pendingActivityChanges, setPendingActivityChanges] = useState<ActivityChange[]>([])
+  const [confirmReload, setConfirmReload] = useState(false)
+  const [pendingRevokeParticipant, setPendingRevokeParticipant] = useState<Participant | null>(null)
+  const [revokeLoading, setRevokeLoading] = useState(false)
 
   const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
   const totalDone = allTasks.filter((t) => t.done).length
@@ -695,9 +699,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     if (showActivity) setActivityRefreshKey((k) => k + 1)
   }
 
-  const handleReloadServerVersion = async () => {
+  const handleReloadServerVersion = () => {
     if (!serverRoadmapId || !sessionToken) return
-    if (!window.confirm('Reload the latest server version? Your unsynced local edits will be discarded.')) return
+    setConfirmReload(true)
+  }
+
+  const handleReloadConfirm = async () => {
+    if (!serverRoadmapId || !sessionToken) return
+    setConfirmReload(false)
     try {
       const loaded = await getRoadmap(serverRoadmapId, sessionToken)
       const upgraded = upgradeRoadmapSnapshot({
@@ -731,8 +740,13 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       showToast('You cannot revoke your current owner session.')
       return
     }
-    if (!window.confirm(`Revoke access for ${participant.displayName}?`)) return
+    setPendingRevokeParticipant(participant)
+  }
 
+  const handleRevokeConfirm = async () => {
+    if (!pendingRevokeParticipant || !serverRoadmapId || !sessionToken) return
+    const participant = pendingRevokeParticipant
+    setRevokeLoading(true)
     try {
       await revokeParticipant(serverRoadmapId, participant.id, sessionToken)
       showToast('Participant revoked')
@@ -742,12 +756,16 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           : item
       )))
       setParticipantsError(null)
+      setPendingRevokeParticipant(null)
       await refreshParticipants()
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('401') || msg.includes('403')) showToast('Only the owner can manage participants.')
       else if (msg.includes('400')) showToast('You cannot revoke your current owner session.')
       else showToast('Could not revoke participant')
+      setPendingRevokeParticipant(null)
+    } finally {
+      setRevokeLoading(false)
     }
   }
 
@@ -857,6 +875,27 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       />
 
       {toast && <Toast message={toast} />}
+
+      <ConfirmDialog
+        open={confirmReload}
+        title="Reload server version"
+        message="Reload the latest server version? Your unsynced local edits will be discarded."
+        confirmLabel="Reload"
+        tone="danger"
+        onConfirm={handleReloadConfirm}
+        onClose={() => setConfirmReload(false)}
+      />
+
+      <ConfirmDialog
+        open={pendingRevokeParticipant !== null}
+        title="Revoke participant"
+        message={`Revoke access for ${pendingRevokeParticipant?.displayName ?? ''}?`}
+        confirmLabel="Revoke participant"
+        tone="danger"
+        loading={revokeLoading}
+        onConfirm={handleRevokeConfirm}
+        onClose={() => setPendingRevokeParticipant(null)}
+      />
 
       {showActivity && (
         <ActivityPanel
