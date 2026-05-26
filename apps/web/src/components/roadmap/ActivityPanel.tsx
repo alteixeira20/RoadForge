@@ -191,7 +191,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
   }
 
   return (
-    <div className="activity-panel">
+    <div className="slide-panel activity-panel">
       <div className="panel-head">
         <h3>Activity</h3>
         <button className="close-btn" onClick={onClose}>

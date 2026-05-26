@@ -115,17 +115,19 @@ export function VersionsPanel({
   }
 
   return (
-    <div className="activity-panel versions-panel">
+    <div className="slide-panel versions-panel">
       <div className="panel-head">
         <h3>Versions</h3>
-        <button
-          className="btn sm ghost"
-          onClick={handleCreateCheckpoint}
-          disabled={checkpointLoading}
-          title="Save a restore point with the current roadmap state"
-        >
-          {checkpointLoading ? 'Saving…' : 'Create checkpoint'}
-        </button>
+        <div className="panel-head-actions">
+          <button
+            className="btn sm ghost"
+            onClick={handleCreateCheckpoint}
+            disabled={checkpointLoading}
+            title="Save a restore point with the current roadmap state"
+          >
+            {checkpointLoading ? 'Saving…' : 'Create checkpoint'}
+          </button>
+        </div>
         <button className="close-btn" onClick={onClose}>
           <Icon name="x" size={18} />
         </button>

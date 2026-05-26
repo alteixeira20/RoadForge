@@ -1,5 +1,8 @@
-/* ─── Activity Panel ───────────────────────────────────────────────────────── */
-.activity-panel {
+/* ─── Shared slide panel shell ──────────────────────────────────────────────── */
+/* Both ActivityPanel and VersionsPanel use .slide-panel as the root class.     */
+/* .activity-panel and .versions-panel are modifier classes for panel-specific  */
+/* overrides only.                                                               */
+.slide-panel {
   position: fixed; top: 0; right: 0; bottom: 0;
   width: 360px;
   background: var(--bg);
@@ -14,34 +17,41 @@
   to { transform: translateX(0); }
 }
 
-.activity-panel .panel-head {
+/* Panel header — flex row: title area, optional actions, close button */
+.slide-panel .panel-head {
   height: var(--header-h);
   padding: 0 22px;
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; gap: 10px;
   border-bottom: 1px solid var(--border-faint);
 }
-.activity-panel h3 { font-size: 15px; font-weight: 600; color: var(--ink-2); margin: 0; }
-.activity-panel .close-btn {
+.slide-panel h3 { font-size: 15px; font-weight: 600; color: var(--ink-2); margin: 0; flex: 1; }
+/* .panel-head-actions holds optional action buttons before the close button */
+.slide-panel .panel-head-actions {
+  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+}
+.slide-panel .close-btn {
   color: var(--ink-4); transition: color 160ms; cursor: pointer;
   background: transparent; border: none; padding: 4px; display: grid; place-items: center;
+  flex-shrink: 0;
 }
-.activity-panel .close-btn:hover { color: var(--ink); }
+.slide-panel .close-btn:hover { color: var(--ink); }
 
-.activity-panel .panel-body { flex: 1; overflow-y: auto; }
+.slide-panel .panel-body { flex: 1; overflow-y: auto; }
 
-.activity-panel .state-msg {
+.slide-panel .state-msg {
   padding: 64px 32px; text-align: center; color: var(--ink-4);
   display: flex; flex-direction: column; align-items: center; gap: 16px;
 }
-.activity-panel .state-msg p { margin: 0; font-size: 14px; }
-.activity-panel .state-msg small {
+.slide-panel .state-msg p { margin: 0; font-size: 14px; }
+.slide-panel .state-msg small {
   display: block;
   margin-top: -8px;
   color: var(--ink-4);
   font-size: 12px;
 }
-.activity-panel .state-msg.error { color: var(--ember); }
-.activity-panel .state-msg.offline { color: var(--ink-3); }
+.slide-panel .state-msg.error { color: var(--ember); }
+.slide-panel .state-msg.offline { color: var(--ink-3); }
 
 .activity-list { display: flex; flex-direction: column; }
 .activity-row {
@@ -260,7 +270,7 @@
 
 /* ── 600px — mobile: full-width panel, compact team layout ─────────────── */
 @media (max-width: 600px) {
-  .activity-panel {
+  .slide-panel {
     width: 100%;
     border-left: none;
     border-top: 1px solid var(--border);
