@@ -3,9 +3,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import type { Phase, ShareRole } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
-import { storage, type RoadmapCache } from '@/lib/storage'
+import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
-import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
+import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import {
   getRoadmap,
   getEventTicket,
@@ -13,6 +13,7 @@ import {
   getLocks,
   isApiConnectionError,
 } from '@/services/roadmap.service'
+import { useRoadmapHydration, type RoadmapUpgradeState } from '@/hooks/useRoadmapHydration'
 
 interface RoadmapContextValue {
   displayName: string
@@ -51,25 +52,6 @@ interface RoadmapContextValue {
 
 const RoadmapContext = createContext<RoadmapContextValue | null>(null)
 
-interface RoadmapUpgradeState {
-  roadmapId: string
-}
-
-function isAuthError(error: unknown): boolean {
-  return error instanceof Error && (
-    error.message.includes('401') || error.message.includes('403')
-  )
-}
-
-function getRoadmapIdFromUrl(): string | null {
-  if (typeof window === 'undefined') return null
-  try {
-    return new URLSearchParams(window.location.search).get('roadmap')
-  } catch {
-    return null
-  }
-}
-
 export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [displayName, setDisplayNameState] = useState('')
   const [roadmapName, setRoadmapNameState] = useState('v1.0 Public Launch')
@@ -86,176 +68,37 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [updatedAt, setUpdatedAtState] = useState<string | null>(null)
   const [locks, setLocks] = useState<Record<string, { participantId: string; displayName: string }>>({})
   const [activeRoadmapId, setActiveRoadmapIdState] = useState<string | null>(null)
-  const [isHydratingServer, setIsHydratingServer] = useState(false)
-  const [backendUnavailableRoadmapId, setBackendUnavailableRoadmapId] = useState<string | null>(null)
   const [accessRevokedEvent, setAccessRevokedEvent] = useState<'revoked' | 'deleted' | null>(null)
   const [roadmapUpgradeNotice, setRoadmapUpgradeNotice] = useState<RoadmapUpgradeState | null>(null)
-  const shownUpgradeNoticeIdsRef = useRef<Set<string>>(new Set())
 
   // Keep ref current so SSE callbacks always read the latest value
   savedRef.current = saved
 
-  const showUpgradeNoticeOnce = useCallback((targetId: string, result: { changed: boolean; notices: RoadmapUpgradeNotice[] }) => {
-    if (!result.changed || result.notices.length === 0) return
-    if (shownUpgradeNoticeIdsRef.current.has(targetId)) return
-    shownUpgradeNoticeIdsRef.current.add(targetId)
-    setRoadmapUpgradeNotice({
-      roadmapId: targetId,
-    })
-  }, [])
-
-  const loadRoadmapIntoState = useCallback((targetId: string, cancelled: { value: boolean }) => {
-    const rc = storage.getRoadmapCache(targetId)
-    const ac = storage.getAuthCache(targetId)
-    setBackendUnavailableRoadmapId(null)
-    setRoadmapUpgradeNotice((current) => (
-      current && current.roadmapId !== targetId ? null : current
-    ))
-
-    if (rc) {
-      let cacheToLoad = rc
-      try {
-        const upgraded = upgradeRoadmapSnapshot({
-          roadmapName: rc.roadmapName,
-          phases: rc.phases,
-        })
-        if (upgraded.changed) {
-          const canPersistCachedUpgrade = ac?.role === 'owner' || ac?.role === 'editor'
-          cacheToLoad = {
-            ...rc,
-            roadmapName: upgraded.roadmapName || rc.roadmapName,
-            phases: upgraded.phases,
-            saved: canPersistCachedUpgrade ? false : rc.saved,
-          }
-          storage.setRoadmapCache(targetId, cacheToLoad)
-          showUpgradeNoticeOnce(targetId, upgraded)
-        }
-      } catch (err) {
-        console.warn('Could not upgrade cached roadmap snapshot:', err)
-      }
-
-      setRoadmapNameState(cacheToLoad.roadmapName)
-      setPhasesState(normalizePhasesProgress(cacheToLoad.phases))
-      setSavedState(cacheToLoad.saved)
-      setOwnerDisplayNameState(cacheToLoad.ownerDisplayName)
-      setUpdatedAtState(cacheToLoad.updatedAt)
-      setIsPasswordEnabledState(cacheToLoad.isPasswordEnabled)
-    }
-
-    if (ac) {
-      setServerRoadmapIdState(ac.serverRoadmapId)
-      setSessionTokenState(ac.sessionToken)
-      setParticipantIdState(ac.participantId)
-      setRoleState(ac.role)
-      setIsHydratingServer(true)
-
-      getRoadmap(ac.serverRoadmapId, ac.sessionToken)
-        .then((loaded) => {
-          if (cancelled.value) return
-          setIsHydratingServer(false)
-          setBackendUnavailableRoadmapId(null)
-          let nextRoadmapName = loaded.roadmap.name
-          let normalizedLoadedPhases = normalizePhasesProgress(loaded.phases)
-          let nextSaved = true
-          try {
-            const upgraded = upgradeRoadmapSnapshot({
-              roadmapName: loaded.roadmap.name,
-              phases: loaded.phases,
-            })
-            nextRoadmapName = upgraded.roadmapName || loaded.roadmap.name
-            normalizedLoadedPhases = normalizePhasesProgress(upgraded.phases)
-            const canPersistUpgrade = ac.role === 'owner' || ac.role === 'editor'
-            nextSaved = !(upgraded.changed && canPersistUpgrade)
-            showUpgradeNoticeOnce(targetId, upgraded)
-          } catch (err) {
-            console.warn('Could not upgrade server roadmap snapshot:', err)
-          }
-          setRoadmapNameState(nextRoadmapName)
-          setPhasesState(normalizedLoadedPhases)
-          setOwnerDisplayNameState(loaded.ownerDisplayName)
-          setUpdatedAtState(loaded.updatedAt)
-          setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
-          setSavedState(nextSaved)
-
-          storage.setRoadmapCache(targetId, {
-            roadmapName: nextRoadmapName,
-            phases: normalizedLoadedPhases,
-            saved: nextSaved,
-            ownerDisplayName: loaded.ownerDisplayName,
-            updatedAt: loaded.updatedAt,
-            isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
-          })
-        })
-        .catch((err: unknown) => {
-          if (cancelled.value) return
-          setIsHydratingServer(false)
-          if (isApiConnectionError(err)) {
-            setBackendUnavailableRoadmapId(ac.serverRoadmapId)
-            console.warn('RoadForge API unavailable; using cached roadmap data.')
-            return
-          }
-          if (isAuthError(err)) {
-            storage.setAuthCache(targetId, null)
-            setServerRoadmapIdState(null)
-            setSessionTokenState(null)
-            setParticipantIdState(null)
-            setRoleState(null)
-            return
-          }
-          console.error('Failed to hydrate roadmap from server:', err)
-        })
-    } else {
-      setIsHydratingServer(false)
-      setServerRoadmapIdState(null)
-      setSessionTokenState(null)
-      setParticipantIdState(null)
-      setRoleState(null)
-    }
-  }, [showUpgradeNoticeOnce])
-
-  // Hydrate once on mount
-  useEffect(() => {
-    const cancelled = { value: false }
-
-    const storedDisplayName = storage.getDisplayName()
-    if (storedDisplayName !== null) setDisplayNameState(storedDisplayName)
-
-    // Migration
-    storage.migrateLegacyStorageIfNeeded()
-
-    const urlRoadmapId = getRoadmapIdFromUrl()
-    let targetId = urlRoadmapId && storage.getRoadmapCache(urlRoadmapId)
-      ? urlRoadmapId
-      : storage.getActiveRoadmapId()
-    if (!targetId || !storage.getRoadmapCache(targetId)) {
-      targetId = storage.getLastRoadmapId()
-    }
-    if (!targetId || !storage.getRoadmapCache(targetId)) {
-      // Default local fallback
-      targetId = storage.createLocalDraftId()
-      const upgraded = upgradeRoadmapSnapshot({
-        roadmapName: 'v1.0 Public Launch',
-        phases: SAMPLE_ROADMAP.phases,
-      })
-      storage.setActiveRoadmapId(targetId)
-      storage.setLastRoadmapId(targetId)
-      storage.setRoadmapCache(targetId, {
-        roadmapName: upgraded.roadmapName || 'v1.0 Public Launch',
-        phases: upgraded.phases,
-        saved: false,
-        ownerDisplayName: null,
-        updatedAt: null,
-        isPasswordEnabled: false,
-      })
-    } else {
-      storage.setActiveRoadmapId(targetId)
-    }
-
-    setActiveRoadmapIdState(targetId)
-    loadRoadmapIntoState(targetId, cancelled)
-
-    return () => { cancelled.value = true }
-  }, [loadRoadmapIntoState])
+  const {
+    isHydratingServer,
+    backendUnavailableRoadmapId,
+    showUpgradeNoticeOnce,
+    activateRoadmap,
+    createLocalRoadmap,
+    resetToSample,
+    removeRoadmapFromBrowser,
+    setBackendUnavailableRoadmapId,
+  } = useRoadmapHydration({
+    setDisplayNameState,
+    setRoadmapNameState,
+    setPhasesState,
+    setSavedState,
+    setServerRoadmapIdState,
+    setSessionTokenState,
+    setParticipantIdState,
+    setRoleState,
+    setIsPasswordEnabledState,
+    setOwnerDisplayNameState,
+    setUpdatedAtState,
+    setActiveRoadmapIdState,
+    setLocks,
+    setRoadmapUpgradeNotice,
+  })
 
   // ─── Realtime subscription ───────────────────────────────────────────────────
 
@@ -410,7 +253,9 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       if (unsubscribe) unsubscribe()
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [serverRoadmapId, sessionToken, participantId, role, activeRoadmapId, isHydratingServer, backendUnavailableRoadmapId, showUpgradeNoticeOnce])
+  }, [serverRoadmapId, sessionToken, participantId, role, activeRoadmapId, isHydratingServer, backendUnavailableRoadmapId, showUpgradeNoticeOnce, setBackendUnavailableRoadmapId])
+
+  // ─── Write-through setters ────────────────────────────────────────────────────
 
   const setDisplayName = useCallback((name: string) => {
     setDisplayNameState(name)
@@ -448,20 +293,20 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const setServerRoadmapId = useCallback((id: string | null) => {
     setServerRoadmapIdState(id)
     const currentActiveId = storage.getActiveRoadmapId()
-    
+
     if (id && currentActiveId && currentActiveId !== id) {
       // Migrate from local draft to server ID
       const rc = storage.getRoadmapCache(currentActiveId)
       if (rc) storage.setRoadmapCache(id, rc)
       const ac = storage.getAuthCache(currentActiveId)
       if (ac) storage.setAuthCache(id, ac)
-      
+
       storage.clearRoadmapCache(currentActiveId)
       storage.setActiveRoadmapId(id)
       storage.setLastRoadmapId(id)
       setActiveRoadmapIdState(id)
     }
-    
+
     const targetId = storage.getActiveRoadmapId()
     if (targetId) {
       if (id) {
@@ -529,136 +374,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       if (rc) storage.setRoadmapCache(id, { ...rc, updatedAt: value })
     }
   }, [])
-
-  const resetToSample = useCallback(() => {
-    const newId = storage.createLocalDraftId()
-    const upgraded = upgradeRoadmapSnapshot({
-      roadmapName: 'v1.0 Public Launch',
-      phases: SAMPLE_ROADMAP.phases,
-    })
-    storage.setActiveRoadmapId(newId)
-    storage.setLastRoadmapId(newId)
-    
-    const cache: RoadmapCache = {
-      roadmapName: upgraded.roadmapName || 'v1.0 Public Launch',
-      phases: upgraded.phases,
-      saved: false,
-      ownerDisplayName: null,
-      updatedAt: null,
-      isPasswordEnabled: false,
-    }
-    storage.setRoadmapCache(newId, cache)
-    storage.setAuthCache(newId, null)
-    setRoadmapUpgradeNotice(null)
-
-    // Note: We intentionally don't wipe other roadmap caches.
-    setBackendUnavailableRoadmapId(null)
-    setIsHydratingServer(false)
-    setRoadmapNameState(cache.roadmapName)
-    setPhasesState(cache.phases)
-    setSavedState(false)
-    setServerRoadmapIdState(null)
-    setSessionTokenState(null)
-    setParticipantIdState(null)
-    setRoleState(null)
-    setIsPasswordEnabledState(false)
-    setOwnerDisplayNameState(null)
-    setUpdatedAtState(null)
-    setLocks({})
-  }, [])
-
-  const createLocalRoadmap = useCallback((name: string, nextPhases: Phase[]) => {
-    const newId = storage.createLocalDraftId()
-    const upgraded = upgradeRoadmapSnapshot({ roadmapName: name, phases: nextPhases })
-    const normalizedPhases = normalizePhasesProgress(upgraded.phases)
-    const nextName = upgraded.roadmapName || name
-    const cache: RoadmapCache = {
-      roadmapName: nextName,
-      phases: normalizedPhases,
-      saved: false,
-      ownerDisplayName: null,
-      updatedAt: null,
-      isPasswordEnabled: false,
-    }
-
-    storage.setActiveRoadmapId(newId)
-    storage.setLastRoadmapId(newId)
-    storage.setRoadmapCache(newId, cache)
-    storage.setAuthCache(newId, null)
-
-    setBackendUnavailableRoadmapId(null)
-    setIsHydratingServer(false)
-    setLocks({})
-    setActiveRoadmapIdState(newId)
-    setRoadmapUpgradeNotice(null)
-    setRoadmapNameState(nextName)
-    setPhasesState(normalizedPhases)
-    setSavedState(false)
-    setServerRoadmapIdState(null)
-    setSessionTokenState(null)
-    setParticipantIdState(null)
-    setRoleState(null)
-    setIsPasswordEnabledState(false)
-    setOwnerDisplayNameState(null)
-    setUpdatedAtState(null)
-
-    return newId
-  }, [])
-
-  const removeRoadmapFromBrowser = useCallback((id: string) => {
-    storage.removeRoadmap(id)
-    setBackendUnavailableRoadmapId(null)
-    setIsHydratingServer(false)
-    setLocks({})
-
-    const next = storage.listRoadmapCaches()[0]
-    if (next) {
-      storage.setActiveRoadmapId(next.id)
-      storage.setLastRoadmapId(next.id)
-      setActiveRoadmapIdState(next.id)
-      loadRoadmapIntoState(next.id, { value: false })
-      return
-    }
-
-    const newId = storage.createLocalDraftId()
-    const upgraded = upgradeRoadmapSnapshot({
-      roadmapName: 'v1.0 Public Launch',
-      phases: SAMPLE_ROADMAP.phases,
-    })
-    const cache: RoadmapCache = {
-      roadmapName: upgraded.roadmapName || 'v1.0 Public Launch',
-      phases: upgraded.phases,
-      saved: false,
-      ownerDisplayName: null,
-      updatedAt: null,
-      isPasswordEnabled: false,
-    }
-    storage.setActiveRoadmapId(newId)
-    storage.setLastRoadmapId(newId)
-    storage.setRoadmapCache(newId, cache)
-    storage.setAuthCache(newId, null)
-
-    setActiveRoadmapIdState(newId)
-    setRoadmapUpgradeNotice(null)
-    setRoadmapNameState(cache.roadmapName)
-    setPhasesState(cache.phases)
-    setSavedState(false)
-    setServerRoadmapIdState(null)
-    setSessionTokenState(null)
-    setParticipantIdState(null)
-    setRoleState(null)
-    setIsPasswordEnabledState(false)
-    setOwnerDisplayNameState(null)
-    setUpdatedAtState(null)
-  }, [loadRoadmapIntoState])
-
-  const activateRoadmap = useCallback((id: string) => {
-    storage.setActiveRoadmapId(id)
-    storage.setLastRoadmapId(id)
-    setBackendUnavailableRoadmapId(null)
-    setActiveRoadmapIdState(id)
-    loadRoadmapIntoState(id, { value: false })
-  }, [loadRoadmapIntoState])
 
   const clearAccessRevokedEvent = useCallback(() => {
     setAccessRevokedEvent(null)
