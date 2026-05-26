@@ -24,11 +24,9 @@ import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifi
 
 import React from 'react'
 import { Icon } from '@/components/ui/Icon'
-import { Toast } from '@/components/ui/Toast'
 import { SortableTaskItem } from './SortableTaskItem'
 import { TaskRow } from './TaskRow'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { useToastState } from '@/hooks/useToastState'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 import type { ForgeStyle } from '@/types/ui'
 
@@ -51,6 +49,7 @@ interface PhaseProps {
   allTasks: Task[]
   readOnly: boolean
   assignmentNames: string[]
+  onToast: (message: string) => void
   dragHandleProps?: React.HTMLAttributes<Element>
 }
 
@@ -94,6 +93,7 @@ export function Phase({
   allTasks,
   readOnly,
   assignmentNames,
+  onToast,
   dragHandleProps,
 }: PhaseProps) {
   const doneCount = phase.tasks.filter((t) => t.done).length
@@ -103,7 +103,6 @@ export function Phase({
   const colorControlRef = useRef<HTMLDivElement | null>(null)
 
   const { locks, serverRoadmapId, sessionToken, participantId } = useRoadmap()
-  const { toast, showToast } = useToastState()
 
   const colorLockTarget = `phase:${phase.id}`
   const colorLock = locks[colorLockTarget]
@@ -114,11 +113,11 @@ export function Phase({
   const handleColorLockError = useCallback((isConflict: boolean) => {
     if (isConflict) {
       const holder = colorLockRef.current?.displayName || 'Another participant'
-      showToast(`${holder} is editing this phase.`)
+      onToast(`${holder} is editing this phase.`)
     } else {
-      showToast('Could not acquire lock.')
+      onToast('Could not acquire lock.')
     }
-  }, [showToast])
+  }, [onToast])
 
   const {
     ownsLock: ownsColorLock,
@@ -332,6 +331,7 @@ export function Phase({
                       onUnlinkDependency={onUnlinkDependency}
                       onReorderSubtasks={onReorderSubtasks}
                       hasCycle={hasCycle}
+                      onToast={onToast}
                       assignmentNames={assignmentNames}
                     />
                   ))}
@@ -362,6 +362,7 @@ export function Phase({
                       onUnlinkDependency={() => {}}
                       onReorderSubtasks={() => {}}
                       hasCycle={() => false}
+                      onToast={onToast}
                       assignmentNames={assignmentNames}
                     />
                   </div>
@@ -379,7 +380,6 @@ export function Phase({
           )}
         </div>
       )}
-      {toast && <Toast message={toast} />}
     </div>
   )
 }

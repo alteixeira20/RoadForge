@@ -7,9 +7,7 @@ import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-as
 import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
-import { useToastState } from '@/hooks/useToastState'
 import { useEditLock } from '@/hooks/useEditLock'
-import { Toast } from '@/components/ui/Toast'
 import type { Task } from '@/types/roadmap'
 
 interface TaskRowProps {
@@ -27,6 +25,7 @@ interface TaskRowProps {
   onUnlinkDependency: (taskId: string, depId: string) => void
   onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
   hasCycle: (taskId: string, depId: string) => boolean
+  onToast: (message: string) => void
   isNested?: boolean
   dragDisabled?: boolean
   dragHandleProps?: Record<string, unknown>
@@ -48,6 +47,7 @@ export function TaskRow({
   onUnlinkDependency,
   onReorderSubtasks,
   hasCycle,
+  onToast,
   isNested = false,
   dragDisabled = false,
   dragHandleProps,
@@ -64,8 +64,6 @@ export function TaskRow({
   const [showSubtaskForm, setShowSubtaskForm] = useState(false)
   const [showDepPicker, setShowDepPicker] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-
-  const { toast, showToast } = useToastState()
 
   const target = `task:${task.id}`
   const lock = locks[target]
@@ -93,11 +91,11 @@ export function TaskRow({
   const handleEditLockError = useCallback((isConflict: boolean) => {
     if (isConflict) {
       const holder = lockRef.current?.displayName || 'Another participant'
-      showToast(`${holder} is editing this task.`)
+      onToast(`${holder} is editing this task.`)
     } else {
-      showToast('Could not acquire lock.')
+      onToast('Could not acquire lock.')
     }
-  }, [showToast])
+  }, [onToast])
 
   const { tryAcquire: tryAcquireLock } = useEditLock({
     target,
@@ -297,6 +295,7 @@ export function TaskRow({
                             onUnlinkDependency={onUnlinkDependency}
                             onReorderSubtasks={onReorderSubtasks}
                             hasCycle={hasCycle}
+                            onToast={onToast}
                             isNested
                             assignmentNames={assignmentNames}
                           />
@@ -358,7 +357,6 @@ export function TaskRow({
           )}
         </div>
       )}
-      {toast && <Toast message={toast} />}
     </div>
   )
 }

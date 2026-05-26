@@ -25,6 +25,7 @@ interface SortablePhaseItemProps {
   allTasks: Task[]
   readOnly: boolean
   assignmentNames: string[]
+  onToast: (message: string) => void
 }
 
 export function SortablePhaseItem({ phase, dragDisabled, ...phaseProps }: SortablePhaseItemProps) {

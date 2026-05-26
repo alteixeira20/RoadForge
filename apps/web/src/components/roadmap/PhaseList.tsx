@@ -44,6 +44,7 @@ interface PhaseListProps {
   onReorderPhases: (phaseIds: string[]) => void
   hasCycle: (taskId: string, depId: string) => boolean
   assignmentNames: string[]
+  onToast: (message: string) => void
 }
 
 export function PhaseList({
@@ -67,6 +68,7 @@ export function PhaseList({
   onReorderPhases,
   hasCycle,
   assignmentNames,
+  onToast,
 }: PhaseListProps) {
   const [activePhaseId, setActivePhaseId] = useState<string | null>(null)
 
@@ -136,6 +138,7 @@ export function PhaseList({
                 allTasks={allTasks}
                 readOnly={readOnly}
                 assignmentNames={assignmentNames}
+                onToast={onToast}
               />
             ))}
           </div>

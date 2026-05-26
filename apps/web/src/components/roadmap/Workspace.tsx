@@ -876,6 +876,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             onReorderPhases={handleReorderPhases}
             hasCycle={hasCycle}
             assignmentNames={taskEditorAssigneeNames}
+            onToast={showToast}
           />
         )}
       </div>
