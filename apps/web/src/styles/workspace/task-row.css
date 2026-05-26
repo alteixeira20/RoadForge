@@ -63,7 +63,6 @@
   color: var(--ink-3);
   font-family: var(--font-mono);
 }
-.task-row .meta-pill.dep { color: var(--ember); }
 .task-row .meta-pill.blocked { color: var(--ink-4); }
 .task-row .meta-pill.meta-pill-lock { color: var(--ink-3); background: var(--ink-6); }
 
@@ -93,9 +92,8 @@
   display: flex; flex-direction: column;
   gap: 16px;
   animation: detailIn 240ms cubic-bezier(.2,.8,.2,1);
+  position: relative;
 }
-
-.task-detail { position: relative; }
 
 .task-detail .desc {
   font-size: 14.5px;

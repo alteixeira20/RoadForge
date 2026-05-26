@@ -1,8 +1,7 @@
 /* ─── Moved to styles/workspace/ ──────────────────────────────────────────── */
 /* Contents of this file have been moved to:
    workspace/shell.css   — .app-shell
-   workspace/header.css  — .app-header, header actions, sync badges, header-more,
-                           iconbtn header variant, mobile header media queries
+   workspace/header.css  — .app-header, header zones (.header-start, .header-end), iconbtn header variant, responsive rules
    workspace/banners.css — .readonly-banner, .conflict-banner, banner media queries
    Imported directly in globals.css; this file is no longer imported.
 */

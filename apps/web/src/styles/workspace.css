@@ -1,7 +1,12 @@
 /* workspace.css — split into focused files; see globals.css for import order.
  *
- *   workspace-shell.css   — app-shell, app-header, badges, banners, iconbtn override
- *   workspace-toolbar.css — workspace-bar, search, filter dropdown, view tabs
- *   workspace-roadmap.css — .workspace layout, phases, tasks, drag/drop, edit forms
- *   workspace-panels.css  — activity panel, team view, versions panel
+ *   workspace/shell.css     — .app-shell
+ *   workspace/header.css    — .app-header, header zones, iconbtn override, responsive rules
+ *   workspace/banners.css   — .readonly-banner, .conflict-banner, banner responsive rules
+ *   workspace-toolbar.css   — workspace-bar, search, filter dropdown, view tabs
+ *   workspace/roadmap.css   — .workspace layout, drag/drop states
+ *   workspace/phase.css     — .phase, phase header, collapse, phase drag states
+ *   workspace/task-row.css  — .task-row, .task-detail, meta-pills, sortable drag states
+ *   workspace/task-edit.css — inline task edit form
+ *   workspace-panels.css    — activity panel, team view, versions panel
  */
