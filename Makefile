@@ -7,6 +7,7 @@ WEB_HOST ?= localhost
 WEB_URL  := http://localhost:$(WEB_PORT)
 API_URL  := http://localhost:7878
 PNPM_VERSION ?= 9.15.9
+DIFF_OUT ?= .logs/make-diff.txt
 
 APP_NAME ?= roadforge
 DEPLOY_ROOT ?= /opt/stacks/roadforge
@@ -25,7 +26,7 @@ help:
 	@echo "  (Frontend commands auto-bootstrap pnpm and install dependencies when missing)"
 	@echo "  make dev           Run Next.js frontend in the foreground"
 	@echo "  make check         Run linting, typechecking, and production build"
-	@echo "  make diff          Show working tree status, diff stats, and full diff"
+	@echo "  make diff          Show full diff and copy it to clipboard when possible"
 	@echo "  make audit         Run dependency security audit"
 	@echo "  make audit-prod    Run dependency security audit (production only)"
 	@echo ""
@@ -118,14 +119,35 @@ check: ensure-deps
 	pnpm lint && pnpm typecheck && pnpm build
 
 diff:
-	@git status --short
-	@git diff --stat -- $(DIFF_FILES)
-	@git diff -- $(DIFF_FILES)
-	@git ls-files --others --exclude-standard $(DIFF_FILES) | while read file; do \
-		echo ""; \
-		echo "Untracked: $$file"; \
-		git diff --no-index /dev/null "$$file" || true; \
-	done
+	@mkdir -p "$$(dirname "$(DIFF_OUT)")"
+	@rm -f "$(DIFF_OUT)"
+	@{ \
+		git status --short; \
+		git diff --stat -- $(DIFF_FILES); \
+		git diff -- $(DIFF_FILES); \
+		git ls-files --others --exclude-standard $(DIFF_FILES) | while read file; do \
+			echo ""; \
+			echo "Untracked: $$file"; \
+			git diff --no-index /dev/null "$$file" || true; \
+		done; \
+	} | tee "$(DIFF_OUT)"
+	@echo ""
+	@if command -v wl-copy >/dev/null 2>&1; then \
+		cat "$(DIFF_OUT)" | wl-copy; \
+		echo "Copied diff output to clipboard with wl-copy."; \
+	elif command -v xclip >/dev/null 2>&1; then \
+		cat "$(DIFF_OUT)" | xclip -selection clipboard; \
+		echo "Copied diff output to clipboard with xclip."; \
+	elif command -v xsel >/dev/null 2>&1; then \
+		cat "$(DIFF_OUT)" | xsel --clipboard --input; \
+		echo "Copied diff output to clipboard with xsel."; \
+	elif command -v pbcopy >/dev/null 2>&1; then \
+		cat "$(DIFF_OUT)" | pbcopy; \
+		echo "Copied diff output to clipboard with pbcopy."; \
+	else \
+		echo "Clipboard tool not found. Diff output saved at $(DIFF_OUT)."; \
+		echo "Install one of: wl-clipboard, xclip, xsel."; \
+	fi
 
 audit: ensure-deps
 	pnpm audit
