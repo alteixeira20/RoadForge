@@ -18,17 +18,14 @@ import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { usePhaseSearch } from '@/hooks/usePhaseSearch'
 import { useToastState } from '@/hooks/useToastState'
-import { useAutoSync } from '@/hooks/useAutoSync'
+import { useSaveFlow } from '@/hooks/useSaveFlow'
 import { useWorkspaceParticipants } from '@/hooks/useWorkspaceParticipants'
 import { createTaskMutations } from '@/hooks/useTaskMutations'
-import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
-import { isApiConnectionError } from '@/services/roadmap-http'
 import { revokeParticipant } from '@/services/roadmap-sharing.service'
-import { normalizePhasesProgress, renumberPhases } from '@/lib/phase-progress'
+import { renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
-import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-changes'
-import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, ActivityChange, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
+import type { WorkspaceMode, WorkspaceView, Task, Phase as PhaseType, TaskFilter, Participant, Roadmap } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -120,9 +117,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setParticipantsError,
     refreshParticipants,
   } = useWorkspaceParticipants({ serverRoadmapId, sessionToken, role })
-  const [activityRefreshKey, setActivityRefreshKey] = useState(0)
-  const [pendingActivityChanges, setPendingActivityChanges] = useState<ActivityChange[]>([])
-  const [confirmReload, setConfirmReload] = useState(false)
   const [pendingRevokeParticipant, setPendingRevokeParticipant] = useState<Participant | null>(null)
   const [revokeLoading, setRevokeLoading] = useState(false)
 
@@ -210,80 +204,41 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const taskCountFor = (phaseList: PhaseType[]) => phaseList.reduce((count, phase) => count + phase.tasks.length, 0)
 
-  const addPendingActivityChange = (change: ActivityChange) => {
-    setPendingActivityChanges((prev) => mergePendingActivityChange(prev, change))
-  }
-
-  const { isConflict, setIsOffline, setIsConflict, syncStatus } = useAutoSync({
-    serverRoadmapId,
-    sessionToken,
-    readOnly,
-    saved,
-    phases,
+  const {
+    syncStatus,
+    isConflict,
+    confirmReload,
+    activityRefreshKey,
+    addPendingActivityChange,
+    setPendingActivityChanges,
+    refreshActivity,
+    markServerStateHealthy,
+    handleConfirmSave,
+    handleReloadServerVersion,
+    handleReloadConfirm,
+    closeReloadConfirm,
+  } = useSaveFlow({
+    displayName,
     roadmapName,
+    setRoadmapName,
+    phases,
+    setPhases,
+    saved,
+    setSaved,
+    serverRoadmapId,
+    setServerRoadmapId,
+    sessionToken,
+    setSessionToken,
+    readOnly,
+    setRole,
+    setOwnerDisplayName,
     updatedAt,
-    pendingActivityChanges,
+    setUpdatedAt,
     showActivity,
-    onSyncSuccess: (newUpdatedAt) => {
-      setUpdatedAt(newUpdatedAt)
-      setSaved(true)
-      setPendingActivityChanges([])
-    },
-    onActivityRefresh: () => setActivityRefreshKey((k) => k + 1),
-    onToast: showToast,
+    closeSave,
+    showToast,
+    routerReplace: (href) => router.replace(href),
   })
-
-  const handleConfirmSave = async (password?: string) => {
-    closeSave()
-    const changeSummary = buildChangeSummary(pendingActivityChanges, serverRoadmapId)
-    try {
-      if (!serverRoadmapId) {
-        // First save: no bearer token needed — create returns a new owner session.
-        const { roadmap, ownerSessionToken } = await createRoadmap(
-          roadmapName,
-          displayName || 'Owner',
-          phases,
-          password,
-          changeSummary,
-        )
-        const nextRoadmapId = roadmap.roadmap.id
-        setServerRoadmapId(roadmap.roadmap.id)
-        setSessionToken(ownerSessionToken)
-        setRole('owner')
-        setOwnerDisplayName(roadmap.ownerDisplayName)
-        setUpdatedAt(roadmap.updatedAt)
-        setPendingActivityChanges([])
-        router.replace(`/workspace?roadmap=${encodeURIComponent(nextRoadmapId)}`)
-      } else {
-        if (!sessionToken) {
-          showToast('Session expired — rejoin from the invite link')
-          return
-        }
-        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt || undefined, changeSummary)
-        setUpdatedAt(data.updated_at)
-        setPendingActivityChanges([])
-      }
-      setSaved(true)
-      setIsOffline(false)
-      setIsConflict(false)
-      if (showActivity) setActivityRefreshKey((k) => k + 1)
-      showToast('Saved · collaboration enabled')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('409')) {
-        setIsConflict(true)
-        showToast('The roadmap changed elsewhere. Your edits are preserved locally.')
-      } else if (msg.includes('401')) {
-        showToast('Session expired — rejoin from the invite link')
-      } else if (msg.includes('403')) {
-        showToast('You do not have permission for this action')
-      } else if (isApiConnectionError(err)) {
-        showToast('RoadForge API is not reachable. Start the backend with make start.')
-      } else {
-        showToast('Save failed — check backend connection')
-      }
-    }
-  }
 
   const handleRenameRoadmap = (name: string) => {
     if (!canRenameRoadmap) return false
@@ -381,44 +336,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setOwnerDisplayName(restored.ownerDisplayName)
     setUpdatedAt(restored.updatedAt)
     setSaved(!upgraded.changed)
-    setIsOffline(false)
-    setIsConflict(false)
-    if (showActivity) setActivityRefreshKey((k) => k + 1)
-  }
-
-  const handleReloadServerVersion = () => {
-    if (!serverRoadmapId || !sessionToken) return
-    setConfirmReload(true)
-  }
-
-  const handleReloadConfirm = async () => {
-    if (!serverRoadmapId || !sessionToken) return
-    setConfirmReload(false)
-    try {
-      const loaded = await getRoadmap(serverRoadmapId, sessionToken)
-      const upgraded = upgradeRoadmapSnapshot({
-        roadmapName: loaded.roadmap.name,
-        phases: loaded.phases,
-      })
-      setRoadmapName(upgraded.roadmapName || loaded.roadmap.name)
-      setPhases(normalizePhasesProgress(upgraded.phases))
-      setOwnerDisplayName(loaded.ownerDisplayName)
-      setUpdatedAt(loaded.updatedAt)
-      setPendingActivityChanges([])
-      setSaved(!upgraded.changed)
-      setIsConflict(false)
-      setIsOffline(false)
-      showToast('Reloaded server version.')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (isApiConnectionError(err)) {
-        showToast('Could not reach the server — try again later.')
-      } else if (msg.includes('401') || msg.includes('403')) {
-        showToast('Session expired — rejoin from the invite link.')
-      } else {
-        showToast('Could not reload server version.')
-      }
-    }
+    markServerStateHealthy()
+    if (showActivity) refreshActivity()
   }
 
   const handleRevokeTeamParticipant = async (participant: Participant) => {
@@ -570,7 +489,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         confirmLabel="Reload"
         tone="danger"
         onConfirm={handleReloadConfirm}
-        onClose={() => setConfirmReload(false)}
+        onClose={closeReloadConfirm}
       />
 
       <ConfirmDialog
