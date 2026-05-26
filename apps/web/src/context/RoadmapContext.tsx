@@ -76,20 +76,28 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     removeRoadmapFromBrowser,
     setBackendUnavailableRoadmapId,
   } = useRoadmapHydration({
-    setDisplayNameState,
-    setRoadmapNameState,
-    setPhasesState,
-    setSavedState,
-    setServerRoadmapIdState,
-    setSessionTokenState,
-    setParticipantIdState,
-    setRoleState,
-    setIsPasswordEnabledState,
-    setOwnerDisplayNameState,
-    setUpdatedAtState,
-    setActiveRoadmapIdState,
-    setLocks,
-    setRoadmapUpgradeNotice,
+    roadmapState: {
+      setRoadmapNameState,
+      setPhasesState,
+      setSavedState,
+      setActiveRoadmapIdState,
+    },
+    sessionState: {
+      setServerRoadmapIdState,
+      setSessionTokenState,
+      setParticipantIdState,
+      setRoleState,
+    },
+    metadataState: {
+      setDisplayNameState,
+      setIsPasswordEnabledState,
+      setOwnerDisplayNameState,
+      setUpdatedAtState,
+    },
+    lifecycleState: {
+      setLocks,
+      setRoadmapUpgradeNotice,
+    },
   })
 
   // ─── Realtime subscription ───────────────────────────────────────────────────

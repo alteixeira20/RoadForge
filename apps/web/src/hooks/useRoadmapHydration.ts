@@ -15,22 +15,38 @@ export interface RoadmapUpgradeState {
   roadmapId: string
 }
 
-// Grouped raw state setters passed in from RoadmapContext.
-export interface HydrationSetters {
-  setDisplayNameState: Dispatch<SetStateAction<string>>
+interface HydrationRoadmapStateSetters {
   setRoadmapNameState: Dispatch<SetStateAction<string>>
   setPhasesState: Dispatch<SetStateAction<Phase[]>>
   setSavedState: Dispatch<SetStateAction<boolean>>
+  setActiveRoadmapIdState: Dispatch<SetStateAction<string | null>>
+}
+
+interface HydrationSessionStateSetters {
   setServerRoadmapIdState: Dispatch<SetStateAction<string | null>>
   setSessionTokenState: Dispatch<SetStateAction<string | null>>
   setParticipantIdState: Dispatch<SetStateAction<string | null>>
   setRoleState: Dispatch<SetStateAction<ShareRole | null>>
+}
+
+interface HydrationMetadataStateSetters {
+  setDisplayNameState: Dispatch<SetStateAction<string>>
   setIsPasswordEnabledState: Dispatch<SetStateAction<boolean>>
   setOwnerDisplayNameState: Dispatch<SetStateAction<string | null>>
   setUpdatedAtState: Dispatch<SetStateAction<string | null>>
-  setActiveRoadmapIdState: Dispatch<SetStateAction<string | null>>
+}
+
+interface HydrationLifecycleStateSetters {
   setLocks: Dispatch<SetStateAction<Record<string, { participantId: string; displayName: string }>>>
   setRoadmapUpgradeNotice: Dispatch<SetStateAction<RoadmapUpgradeState | null>>
+}
+
+// Grouped raw state setters passed in from RoadmapContext.
+export interface HydrationSetters {
+  roadmapState: HydrationRoadmapStateSetters
+  sessionState: HydrationSessionStateSetters
+  metadataState: HydrationMetadataStateSetters
+  lifecycleState: HydrationLifecycleStateSetters
 }
 
 export interface UseRoadmapHydrationReturn {
@@ -81,21 +97,33 @@ function buildSampleCache(): RoadmapCache {
 
 export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrationReturn {
   const {
-    setDisplayNameState,
+    roadmapState,
+    sessionState,
+    metadataState,
+    lifecycleState,
+  } = setters
+  const {
     setRoadmapNameState,
     setPhasesState,
     setSavedState,
+    setActiveRoadmapIdState,
+  } = roadmapState
+  const {
     setServerRoadmapIdState,
     setSessionTokenState,
     setParticipantIdState,
     setRoleState,
+  } = sessionState
+  const {
+    setDisplayNameState,
     setIsPasswordEnabledState,
     setOwnerDisplayNameState,
     setUpdatedAtState,
-    setActiveRoadmapIdState,
+  } = metadataState
+  const {
     setLocks,
     setRoadmapUpgradeNotice,
-  } = setters
+  } = lifecycleState
 
   const [isHydratingServer, setIsHydratingServer] = useState(false)
   const [backendUnavailableRoadmapId, setBackendUnavailableRoadmapId] = useState<string | null>(null)
