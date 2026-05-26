@@ -14,28 +14,52 @@ import { isApiConnectionError } from '@/services/roadmap-http'
 
 export type LockMap = Record<string, { participantId: string; displayName: string }>
 
-export interface UseRoadmapRealtimeParams {
+interface RealtimeConnectionParams {
   serverRoadmapId: string | null
   sessionToken: string | null
   participantId: string | null
   role: ShareRole | null
   activeRoadmapId: string | null
+}
+
+interface RealtimeLifecycleParams {
   isHydratingServer: boolean
   backendUnavailableRoadmapId: string | null
   savedRef: MutableRefObject<boolean>
-  setLocks: Dispatch<SetStateAction<LockMap>>
   showUpgradeNoticeOnce: (targetId: string, result: { changed: boolean; notices: RoadmapUpgradeNotice[] }) => void
   setBackendUnavailableRoadmapId: Dispatch<SetStateAction<string | null>>
+}
+
+interface RealtimeRoadmapStateParams {
   setRoadmapNameState: Dispatch<SetStateAction<string>>
   setPhasesState: Dispatch<SetStateAction<Phase[]>>
-  setOwnerDisplayNameState: Dispatch<SetStateAction<string | null>>
-  setUpdatedAtState: Dispatch<SetStateAction<string | null>>
-  setIsPasswordEnabledState: Dispatch<SetStateAction<boolean>>
   setSavedState: Dispatch<SetStateAction<boolean>>
+}
+
+interface RealtimeSessionStateParams {
   setServerRoadmapIdState: Dispatch<SetStateAction<string | null>>
   setSessionTokenState: Dispatch<SetStateAction<string | null>>
   setParticipantIdState: Dispatch<SetStateAction<string | null>>
   setRoleState: Dispatch<SetStateAction<ShareRole | null>>
+}
+
+interface RealtimeMetadataStateParams {
+  setOwnerDisplayNameState: Dispatch<SetStateAction<string | null>>
+  setUpdatedAtState: Dispatch<SetStateAction<string | null>>
+  setIsPasswordEnabledState: Dispatch<SetStateAction<boolean>>
+}
+
+interface RealtimeLockStateParams {
+  setLocks: Dispatch<SetStateAction<LockMap>>
+}
+
+export interface UseRoadmapRealtimeParams {
+  connection: RealtimeConnectionParams
+  lifecycle: RealtimeLifecycleParams
+  roadmapState: RealtimeRoadmapStateParams
+  sessionState: RealtimeSessionStateParams
+  metadataState: RealtimeMetadataStateParams
+  lockState: RealtimeLockStateParams
 }
 
 export interface UseRoadmapRealtimeReturn {
@@ -46,28 +70,25 @@ export interface UseRoadmapRealtimeReturn {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useRoadmapRealtime({
-  serverRoadmapId,
-  sessionToken,
-  participantId,
-  role,
-  activeRoadmapId,
-  isHydratingServer,
-  backendUnavailableRoadmapId,
-  savedRef,
-  setLocks,
-  showUpgradeNoticeOnce,
-  setBackendUnavailableRoadmapId,
-  setRoadmapNameState,
-  setPhasesState,
-  setOwnerDisplayNameState,
-  setUpdatedAtState,
-  setIsPasswordEnabledState,
-  setSavedState,
-  setServerRoadmapIdState,
-  setSessionTokenState,
-  setParticipantIdState,
-  setRoleState,
+  connection,
+  lifecycle,
+  roadmapState,
+  sessionState,
+  metadataState,
+  lockState,
 }: UseRoadmapRealtimeParams): UseRoadmapRealtimeReturn {
+  const { serverRoadmapId, sessionToken, participantId, role, activeRoadmapId } = connection
+  const {
+    isHydratingServer,
+    backendUnavailableRoadmapId,
+    savedRef,
+    showUpgradeNoticeOnce,
+    setBackendUnavailableRoadmapId,
+  } = lifecycle
+  const { setRoadmapNameState, setPhasesState, setSavedState } = roadmapState
+  const { setServerRoadmapIdState, setSessionTokenState, setParticipantIdState, setRoleState } = sessionState
+  const { setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState } = metadataState
+  const { setLocks } = lockState
   const [accessRevokedEvent, setAccessRevokedEvent] = useState<'revoked' | 'deleted' | null>(null)
 
   // ─── Realtime subscription ───────────────────────────────────────────────────

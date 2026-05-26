@@ -103,27 +103,39 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   // ─── Realtime subscription ───────────────────────────────────────────────────
 
   const { accessRevokedEvent, clearAccessRevokedEvent } = useRoadmapRealtime({
-    serverRoadmapId,
-    sessionToken,
-    participantId,
-    role,
-    activeRoadmapId,
-    isHydratingServer,
-    backendUnavailableRoadmapId,
-    savedRef,
-    setLocks,
-    showUpgradeNoticeOnce,
-    setBackendUnavailableRoadmapId,
-    setRoadmapNameState,
-    setPhasesState,
-    setOwnerDisplayNameState,
-    setUpdatedAtState,
-    setIsPasswordEnabledState,
-    setSavedState,
-    setServerRoadmapIdState,
-    setSessionTokenState,
-    setParticipantIdState,
-    setRoleState,
+    connection: {
+      serverRoadmapId,
+      sessionToken,
+      participantId,
+      role,
+      activeRoadmapId,
+    },
+    lifecycle: {
+      isHydratingServer,
+      backendUnavailableRoadmapId,
+      savedRef,
+      showUpgradeNoticeOnce,
+      setBackendUnavailableRoadmapId,
+    },
+    roadmapState: {
+      setRoadmapNameState,
+      setPhasesState,
+      setSavedState,
+    },
+    sessionState: {
+      setServerRoadmapIdState,
+      setSessionTokenState,
+      setParticipantIdState,
+      setRoleState,
+    },
+    metadataState: {
+      setOwnerDisplayNameState,
+      setUpdatedAtState,
+      setIsPasswordEnabledState,
+    },
+    lockState: {
+      setLocks,
+    },
   })
 
   // ─── Write-through setters ────────────────────────────────────────────────────
