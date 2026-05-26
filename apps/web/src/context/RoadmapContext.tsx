@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
 import type { Phase, ShareRole } from '@/types/roadmap'
+import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { useRoadmapHydration, type RoadmapUpgradeState } from '@/hooks/useRoadmapHydration'
