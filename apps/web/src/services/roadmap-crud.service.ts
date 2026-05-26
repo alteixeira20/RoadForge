@@ -22,18 +22,7 @@ interface ApiRoadmapResponse {
   updated_at: string
 }
 
-interface ApiShareLinkResponse {
-  id: string | null
-  role: string
-  token_prefix: string | null
-  url: string | null
-  is_active: boolean
-  created_at: string | null
-  rotated_at: string | null
-}
-
 interface ApiCreateRoadmapResponse extends ApiRoadmapResponse {
-  share_links: ApiShareLinkResponse[]
   owner_session_token: string
 }
 
