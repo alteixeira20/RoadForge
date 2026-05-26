@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-assignment'
@@ -146,10 +146,6 @@ export function TaskRow({
 
   const subtasks = allTasks.filter((t) => t.parentId === task.id)
 
-  const checkStyle: CSSProperties = effectivelyReadOnly
-    ? { cursor: 'not-allowed', opacity: 0.6 }
-    : {}
-
   // ─── Subtask Reordering ──────────────────────────────────────────────────
   // Subtask reordering is intentionally disabled for now.
   // If needed later, it should use the same dnd-kit sortable pattern as top-level tasks.
@@ -178,8 +174,7 @@ export function TaskRow({
           </div>
         )}
         <div
-          className="check"
-          style={checkStyle}
+          className={`check${effectivelyReadOnly ? ' task-check-disabled' : ''}`}
           onClick={(e) => {
             e.stopPropagation()
             if (!effectivelyReadOnly) onCheck(task.id)
@@ -187,7 +182,7 @@ export function TaskRow({
         />
         <div className="title">{task.title}</div>
         {isLockedByOther && (
-          <span className="meta-pill" style={{ color: 'var(--ink-3)', background: 'var(--ink-6)' }}>
+          <span className="meta-pill meta-pill-lock">
             <Icon name="shield" size={11} /> {lock.displayName} is editing
           </span>
         )}

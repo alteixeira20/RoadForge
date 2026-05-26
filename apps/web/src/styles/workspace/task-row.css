@@ -65,6 +65,13 @@
 }
 .task-row .meta-pill.dep { color: var(--ember); }
 .task-row .meta-pill.blocked { color: var(--ink-4); }
+.task-row .meta-pill.meta-pill-lock { color: var(--ink-3); background: var(--ink-6); }
+
+/* ─── Disabled check state ─────────────────────────────────────────────────── */
+.task-row .check.task-check-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
 
 .task-row .next-pip {
   display: inline-flex; align-items: center; gap: 5px;
