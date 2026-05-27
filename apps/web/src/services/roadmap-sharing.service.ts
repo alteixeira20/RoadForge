@@ -22,6 +22,7 @@ interface ApiParticipantResponse {
   role: string
   created_at: string
   last_seen_at: string | null
+  session_expires_at: string | null
   revoked_at: string | null
   is_current_participant: boolean
   share_link_id: string | null
@@ -69,6 +70,7 @@ function toParticipant(r: ApiParticipantResponse): Participant {
     role: r.role as ShareRole,
     createdAt: r.created_at,
     lastSeenAt: r.last_seen_at,
+    sessionExpiresAt: r.session_expires_at,
     revokedAt: r.revoked_at,
     isCurrentParticipant: r.is_current_participant,
     shareLinkId: r.share_link_id ?? null,

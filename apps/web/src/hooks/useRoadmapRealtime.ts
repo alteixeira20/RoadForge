@@ -8,7 +8,7 @@ import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import { getEventTicket, subscribeToRoadmapEvents } from '@/services/roadmap-realtime.service'
 import { getLocks } from '@/services/roadmap-locks.service'
-import { isApiConnectionError } from '@/services/roadmap-http'
+import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ export interface UseRoadmapRealtimeParams {
 }
 
 export interface UseRoadmapRealtimeReturn {
-  accessRevokedEvent: 'revoked' | 'deleted' | null
+  accessRevokedEvent: 'revoked' | 'deleted' | 'expired' | null
   clearAccessRevokedEvent: () => void
 }
 
@@ -89,7 +89,7 @@ export function useRoadmapRealtime({
   const { setServerRoadmapIdState, setSessionTokenState, setParticipantIdState, setRoleState } = sessionState
   const { setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState } = metadataState
   const { setLocks } = lockState
-  const [accessRevokedEvent, setAccessRevokedEvent] = useState<'revoked' | 'deleted' | null>(null)
+  const [accessRevokedEvent, setAccessRevokedEvent] = useState<'revoked' | 'deleted' | 'expired' | null>(null)
 
   // ─── Realtime subscription ───────────────────────────────────────────────────
 
@@ -105,10 +105,10 @@ export function useRoadmapRealtime({
     const startSync = async () => {
       const subscribedActiveId = activeRoadmapId
 
-      // Shared teardown for participant-revoked and roadmap-deleted events.
+      // Shared teardown for participant-revoked, roadmap-deleted, and expired-session events.
       // Closes the EventSource first (auth is no longer valid), then clears
-      // auth/roadmap cache and resets all server-identity state.
-      const handleAccessLoss = (kind: 'revoked' | 'deleted') => {
+      // auth cache while preserving the local roadmap cache.
+      const handleAccessLoss = (kind: 'revoked' | 'deleted' | 'expired') => {
         if (unsubscribe) { unsubscribe(); unsubscribe = null }
         if (subscribedActiveId) {
           storage.setAuthCache(subscribedActiveId, null)
@@ -184,6 +184,8 @@ export function useRoadmapRealtime({
                   })
                 }
               }
+            }).catch((err: unknown) => {
+              if (isSessionExpiredError(err)) handleAccessLoss('expired')
             })
           },
           onLockAcquired: (payload) => {
@@ -213,6 +215,10 @@ export function useRoadmapRealtime({
         if (isApiConnectionError(err)) {
           setBackendUnavailableRoadmapId(serverRoadmapId)
           console.warn('Realtime sync paused; RoadForge API is unavailable.')
+          return
+        }
+        if (isSessionExpiredError(err)) {
+          handleAccessLoss('expired')
           return
         }
         console.error('Realtime sync failed', err)

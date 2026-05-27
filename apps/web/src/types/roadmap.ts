@@ -125,6 +125,7 @@ export interface Participant {
   role: ShareRole
   createdAt: string
   lastSeenAt: string | null
+  sessionExpiresAt: string | null
   revokedAt: string | null
   isCurrentParticipant: boolean
   shareLinkId: string | null

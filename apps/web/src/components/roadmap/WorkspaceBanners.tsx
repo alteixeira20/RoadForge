@@ -7,6 +7,8 @@ interface WorkspaceBannersProps {
   roadmapName: string
   ownerDisplayName: string | null
   isConflict: boolean
+  sessionExpired: boolean
+  onDismissSessionExpired: () => void
   onCreateOwn?: () => void
   onReloadServerVersion: () => void
 }
@@ -16,6 +18,8 @@ export function WorkspaceBanners({
   roadmapName,
   ownerDisplayName,
   isConflict,
+  sessionExpired,
+  onDismissSessionExpired,
   onCreateOwn,
   onReloadServerVersion,
 }: WorkspaceBannersProps) {
@@ -48,6 +52,21 @@ export function WorkspaceBanners({
           <span className="spacer" />
           <button className="btn sm" onClick={onReloadServerVersion}>
             <Icon name="cloud" size={13} /> Reload server version
+          </button>
+        </div>
+      )}
+
+      {sessionExpired && (
+        <div className="conflict-banner">
+          <span className="pill">
+            <Icon name="shield" size={11} /> Session expired
+          </span>
+          <span className="msg">
+            Your local copy is preserved. Rejoin through an active invite link to sync again.
+          </span>
+          <span className="spacer" />
+          <button className="btn sm" onClick={onDismissSessionExpired}>
+            <Icon name="x" size={13} /> Dismiss
           </button>
         </div>
       )}

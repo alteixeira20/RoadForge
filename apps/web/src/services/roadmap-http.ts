@@ -23,6 +23,27 @@ export function isApiConnectionError(error: unknown): error is ApiConnectionErro
   )
 }
 
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly detail: string,
+  ) {
+    super(`API ${status}: ${detail}`)
+    this.name = 'ApiError'
+  }
+}
+
+export function isApiError(error: unknown, status?: number, detail?: string): error is ApiError {
+  if (!(error instanceof ApiError)) return false
+  if (status !== undefined && error.status !== status) return false
+  if (detail !== undefined && error.detail !== detail) return false
+  return true
+}
+
+export function isSessionExpiredError(error: unknown): boolean {
+  return isApiError(error, 401, 'Session expired')
+}
+
 // ─── HTTP helper ───────────────────────────────────────────────────────────────
 
 export async function requestJson<T>(
@@ -56,7 +77,7 @@ export async function requestJson<T>(
     } catch {
       // leave detail as statusText
     }
-    throw new Error(`API ${res.status}: ${detail}`)
+    throw new ApiError(res.status, detail)
   }
   return res.json() as Promise<T>
 }

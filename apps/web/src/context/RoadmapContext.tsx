@@ -37,8 +37,10 @@ interface RoadmapContextValue {
   createLocalRoadmap: (name: string, phases: Phase[]) => string
   resetToSample: () => void
   removeRoadmapFromBrowser: (id: string) => void
-  accessRevokedEvent: 'revoked' | 'deleted' | null
+  accessRevokedEvent: 'revoked' | 'deleted' | 'expired' | null
   clearAccessRevokedEvent: () => void
+  sessionExpiredRoadmapId: string | null
+  clearSessionExpiredNotice: () => void
   roadmapUpgradeNotice: RoadmapUpgradeState | null
   dismissRoadmapUpgradeNotice: () => void
 }
@@ -69,12 +71,14 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const {
     isHydratingServer,
     backendUnavailableRoadmapId,
+    sessionExpiredRoadmapId,
     showUpgradeNoticeOnce,
     activateRoadmap,
     createLocalRoadmap,
     resetToSample,
     removeRoadmapFromBrowser,
     setBackendUnavailableRoadmapId,
+    setSessionExpiredRoadmapId,
   } = useRoadmapHydration({
     roadmapState: {
       setRoadmapNameState,
@@ -262,9 +266,13 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setRoadmapUpgradeNotice(null)
   }, [])
 
+  const clearSessionExpiredNotice = useCallback(() => {
+    setSessionExpiredRoadmapId(null)
+  }, [setSessionExpiredRoadmapId])
+
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, createLocalRoadmap, resetToSample, removeRoadmapFromBrowser, accessRevokedEvent, clearAccessRevokedEvent, roadmapUpgradeNotice, dismissRoadmapUpgradeNotice }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, createLocalRoadmap, resetToSample, removeRoadmapFromBrowser, accessRevokedEvent, clearAccessRevokedEvent, sessionExpiredRoadmapId, clearSessionExpiredNotice, roadmapUpgradeNotice, dismissRoadmapUpgradeNotice }}
     >
       {children}
     </RoadmapContext.Provider>

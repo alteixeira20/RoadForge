@@ -7,7 +7,7 @@ import { storage, type RoadmapCache } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
 import { getRoadmap } from '@/services/roadmap-crud.service'
-import { isApiConnectionError } from '@/services/roadmap-http'
+import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,6 +52,7 @@ export interface HydrationSetters {
 export interface UseRoadmapHydrationReturn {
   isHydratingServer: boolean
   backendUnavailableRoadmapId: string | null
+  sessionExpiredRoadmapId: string | null
   showUpgradeNoticeOnce: (targetId: string, result: { changed: boolean; notices: RoadmapUpgradeNotice[] }) => void
   loadRoadmapIntoState: (targetId: string, cancelled: { value: boolean }) => void
   activateRoadmap: (id: string) => void
@@ -59,6 +60,7 @@ export interface UseRoadmapHydrationReturn {
   resetToSample: () => void
   removeRoadmapFromBrowser: (id: string) => void
   setBackendUnavailableRoadmapId: Dispatch<SetStateAction<string | null>>
+  setSessionExpiredRoadmapId: Dispatch<SetStateAction<string | null>>
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -127,6 +129,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
 
   const [isHydratingServer, setIsHydratingServer] = useState(false)
   const [backendUnavailableRoadmapId, setBackendUnavailableRoadmapId] = useState<string | null>(null)
+  const [sessionExpiredRoadmapId, setSessionExpiredRoadmapId] = useState<string | null>(null)
   const shownUpgradeNoticeIdsRef = useRef<Set<string>>(new Set())
 
   const showUpgradeNoticeOnce = useCallback((
@@ -144,6 +147,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     activeRoadmapId?: string,
   ) => {
     setBackendUnavailableRoadmapId(null)
+    setSessionExpiredRoadmapId(null)
     setIsHydratingServer(false)
     if (activeRoadmapId) setActiveRoadmapIdState(activeRoadmapId)
     setRoadmapUpgradeNotice(null)
@@ -176,6 +180,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     const rc = storage.getRoadmapCache(targetId)
     const ac = storage.getAuthCache(targetId)
     setBackendUnavailableRoadmapId(null)
+    setSessionExpiredRoadmapId(null)
     setRoadmapUpgradeNotice((current) => (
       current && current.roadmapId !== targetId ? null : current
     ))
@@ -262,6 +267,18 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
             console.warn('RoadForge API unavailable; using cached roadmap data.')
             return
           }
+          if (isSessionExpiredError(err)) {
+            storage.setAuthCache(targetId, null)
+            const cached = storage.getRoadmapCache(targetId)
+            if (cached) storage.setRoadmapCache(targetId, { ...cached, saved: false })
+            setServerRoadmapIdState(null)
+            setSessionTokenState(null)
+            setParticipantIdState(null)
+            setRoleState(null)
+            setSavedState(false)
+            setSessionExpiredRoadmapId(targetId)
+            return
+          }
           if (isAuthError(err)) {
             storage.setAuthCache(targetId, null)
             setServerRoadmapIdState(null)
@@ -332,6 +349,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     storage.setActiveRoadmapId(id)
     storage.setLastRoadmapId(id)
     setBackendUnavailableRoadmapId(null)
+    setSessionExpiredRoadmapId(null)
     setActiveRoadmapIdState(id)
     loadRoadmapIntoState(id, { value: false })
   }, [loadRoadmapIntoState, setActiveRoadmapIdState])
@@ -419,5 +437,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     resetToSample,
     removeRoadmapFromBrowser,
     setBackendUnavailableRoadmapId,
+    sessionExpiredRoadmapId,
+    setSessionExpiredRoadmapId,
   }
 }

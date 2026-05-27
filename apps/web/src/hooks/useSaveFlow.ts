@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
-import { isApiConnectionError } from '@/services/roadmap-http'
+import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
 import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-changes'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
+import { storage } from '@/lib/storage'
 import type { ActivityChange, Phase, ShareRole } from '@/types/roadmap'
 
 interface UseSaveFlowParams {
@@ -18,11 +19,12 @@ interface UseSaveFlowParams {
   saved: boolean
   setSaved: (saved: boolean) => void
   serverRoadmapId: string | null
-  setServerRoadmapId: (id: string) => void
+  setServerRoadmapId: (id: string | null) => void
   sessionToken: string | null
-  setSessionToken: (token: string) => void
+  setSessionToken: (token: string | null) => void
+  setParticipantId: (participantId: string | null) => void
   readOnly: boolean
-  setRole: (role: ShareRole) => void
+  setRole: (role: ShareRole | null) => void
   setOwnerDisplayName: (name: string) => void
   updatedAt: string | null
   setUpdatedAt: (updatedAt: string) => void
@@ -44,6 +46,7 @@ export function useSaveFlow({
   setServerRoadmapId,
   sessionToken,
   setSessionToken,
+  setParticipantId,
   readOnly,
   setRole,
   setOwnerDisplayName,
@@ -65,6 +68,21 @@ export function useSaveFlow({
   const clearPendingActivityChanges = () => setPendingActivityChanges([])
   const refreshActivity = () => setActivityRefreshKey((k) => k + 1)
 
+  function handleSessionExpired() {
+    if (serverRoadmapId) {
+      storage.setAuthCache(serverRoadmapId, null)
+      const cached = storage.getRoadmapCache(serverRoadmapId)
+      if (cached) storage.setRoadmapCache(serverRoadmapId, { ...cached, saved: false })
+    }
+    setServerRoadmapId(null)
+    setSessionToken(null)
+    setParticipantId(null)
+    setRole(null)
+    setSaved(false)
+    setIsOffline(true)
+    showToast('Session expired. Rejoin through an active invite link.')
+  }
+
   const { isConflict, setIsOffline, setIsConflict, syncStatus } = useAutoSync({
     serverRoadmapId,
     sessionToken,
@@ -82,6 +100,7 @@ export function useSaveFlow({
     },
     onActivityRefresh: refreshActivity,
     onToast: showToast,
+    onSessionExpired: handleSessionExpired,
   })
 
   const markServerStateHealthy = () => {
@@ -129,6 +148,8 @@ export function useSaveFlow({
       if (msg.includes('409')) {
         setIsConflict(true)
         showToast('The roadmap changed elsewhere. Your edits are preserved locally.')
+      } else if (isSessionExpiredError(err)) {
+        handleSessionExpired()
       } else if (msg.includes('401')) {
         showToast('Session expired — rejoin from the invite link')
       } else if (msg.includes('403')) {
@@ -168,6 +189,8 @@ export function useSaveFlow({
       const msg = err instanceof Error ? err.message : ''
       if (isApiConnectionError(err)) {
         showToast('Could not reach the server — try again later.')
+      } else if (isSessionExpiredError(err)) {
+        handleSessionExpired()
       } else if (msg.includes('401') || msg.includes('403')) {
         showToast('Session expired — rejoin from the invite link.')
       } else {

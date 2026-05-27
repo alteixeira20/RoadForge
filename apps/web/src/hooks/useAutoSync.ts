@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { saveToServer } from '@/services/roadmap-crud.service'
-import { isApiConnectionError } from '@/services/roadmap-http'
+import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
 import { buildChangeSummary } from '@/lib/activity-changes'
 import type { Phase, ActivityChange, SyncStatus } from '@/types/roadmap'
 
@@ -19,6 +19,7 @@ interface AutoSyncParams {
   onSyncSuccess: (updatedAt: string) => void
   onActivityRefresh: () => void
   onToast: (msg: string) => void
+  onSessionExpired: () => void
 }
 
 interface AutoSyncResult {
@@ -43,6 +44,7 @@ export function useAutoSync({
   onSyncSuccess,
   onActivityRefresh,
   onToast,
+  onSessionExpired,
 }: AutoSyncParams): AutoSyncResult {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
@@ -64,6 +66,7 @@ export function useAutoSync({
     onSyncSuccess,
     onActivityRefresh,
     onToast,
+    onSessionExpired,
   })
 
   // Keep ref fresh so the debounced callback always reads the latest values
@@ -79,6 +82,7 @@ export function useAutoSync({
     onSyncSuccess,
     onActivityRefresh,
     onToast,
+    onSessionExpired,
   }
 
   // ─── Debounced autosync for server-backed roadmaps ─────────────────────────
@@ -104,6 +108,7 @@ export function useAutoSync({
         onSyncSuccess: syncSuccess,
         onActivityRefresh: activityRefresh,
         onToast: toast,
+        onSessionExpired: sessionExpired,
       } = syncParamsRef.current
 
       if (!rid || !tok || currentSaved) {
@@ -124,6 +129,8 @@ export function useAutoSync({
           setIsConflict(true)
           setIsOffline(false)
           toast('The roadmap changed elsewhere. Your edits are preserved locally.')
+        } else if (isSessionExpiredError(err)) {
+          sessionExpired()
         } else if (isApiConnectionError(err)) {
           setIsOffline(true)
         } else if (err instanceof Error && (err.message.includes('401') || err.message.includes('403'))) {

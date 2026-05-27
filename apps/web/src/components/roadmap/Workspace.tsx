@@ -61,6 +61,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setServerRoadmapId,
     sessionToken,
     setSessionToken,
+    setParticipantId,
     role,
     setRole,
     ownerDisplayName,
@@ -69,6 +70,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setUpdatedAt,
     accessRevokedEvent,
     clearAccessRevokedEvent,
+    sessionExpiredRoadmapId,
+    clearSessionExpiredNotice,
     roadmapUpgradeNotice,
     dismissRoadmapUpgradeNotice,
   } = useRoadmap()
@@ -118,7 +121,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     visiblePhases,
     isFiltering,
     effectiveOpenPhases,
-    openPhases,
     togglePhase,
     allOpen,
     collapseAll,
@@ -147,7 +149,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     showToast(
       accessRevokedEvent === 'revoked'
         ? 'Your access was revoked.'
-        : 'This roadmap was deleted.',
+        : accessRevokedEvent === 'expired'
+          ? 'Session expired. Rejoin through an active invite link.'
+          : 'This roadmap was deleted.',
     )
     clearAccessRevokedEvent()
   }, [accessRevokedEvent, showToast, clearAccessRevokedEvent])
@@ -181,6 +185,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setServerRoadmapId,
     sessionToken,
     setSessionToken,
+    setParticipantId,
     readOnly,
     setRole,
     setOwnerDisplayName,
@@ -346,6 +351,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         roadmapName={roadmapName}
         ownerDisplayName={ownerDisplayName}
         isConflict={isConflict}
+        sessionExpired={!!sessionExpiredRoadmapId}
+        onDismissSessionExpired={clearSessionExpiredNotice}
         onCreateOwn={onCreateOwn}
         onReloadServerVersion={handleReloadServerVersion}
       />

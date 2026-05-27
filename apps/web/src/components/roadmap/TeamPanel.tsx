@@ -38,6 +38,10 @@ export function TeamPanel({
     })
   }
 
+  const formatSessionExpiry = (value: string | null) => (
+    value ? formatDate(value) : 'not set'
+  )
+
   return (
     <section className="team-view">
       <div className="team-view-head">
@@ -100,7 +104,7 @@ export function TeamPanel({
                 </div>
               </div>
               <div className="team-meta">
-                Joined {formatDate(participant.createdAt)} · Last seen {formatDate(participant.lastSeenAt)}
+                Joined {formatDate(participant.createdAt)} · Last seen {formatDate(participant.lastSeenAt)} · Session expires: {formatSessionExpiry(participant.sessionExpiresAt)}
               </div>
             </section>
           ))}
