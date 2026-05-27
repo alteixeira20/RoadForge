@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import delete, select
@@ -46,6 +46,7 @@ _SHARE_PREFIXES: dict[str, str] = {
 }
 
 _MAX_ROADMAP_VERSIONS = 100
+_SESSION_LIFETIME_DAYS = 30
 
 # Actions that warrant a restore point in version history.
 # Default is False for any unknown action — version history is conservative.
@@ -55,6 +56,10 @@ _VERSION_WORTHY_ACTIONS: frozenset[str] = frozenset({
     "roadmap.restored",
     "roadmap.checkpoint",
 })
+
+
+def _session_expires_at(now: datetime) -> datetime:
+    return now + timedelta(days=_SESSION_LIFETIME_DAYS)
 
 
 def _should_create_version(action: str | None, metadata: dict | None) -> bool:
@@ -154,6 +159,7 @@ async def create_roadmap(
         display_name=payload.owner_display_name,
         role="owner",
         session_token_hash=hash_token(owner_session_token),
+        session_expires_at=_session_expires_at(now),
     )
     db.add(participant)
 
@@ -902,6 +908,7 @@ async def join_roadmap(db: AsyncSession, payload: JoinRoadmapRequest) -> JoinRoa
         role=share_link.role,
         share_link_id=share_link.id,
         session_token_hash=hash_token(session_token),
+        session_expires_at=_session_expires_at(now),
     )
     db.add(participant)
 
