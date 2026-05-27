@@ -1,11 +1,13 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.roadmap import Participant
+from api.models.roadmap import Participant, Roadmap
 from api.services.token_service import hash_token
+
+_SESSION_LIFETIME_DAYS = 30
 
 
 def get_bearer_token(authorization: str | None) -> str | None:
@@ -16,6 +18,16 @@ def get_bearer_token(authorization: str | None) -> str | None:
     if len(parts) != 2 or parts[0].lower() != "bearer":
         return None
     return parts[1] or None
+
+
+def _ensure_aware_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _session_expires_at(now: datetime) -> datetime:
+    return now + timedelta(days=_SESSION_LIFETIME_DAYS)
 
 
 async def require_participant(
@@ -34,21 +46,37 @@ async def require_participant(
         raise HTTPException(status_code=401, detail="Missing or invalid session token")
 
     result = await db.execute(
-        select(Participant).where(
+        select(Participant, Roadmap)
+        .join(Roadmap, Participant.roadmap_id == Roadmap.id)
+        .where(
             Participant.roadmap_id == roadmap_id,
             Participant.session_token_hash == hash_token(raw_token),
-            Participant.revoked_at.is_(None),
         )
     )
-    participant = result.scalar_one_or_none()
+    row = result.one_or_none()
 
-    if participant is None:
+    if row is None:
         raise HTTPException(status_code=401, detail="Missing or invalid session token")
+    participant, roadmap = row
+
+    if participant.revoked_at is not None:
+        raise HTTPException(status_code=401, detail="Session revoked")
+
+    if roadmap.deleted_at is not None:
+        raise HTTPException(status_code=401, detail="Missing or invalid session token")
+
+    now = datetime.now(timezone.utc)
+    if participant.session_expires_at is not None:
+        expires_at = _ensure_aware_utc(participant.session_expires_at)
+        if expires_at <= now:
+            raise HTTPException(status_code=401, detail="Session expired")
 
     if participant.role not in allowed_roles:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
-    participant.last_seen_at = datetime.now(timezone.utc)
+    participant.last_seen_at = now
+    participant.session_expires_at = _session_expires_at(now)
     await db.flush()
+    await db.commit()
 
     return participant

@@ -1,6 +1,7 @@
 import secrets
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Dict
 
 
@@ -9,6 +10,7 @@ class Ticket:
     roadmap_id: str
     participant_id: str
     expires_at: float
+    session_expires_at: float
 
 
 class TicketService:
@@ -16,7 +18,12 @@ class TicketService:
         self._tickets: Dict[str, Ticket] = {}
         self._ttl = ttl
 
-    def create_ticket(self, roadmap_id: str, participant_id: str) -> str:
+    def create_ticket(
+        self,
+        roadmap_id: str,
+        participant_id: str,
+        session_expires_at: datetime,
+    ) -> str:
         # Opportunistic cleanup
         self._cleanup()
         
@@ -24,11 +31,12 @@ class TicketService:
         self._tickets[ticket_id] = Ticket(
             roadmap_id=roadmap_id,
             participant_id=participant_id,
-            expires_at=time.time() + self._ttl
+            expires_at=time.time() + self._ttl,
+            session_expires_at=session_expires_at.timestamp()
         )
         return ticket_id
 
-    def consume_ticket(self, ticket_id: str, roadmap_id: str) -> str | None:
+    def consume_ticket(self, ticket_id: str, roadmap_id: str) -> Ticket | None:
         ticket = self._tickets.pop(ticket_id, None)
         if not ticket:
             return None
@@ -36,7 +44,7 @@ class TicketService:
         if ticket.roadmap_id != roadmap_id or time.time() > ticket.expires_at:
             return None
             
-        return ticket.participant_id
+        return ticket
 
     def _cleanup(self):
         now = time.time()

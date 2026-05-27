@@ -24,6 +24,7 @@ from api.schemas.roadmap import (
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.password_service import hash_password, verify_password
+from api.services.rate_limit_service import rate_limiter
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
 
@@ -757,6 +758,7 @@ async def get_participants(
             role=participant.role,  # type: ignore[arg-type]
             created_at=participant.created_at,
             last_seen_at=participant.last_seen_at,
+            session_expires_at=participant.session_expires_at,
             revoked_at=participant.revoked_at,
             is_current_participant=participant.id == current_participant.id,
             share_link_id=participant.share_link_id,
@@ -861,7 +863,11 @@ async def get_activity_logs(
     )
 
 
-async def join_roadmap(db: AsyncSession, payload: JoinRoadmapRequest) -> JoinRoadmapResponse:
+async def join_roadmap(
+    db: AsyncSession,
+    payload: JoinRoadmapRequest,
+    client_ip: str,
+) -> JoinRoadmapResponse:
     token_hash = hash_token(payload.token)
 
     # Resolve active share link by the hashed invite token.
@@ -875,6 +881,8 @@ async def join_roadmap(db: AsyncSession, payload: JoinRoadmapRequest) -> JoinRoa
 
     if share_link is None:
         raise HTTPException(status_code=401, detail="Invalid or expired invite token")
+
+    rate_limiter.enforce("join.share_link", share_link.id, limit=30, window_seconds=600)
 
     # Verify the linked roadmap is not soft-deleted.
     rm_result = await db.execute(
@@ -891,6 +899,18 @@ async def join_roadmap(db: AsyncSession, payload: JoinRoadmapRequest) -> JoinRoa
         pw = payload.password
         ph = roadmap.password_hash
         if not pw or not ph or not verify_password(pw, ph):
+            rate_limiter.enforce(
+                "join.password_failure.ip_share",
+                f"{client_ip}:{share_link.id}",
+                limit=5,
+                window_seconds=600,
+            )
+            rate_limiter.enforce(
+                "join.password_failure.share",
+                share_link.id,
+                limit=30,
+                window_seconds=3600,
+            )
             raise HTTPException(status_code=401, detail="Invalid invite token or password")
 
     now = datetime.now(timezone.utc)

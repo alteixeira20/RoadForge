@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +27,7 @@ from api.schemas.roadmap import (
 from api.services.auth_service import require_participant
 from api.services.event_bus import event_bus
 from api.services.lock_service import lock_service
+from api.services.rate_limit_service import rate_limiter
 from api.services.roadmap_service import (
     create_roadmap,
     create_roadmap_checkpoint,
@@ -52,21 +53,32 @@ _OWNER_EDITOR = {"owner", "editor"}
 _OWNER_ONLY = {"owner"}
 
 
+def _client_ip(request: Request) -> str:
+    # First version deliberately uses the immediate peer. Forwarded headers need
+    # trusted-proxy configuration before they can be safely accepted.
+    return request.client.host if request.client else "unknown"
+
+
 @router.post("", response_model=CreateRoadmapResponse, status_code=status.HTTP_201_CREATED)
 async def post_roadmap(
+    request: Request,
     payload: CreateRoadmapRequest,
     db: AsyncSession = Depends(get_db),
 ) -> CreateRoadmapResponse:
+    rate_limiter.enforce("roadmap.create.ip", _client_ip(request), limit=10, window_seconds=3600)
     settings = get_settings()
     return await create_roadmap(db, payload, settings.web_base_url)
 
 
 @router.post("/join", response_model=JoinRoadmapResponse)
 async def post_join(
+    request: Request,
     payload: JoinRoadmapRequest,
     db: AsyncSession = Depends(get_db),
 ) -> JoinRoadmapResponse:
-    return await join_roadmap(db, payload)
+    client_ip = _client_ip(request)
+    rate_limiter.enforce("join.ip", client_ip, limit=20, window_seconds=60)
+    return await join_roadmap(db, payload, client_ip)
 
 
 @router.get("/{roadmap_id}", response_model=RoadmapResponse)
@@ -123,6 +135,12 @@ async def post_rotate_share_link(
     authorization: str | None = Header(default=None),
 ) -> ShareLinkResponse:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    rate_limiter.enforce(
+        "share_link.rotate",
+        f"{participant.id}:{roadmap_id}:{role}",
+        limit=5,
+        window_seconds=60,
+    )
     settings = get_settings()
     return await rotate_share_link(db, roadmap_id, role, settings.web_base_url, participant)
 
@@ -135,6 +153,12 @@ async def delete_share_link(
     authorization: str | None = Header(default=None),
 ) -> Response:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    rate_limiter.enforce(
+        "share_link.revoke",
+        f"{participant.id}:{roadmap_id}:{role}",
+        limit=10,
+        window_seconds=60,
+    )
     await revoke_share_link(db, roadmap_id, role, participant)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -206,13 +230,26 @@ async def post_revoke_participant(
 
 @router.post("/{roadmap_id}/events/ticket", response_model=EventTicketResponse)
 async def post_event_ticket(
+    request: Request,
     roadmap_id: str,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> EventTicketResponse:
     # All roles (owner, editor, viewer) can subscribe to events.
     participant = await require_participant(db, roadmap_id, authorization, {"owner", "editor", "viewer"})
-    ticket = ticket_service.create_ticket(roadmap_id, participant.id)
+    rate_limiter.enforce(
+        "events.ticket.participant",
+        f"{participant.id}:{roadmap_id}",
+        limit=10,
+        window_seconds=60,
+    )
+    rate_limiter.enforce(
+        "events.ticket.ip",
+        f"{_client_ip(request)}:{roadmap_id}",
+        limit=60,
+        window_seconds=60,
+    )
+    ticket = ticket_service.create_ticket(roadmap_id, participant.id, participant.session_expires_at)
     return EventTicketResponse(ticket=ticket, expires_in=30)
 
 
@@ -221,12 +258,12 @@ async def get_events(
     roadmap_id: str,
     ticket: str = Query(...),
 ):
-    participant_id = ticket_service.consume_ticket(ticket, roadmap_id)
-    if not participant_id:
+    event_ticket = ticket_service.consume_ticket(ticket, roadmap_id)
+    if not event_ticket:
         raise HTTPException(status_code=401, detail="Invalid or expired event ticket")
 
     return StreamingResponse(
-        event_bus.stream(roadmap_id),
+        event_bus.stream(roadmap_id, close_at=event_ticket.session_expires_at),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

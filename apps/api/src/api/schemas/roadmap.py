@@ -243,6 +243,7 @@ class ParticipantResponse(BaseModel):
     role: ShareRole
     created_at: datetime
     last_seen_at: datetime | None = None
+    session_expires_at: datetime | None = None
     revoked_at: datetime | None = None
     is_current_participant: bool = False
     share_link_id: str | None = None

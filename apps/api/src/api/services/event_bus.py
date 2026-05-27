@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, Set
 
@@ -47,18 +48,29 @@ class EventBus:
         for queue in queues:
             await queue.put(sse_data)
 
-    async def stream(self, roadmap_id: str):
+    async def stream(self, roadmap_id: str, close_at: float | None = None):
         """
         SSE event generator for a roadmap. Handles subscribe/unsubscribe and heartbeats.
         """
         queue = await self.subscribe(roadmap_id)
         try:
             while True:
+                timeout = 25.0
+                if close_at is not None:
+                    seconds_remaining = close_at - time.time()
+                    if seconds_remaining <= 0:
+                        break
+                    timeout = min(timeout, seconds_remaining)
+
                 try:
                     # Wait for an event from the bus or a heartbeat timeout.
-                    event_data = await asyncio.wait_for(queue.get(), timeout=25.0)
+                    event_data = await asyncio.wait_for(queue.get(), timeout=timeout)
+                    if close_at is not None and time.time() >= close_at:
+                        break
                     yield event_data
                 except asyncio.TimeoutError:
+                    if close_at is not None and time.time() >= close_at:
+                        break
                     # Send an SSE comment as a heartbeat to keep the connection alive.
                     yield ": heartbeat\n\n"
         finally:
