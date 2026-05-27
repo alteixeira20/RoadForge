@@ -274,3 +274,59 @@ Ownership recommendation:
 - Cloudflare owns outer TLS/edge protections only; it should reinforce but not replace app/proxy policy.
 
 The first version should be simple and conservative: document the policy, start CSP in report-only mode, keep accountless collaboration and local-first behavior intact, preserve API + SSE connectivity, and avoid enforcing brittle CSP rules before production-like observation.
+
+## 12. Header Inspection Commands
+
+Use these commands against local, staging, or production URLs. Replace the
+example origins before running. These commands are for inspection only; this
+document does not claim deployed validation has been performed.
+
+Frontend headers:
+
+```bash
+curl -I https://example-roadforge-web.test/
+```
+
+Confirm:
+
+- `Content-Security-Policy-Report-Only` is present.
+- `Content-Security-Policy` is not present yet.
+- `X-Frame-Options: DENY` is present, or `frame-ancestors 'none'` is visible in report-only CSP.
+- `X-Content-Type-Options: nosniff` is present.
+
+API health headers:
+
+```bash
+curl -I https://example-roadforge-api.test/api/health
+```
+
+Confirm:
+
+- `X-Content-Type-Options: nosniff` is present.
+- CSP is not duplicated on JSON API responses.
+
+Sensitive API headers:
+
+```bash
+curl -I \
+  -H "Authorization: Bearer <session_token>" \
+  https://example-roadforge-api.test/api/roadmaps/<roadmap_id>
+```
+
+Confirm:
+
+- `Cache-Control: no-store` is present on sensitive roadmap JSON responses.
+- `X-Content-Type-Options: nosniff` is present.
+
+SSE headers:
+
+```bash
+curl -I "https://example-roadforge-api.test/api/roadmaps/<roadmap_id>/events?ticket=<event_ticket>"
+```
+
+Confirm the stream remains SSE-friendly. Do not expect the same `no-store`
+behavior as JSON routes; the existing stream uses `Cache-Control: no-cache`.
+
+Local development can use `http://localhost:3020` and `http://localhost:7878`.
+Production inspection should use the deployed frontend and API origins, including
+the same `NEXT_PUBLIC_API_URL` origin used by the browser.

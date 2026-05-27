@@ -425,6 +425,28 @@ Run on hosting-bay (or a staging clone of the deploy setup):
 
 ---
 
+## 31 — Security hardening smoke checklist
+
+Use this checklist after migrations, backend checks, frontend checks, and a local
+or staging stack are available. Do not mark these as complete until you run them.
+
+- [ ] New owner and joined participant sessions receive `session_expires_at`.
+- [ ] Valid authenticated API requests renew `session_expires_at` by 30 days and update `last_seen_at`.
+- [ ] Expired participant session returns `401` with `{"detail":"Session expired"}` and does not create activity logs.
+- [ ] Expired frontend session clears only `rf:auth:<roadmapId>`, preserves `rf:roadmap:<roadmapId>`, marks the local copy unsynced, and tells the user to rejoin through an active invite link.
+- [ ] Revoked participant behavior is unchanged: existing session fails, `participant.revoked` copy remains owner/action language, and the local roadmap cache remains.
+- [ ] Share-link revoke/rotate behavior is unchanged: future joins with the old link fail, existing participant sessions are not kicked.
+- [ ] Wrong password attempts eventually return `429` with `Retry-After`.
+- [ ] Invalid-token join attempts and roadmap creation are rate-limited by client IP.
+- [ ] Event ticket requests allow normal page load/reconnect, then repeated direct calls return `429`.
+- [ ] Owner share rotate/revoke works normally, then rapid repeated calls return `429`.
+- [ ] CSP is Report-Only and does not block app load, save, join, import/export, fonts, icons, or SSE.
+- [ ] Realtime SSE still works after the header changes.
+- [ ] Sensitive roadmap API JSON responses include `Cache-Control: no-store`.
+- [ ] API responses include `X-Content-Type-Options: nosniff`.
+
+---
+
 ## Blocker criteria
 
 Stop QA and file a blocker if any of the following are true:
@@ -450,5 +472,5 @@ Stop QA and file a blocker if any of the following are true:
 - **No accounts / OAuth.** Session tokens in localStorage are the auth primitive. There is no login page, no password reset, and no user dashboard.
 - **Link revoke does not kick active participants.** Revoking a share link prevents new joins via that link but does not terminate existing sessions. To remove an active participant, use participant revoke (§7).
 - **Password gate not enforced on existing sessions.** A participant who already holds a session token is not re-prompted if the owner later enables a password.
-- **No rate limiting.** Invite token brute-force is not throttled in the current MVP.
-- **No CSP.** Content Security Policy is deferred. Do not deploy publicly at scale without it.
+- **Rate limiting is in-memory.** The first app-level limiter is suitable for the current single-worker API shape. It is not shared across multiple workers or instances.
+- **CSP is report-only.** Content Security Policy is observable but not enforced yet. Do not treat report-only CSP as blocking protection.
