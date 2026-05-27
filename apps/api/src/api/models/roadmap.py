@@ -104,6 +104,7 @@ class Participant(Base):
         sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
     )
     last_seen_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    session_expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
 
     roadmap: Mapped[Roadmap] = relationship("Roadmap", back_populates="participants")
@@ -117,6 +118,7 @@ class Participant(Base):
         sa.UniqueConstraint("session_token_hash", name="uq_participants_session_token_hash"),
         sa.Index("ix_participants_roadmap_id", "roadmap_id"),
         sa.Index("ix_participants_roadmap_revoked", "roadmap_id", "revoked_at"),
+        sa.Index("ix_participants_roadmap_session_expires", "roadmap_id", "session_expires_at"),
         sa.Index("ix_participants_share_link_id", "share_link_id"),
     )
 
