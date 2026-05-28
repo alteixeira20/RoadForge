@@ -513,7 +513,22 @@ Non-goals for the first migration:
 - Do not add `roadmap_task_history` until there is a concrete consumer.
 - Do not normalize tags unless tag-specific behavior requires it.
 
-## 12. Recommended decision
+## 12. Implementation notes
+
+RF-870 through RF-875 add the projection schema, mapper, service-level
+backfill helper, snapshot-write sync, parity helpers, and a disabled-by-default
+read-path flag named `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED`. Public API
+behavior remains snapshot-first unless the flag is enabled and parity passes.
+
+The service-level backfill helper intentionally has no public route in this pass
+because there is no existing admin-only endpoint framework. Operator command
+wiring should be added in a later deployment-focused slice.
+
+The partial write endpoint contract is documented in
+`docs/architecture/partial-roadmap-write-endpoints.md`; endpoint implementation
+is deferred until conflict behavior and QA are scoped per endpoint.
+
+## 13. Recommended decision
 
 Choose hybrid snapshot plus relational projection first.
 
