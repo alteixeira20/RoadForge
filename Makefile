@@ -1,4 +1,4 @@
-.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-lint api-test web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-lint api-test api-audit web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -27,8 +27,9 @@ help:
 	@echo "  make dev           Run Next.js frontend in the foreground"
 	@echo "  make check         Run linting, typechecking, and production build"
 	@echo "  make diff          Show full diff and copy it to clipboard when possible"
-	@echo "  make audit         Run dependency security audit"
-	@echo "  make audit-prod    Run dependency security audit (production only)"
+	@echo "  make audit         Run JS dependency security audit"
+	@echo "  make audit-prod    Run JS dependency security audit (production only, high+)"
+	@echo "  make api-audit     Run Python dependency security audit (pip-audit)"
 	@echo ""
 	@echo "Deployment (hosting-bay):"
 	@echo "  make deploy        Build/start production stack and run migrations"
@@ -156,10 +157,19 @@ diff:
 	fi
 
 audit: ensure-deps
-	pnpm audit
+	pnpm audit --audit-level high --prod
 
 audit-prod: ensure-deps
-	pnpm audit --prod
+	pnpm audit --audit-level high --prod
+
+api-audit:
+	python3 -c "\
+import tomllib, sys; \
+data = tomllib.load(open('apps/api/pyproject.toml','rb')); \
+deps = data['project']['dependencies']; \
+open('/tmp/rf_audit_reqs.txt','w').write('\n'.join(deps)+'\n')"
+	pip-audit -r /tmp/rf_audit_reqs.txt
+	rm -f /tmp/rf_audit_reqs.txt
 
 # ─── App Lifecycle ────────────────────────────────────────────────────────────
 

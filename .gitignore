@@ -46,3 +46,5 @@ tmp/
 
 __pycache__/
 *.py[cod]
+
+apps/api/.venv/
