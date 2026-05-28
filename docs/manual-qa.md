@@ -2,6 +2,8 @@
 
 Dense pre-release checklist. Run top to bottom. Mark blockers immediately.
 
+For a focused backend API smoke test (health, create, join, 403/401 checks, SSE, rate limit, migration drift), see [docs/backend-smoke-tests.md](backend-smoke-tests.md).
+
 ---
 
 ## Pre-flight

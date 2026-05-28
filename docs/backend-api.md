@@ -1,18 +1,103 @@
 # RoadForge — Backend API Reference
 
-Base URL: `http://localhost:7878` (local Docker).  
-All endpoints are under `/api/`.  
-All request and response bodies are JSON.
+## Base URLs
 
-Import/export note: RoadForge currently exposes JSON import/export only in the browser client. There are no backend import/export endpoints for Markdown, PDF, or agent bundles yet.
+| Environment | URL |
+|---|---|
+| Local (Docker) | `http://localhost:7878` |
+| Production | `https://roadforge.alexandreteixeira.dev` |
 
-Deployment note: deployments at or after `apps/api/alembic/versions/0005_add_public_viewer_tokens.py` must run `make migrate` / `alembic upgrade head`. That migration adds storage for active public viewer tokens so owner-only share-link listing can return a copyable read-only viewer URL.
+All endpoints are under `/api/`. All request and response bodies are JSON.
 
 ---
 
-## GET /api/health
+## Auth model
 
-Health check. No body.
+Write endpoints and all roadmap data endpoints require a session token in the `Authorization` header:
+
+```
+Authorization: Bearer sess_<raw_session_token>
+```
+
+Session tokens are returned once at roadmap creation (`owner_session_token`) or invite join (`session_token`). Store them client-side in `localStorage`; they cannot be recovered from the API.
+
+Sessions expire after 30 days of inactivity. Each authenticated request renews the expiry by 30 days and updates `last_seen_at`.
+
+**Roles:** `owner`, `editor`, `viewer`
+
+- `owner` — full control: update, delete, share link management, participant revocation, version history, checkpoints, locks.
+- `editor` — can read and update the roadmap and phases; can acquire/release locks.
+- `viewer` — read-only access to roadmap data, activity, locks, and SSE streams.
+
+**Invite token join flow:**
+1. Owner creates a roadmap (`POST /api/roadmaps`) and receives three share link URLs, one per role.
+2. A recipient opens the URL, which embeds a raw invite token.
+3. The recipient calls `POST /api/roadmaps/join` with that token, an optional display name, and an optional password if the roadmap is password-protected.
+4. The response includes a session token and participant ID. The client stores both in `localStorage` under scoped keys.
+
+Token prefixes are non-secret role hints only:
+- `ow_…` — owner invite
+- `ed_…` — editor invite
+- `vi_…` — viewer invite
+- `sess_…` — participant session
+
+---
+
+## Common response codes
+
+| Code | Meaning |
+|---|---|
+| `200 OK` | Request succeeded with a JSON body |
+| `201 Created` | Resource created (POST /api/roadmaps) |
+| `204 No Content` | Request succeeded with no body |
+| `400 Bad Request` | Invalid request semantics (e.g., revoking your own session) |
+| `401 Unauthorized` | Missing, invalid, expired, or revoked session token |
+| `403 Forbidden` | Token is valid but role is insufficient |
+| `404 Not Found` | Roadmap, share link, participant, or version not found |
+| `409 Conflict` | Stale update (optimistic concurrency check failed) or lock held by another participant |
+| `413 Request Entity Too Large` | Request body exceeds 512 KB |
+| `422 Unprocessable Entity` | Validation error (bad field type, value out of range, invalid role) |
+| `429 Too Many Requests` | Rate limit exceeded; includes `Retry-After` header |
+
+All errors use FastAPI's default shape:
+```json
+{"detail": "Human-readable error message"}
+```
+
+---
+
+## Authorization table
+
+| Endpoint | Required role |
+|---|---|
+| `GET /api/roadmaps/{id}` | owner, editor, or viewer |
+| `PUT /api/roadmaps/{id}` | owner or editor |
+| `DELETE /api/roadmaps/{id}` | owner |
+| `GET /api/roadmaps/{id}/share-links` | owner |
+| `POST /api/roadmaps/{id}/share-links/{role}/rotate` | owner |
+| `DELETE /api/roadmaps/{id}/share-links/{role}` | owner |
+| `GET /api/roadmaps/{id}/participants` | owner |
+| `POST /api/roadmaps/{id}/participants/{pid}/revoke` | owner |
+| `GET /api/roadmaps/{id}/versions` | owner |
+| `POST /api/roadmaps/{id}/versions/checkpoint` | owner |
+| `GET /api/roadmaps/{id}/versions/{vid}` | owner |
+| `POST /api/roadmaps/{id}/versions/{vid}/restore` | owner |
+| `GET /api/roadmaps/{id}/activity` | owner, editor, or viewer |
+| `POST /api/roadmaps/{id}/events/ticket` | owner, editor, or viewer |
+| `GET /api/roadmaps/{id}/events` | ticket auth (query param) |
+| `POST /api/roadmaps/{id}/locks` | owner or editor |
+| `DELETE /api/roadmaps/{id}/locks/{target}` | owner or editor (lock owner only) |
+| `GET /api/roadmaps/{id}/locks` | owner, editor, or viewer |
+
+Public endpoints (no token required): `GET /api/health`, `POST /api/roadmaps`, `POST /api/roadmaps/join`.
+
+---
+
+## Endpoints
+
+### GET /api/health
+
+Health check. No auth, no body.
 
 **Response 200:**
 ```json
@@ -21,9 +106,11 @@ Health check. No body.
 
 ---
 
-## POST /api/roadmaps
+### POST /api/roadmaps
 
-Create a new roadmap. Returns the roadmap, three share links with raw join URLs, and the owner's session token. **Owner/editor raw tokens are never returned again after create or rotate. Viewer tokens may be returned later as a public read-only demo link.**
+Create a new roadmap. Returns the roadmap object, three share link URLs (one per role), and the owner's session token. Raw owner/editor invite tokens are never returned again — the only subsequent way to recover them is to rotate via `POST …/share-links/{role}/rotate`. Viewer tokens may be returned again from the share-link listing as a stable public read-only URL.
+
+Rate-limited: 10 creates per IP per hour.
 
 **Request:**
 ```json
@@ -32,20 +119,27 @@ Create a new roadmap. Returns the roadmap, three share links with raw join URLs,
   "owner_display_name": "Ada",
   "phases": [],
   "password": null,
-  "change_summary": {
-    "action": "roadmap.imported",
-    "entity_type": "roadmap",
-    "phase_count": 11,
-    "task_count": 77
-  }
+  "change_summary": null
 }
 ```
 
-- `name` — required, 1–120 chars
-- `owner_display_name` — required, 1–128 chars
-- `phases` — optional, array of phase objects (see Phase shape below), max 50 phases
-- `password` — optional, 6–128 chars; enables password gate for all joiners
-- `change_summary` — optional, dictionary used to customize the first activity log entry. Clients can use this for first-save imports.
+| Field | Type | Required | Constraints |
+|---|---|---|---|
+| `name` | string | yes | 1–120 chars |
+| `owner_display_name` | string | yes | 1–128 chars |
+| `phases` | array | no | max 50 phases (see Phase shape) |
+| `password` | string or null | no | 6–128 chars; enables password gate on join |
+| `change_summary` | object or null | no | overrides the first activity log entry; useful for import-on-create flows |
+
+`change_summary` example for an import-triggered create:
+```json
+{
+  "action": "roadmap.imported",
+  "entity_type": "roadmap",
+  "phase_count": 11,
+  "task_count": 77
+}
+```
 
 **Response 201:**
 ```json
@@ -55,6 +149,7 @@ Create a new roadmap. Returns the roadmap, three share links with raw join URLs,
   "owner_display_name": "Ada",
   "schema_version": "1.0",
   "phases": [],
+  "is_password_enabled": false,
   "created_at": "2026-05-08T10:00:00Z",
   "updated_at": "2026-05-08T10:00:00Z",
   "share_links": [
@@ -90,15 +185,55 @@ Create a new roadmap. Returns the roadmap, three share links with raw join URLs,
 }
 ```
 
-**Security:**
-- Owner/editor raw tokens exist only in this response and in local memory during the request. Viewer raw tokens may be stored for active public read-only demo links. Token hashes are still used for join lookup.
-- `owner_session_token` is a one-time return. Store it client-side; it cannot be recovered.
+`owner_session_token` is returned once. Store it; it cannot be recovered.
 
 ---
 
-## GET /api/roadmaps/{roadmap_id}
+### POST /api/roadmaps/join
+
+Accept an invite token. Creates a `Participant` row and issues a session token. The raw session token appears only in this response.
+
+Rate-limited: 20 join attempts per IP per minute; 30 per share link per 10 minutes. Password failures are limited separately: 5 per IP+link per 10 minutes, 30 per link per hour.
+
+**Request:**
+```json
+{
+  "token": "ed_<raw_invite_token>",
+  "display_name": "Jordan",
+  "password": null
+}
+```
+
+| Field | Type | Required | Constraints |
+|---|---|---|---|
+| `token` | string | yes | min 8 chars; the raw token from the join URL |
+| `display_name` | string or null | no | max 128 chars; omitting assigns a role default ("Guest Editor", etc.) |
+| `password` | string or null | no | required when `is_password_enabled` is true on the roadmap |
+
+**Response 200:**
+```json
+{
+  "roadmap_id": "rm_abc123",
+  "roadmap_name": "v1.0 Public Launch",
+  "role": "editor",
+  "session_token": "sess_<REDACTED>",
+  "participant_id": "pt_def456"
+}
+```
+
+**Response 401:**
+- `"Invalid or expired invite token"` — token not found, share link inactive, or roadmap soft-deleted.
+- `"Invalid invite token or password"` — roadmap has password enabled and the supplied password is wrong or absent.
+
+The 401 message does not indicate which check failed.
+
+---
+
+### GET /api/roadmaps/{roadmap_id}
 
 Fetch a roadmap with its current phase snapshot.
+
+**Auth:** Any authenticated participant (owner, editor, or viewer).
 
 **Response 200:**
 ```json
@@ -107,32 +242,30 @@ Fetch a roadmap with its current phase snapshot.
   "name": "v1.0 Public Launch",
   "owner_display_name": "Ada",
   "schema_version": "1.0",
-  "phases": [ /* phase objects */ ],
+  "phases": [ ... ],
+  "is_password_enabled": false,
   "created_at": "2026-05-08T10:00:00Z",
   "updated_at": "2026-05-08T10:15:00Z"
 }
 ```
 
-**Response 404:**
-```json
-{"detail": "Roadmap not found"}
-```
+**Response 401:** Token missing, invalid, expired, or revoked.
+
+**Response 404:** Roadmap not found or soft-deleted.
 
 ---
 
-## PUT /api/roadmaps/{roadmap_id}
+### PUT /api/roadmaps/{roadmap_id}
 
-Update a roadmap's name and/or phases. Both fields are optional; omit to leave unchanged. Phase update is a full snapshot replacement — the entire `phases` array is stored as-is.
+Update the roadmap name and/or phases. Both fields are optional; omit to leave unchanged. Phase update is a full snapshot replacement — the entire `phases` array is stored as-is.
 
-**Requires:** `Authorization: Bearer <session_token>` with owner or editor role. Returns 401 if token is missing or invalid; 403 if the participant's role is insufficient.
+**Auth:** owner or editor.
 
 **Request:**
 ```json
 {
   "name": "v1.1 Beta",
-  "phases": [
-    /* ... */
-  ],
+  "phases": [ ... ],
   "last_updated_at": "2026-05-08T10:00:00Z",
   "change_summary": {
     "action": "task.completed",
@@ -144,7 +277,14 @@ Update a roadmap's name and/or phases. Both fields are optional; omit to leave u
 }
 ```
 
-Batch activity summaries are also supported:
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string or null | no | 1–120 chars |
+| `phases` | array or null | no | full snapshot replacement |
+| `last_updated_at` | ISO datetime or null | no | optimistic concurrency timestamp; returns 409 if server is strictly newer |
+| `change_summary` | object or null | no | customizes the activity log entry; if provided, `action` key is required |
+
+Batch `change_summary` example:
 ```json
 {
   "change_summary": {
@@ -155,8 +295,7 @@ Batch activity summaries are also supported:
         "action": "task.created",
         "entity_type": "task",
         "entity_id": "RF-302",
-        "taskId": "RF-302",
-        "taskTitle": "Remove stale Markdown/PDF export paths"
+        "taskTitle": "Remove stale export paths"
       }
     ],
     "counts": {
@@ -167,23 +306,42 @@ Batch activity summaries are also supported:
 }
 ```
 
-- `name` — optional, 1–120 chars
-- `phases` — optional, array of phase objects
-- `last_updated_at` — optional, optimistic concurrency check
-- `change_summary` — optional, dictionary used to customize the single activity log entry for this save. If provided, `action` is required. Clients should accumulate local changes and send either one high-signal action or one `roadmap.batch_changed` summary on explicit Save.
-- `roadmap.renamed` is a supported client activity action for inline title edits. It is logged in Activity but is not a version/checkpoint action under the current version policy.
-
 **Response 200:** Same shape as `GET /api/roadmaps/{roadmap_id}`.
+
+**Response 409 — stale update conflict:**
+```json
+{
+  "detail": "Roadmap was updated by another session",
+  "code": "roadmap_conflict",
+  "conflict": {
+    "roadmap_id": "rm_abc123",
+    "server_updated_at": "2026-05-08T10:20:00Z",
+    "client_last_updated_at": "2026-05-08T10:00:00Z",
+    "server": {
+      "name": "v1.0 Public Launch",
+      "phases": [ ... ]
+    },
+    "summary": {
+      "phase_count": 3,
+      "task_count": 12,
+      "phase_ids": [],
+      "task_ids": ["RF-301"]
+    }
+  }
+}
+```
+
+`summary.phase_ids` and `summary.task_ids` list IDs present in one version but not the other (symmetric difference).
 
 **Response 404:** Roadmap not found.
 
 ---
 
-## DELETE /api/roadmaps/{roadmap_id}
+### DELETE /api/roadmaps/{roadmap_id}
 
-Soft-delete a roadmap. Sets `deleted_at` timestamp. Broadcasts a `roadmap.deleted` SSE event to all connected participants.
+Soft-delete a roadmap. Sets `deleted_at`. Deactivates all share links. Broadcasts a `roadmap.deleted` SSE event to connected participants.
 
-**Requires:** `Authorization: Bearer <session_token>` with owner role.
+**Auth:** owner only.
 
 **Response 200:**
 ```json
@@ -194,11 +352,13 @@ Soft-delete a roadmap. Sets `deleted_at` timestamp. Broadcasts a `roadmap.delete
 
 ---
 
-## GET /api/roadmaps/{roadmap_id}/share-links
+### GET /api/roadmaps/{roadmap_id}/share-links
 
-List share links for a roadmap. **Owner/editor `url` is always `null` here** — private invite URLs containing raw owner/editor tokens are only returned at create or rotate time. Active viewer links may include a public read-only `url` so owners can re-copy a stable demo link.
+List share links for a roadmap. Owner/editor `url` is always `null` in this listing — private invite URLs are only returned at create or rotate time. Active viewer links include a public `url` so owners can re-copy the stable read-only demo link.
 
-**Requires:** `Authorization: Bearer <session_token>` with owner role.
+Links are sorted owner → editor → viewer.
+
+**Auth:** owner only.
 
 **Response 200:**
 ```json
@@ -233,19 +393,21 @@ List share links for a roadmap. **Owner/editor `url` is always `null` here** —
 ]
 ```
 
-Links are sorted owner → editor → viewer. Inactive links are returned with `is_active: false` and `url: null`.
+Inactive links are returned with `is_active: false` and `url: null`.
 
 **Response 404:** Roadmap not found.
 
 ---
 
-## POST /api/roadmaps/{roadmap_id}/share-links/{role}/rotate
+### POST /api/roadmaps/{roadmap_id}/share-links/{role}/rotate
 
-Generate a new invite token for the given role. Invalidates the previous token immediately. Returns the new join URL with the raw token. For owner/editor links, this is the only time the new token is exposed. For viewer links, the active read-only URL remains copyable from the owner-only share-link listing.
+Generate a new invite token for the given role. Invalidates the previous token immediately. Returns the new join URL with the raw token embedded. For owner/editor links, this is the only time the new token is accessible. Active viewer links remain copyable from the share-link listing.
 
-`role` must be one of `owner`, `editor`, `viewer`. Other values return 422.
+`role` must be `owner`, `editor`, or `viewer`. Other values return 422.
 
-**Requires:** `Authorization: Bearer <session_token>` with owner role.
+Rate-limited: 5 rotations per participant per roadmap per role per minute.
+
+**Auth:** owner only.
 
 **Response 200:**
 ```json
@@ -264,24 +426,25 @@ Generate a new invite token for the given role. Invalidates the previous token i
 
 ---
 
-## DELETE /api/roadmaps/{roadmap_id}/share-links/{role}
+### DELETE /api/roadmaps/{roadmap_id}/share-links/{role}
 
-Soft-revoke a share link. The link's `is_active` is set to `false`. Any join attempt with the old token returns 401.
+Revoke a share link. Sets `is_active` to `false`. Any join attempt with the old token returns 401. Existing participant sessions that joined via this link are not terminated.
 
-**Requires:** `Authorization: Bearer <session_token>` with owner role.
+Rate-limited: 10 revocations per participant per roadmap per role per minute.
+
+**Auth:** owner only.
 
 **Response 204:** No content.
 
-**Response 404:** Roadmap or active share link not found.
+**Response 404:** Roadmap not found, or no active share link for that role.
 
 ---
 
-## Participants
-
 ### GET /api/roadmaps/{roadmap_id}/participants
 
-List all participants for a roadmap (including revoked).
-**Requires:** `Authorization: Bearer <session_token>` with owner role.
+List all participants for a roadmap, ordered by join date. Includes revoked participants.
+
+**Auth:** owner only.
 
 **Response 200:**
 ```json
@@ -292,6 +455,7 @@ List all participants for a roadmap (including revoked).
     "role": "editor",
     "created_at": "2026-05-08T10:05:00Z",
     "last_seen_at": "2026-05-08T14:00:00Z",
+    "session_expires_at": "2026-06-07T14:00:00Z",
     "revoked_at": null,
     "is_current_participant": false,
     "share_link_id": "sl_yzw",
@@ -301,66 +465,33 @@ List all participants for a roadmap (including revoked).
 ]
 ```
 
-`is_current_participant` is `true` for the participant matching the caller's session token. `access_source_label` describes the share link used to join, or `"Legacy / unknown link"` if the link was rotated or revoked since joining.
+`is_current_participant` is `true` for the participant matching the caller's session token. `access_source_label` is `"Legacy / unknown link"` if the share link was rotated or revoked after the participant joined.
+
+**Response 404:** Roadmap not found.
+
+---
 
 ### POST /api/roadmaps/{roadmap_id}/participants/{participant_id}/revoke
 
-Revoke a participant's session. Broadcasts a `participant.revoked` SSE event to the target participant's active connections. Does not prevent them from re-joining via an active share link.
-**Requires:** `Authorization: Bearer <session_token>` with owner role.
+Revoke a participant's session. All subsequent authenticated requests from that participant return 401. Broadcasts a `participant.revoked` SSE event. Does not prevent the participant from re-joining via an active share link.
+
+**Auth:** owner only.
 
 **Response 204:** No content.
 
-**Response 400:** Cannot revoke your own current session.
+**Response 400:** `"Cannot revoke your own owner session"` — owners cannot revoke themselves.
 
-**Response 404:** Participant not found.
-
----
-
-## POST /api/roadmaps/join
-
-Accept an invite token and join the roadmap. Creates a `Participant` row and returns a session token. The raw session token is only in this response.
-
-**Request:**
-```json
-{
-  "token": "ed_<raw_invite_token>",
-  "display_name": "Jordan",
-  "password": null
-}
-```
-
-- `token` — required, min 8 chars; the raw token from the join URL
-- `display_name` — optional; blank or omitted assigns a role default ("Guest Editor", etc.)
-- `password` — required when the roadmap has `is_password_enabled = true`
-
-**Response 200:**
-```json
-{
-  "roadmap_id": "rm_abc123",
-  "roadmap_name": "v1.0 Public Launch",
-  "role": "editor",
-  "session_token": "sess_<REDACTED>",
-  "participant_id": "pt_def456"
-}
-```
-
-**Response 401:**
-- `"Invalid or expired invite token"` — token hash not found or share link is inactive
-- `"Invalid invite token or password"` — roadmap has password enabled and the supplied password is wrong or missing
-
-**Note:** The 401 message does not reveal which check failed.
+**Response 404:** Participant not found or already revoked.
 
 ---
-
-## Version History
-
-Versions are saved automatically on every successful `PUT /api/roadmaps/{id}` save (subject to the snapshot policy — tiny edits within a short window are coalesced). Manual checkpoints bypass the policy.
-
-All version endpoints require `Authorization: Bearer <session_token>` with owner role.
 
 ### GET /api/roadmaps/{roadmap_id}/versions
 
-List version history summaries, newest first.
+List version history summaries, newest first. Versions are saved automatically on version-worthy actions (roadmap created, imported, restored, or manual checkpoint). Routine `roadmap.updated` saves do not create version entries unless the snapshot differs from the last recorded version.
+
+Up to 100 versions are retained; the oldest are pruned when the limit is exceeded.
+
+**Auth:** owner only.
 
 **Response 200:**
 ```json
@@ -370,16 +501,20 @@ List version history summaries, newest first.
     "version_number": 5,
     "created_at": "2026-05-08T14:00:00Z",
     "actor_name": "Ada",
-    "action": "roadmap.updated",
+    "action": "roadmap.checkpoint",
     "phase_count": 3,
     "task_count": 12
   }
 ]
 ```
 
+---
+
 ### POST /api/roadmaps/{roadmap_id}/versions/checkpoint
 
-Create a manual checkpoint. Returns the new version, or `created: false` if the latest version already matches the current roadmap (idempotent double-click guard).
+Create a manual checkpoint. If the current snapshot already matches the latest version, returns the existing version with `created: false` (idempotent guard against double-click).
+
+**Auth:** owner only.
 
 **Response 200:**
 ```json
@@ -397,9 +532,15 @@ Create a manual checkpoint. Returns the new version, or `created: false` if the 
 }
 ```
 
+When `created` is `false`, `version` contains the existing latest entry unchanged.
+
+---
+
 ### GET /api/roadmaps/{roadmap_id}/versions/{version_id}
 
 Fetch a specific version's full phase snapshot.
+
+**Auth:** owner only.
 
 **Response 200:**
 ```json
@@ -407,139 +548,41 @@ Fetch a specific version's full phase snapshot.
   "id": "rv_abc123",
   "version_number": 5,
   "roadmap_name": "v1.0 Public Launch",
-  "phases": [ /* phase objects */ ],
+  "phases": [ ... ],
   "created_at": "2026-05-08T14:00:00Z",
   "actor_name": "Ada",
-  "action": "roadmap.updated",
+  "action": "roadmap.checkpoint",
   "phase_count": 3,
   "task_count": 12,
   "metadata_json": null
 }
 ```
 
+**Response 404:** Version not found for this roadmap.
+
+---
+
 ### POST /api/roadmaps/{roadmap_id}/versions/{version_id}/restore
 
-Restore the roadmap to a previous version. Replaces the current phases with the version snapshot, creates a new `roadmap.restored` version entry, and broadcasts `roadmap.updated` to all connected participants.
+Restore the roadmap to a previous version. Replaces the current phases with the version snapshot, creates a new `roadmap.restored` version entry, and broadcasts `roadmap.updated` to all connected SSE participants.
+
+**Auth:** owner only.
 
 **Response 200:** Same shape as `GET /api/roadmaps/{roadmap_id}`.
 
----
-
-## Phase and Task shape
-
-Phases are stored as a JSON snapshot. The shape mirrors `apps/web/src/types/roadmap.ts`.
-
-```typescript
-interface Task {
-  id: string           // e.g. "RF-01"
-  title: string
-  done: boolean
-  next?: boolean
-  est?: string         // e.g. "2d", "1w"
-  assignees?: string[] // task-local names, not participants
-  tags?: string[]
-  deps?: string[]      // task IDs this task depends on
-  desc?: string
-  parentId?: string
-}
-
-interface Phase {
-  id: string           // e.g. "p1"
-  num: string          // display number e.g. "01"
-  name: string
-  color: string        // hex color
-  status: "done" | "active" | "next" | "future"
-  progress: number     // 0–100
-  tasks: Task[]
-}
-```
-
-Client compatibility note: old local/server/imported snapshots are upgraded in the browser before rendering. The upgrade path repairs missing/null booleans and arrays, migrates legacy `owner:` / `review:` assignment tags to `assignees`, recomputes progress, normalizes phase numbers, and removes stale dependency/parent references where safe. This is client-side compatibility handling, not a backend import endpoint.
+**Response 404:** Version not found for this roadmap.
 
 ---
-
-## Realtime and Locking (SSE)
-
-Realtime sync uses Server-Sent Events (SSE). To connect, a client must first obtain a short-lived ticket.
-
-### POST /api/roadmaps/{roadmap_id}/events/ticket
-
-Request a ticket to open an SSE stream.
-**Requires:** `Authorization: Bearer <session_token>`.
-
-**Response 200:**
-```json
-{
-  "ticket": "cryptographic_random_ticket",
-  "expires_in": 30
-}
-```
-
-### GET /api/roadmaps/{roadmap_id}/events?ticket={ticket}
-
-Open the SSE event stream. Validates and consumes the ticket.
-**Authentication:** Query parameter `ticket`.
-
-**Events:**
-- `roadmap.updated` — `{ "roadmap_id": "...", "updated_at": "...", "participant_id": "..." }`
-- `roadmap.deleted` — `{ "roadmap_id": "..." }` — fired when the owner deletes the roadmap
-- `participant.revoked` — `{ "roadmap_id": "...", "participant_id": "..." }` — fired only to the revoked participant's connections
-- `lock.acquired` — `{ "roadmap_id": "...", "target": "...", "participant_id": "...", "display_name": "..." }`
-- `lock.released` — `{ "roadmap_id": "...", "target": "...", "participant_id": "..." }`
-
----
-
-## Soft Locks
-
-In-memory locks to prevent edit collisions. Targets are generic strings (e.g., `task:RF-01`).
-
-### POST /api/roadmaps/{roadmap_id}/locks
-
-Acquire or refresh a lock.
-**Requires:** `Authorization: Bearer <session_token>` with owner or editor role.
-
-**Request:**
-```json
-{ "target": "task:RF-01" }
-```
-
-**Response 200:** Lock info.
-**Response 409:** Target is locked by another participant.
-
-### DELETE /api/roadmaps/{roadmap_id}/locks/{target}
-
-Release a lock. Only the owner of the lock can release it.
-**Requires:** `Authorization: Bearer <session_token>`.
-
-### GET /api/roadmaps/{roadmap_id}/locks
-
-List all active locks for a roadmap.
-**Response 200:** Array of `LockResponse` objects.
-```json
-[
-  {
-    "target": "task:RF-01",
-    "participant_id": "pt_def456",
-    "display_name": "Jordan",
-    "expires_at": "2026-05-08T12:00:30Z"
-  }
-]
-```
-
----
-
-## Activity Logs
-
-Audit trail of contributor actions.
 
 ### GET /api/roadmaps/{roadmap_id}/activity
 
-Fetch paginated activity logs for a roadmap, newest first.
-**Requires:** `Authorization: Bearer <session_token>` (any role).
+Paginated activity log, newest first.
+
+**Auth:** owner, editor, or viewer.
 
 **Query parameters:**
-- `limit` — optional, 1–200, default 100
-- `offset` — optional, default 0
+- `limit` — integer, 1–200, default 100
+- `offset` — integer, default 0
 
 **Response 200:**
 ```json
@@ -547,12 +590,12 @@ Fetch paginated activity logs for a roadmap, newest first.
   "logs": [
     {
       "id": "al_123",
-      "roadmap_id": "rm_abc",
-      "participant_id": "pt_456",
+      "roadmap_id": "rm_abc123",
+      "participant_id": "pt_def456",
       "actor_name": "Ada",
       "action": "roadmap.updated",
       "entity_type": "roadmap",
-      "entity_id": "rm_abc",
+      "entity_id": "rm_abc123",
       "before_json": {"name": "Old Name"},
       "after_json": {"name": "New Name"},
       "metadata_json": null,
@@ -565,61 +608,160 @@ Fetch paginated activity logs for a roadmap, newest first.
 
 ---
 
-## Error format
+### POST /api/roadmaps/{roadmap_id}/events/ticket
 
-All errors follow FastAPI's default shape:
+Request a short-lived ticket to open an SSE stream. The ticket is consumed once when the stream is opened and expires 30 seconds after issue.
 
+SSE uses a ticket instead of a Bearer header because EventSource in browsers does not support custom headers.
+
+Rate-limited: 10 tickets per participant per roadmap per minute; 60 per IP per roadmap per minute.
+
+**Auth:** owner, editor, or viewer.
+
+**Response 200:**
 ```json
-{"detail": "Human-readable error message"}
+{
+  "ticket": "cryptographic_random_ticket_value",
+  "expires_in": 30
+}
 ```
-
-Common status codes:
-- `401` — missing/invalid session token, or wrong invite token/password
-- `403` — session token valid but role insufficient
-- `404` — roadmap or share link not found
-- `413` — request body exceeds 512 KB
-- `422` — validation error (bad request shape, invalid role value, field too long, etc.)
 
 ---
 
-## Authorization
+### GET /api/roadmaps/{roadmap_id}/events
 
-Write endpoints require a session token in the `Authorization` header:
+Open the SSE event stream. Authenticates using the one-time ticket. The ticket is consumed on first connection; reuse returns 401.
 
-```
-Authorization: Bearer sess_<raw_session_token>
-```
+**Auth:** query parameter `?ticket={ticket}` (consumed on connect).
 
-The token is returned once at roadmap creation (`owner_session_token`) or invite join (`session_token`). Store it client-side; it cannot be recovered.
+**Response:** `text/event-stream`
 
-| Endpoint | Required role |
+**Event types:**
+
+| Event | Payload fields |
 |---|---|
-| `PUT /api/roadmaps/{id}` | owner or editor |
-| `DELETE /api/roadmaps/{id}` | owner |
-| `POST /api/roadmaps/{id}/share-links/{role}/rotate` | owner |
-| `DELETE /api/roadmaps/{id}/share-links/{role}` | owner |
-| `GET /api/roadmaps/{id}/participants` | owner |
-| `POST /api/roadmaps/{id}/participants/{pid}/revoke` | owner |
-| `GET /api/roadmaps/{id}/versions` | owner |
-| `POST /api/roadmaps/{id}/versions/checkpoint` | owner |
-| `GET /api/roadmaps/{id}/versions/{vid}` | owner |
-| `POST /api/roadmaps/{id}/versions/{vid}/restore` | owner |
-| `GET /api/roadmaps/{id}/activity` | any authenticated participant |
-| `POST /api/roadmaps/{id}/events/ticket` | any authenticated participant |
-| `POST /api/roadmaps/{id}/locks` | owner or editor |
-| `DELETE /api/roadmaps/{id}/locks/{target}` | lock owner only |
+| `roadmap.updated` | `roadmap_id`, `updated_at`, `participant_id` |
+| `roadmap.deleted` | `roadmap_id`, `updated_at`, `participant_id` |
+| `participant.revoked` | `roadmap_id`, `participant_id`, `revoked_at` |
+| `lock.acquired` | `roadmap_id`, `target`, `participant_id`, `display_name` |
+| `lock.released` | `roadmap_id`, `target`, `participant_id` |
 
-Public endpoints (no token required): `POST /api/roadmaps`, `POST /api/roadmaps/join`, `GET /api/roadmaps/{id}`.
+**Response 401:** `"Invalid or expired event ticket"` — ticket not found, already consumed, or expired.
+
+---
+
+### POST /api/roadmaps/{roadmap_id}/locks
+
+Acquire or refresh an in-memory edit lock on a target string. A participant can refresh their own lock by re-posting the same target. Returns 409 if the target is already locked by a different participant.
+
+Targets are arbitrary strings matching `^[a-zA-Z0-9:\-_.]+$`, max 160 chars. Convention: `task:RF-01`, `phase:p1`.
+
+**Auth:** owner or editor.
+
+**Request:**
+```json
+{"target": "task:RF-01"}
+```
+
+**Response 200:**
+```json
+{
+  "roadmap_id": "rm_abc123",
+  "target": "task:RF-01",
+  "participant_id": "pt_def456",
+  "display_name": "Jordan",
+  "expires_at": "2026-05-08T12:00:30Z"
+}
+```
+
+**Response 409:** `"Target is locked by another participant"`
+
+---
+
+### DELETE /api/roadmaps/{roadmap_id}/locks/{target}
+
+Release a lock. Only the participant who holds the lock can release it. Broadcasts `lock.released` to SSE subscribers.
+
+**Auth:** owner or editor.
+
+**Response 204:** No content.
+
+---
+
+### GET /api/roadmaps/{roadmap_id}/locks
+
+List all active locks for a roadmap.
+
+**Auth:** owner, editor, or viewer.
+
+**Response 200:**
+```json
+[
+  {
+    "roadmap_id": "rm_abc123",
+    "target": "task:RF-01",
+    "participant_id": "pt_def456",
+    "display_name": "Jordan",
+    "expires_at": "2026-05-08T12:00:30Z"
+  }
+]
+```
+
+---
+
+## Phase and Task shape
+
+Phases and tasks are stored as a JSON snapshot. The shape mirrors `apps/web/src/types/roadmap.ts`.
+
+```
+Phase
+  id        string              e.g. "p1"
+  num       string              display number, e.g. "01"
+  name      string              max 120 chars
+  color     string              hex color, max 64 chars
+  status    "done" | "active" | "next" | "future"
+  progress  integer             0–100
+  tasks     Task[]              max 200 tasks per phase
+
+Task
+  id        string              e.g. "RF-01", max 80 chars
+  title     string              max 160 chars
+  done      boolean
+  next      boolean | null
+  est       string | null       e.g. "2d", "1w", max 64 chars
+  assignees string[] | null     task-local names (not participants), max 20 items
+  tags      string[] | null     max 20 items, each max 40 chars
+  deps      string[] | null     task IDs this task depends on, max 50 items
+  desc      string | null       max 2000 chars
+  parentId  string | null       ID of parent task, max 80 chars
+```
+
+Max 50 phases per roadmap. All text fields are server-sanitized (control characters stripped; suspiciously long values rejected).
+
+Client compatibility: the browser auto-upgrades older local or server snapshots before rendering. Repairs include null booleans and arrays, legacy `owner:` / `review:` assignment tags migrated to `assignees`, recomputed progress, and stale dependency/parent references. This is client-side handling only; there is no backend import endpoint.
 
 ---
 
 ## Security notes
 
-- **Session tokens enforced** — write endpoints verify `Authorization: Bearer` against hashed token in the database. Missing or invalid token returns 401; wrong role returns 403.
-- **Short-lived tickets** — SSE connections use 30-second tickets to avoid exposing long-lived session tokens in URLs.
-- **Optimistic Concurrency** — `PUT /api/roadmaps/{id}` accepts `last_updated_at`. Returns 409 if the database has a newer version.
-- **Private raw tokens not stored** — owner/editor invite tokens are stored only as SHA-256 hex digests. Viewer tokens may be stored while active because they are public read-only demo links.
-- **Passwords hashed** — PBKDF2-SHA256, 260,000 iterations, 16-byte random salt per password. Compared with `hmac.compare_digest`.
+- **Session tokens** — write endpoints and roadmap read endpoints require `Authorization: Bearer`. Missing or invalid token returns 401; wrong role returns 403.
+- **Token storage** — owner/editor invite tokens are stored only as SHA-256 hex digests. Viewer tokens may be stored while active because they are public read-only demo links.
+- **Short-lived SSE tickets** — SSE connections use 30-second one-time tickets to avoid exposing session tokens in URLs or server logs.
+- **Optimistic concurrency** — `PUT /api/roadmaps/{id}` accepts `last_updated_at`. Returns 409 with the server's current snapshot if the database is strictly newer.
+- **Password hashing** — PBKDF2-SHA256, 260,000 iterations, 16-byte random salt per password. Compared with `hmac.compare_digest`.
 - **Body size limit** — requests larger than 512 KB are rejected with 413 before parsing.
-- **Soft deletes** — roadmaps use `deleted_at` timestamp; no hard purge yet.
-- **No rate limiting** — brute-force on invite tokens is possible. Add rate limiting before any public deployment.
+- **Soft deletes** — roadmaps use `deleted_at` timestamp; hard purge is not yet implemented.
+- **Rate limiting** — in-process; shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`. Rate-limited operations include: roadmap create, join, password failures, share link rotate/revoke, and SSE ticket requests.
+
+---
+
+## Import/export note
+
+RoadForge's JSON import and export run entirely in the browser. There are no backend import or export endpoints for JSON, Markdown, or PDF.
+
+---
+
+## Deployment notes
+
+- Releases at or after `apps/api/alembic/versions/0005_add_public_viewer_tokens.py` must run `make migrate` / `alembic upgrade head`. That migration adds storage for active public viewer tokens.
+- Running multiple Uvicorn workers requires `ROADFORGE_REALTIME_BACKEND=redis`. The container startup refuses `ROADFORGE_API_WORKERS > 1` without Redis.

@@ -174,7 +174,7 @@ Defined in `.env.example`. Copy to `.env.local` for local overrides.
 
 ## Manual QA
 
-See [docs/manual-qa.md](docs/manual-qa.md) for the full pre-release QA checklist (30 sections, covers all features, blocker criteria, known limitations, and deployment verification).
+See [docs/manual-qa.md](docs/manual-qa.md) for the full pre-release QA checklist (30 sections, covers all features, blocker criteria, known limitations, and deployment verification). For a focused backend API smoke test with curl commands, see [docs/backend-smoke-tests.md](docs/backend-smoke-tests.md).
 
 For security policies and responsible disclosure, see [SECURITY.md](SECURITY.md) and [docs/security/README.md](docs/security/README.md).
 
