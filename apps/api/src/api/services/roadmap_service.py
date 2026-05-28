@@ -988,7 +988,7 @@ async def join_roadmap(
     if share_link is None:
         raise HTTPException(status_code=401, detail="Invalid or expired invite token")
 
-    rate_limiter.enforce("join.share_link", share_link.id, limit=30, window_seconds=600)
+    await rate_limiter.enforce("join.share_link", share_link.id, limit=30, window_seconds=600)
 
     # Verify the linked roadmap is not soft-deleted.
     rm_result = await db.execute(
@@ -1005,13 +1005,13 @@ async def join_roadmap(
         pw = payload.password
         ph = roadmap.password_hash
         if not pw or not ph or not verify_password(pw, ph):
-            rate_limiter.enforce(
+            await rate_limiter.enforce(
                 "join.password_failure.ip_share",
                 f"{client_ip}:{share_link.id}",
                 limit=5,
                 window_seconds=600,
             )
-            rate_limiter.enforce(
+            await rate_limiter.enforce(
                 "join.password_failure.share",
                 share_link.id,
                 limit=30,

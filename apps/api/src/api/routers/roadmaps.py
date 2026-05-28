@@ -68,7 +68,9 @@ async def post_roadmap(
     payload: CreateRoadmapRequest,
     db: AsyncSession = Depends(get_db),
 ) -> CreateRoadmapResponse:
-    rate_limiter.enforce("roadmap.create.ip", _client_ip(request), limit=10, window_seconds=3600)
+    await rate_limiter.enforce(
+        "roadmap.create.ip", _client_ip(request), limit=10, window_seconds=3600
+    )
     settings = get_settings()
     return await create_roadmap(db, payload, settings.web_base_url)
 
@@ -80,7 +82,7 @@ async def post_join(
     db: AsyncSession = Depends(get_db),
 ) -> JoinRoadmapResponse:
     client_ip = _client_ip(request)
-    rate_limiter.enforce("join.ip", client_ip, limit=20, window_seconds=60)
+    await rate_limiter.enforce("join.ip", client_ip, limit=20, window_seconds=60)
     return await join_roadmap(db, payload, client_ip)
 
 
@@ -145,7 +147,7 @@ async def post_rotate_share_link(
     authorization: str | None = Header(default=None),
 ) -> ShareLinkResponse:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
-    rate_limiter.enforce(
+    await rate_limiter.enforce(
         "share_link.rotate",
         f"{participant.id}:{roadmap_id}:{role}",
         limit=5,
@@ -163,7 +165,7 @@ async def delete_share_link(
     authorization: str | None = Header(default=None),
 ) -> Response:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
-    rate_limiter.enforce(
+    await rate_limiter.enforce(
         "share_link.revoke",
         f"{participant.id}:{roadmap_id}:{role}",
         limit=10,
@@ -252,19 +254,19 @@ async def post_event_ticket(
     participant = await require_participant(
         db, roadmap_id, authorization, {"owner", "editor", "viewer"}
     )
-    rate_limiter.enforce(
+    await rate_limiter.enforce(
         "events.ticket.participant",
         f"{participant.id}:{roadmap_id}",
         limit=10,
         window_seconds=60,
     )
-    rate_limiter.enforce(
+    await rate_limiter.enforce(
         "events.ticket.ip",
         f"{_client_ip(request)}:{roadmap_id}",
         limit=60,
         window_seconds=60,
     )
-    ticket = ticket_service.create_ticket(
+    ticket = await ticket_service.create_ticket(
         roadmap_id, participant.id, participant.session_expires_at
     )
     return EventTicketResponse(ticket=ticket, expires_in=30)
@@ -275,7 +277,7 @@ async def get_events(
     roadmap_id: str,
     ticket: str = Query(...),
 ):
-    event_ticket = ticket_service.consume_ticket(ticket, roadmap_id)
+    event_ticket = await ticket_service.consume_ticket(ticket, roadmap_id)
     if not event_ticket:
         raise HTTPException(status_code=401, detail="Invalid or expired event ticket")
 
@@ -333,7 +335,7 @@ async def get_locks(
 ) -> list[LockResponse]:
     # Viewer can see locks too
     await require_participant(db, roadmap_id, authorization, {"owner", "editor", "viewer"})
-    locks = lock_service.get_locks_for_roadmap(roadmap_id)
+    locks = await lock_service.get_locks_for_roadmap(roadmap_id)
     return [
         LockResponse(
             roadmap_id=lock.roadmap_id,

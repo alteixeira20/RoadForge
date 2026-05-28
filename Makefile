@@ -1,4 +1,4 @@
-.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-lint api-test api-audit web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-check-fast api-check-prepare api-lint api-test api-test-prepare api-test-fast api-audit web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -53,9 +53,13 @@ help:
 	@echo "  make api-reset     Complete backend reset: down, up, migrate, health"
 	@echo "  make api-migrate   Run database migrations"
 	@echo "  make api-health    Check if backend is reachable"
-	@echo "  make api-check     Validate ORM/migration drift (alembic check)"
-	@echo "  make api-lint      Run ruff linter against apps/api/src"
-	@echo "  make api-test      Run backend pytest suite (requires roadforge_test DB)"
+	@echo "  make api-check          Validate ORM/migration drift (starts postgres automatically; api service need not be running)"
+	@echo "  make api-check-fast     Validate ORM/migration drift (api container must already be running)"
+	@echo "  make api-check-prepare  Start and wait for the postgres container (called automatically by api-check)"
+	@echo "  make api-lint           Run ruff linter against apps/api/src"
+	@echo "  make api-test           Run backend pytest suite (starts/prepares Postgres automatically)"
+	@echo "  make api-test-fast      Run backend pytest suite (skips Docker preparation; DB must be ready)"
+	@echo "  make api-test-prepare   Start Postgres and ensure roadforge_test DB exists"
 	@echo ""
 	@echo "  make web-start     Start frontend in the background"
 	@echo "  make web-stop      Stop background frontend process"
@@ -224,13 +228,59 @@ api-migrate:
 api-health:
 	@curl -s $(API_URL)/api/health | python3 -m json.tool || curl -s $(API_URL)/api/health
 
-api-check:
+# Bounded wait: up to 30 s (15 × 2 s) for Postgres to be ready before the
+# one-off api container runs alembic check.  Does NOT drop, reset, or migrate.
+api-check-prepare:
+	@echo "Starting postgres container..."
+	docker compose up -d postgres
+	@echo "Waiting for postgres to be ready (max 30s)..."
+	@i=0; \
+	until docker compose exec -T postgres pg_isready -U roadforge -q 2>/dev/null; do \
+		i=$$((i+1)); \
+		if [ $$i -ge 15 ]; then \
+			echo "Error: postgres did not become ready within 30 seconds."; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
+	@echo "Postgres is ready."
+
+api-check: api-check-prepare
+	docker compose run --rm api alembic check
+
+# Skips Docker preparation; use when the full stack is already running.
+api-check-fast:
 	docker compose exec api alembic check
 
 api-lint:
 	cd apps/api && ruff check src/
 
-api-test:
+# Bounded wait: up to 30 s (15 × 2 s) for Postgres to report healthy, then
+# ensure the test database exists (idempotent: createdb exits 0 if it already
+# exists because of the `|| true`).  Does NOT drop, reset, or migrate anything.
+api-test-prepare:
+	@echo "Starting postgres container..."
+	docker compose up -d postgres
+	@echo "Waiting for postgres to be ready (max 30s)..."
+	@i=0; \
+	until docker compose exec -T postgres pg_isready -U roadforge -q 2>/dev/null; do \
+		i=$$((i+1)); \
+		if [ $$i -ge 15 ]; then \
+			echo "Error: postgres did not become ready within 30 seconds."; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
+	@echo "Postgres is ready."
+	@echo "Ensuring roadforge_test database exists..."
+	docker compose exec -T postgres sh -lc 'createdb -U roadforge roadforge_test 2>/dev/null || true'
+	@echo "roadforge_test is ready."
+
+api-test: api-test-prepare
+	cd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
+		pytest tests/ -v
+
+api-test-fast:
 	cd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
 		pytest tests/ -v
 

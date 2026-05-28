@@ -45,7 +45,7 @@ export function isApiError(error: unknown, status?: number, detail?: string): er
 }
 
 export function isSessionExpiredError(error: unknown): boolean {
-  return isApiError(error, 401, 'Session expired')
+  return isApiError(error, 401, 'Session expired') || isApiError(error, 401, 'Session revoked')
 }
 
 export function getConflictMetadata(error: unknown): RoadmapConflictMetadata | null {

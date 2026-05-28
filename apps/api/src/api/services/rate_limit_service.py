@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import Protocol
 
-import redis
+import redis.asyncio as redis
 from fastapi import HTTPException
 from redis.exceptions import RedisError
 
@@ -48,11 +48,11 @@ class _Bucket:
 
 
 class RateLimiter(Protocol):
-    def check(
+    async def check(
         self, action: str, key: str, limit: int, window_seconds: int
     ) -> RateLimitResult: ...
 
-    def enforce(
+    async def enforce(
         self, action: str, key: str, limit: int, window_seconds: int
     ) -> RateLimitResult: ...
 
@@ -63,7 +63,9 @@ class MemoryRateLimiter:
     def __init__(self) -> None:
         self._buckets: dict[str, _Bucket] = {}
 
-    def check(self, action: str, key: str, limit: int, window_seconds: int) -> RateLimitResult:
+    async def check(
+        self, action: str, key: str, limit: int, window_seconds: int
+    ) -> RateLimitResult:
         now = time.monotonic()
         self._expire(now)
         bucket_key = f"{action}:{key}"
@@ -81,8 +83,10 @@ class MemoryRateLimiter:
             allowed=True, remaining=max(limit - bucket.count, 0), retry_after=retry_after
         )
 
-    def enforce(self, action: str, key: str, limit: int, window_seconds: int) -> RateLimitResult:
-        result = self.check(action, key, limit, window_seconds)
+    async def enforce(
+        self, action: str, key: str, limit: int, window_seconds: int
+    ) -> RateLimitResult:
+        result = await self.check(action, key, limit, window_seconds)
         if not result.allowed:
             raise HTTPException(
                 status_code=429,
@@ -138,9 +142,11 @@ class RedisRateLimiter:
             socket_timeout=socket_timeout_seconds,
         )
 
-    def check(self, action: str, key: str, limit: int, window_seconds: int) -> RateLimitResult:
+    async def check(
+        self, action: str, key: str, limit: int, window_seconds: int
+    ) -> RateLimitResult:
         try:
-            count, pttl = self._redis.eval(
+            count, pttl = await self._redis.eval(
                 _RATE_LIMIT_SCRIPT,
                 1,
                 self._bucket_key(action, key),
@@ -163,8 +169,10 @@ class RedisRateLimiter:
             retry_after=0 if count == 1 else retry_after,
         )
 
-    def enforce(self, action: str, key: str, limit: int, window_seconds: int) -> RateLimitResult:
-        result = self.check(action, key, limit, window_seconds)
+    async def enforce(
+        self, action: str, key: str, limit: int, window_seconds: int
+    ) -> RateLimitResult:
+        result = await self.check(action, key, limit, window_seconds)
         if not result.allowed:
             raise HTTPException(
                 status_code=429,

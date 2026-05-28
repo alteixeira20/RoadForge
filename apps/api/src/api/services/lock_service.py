@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 from typing import Dict, Protocol, Tuple
 
-import redis
+import redis.asyncio as redis
 from redis.exceptions import RedisError
 
 from api.config import get_settings
@@ -73,7 +73,7 @@ class EditLockStore(Protocol):
 
     async def release_lock(self, roadmap_id: str, target: str, participant_id: str) -> None: ...
 
-    def get_locks_for_roadmap(self, roadmap_id: str) -> list[Lock]: ...
+    async def get_locks_for_roadmap(self, roadmap_id: str) -> list[Lock]: ...
 
 
 class MemoryLockService:
@@ -145,7 +145,7 @@ class MemoryLockService:
                 }
             ))
 
-    def get_locks_for_roadmap(self, roadmap_id: str) -> list[Lock]:
+    async def get_locks_for_roadmap(self, roadmap_id: str) -> list[Lock]:
         now = time.time()
         # Prune expired locks for this roadmap opportunistically
         expired_keys = [
@@ -193,7 +193,7 @@ class RedisLockService:
             "expires_at": expires_at,
         })
         try:
-            acquired, result_payload = self._redis.eval(
+            acquired, result_payload = await self._redis.eval(
                 _ACQUIRE_LOCK_SCRIPT,
                 2,
                 self._lock_key(roadmap_id, target),
@@ -219,7 +219,7 @@ class RedisLockService:
 
     async def release_lock(self, roadmap_id: str, target: str, participant_id: str) -> None:
         try:
-            released = self._redis.eval(
+            released = await self._redis.eval(
                 _RELEASE_LOCK_SCRIPT,
                 2,
                 self._lock_key(roadmap_id, target),
@@ -243,13 +243,13 @@ class RedisLockService:
             }
         ))
 
-    def get_locks_for_roadmap(self, roadmap_id: str) -> list[Lock]:
+    async def get_locks_for_roadmap(self, roadmap_id: str) -> list[Lock]:
         index_key = self._index_key(roadmap_id)
         try:
-            lock_keys = list(self._redis.smembers(index_key))
+            lock_keys = list(await self._redis.smembers(index_key))
             if not lock_keys:
                 return []
-            payloads = self._redis.mget(lock_keys)
+            payloads = await self._redis.mget(lock_keys)
         except RedisError:
             logger.exception("Failed to list edit locks through Redis")
             raise
@@ -270,8 +270,8 @@ class RedisLockService:
 
         if stale_keys:
             try:
-                self._redis.delete(*stale_keys)
-                self._redis.srem(index_key, *stale_keys)
+                await self._redis.delete(*stale_keys)
+                await self._redis.srem(index_key, *stale_keys)
             except RedisError:
                 logger.warning("Failed to remove stale Redis edit lock index entries")
 

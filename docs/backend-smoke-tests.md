@@ -367,11 +367,13 @@ Verify that all Alembic migrations have been applied and no pending upgrades exi
 make api-check
 ```
 
-Or directly:
+`make api-check` starts the `postgres` container automatically (bounded 30 s wait) and then runs `alembic check` in a one-off api container. The long-running `api` service does not need to be running. If the full stack is already up, use the faster variant instead:
 
 ```bash
-docker compose exec api alembic check
+make api-check-fast
 ```
+
+`make api-check-fast` runs `alembic check` directly against the already-running `api` container. It does no Docker preparation.
 
 Expected output: `No new upgrade operations detected.`
 
@@ -385,7 +387,7 @@ Any other output indicates a pending migration. Run `make migrate` or `docker co
 make api-test
 ```
 
-This runs the backend pytest suite. All tests must pass. Failures here should be resolved before any deployment.
+This runs the backend pytest suite. Locally, `make api-test` automatically starts the `postgres` container and creates the `roadforge_test` database if missing — no manual Docker setup required. Use `make api-test-fast` to skip Docker preparation when the database is already running (the default for CI). All tests must pass. Failures here should be resolved before any deployment.
 
 ---
 

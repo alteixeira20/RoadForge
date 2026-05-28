@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-import redis
+import redis.asyncio as redis
 from redis.exceptions import RedisError, ResponseError
 
 from api.config import get_settings
@@ -29,14 +29,14 @@ class Ticket:
 
 
 class EventTicketStore(Protocol):
-    def create_ticket(
+    async def create_ticket(
         self,
         roadmap_id: str,
         participant_id: str,
         session_expires_at: datetime,
     ) -> str: ...
 
-    def consume_ticket(self, ticket_id: str, roadmap_id: str) -> Ticket | None: ...
+    async def consume_ticket(self, ticket_id: str, roadmap_id: str) -> Ticket | None: ...
 
 
 class MemoryTicketService:
@@ -44,7 +44,7 @@ class MemoryTicketService:
         self._tickets: dict[str, Ticket] = {}
         self._ttl = ttl
 
-    def create_ticket(
+    async def create_ticket(
         self,
         roadmap_id: str,
         participant_id: str,
@@ -62,7 +62,7 @@ class MemoryTicketService:
         )
         return ticket_id
 
-    def consume_ticket(self, ticket_id: str, roadmap_id: str) -> Ticket | None:
+    async def consume_ticket(self, ticket_id: str, roadmap_id: str) -> Ticket | None:
         ticket = self._tickets.pop(ticket_id, None)
         if not ticket:
             return None
@@ -102,7 +102,7 @@ class RedisTicketService:
             socket_timeout=socket_timeout_seconds,
         )
 
-    def create_ticket(
+    async def create_ticket(
         self,
         roadmap_id: str,
         participant_id: str,
@@ -114,11 +114,11 @@ class RedisTicketService:
             "participant_id": participant_id,
             "session_expires_at": session_expires_at.timestamp(),
         })
-        self._redis.set(self._key(ticket_id), payload, ex=self._ttl)
+        await self._redis.set(self._key(ticket_id), payload, ex=self._ttl)
         return ticket_id
 
-    def consume_ticket(self, ticket_id: str, roadmap_id: str) -> Ticket | None:
-        payload = self._get_and_delete(self._key(ticket_id))
+    async def consume_ticket(self, ticket_id: str, roadmap_id: str) -> Ticket | None:
+        payload = await self._get_and_delete(self._key(ticket_id))
         if not payload:
             return None
 
@@ -130,14 +130,14 @@ class RedisTicketService:
     def _key(self, ticket_id: str) -> str:
         return f"{self._key_prefix}:ticket:{ticket_id}"
 
-    def _get_and_delete(self, key: str) -> str | None:
+    async def _get_and_delete(self, key: str) -> str | None:
         try:
-            return self._redis.getdel(key)
+            return await self._redis.getdel(key)
         except AttributeError:
-            return self._redis.eval(_GETDEL_FALLBACK_SCRIPT, 1, key)
+            return await self._redis.eval(_GETDEL_FALLBACK_SCRIPT, 1, key)
         except ResponseError as exc:
             if "unknown command" in str(exc).lower():
-                return self._redis.eval(_GETDEL_FALLBACK_SCRIPT, 1, key)
+                return await self._redis.eval(_GETDEL_FALLBACK_SCRIPT, 1, key)
             raise
         except RedisError:
             raise
