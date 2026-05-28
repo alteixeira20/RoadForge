@@ -16,6 +16,10 @@ from api.schemas.roadmap import (
     JoinRoadmapResponse,
     PhaseDTO,
     ParticipantResponse,
+    RoadmapConflictMetadata,
+    RoadmapConflictResponse,
+    RoadmapConflictServerSnapshot,
+    RoadmapConflictSummary,
     RoadmapResponse,
     RoadmapVersionDetailResponse,
     RoadmapVersionSummaryResponse,
@@ -36,6 +40,12 @@ from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
 
 logger = logging.getLogger(__name__)
+
+
+class RoadmapConflictError(Exception):
+    def __init__(self, response: RoadmapConflictResponse) -> None:
+        self.response = response
+        super().__init__(response.detail)
 
 
 def _ensure_aware_utc(dt: datetime) -> datetime:
@@ -89,6 +99,49 @@ def _snapshot_counts(snapshot_json: dict) -> tuple[int, int]:
         return 0, 0
     task_count = sum(len(p.get("tasks", [])) for p in phases if isinstance(p, dict))
     return len(phases), task_count
+
+
+def _phase_task_ids(phases: list[PhaseDTO]) -> tuple[set[str], set[str]]:
+    phase_ids = {phase.id for phase in phases}
+    task_ids = {task.id for phase in phases for task in phase.tasks}
+    return phase_ids, task_ids
+
+
+def _conflict_summary(server_phases: list[PhaseDTO], client_phases: list[PhaseDTO] | None) -> RoadmapConflictSummary:
+    phase_count = len(server_phases)
+    task_count = sum(len(phase.tasks) for phase in server_phases)
+    if client_phases is None:
+        return RoadmapConflictSummary(phase_count=phase_count, task_count=task_count)
+
+    server_phase_ids, server_task_ids = _phase_task_ids(server_phases)
+    client_phase_ids, client_task_ids = _phase_task_ids(client_phases)
+    return RoadmapConflictSummary(
+        phase_count=phase_count,
+        task_count=task_count,
+        phase_ids=sorted(server_phase_ids.symmetric_difference(client_phase_ids)),
+        task_ids=sorted(server_task_ids.symmetric_difference(client_task_ids)),
+    )
+
+
+def _roadmap_conflict_response(
+    roadmap: Roadmap,
+    client_last_updated_at: datetime,
+    client_phases: list[PhaseDTO] | None,
+) -> RoadmapConflictResponse:
+    server_phases = _phases_from_snapshot(roadmap.snapshot_json)
+    return RoadmapConflictResponse(
+        detail="Roadmap was updated by another session",
+        conflict=RoadmapConflictMetadata(
+            roadmap_id=roadmap.id,
+            server_updated_at=roadmap.updated_at,
+            client_last_updated_at=client_last_updated_at,
+            server=RoadmapConflictServerSnapshot(
+                name=roadmap.name,
+                phases=server_phases,
+            ),
+            summary=_conflict_summary(server_phases, client_phases),
+        ),
+    )
 
 
 async def _create_roadmap_version(
@@ -323,7 +376,9 @@ async def update_roadmap(
         # Coerce naive client timestamps to UTC to avoid TypeError on comparison.
         client_ts = _ensure_aware_utc(payload.last_updated_at)
         if roadmap.updated_at > client_ts:
-            raise HTTPException(status_code=409, detail="Roadmap changed elsewhere")
+            raise RoadmapConflictError(
+                _roadmap_conflict_response(roadmap, client_ts, payload.phases)
+            )
 
     before_json: dict = {}
     after_json: dict = {}

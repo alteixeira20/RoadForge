@@ -182,6 +182,32 @@ class RoadmapResponse(BaseModel):
     updated_at: datetime
 
 
+class RoadmapConflictServerSnapshot(BaseModel):
+    name: str
+    phases: list[PhaseDTO]
+
+
+class RoadmapConflictSummary(BaseModel):
+    phase_count: int
+    task_count: int
+    phase_ids: list[str] = []
+    task_ids: list[str] = []
+
+
+class RoadmapConflictMetadata(BaseModel):
+    roadmap_id: str
+    server_updated_at: datetime
+    client_last_updated_at: datetime
+    server: RoadmapConflictServerSnapshot
+    summary: RoadmapConflictSummary | None = None
+
+
+class RoadmapConflictResponse(BaseModel):
+    detail: str
+    code: Literal["roadmap_conflict"] = "roadmap_conflict"
+    conflict: RoadmapConflictMetadata
+
+
 class DeleteRoadmapResponse(BaseModel):
     ok: bool
 

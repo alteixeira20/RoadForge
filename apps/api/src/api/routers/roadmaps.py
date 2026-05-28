@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,6 +44,7 @@ from api.services.roadmap_service import (
     revoke_share_link,
     restore_roadmap_version,
     rotate_share_link,
+    RoadmapConflictError,
     update_roadmap,
 )
 from api.services.ticket_service import ticket_service
@@ -97,9 +99,12 @@ async def put_roadmap(
     payload: UpdateRoadmapRequest,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
-) -> RoadmapResponse:
+) -> RoadmapResponse | JSONResponse:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    return await update_roadmap(db, roadmap_id, payload, participant)
+    try:
+        return await update_roadmap(db, roadmap_id, payload, participant)
+    except RoadmapConflictError as exc:
+        return JSONResponse(status_code=409, content=exc.response.model_dump(mode="json"))
 
 
 @router.delete("/{roadmap_id}", response_model=DeleteRoadmapResponse)
