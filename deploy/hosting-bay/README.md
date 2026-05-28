@@ -76,6 +76,11 @@ isolated copy, breaking collaboration. The `--workers 1` flag is set in the
 Dockerfile CMD and must not be overridden in compose overrides or orchestration
 configs.
 
+**Redis backend status:** The compose stack provisions private Redis at
+`redis://roadforge-redis:6379/0` for future realtime adapter work. Keep
+`ROADFORGE_REALTIME_BACKEND=memory` and do not enable multi-worker mode until
+RF-882 through RF-886 are implemented and validated.
+
 ## Validation
 
 ```bash
@@ -126,6 +131,10 @@ Postgres data is mounted at:
 ```
 
 No user uploads or filesystem assets are stored by the app.
+
+Redis is currently used only as provisioned infrastructure for future adapter
+work. Runtime collaboration state still uses the in-memory single-worker
+services.
 
 ## Public API Docs
 

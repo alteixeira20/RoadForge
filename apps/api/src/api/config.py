@@ -20,6 +20,17 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://roadforge:roadforge_dev@localhost:5432/roadforge",
         alias="DATABASE_URL",
     )
+    redis_url: str | None = Field(default=None, alias="REDIS_URL")
+    realtime_backend: str = Field(default="memory", alias="ROADFORGE_REALTIME_BACKEND")
+    redis_key_prefix: str = Field(default="roadforge", alias="ROADFORGE_REDIS_KEY_PREFIX")
+    redis_connect_timeout_seconds: float = Field(
+        default=2,
+        alias="ROADFORGE_REDIS_CONNECT_TIMEOUT_SECONDS",
+    )
+    redis_socket_timeout_seconds: float = Field(
+        default=2,
+        alias="ROADFORGE_REDIS_SOCKET_TIMEOUT_SECONDS",
+    )
     cors_origins: Union[list[str], str] = Field(
         default=["http://localhost:3020", "http://127.0.0.1:3020", "http://localhost:3000"],
         alias="ROADFORGE_CORS_ORIGINS",
@@ -31,6 +42,13 @@ class Settings(BaseSettings):
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
         return v # type: ignore
+
+    @field_validator("realtime_backend")
+    @classmethod
+    def validate_realtime_backend(cls, v: str) -> str:
+        if v not in {"memory", "redis"}:
+            raise ValueError("ROADFORGE_REALTIME_BACKEND must be 'memory' or 'redis'")
+        return v
 
     # Base URL of the Next.js frontend — used to build invite link join URLs.
     web_base_url: str = Field(default="http://localhost:3020", alias="ROADFORGE_WEB_BASE_URL")

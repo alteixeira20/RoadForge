@@ -1,6 +1,6 @@
 # Redis Realtime Adapter Design
 
-Status: proposed design for RF-880. This document describes intended Redis adapter boundaries only. It does not describe implemented Redis behavior unless explicitly marked as current behavior.
+Status: proposed design for RF-880 with RF-881 infrastructure/config now added. This document describes intended Redis adapter boundaries only. It does not describe implemented Redis behavior unless explicitly marked as current behavior.
 
 Related roadmap tasks: RF-822, RF-881, RF-882, RF-883, RF-884, RF-885, RF-886, RF-823.
 
@@ -79,11 +79,12 @@ Proposed settings in `apps/api/src/api/config.py`:
   - Optional command timeout.
   - Suggested default: `2`.
 
-Local development defaults:
+Local development defaults after RF-881:
 
-- Keep `ROADFORGE_REALTIME_BACKEND=memory` as the default until RF-881 adds Redis service wiring and docs.
+- Keep `ROADFORGE_REALTIME_BACKEND=memory` as the default.
 - Allow `REDIS_URL` to be omitted when `ROADFORGE_REALTIME_BACKEND=memory`.
-- For local Redis dev, document `ROADFORGE_REALTIME_BACKEND=redis` plus `REDIS_URL=redis://localhost:6379/0`.
+- Docker Compose provides a `redis` service and sets API `REDIS_URL=redis://redis:6379/0` for future adapter work.
+- Do not set `ROADFORGE_REALTIME_BACKEND=redis` until RF-882 through RF-886 are implemented and validated.
 
 Production requirements:
 
@@ -321,6 +322,13 @@ Streams should be reconsidered only if RF-886 discovers that missed events durin
 ## 8. Deployment plan
 
 ### RF-881: add Redis service and configuration for dev/prod
+
+Implementation status: complete as infrastructure/config only. Redis is
+provisioned in local and hosting-bay Compose, API settings expose Redis URL,
+backend, key prefix, and timeout fields, and deployment examples keep
+`ROADFORGE_REALTIME_BACKEND=memory`. No realtime service uses Redis yet, and
+multi-worker mode remains blocked until RF-882 through RF-886 are implemented
+and validated.
 
 Likely files touched:
 

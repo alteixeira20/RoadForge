@@ -43,6 +43,9 @@ services:
       ROADFORGE_ENVIRONMENT: production
       ROADFORGE_WEB_BASE_URL: ${ROADFORGE_WEB_BASE_URL:?ROADFORGE_WEB_BASE_URL is required}
       ROADFORGE_CORS_ORIGINS: ${ROADFORGE_CORS_ORIGINS:?ROADFORGE_CORS_ORIGINS is required}
+      REDIS_URL: ${REDIS_URL:-redis://roadforge-redis:6379/0}
+      ROADFORGE_REALTIME_BACKEND: ${ROADFORGE_REALTIME_BACKEND:-memory}
+      ROADFORGE_REDIS_KEY_PREFIX: ${ROADFORGE_REDIS_KEY_PREFIX:-roadforge:prod}
     expose:
       - "7878"
     depends_on:
@@ -64,6 +67,24 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  roadforge-redis:
+    container_name: roadforge-redis
+    image: redis:7-alpine
+    expose:
+      - "6379"
+    networks:
+      roadforge-internal:
+        aliases:
+          - roadforge-redis
+          - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   roadforge-postgres:
     container_name: roadforge-postgres

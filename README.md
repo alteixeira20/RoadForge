@@ -48,6 +48,7 @@ RoadForge is built with a security-first mindset, but is currently in a pre-prod
 | Realtime | Server-Sent Events (SSE) + In-memory task locks |
 | Backend | FastAPI, Python 3.12 |
 | Database | PostgreSQL 16 |
+| Redis | Provisioned in Compose for future realtime adapters; inactive by default |
 | ORM / migrations | SQLAlchemy 2.x async + asyncpg + Alembic |
 | Container | Docker Compose |
 
@@ -164,6 +165,9 @@ Defined in `.env.example`. Copy to `.env.local` for local overrides.
 | `POSTGRES_PASSWORD` | `roadforge_dev` | Docker Compose |
 | `ROADFORGE_ENVIRONMENT` | `development` | Backend — log verbosity, SQL echo |
 | `ROADFORGE_WEB_BASE_URL` | `http://localhost:3020` | Backend — builds `/join?token=…` URLs |
+| `REDIS_URL` | `redis://redis:6379/0` | Backend config only; Redis-backed realtime is not active yet |
+| `ROADFORGE_REALTIME_BACKEND` | `memory` | Backend — keep `memory` until Redis adapters and multi-worker checks are implemented |
+| `ROADFORGE_REDIS_KEY_PREFIX` | `roadforge` | Backend config only; namespace for future Redis keys |
 
 ---
 

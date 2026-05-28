@@ -15,6 +15,14 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: ./apps/api
@@ -26,6 +34,9 @@ services:
       ROADFORGE_ENVIRONMENT: ${ROADFORGE_ENVIRONMENT:-development}
       ROADFORGE_WEB_BASE_URL: ${ROADFORGE_WEB_BASE_URL:-http://localhost:3020}
       ROADFORGE_CORS_ORIGINS: ${ROADFORGE_CORS_ORIGINS:-http://localhost:3020,http://127.0.0.1:3020}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      ROADFORGE_REALTIME_BACKEND: ${ROADFORGE_REALTIME_BACKEND:-memory}
+      ROADFORGE_REDIS_KEY_PREFIX: ${ROADFORGE_REDIS_KEY_PREFIX:-roadforge}
     depends_on:
       postgres:
         condition: service_healthy
