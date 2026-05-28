@@ -387,6 +387,12 @@ Risks:
 
 ### RF-883: move event tickets to Redis TTL storage
 
+Implementation status: complete for the event-ticket adapter. RF-883 adds
+Redis TTL ticket storage selected by `ROADFORGE_REALTIME_BACKEND=redis`, while
+`memory` remains the default backend. The event bus can be Redis-backed from
+RF-882. Edit locks and rate-limit storage remain memory-backed until RF-884 and
+RF-885, and multi-worker mode remains blocked until RF-886.
+
 Likely files touched:
 
 - `apps/api/src/api/services/ticket_service.py`
