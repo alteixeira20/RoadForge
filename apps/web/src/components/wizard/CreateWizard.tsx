@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useId, useRef } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { createBlankPhases } from '@/lib/roadmap-factory'
@@ -12,23 +12,37 @@ interface CreateWizardProps {
 }
 
 export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
-  const { displayName, setDisplayName, roadmapName, setRoadmapName, createLocalRoadmap } = useRoadmap()
+  const { displayName, setDisplayName, roadmapName, createLocalRoadmap } = useRoadmap()
   const [step, setStep] = useState(0)
   const [startingPoint, setStartingPoint] = useState<'template' | 'blank'>('blank')
+  const [draftDisplayName, setDraftDisplayName] = useState(() => displayName)
+  const [draftRoadmapName, setDraftRoadmapName] = useState(() => roadmapName)
+  const headingId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (step === 0 || step === 1) {
-      setTimeout(() => inputRef.current?.focus(), 100)
+      const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 100)
+      return () => window.clearTimeout(focusTimer)
     }
+    dialogRef.current?.focus()
   }, [step])
 
   useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      if (previouslyFocused?.isConnected) {
+        previouslyFocused.focus()
+      }
+    }
   }, [onClose])
 
   const next = () => setStep((s) => s + 1)
@@ -36,20 +50,29 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
 
   const handleFinish = () => {
     const nextPhases = startingPoint === 'blank' ? createBlankPhases() : SAMPLE_ROADMAP.phases
-    const newRoadmapId = createLocalRoadmap(roadmapName.trim() || 'Untitled Roadmap', nextPhases)
+    const nextDisplayName = draftDisplayName.trim()
+    setDisplayName(nextDisplayName)
+    const newRoadmapId = createLocalRoadmap(draftRoadmapName.trim() || 'Untitled Roadmap', nextPhases)
     onComplete(newRoadmapId)
   }
 
   const canProceed =
-    (step === 0 && displayName.trim().length > 0) ||
-    (step === 1 && roadmapName.trim().length > 0) ||
+    (step === 0 && draftDisplayName.trim().length > 0) ||
+    (step === 1 && draftRoadmapName.trim().length > 0) ||
     step === 2 ||
     step === 3 ||
     step === 4
 
   return (
     <div className="wizard-scrim">
-      <div className="wizard" role="dialog" aria-modal>
+      <div
+        ref={dialogRef}
+        className="wizard"
+        role="dialog"
+        aria-modal
+        aria-labelledby={headingId}
+        tabIndex={-1}
+      >
         <div className="wizard-progress">
           {[0, 1, 2, 3, 4].map((i) => (
             <div
@@ -63,7 +86,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
           {step === 0 && (
             <>
               <span className="wizard-eyebrow">Step 1 of 5 · Your name</span>
-              <h2>What should we call you?</h2>
+              <h2 id={headingId}>What should we call you?</h2>
               <p className="sub">
                 Pick a display name for this device. There&apos;s no account, no
                 email — just a name we can show on tasks you own.
@@ -75,8 +98,8 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
                   ref={inputRef}
                   className="input"
                   placeholder="e.g. Ada Lovelace"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  value={draftDisplayName}
+                  onChange={(e) => setDraftDisplayName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && canProceed) next()
                   }}
@@ -91,7 +114,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
           {step === 1 && (
             <>
               <span className="wizard-eyebrow">Step 2 of 5 · Roadmap title</span>
-              <h2>Name your roadmap.</h2>
+              <h2 id={headingId}>Name your roadmap.</h2>
               <p className="sub">
                 A short, scannable title — phrased as the outcome, not the work.
               </p>
@@ -102,8 +125,8 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
                   ref={inputRef}
                   className="input"
                   placeholder="e.g. v1.0 Public Launch"
-                  value={roadmapName}
-                  onChange={(e) => setRoadmapName(e.target.value)}
+                  value={draftRoadmapName}
+                  onChange={(e) => setDraftRoadmapName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && canProceed) next()
                   }}
@@ -118,7 +141,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
           {step === 2 && (
             <>
               <span className="wizard-eyebrow">Step 3 of 5 · Starting point</span>
-              <h2>How do you want to start?</h2>
+              <h2 id={headingId}>How do you want to start?</h2>
               <p className="sub">
                 Choose between a blank slate or a template with examples.
               </p>
@@ -158,7 +181,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
           {step === 3 && (
             <>
               <span className="wizard-eyebrow">Step 4 of 5 · How storage works</span>
-              <h2>This roadmap stays on your device.</h2>
+              <h2 id={headingId}>This roadmap stays on your device.</h2>
               <p className="sub">
                 Nothing leaves your machine until you choose to share it.
               </p>
@@ -209,11 +232,11 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
           {step === 4 && (
             <>
               <span className="wizard-eyebrow">Step 5 of 5 · Ready</span>
-              <h2>Ready to forge.</h2>
+              <h2 id={headingId}>Ready to forge.</h2>
               <p className="sub">
                 We&apos;ll open{' '}
                 <b style={{ color: 'var(--ink)' }}>
-                  {roadmapName.trim() || 'your roadmap'}
+                  {draftRoadmapName.trim() || 'your roadmap'}
                 </b>{' '}
                 {startingPoint === 'template' ? 'with a starter set of phases.' : 'as a blank slate.'} Edit anything, delete anything —
                 it&apos;s yours.
@@ -224,7 +247,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
                 </div>
                 <div className="body">
                   <div className="t">
-                    Welcome, {displayName.trim() || 'friend'}.
+                    Welcome, {draftDisplayName.trim() || 'friend'}.
                   </div>
                   <div className="d">
                     Your roadmap is ready. Take a breath — you can move slowly.

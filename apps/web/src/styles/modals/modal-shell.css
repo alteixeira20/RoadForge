@@ -124,8 +124,8 @@
   width: 540px; max-width: 100%;
   max-height: calc(100vh - 48px); overflow: auto;
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   animation: modal-in 240ms cubic-bezier(.2,.7,.2,1);
   position: relative;
@@ -173,7 +173,7 @@
 .modal-head .close {
   flex: 0 0 auto;
   width: 28px; height: 28px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: 1px solid var(--border);
   display: grid; place-items: center;

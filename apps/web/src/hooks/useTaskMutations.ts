@@ -142,7 +142,7 @@ export function createTaskMutations({
       next: false,
       tags: ['subtask'],
       deps: [],
-      desc: `Subtask of ${parent.id} — ${parent.title}`,
+      desc: '',
       parentId: parentId,
     }
 

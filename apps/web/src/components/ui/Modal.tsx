@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
 
@@ -21,20 +21,45 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, icon, title, sub, children, footer, width }: ModalProps) {
+  const titleId = useId()
+  const descriptionId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!open) return
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    const focusFrame = window.requestAnimationFrame(() => {
+      dialogRef.current?.focus()
+    })
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      window.removeEventListener('keydown', onKey)
+      if (previouslyFocused?.isConnected) {
+        previouslyFocused.focus()
+      }
+    }
   }, [open, onClose])
 
   if (!open) return null
 
   return (
     <div className="modal-scrim">
-      <div className="modal" style={width ? { width } : undefined} role="dialog" aria-modal>
+      <div
+        ref={dialogRef}
+        className="modal"
+        style={width ? { width } : undefined}
+        role="dialog"
+        aria-modal
+        aria-labelledby={titleId}
+        aria-describedby={sub ? descriptionId : undefined}
+        tabIndex={-1}
+      >
         <div className="modal-head">
           {icon && (
             <div className={`ic ${icon.plain ? 'plain' : ''}`}>
@@ -42,8 +67,8 @@ export function Modal({ open, onClose, icon, title, sub, children, footer, width
             </div>
           )}
           <div className="text">
-            <h2>{title}</h2>
-            {sub && <p className="sub">{sub}</p>}
+            <h2 id={titleId}>{title}</h2>
+            {sub && <p id={descriptionId} className="sub">{sub}</p>}
           </div>
           <button className="close" onClick={onClose} aria-label="Close">
             <Icon name="x" size={16} />
