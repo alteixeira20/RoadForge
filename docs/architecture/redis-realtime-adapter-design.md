@@ -1,12 +1,13 @@
 # Redis Realtime Adapter Design
 
-Status: proposed design for RF-880 with RF-881 infrastructure/config now added. This document describes intended Redis adapter boundaries only. It does not describe implemented Redis behavior unless explicitly marked as current behavior.
+Status: Redis realtime adapters are implemented behind `ROADFORGE_REALTIME_BACKEND=redis`, with memory remaining the default single-worker backend. This document records the design, validation path, and deployment guardrails for RF-881 through RF-886 and RF-823.
 
 Related roadmap tasks: RF-822, RF-881, RF-882, RF-883, RF-884, RF-885, RF-886, RF-823.
 
 ## 1. Current state
 
-Current realtime state is held in process-local Python objects:
+The default realtime backend remains `memory`, which holds realtime state in
+process-local Python objects:
 
 - `EventBus` in `apps/api/src/api/services/event_bus.py`
   - Keeps `roadmap_id -> set[asyncio.Queue]` subscribers in memory.
@@ -27,7 +28,15 @@ Current realtime state is held in process-local Python objects:
   - Returns `RateLimitResult` with `allowed`, `remaining`, and `retry_after`.
   - `enforce()` raises FastAPI `429` with generic detail `"Too many requests. Try again later."` and a `Retry-After` header.
 
-The API must currently run exactly one Uvicorn worker. The Dockerfile documents and sets `--workers 1`, and deployment docs warn not to override it. One worker is required because SSE subscribers, tickets, locks, and rate-limit buckets are isolated inside one Python process.
+The API defaults to exactly one Uvicorn worker through `ROADFORGE_API_WORKERS=1`.
+One worker is required for `ROADFORGE_REALTIME_BACKEND=memory` because SSE
+subscribers, tickets, locks, and rate-limit buckets are isolated inside one
+Python process.
+
+When `ROADFORGE_REALTIME_BACKEND=redis` is active, Redis backs the SSE event
+bus, one-time event tickets, edit locks, and rate-limit counters. Multi-worker
+mode is configurable with `ROADFORGE_API_WORKERS`, but container startup refuses
+to run more than one worker unless the Redis backend is active.
 
 Multiple workers break current correctness:
 
@@ -78,13 +87,18 @@ Proposed settings in `apps/api/src/api/config.py`:
 - `ROADFORGE_REDIS_SOCKET_TIMEOUT_SECONDS`
   - Optional command timeout.
   - Suggested default: `2`.
+- `ROADFORGE_API_WORKERS`
+  - Uvicorn worker count for the container command.
+  - Default: `1`.
+  - Values greater than `1` require `ROADFORGE_REALTIME_BACKEND=redis`.
 
-Local development defaults after RF-881:
+Local development defaults:
 
 - Keep `ROADFORGE_REALTIME_BACKEND=memory` as the default.
 - Allow `REDIS_URL` to be omitted when `ROADFORGE_REALTIME_BACKEND=memory`.
 - Docker Compose provides a `redis` service and sets API `REDIS_URL=redis://redis:6379/0` for future adapter work.
-- Do not set `ROADFORGE_REALTIME_BACKEND=redis` until RF-882 through RF-886 are implemented and validated.
+- Keep `ROADFORGE_API_WORKERS=1` unless explicitly validating Redis-backed
+  multi-worker mode.
 
 Production requirements:
 
@@ -323,12 +337,9 @@ Streams should be reconsidered only if RF-886 discovers that missed events durin
 
 ### RF-881: add Redis service and configuration for dev/prod
 
-Implementation status: complete as infrastructure/config only. Redis is
-provisioned in local and hosting-bay Compose, API settings expose Redis URL,
-backend, key prefix, and timeout fields, and deployment examples keep
-`ROADFORGE_REALTIME_BACKEND=memory`. No realtime service uses Redis yet, and
-multi-worker mode remains blocked until RF-882 through RF-886 are implemented
-and validated.
+Implementation status: complete. Redis is provisioned in local and hosting-bay
+Compose, API settings expose Redis URL, backend, key prefix, and timeout fields,
+and deployment examples keep `ROADFORGE_REALTIME_BACKEND=memory` by default.
 
 Likely files touched:
 
@@ -359,9 +370,7 @@ Risks:
 
 Implementation status: complete for the SSE event bus adapter. RF-882 adds a
 Redis Pub/Sub event bus selected by `ROADFORGE_REALTIME_BACKEND=redis`, while
-`memory` remains the default backend. Event tickets, edit locks, and rate-limit
-storage remain memory-backed until RF-883, RF-884, and RF-885. Multi-worker mode
-remains blocked until RF-886.
+`memory` remains the default backend.
 
 Likely files touched:
 
@@ -389,9 +398,7 @@ Risks:
 
 Implementation status: complete for the event-ticket adapter. RF-883 adds
 Redis TTL ticket storage selected by `ROADFORGE_REALTIME_BACKEND=redis`, while
-`memory` remains the default backend. The event bus can be Redis-backed from
-RF-882. Edit locks and rate-limit storage remain memory-backed until RF-884 and
-RF-885, and multi-worker mode remains blocked until RF-886.
+`memory` remains the default backend.
 
 Likely files touched:
 
@@ -421,8 +428,7 @@ Risks:
 Implementation status: complete for the edit-lock adapter. RF-884 adds
 Redis TTL lock storage selected by `ROADFORGE_REALTIME_BACKEND=redis`, while
 `memory` remains the default backend. Lock acquire/refresh and owner-only
-release use Redis Lua operations. Multi-worker mode remains blocked until
-RF-886.
+release use Redis Lua operations.
 
 Likely files touched:
 
@@ -452,7 +458,7 @@ Risks:
 Implementation status: complete for the rate-limit storage adapter. RF-885 adds
 Redis fixed-window counters selected by `ROADFORGE_REALTIME_BACKEND=redis`,
 while `memory` remains the default backend. Redis limiter failures fail open
-with warning logs. Multi-worker mode remains blocked until RF-886.
+with warning logs.
 
 Likely files touched:
 
@@ -479,6 +485,12 @@ Risks:
 
 ### RF-886: add realtime multi-worker regression checks
 
+Implementation status: complete as a manual regression checklist. The RF-886
+checklist lives in `docs/manual-qa.md` section `30b` and covers cross-worker
+event delivery, event tickets, locks, shared rate limits, revoke/delete events,
+SSE reconnect, and Redis outage behavior. These checks have not been run by this
+documentation change.
+
 Likely files touched:
 
 - Test or validation harness files.
@@ -500,6 +512,11 @@ Risks:
 
 ### RF-823: enable multi-worker deployment mode
 
+Implementation status: complete as guarded, configurable deployment support.
+`ROADFORGE_API_WORKERS` controls the Uvicorn worker count, defaults to `1`, and
+container startup refuses values greater than `1` unless
+`ROADFORGE_REALTIME_BACKEND=redis`.
+
 Likely files touched:
 
 - `apps/api/Dockerfile`
@@ -509,12 +526,13 @@ Likely files touched:
 
 Validation:
 
-- Run after RF-882 through RF-886 pass.
+- Run the RF-886 checklist before setting `ROADFORGE_API_WORKERS` greater than
+  `1` in production.
 - Confirm worker count change does not alter public API/SSE contract.
 
 Rollback:
 
-- Restore `--workers 1`.
+- Set `ROADFORGE_API_WORKERS=1`.
 
 Risks:
 
@@ -607,4 +625,9 @@ Use adapter interfaces and keep the current in-memory services as the `memory` b
 - RF-884: Redis TTL keys plus atomic Lua operations for edit locks.
 - RF-885: Redis atomic fixed-window counters for rate limiting.
 
-Do not enable multi-worker mode until RF-882, RF-883, RF-884, RF-885, and RF-886 have passed. Redis Pub/Sub is the recommended RF-882 event bus implementation because it matches current best-effort SSE behavior, supports multi-worker fan-out, avoids replay semantics the frontend does not use, and minimizes retention/cleanup risk.
+Do not set `ROADFORGE_API_WORKERS` greater than `1` in production until RF-882,
+RF-883, RF-884, RF-885, and RF-886 have passed in a staging or equivalent
+environment. Redis Pub/Sub is the RF-882 event bus implementation because it
+matches current best-effort SSE behavior, supports multi-worker fan-out, avoids
+replay semantics the frontend does not use, and minimizes retention/cleanup
+risk.

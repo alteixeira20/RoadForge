@@ -69,17 +69,17 @@ Current required migration note:
   tokens. Run `make migrate` before validating Share modal behavior, otherwise
   active viewer links may not remain copyable after reopening the modal.
 
-**Single-worker API:** The RoadForge API must run exactly one Uvicorn worker.
-The in-memory lock service, SSE event bus, and realtime ticket service are
-process-local singletons — multiple workers would give each request its own
-isolated copy, breaking collaboration. The `--workers 1` flag is set in the
-Dockerfile CMD and must not be overridden in compose overrides or orchestration
-configs.
+**API worker mode:** The RoadForge API is single-worker by default through
+`ROADFORGE_API_WORKERS=1`. Multi-worker mode is configurable only when
+`ROADFORGE_REALTIME_BACKEND=redis`; the Dockerfile startup command refuses to
+start with `ROADFORGE_API_WORKERS` greater than `1` unless the Redis realtime
+backend is active. Keep `memory` plus one worker for ordinary local/deploy
+maintenance.
 
 **Redis backend status:** The compose stack provisions private Redis at
-`redis://roadforge-redis:6379/0` for future realtime adapter work. Keep
-`ROADFORGE_REALTIME_BACKEND=memory` and do not enable multi-worker mode until
-RF-882 through RF-886 are implemented and validated.
+`redis://roadforge-redis:6379/0`. Set `ROADFORGE_REALTIME_BACKEND=redis` and a
+worker count greater than `1` only for RF-886 staging validation or an approved
+multi-worker deployment. Do not use multi-worker mode with the memory backend.
 
 ## Validation
 
@@ -132,9 +132,9 @@ Postgres data is mounted at:
 
 No user uploads or filesystem assets are stored by the app.
 
-Redis is currently used only as provisioned infrastructure for future adapter
-work. Runtime collaboration state still uses the in-memory single-worker
-services.
+Redis backs realtime coordination only when `ROADFORGE_REALTIME_BACKEND=redis`.
+With `ROADFORGE_REALTIME_BACKEND=memory`, runtime collaboration state remains
+single-worker and process-local.
 
 ## Public API Docs
 

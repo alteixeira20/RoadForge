@@ -421,7 +421,49 @@ Run on hosting-bay (or a staging clone of the deploy setup):
 - [ ] `make ps` shows `api` container as `Up`. No restart loops.
 - [ ] `docker compose logs --tail=40 api` shows `Application startup complete.` No ERROR lines at startup.
 - [ ] `curl https://roadforge.alexandreteixeira.dev/api/health` → `{"status":"ok","version":"0.1.0"}`.
-- [ ] Confirm API container is running with exactly **one worker** (`--workers 1` in CMD; verify via `docker inspect`).
+- [ ] Confirm normal deployment uses `ROADFORGE_API_WORKERS=1`.
+- [ ] Confirm any deployment with `ROADFORGE_API_WORKERS` greater than `1` also sets `ROADFORGE_REALTIME_BACKEND=redis`.
+
+---
+
+## 30b — RF-886 multi-worker realtime regression checklist
+
+Run this only in a local or staging stack where Redis-backed realtime is enabled.
+Do not mark RF-823 production rollout complete until every item passes.
+
+Environment preconditions:
+
+```bash
+ROADFORGE_REALTIME_BACKEND=redis
+ROADFORGE_API_WORKERS=2
+REDIS_URL=redis://<redis-host>:6379/0
+```
+
+Worker routing note: run the API with two workers and use access logs, container
+logs, or a temporary load-balancer/session routing setup to confirm the "worker
+A" and "worker B" references below really hit different processes. If worker
+selection cannot be observed or controlled, this checklist is inconclusive.
+
+- [ ] Open Owner and Editor/Viewer browser contexts against the same roadmap.
+- [ ] Confirm `roadmap.updated` published by a request handled on worker A reaches an SSE client connected through worker B.
+- [ ] Request an SSE ticket through worker A, then open `/events?ticket=...` through worker B. It succeeds once.
+- [ ] Reuse the same ticket through either worker. It returns `401 Invalid or expired event ticket`.
+- [ ] Wait more than 30 seconds before consuming a fresh ticket. It returns `401 Invalid or expired event ticket`.
+- [ ] Acquire a task edit lock through worker A. `GET /locks` through worker B lists that lock.
+- [ ] Attempt to acquire the same target as a different participant through worker B. It returns 409.
+- [ ] Refresh the same participant's lock through worker B. The lock remains owned by that participant and its TTL extends.
+- [ ] Release a lock acquired on worker A through worker B as the same participant. Other connected clients receive `lock.released`.
+- [ ] Attempt lock release as a different participant. The lock remains active until owner release or TTL expiry.
+- [ ] Trigger configured rate limits with requests split across both workers. The combined attempts return `429` at the same effective limit as one worker.
+- [ ] Confirm `Retry-After` remains present and the 429 body remains `{"detail":"Too many requests. Try again later."}`.
+- [ ] Revoke a participant through worker A. The revoked participant's SSE stream on worker B receives `participant.revoked`.
+- [ ] Delete a roadmap through worker A. Active Editor/Viewer SSE streams on worker B receive `roadmap.deleted`.
+- [ ] Force an SSE disconnect, then reconnect through the normal ticket-renewal flow. Realtime resumes without frontend changes.
+- [ ] Restart or stop Redis during the staging session and record behavior:
+  tickets and locks fail closed/degraded, Pub/Sub delivery is interrupted,
+  reconnect requires Redis recovery, and rate limiting may fail open per policy.
+- [ ] Restore Redis and confirm new tickets, locks, rate limits, and SSE streams recover without switching to memory fallback.
+- [ ] Reset to `ROADFORGE_API_WORKERS=1` before returning the environment to ordinary use unless this was an approved multi-worker rollout.
 
 ---
 
@@ -456,6 +498,8 @@ Stop QA and file a blocker if any of the following are true:
 - Save to server fails with an unrecoverable error (not 409).
 - Join fails with a valid, non-revoked invite link.
 - SSE events (roadmap.updated, participant.revoked, roadmap.deleted) do not fire within 5 seconds under normal conditions.
+- Any multi-worker deployment runs with `ROADFORGE_REALTIME_BACKEND=memory` or without Redis connectivity.
+- RF-886 multi-worker checks cannot prove cross-worker routing.
 - 409 conflict recovery leaves the UI in a broken/unrecoverable state.
 - Any exported JSON contains session tokens, invite tokens, or passwords.
 - Import replace changes the `serverRoadmapId` stored in localStorage.
@@ -468,9 +512,9 @@ Stop QA and file a blocker if any of the following are true:
 ## Known acceptable limitations
 
 - **No CRDT / merge UI.** Conflict recovery (§25) reloads the server version and discards local edits. There is no three-way merge. This is expected behavior, not a bug.
-- **Single API worker required.** `lock_service`, `event_bus`, and `ticket_service` are in-memory singletons. Running multiple Uvicorn workers would break realtime features. `--workers 1` is mandatory and is set in the Dockerfile CMD.
+- **Memory backend is single-worker only.** Running multiple Uvicorn workers with `ROADFORGE_REALTIME_BACKEND=memory` would break realtime features. Container startup refuses that configuration. Multi-worker mode requires `ROADFORGE_REALTIME_BACKEND=redis` and successful RF-886 validation.
 - **No accounts / OAuth.** Session tokens in localStorage are the auth primitive. There is no login page, no password reset, and no user dashboard.
 - **Link revoke does not kick active participants.** Revoking a share link prevents new joins via that link but does not terminate existing sessions. To remove an active participant, use participant revoke (§7).
 - **Password gate not enforced on existing sessions.** A participant who already holds a session token is not re-prompted if the owner later enables a password.
-- **Rate limiting is in-memory.** The first app-level limiter is suitable for the current single-worker API shape. It is not shared across multiple workers or instances.
+- **Rate limiting is backend-dependent.** The limiter is shared across workers only with `ROADFORGE_REALTIME_BACKEND=redis`. Memory-backed rate limiting is single-worker only.
 - **CSP is report-only.** Content Security Policy is observable but not enforced yet. Do not treat report-only CSP as blocking protection.

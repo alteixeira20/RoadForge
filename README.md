@@ -45,10 +45,10 @@ RoadForge is built with a security-first mindset, but is currently in a pre-prod
 | Frontend | Next.js 15 App Router, TypeScript 5 |
 | Styling | Tailwind CSS v3 + CSS custom properties |
 | Client persistence | `localStorage` (local-first, optimistic cache) |
-| Realtime | Server-Sent Events (SSE) + In-memory task locks |
+| Realtime | Server-Sent Events (SSE) + memory or Redis-backed coordination |
 | Backend | FastAPI, Python 3.12 |
 | Database | PostgreSQL 16 |
-| Redis | Provisioned in Compose for future realtime adapters; inactive by default |
+| Redis | Provisioned in Compose; required for multi-worker realtime mode |
 | ORM / migrations | SQLAlchemy 2.x async + asyncpg + Alembic |
 | Container | Docker Compose |
 
@@ -85,7 +85,7 @@ Before self-hosting or releasing RoadForge publicly:
 - **Configure proxy logs** — invite tokens appear in URLs; ensure your proxy is configured not to log full query strings if possible, or restrict log access.
 - **Run security audits** — regularly run `make audit` and address high-severity vulnerabilities.
 - **CSP required** — a strict Content Security Policy is deferred in the current MVP but should be implemented before any multi-user public deployment.
-- **Single-worker API** — the API uses in-memory singletons for locks, SSE, and realtime state. Always run exactly one Uvicorn worker (`--workers 1` is set in the Dockerfile CMD). Do not override this in compose files or orchestration configs.
+- **API worker mode** — the API defaults to one Uvicorn worker. Set `ROADFORGE_API_WORKERS` above `1` only with `ROADFORGE_REALTIME_BACKEND=redis`; container startup refuses unsafe memory-backed multi-worker mode.
 - **Run `make check` before deploying** — this runs `pnpm lint`, `pnpm typecheck`, and `pnpm build`. All three must pass with zero errors and zero warnings.
 - **Database migrations before rollback** — Alembic migrations are not reversible by default. Take a Postgres snapshot before any release that includes new files under `apps/api/alembic/versions/`.
 - **Run migrations on deploy** — releases at or after `0005_add_public_viewer_tokens.py` require `make migrate` so active viewer links can remain copyable as public read-only demo links.
@@ -165,9 +165,10 @@ Defined in `.env.example`. Copy to `.env.local` for local overrides.
 | `POSTGRES_PASSWORD` | `roadforge_dev` | Docker Compose |
 | `ROADFORGE_ENVIRONMENT` | `development` | Backend — log verbosity, SQL echo |
 | `ROADFORGE_WEB_BASE_URL` | `http://localhost:3020` | Backend — builds `/join?token=…` URLs |
-| `REDIS_URL` | `redis://redis:6379/0` | Backend config only; Redis-backed realtime is not active yet |
-| `ROADFORGE_REALTIME_BACKEND` | `memory` | Backend — keep `memory` until Redis adapters and multi-worker checks are implemented |
-| `ROADFORGE_REDIS_KEY_PREFIX` | `roadforge` | Backend config only; namespace for future Redis keys |
+| `REDIS_URL` | `redis://redis:6379/0` | Backend Redis connection string |
+| `ROADFORGE_REALTIME_BACKEND` | `memory` | Backend realtime storage, `memory` or `redis` |
+| `ROADFORGE_REDIS_KEY_PREFIX` | `roadforge` | Backend namespace for Redis keys |
+| `ROADFORGE_API_WORKERS` | `1` | Backend Uvicorn worker count; values greater than `1` require `ROADFORGE_REALTIME_BACKEND=redis` |
 
 ---
 
@@ -233,10 +234,10 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 
 - **Markdown/PDF export** — requires backend; currently shows a toast.
 - **Email verification** — not implemented. Planned as an optional future security layer.
-- **Rate limiting** — invite token brute-force on `/api/roadmaps/join` is unthrottled. Do not deploy publicly without adding rate limiting.
+- **Rate limiting** — app-level rate limiting is active. It is shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`.
 - **Content Security Policy** — CSP is deferred. Do not deploy publicly at scale without it.
 - **No CRDT merge UI** — conflict recovery reloads the server version; there is no three-way merge.
-- **Single API worker required** — realtime locks, SSE, and tickets are process-local.
+- **Memory backend is single-worker only** — `ROADFORGE_API_WORKERS>1` requires `ROADFORGE_REALTIME_BACKEND=redis`.
 
 ---
 

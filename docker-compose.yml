@@ -37,6 +37,7 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       ROADFORGE_REALTIME_BACKEND: ${ROADFORGE_REALTIME_BACKEND:-memory}
       ROADFORGE_REDIS_KEY_PREFIX: ${ROADFORGE_REDIS_KEY_PREFIX:-roadforge}
+      ROADFORGE_API_WORKERS: ${ROADFORGE_API_WORKERS:-1}
     depends_on:
       postgres:
         condition: service_healthy
