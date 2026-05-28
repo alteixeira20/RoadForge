@@ -1,4 +1,4 @@
-.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-lint api-test web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-lint api-test web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -120,6 +120,9 @@ dev: ensure-deps
 
 check: ensure-deps
 	pnpm lint && pnpm typecheck && pnpm build
+
+web-test: ensure-deps
+	pnpm --filter web test
 
 diff:
 	@mkdir -p "$$(dirname "$(DIFF_OUT)")"
