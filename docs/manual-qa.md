@@ -60,7 +60,7 @@ Open four browser contexts and keep them active throughout:
 - [ ] Kill Docker API (`make api-down`) while roadmap is loaded.
 - [ ] Edit a task and click Save → badge shows **OFFLINE** and toast about failed save.
 - [ ] Restart API (`make api-up`). Retry Save → succeeds, badge returns to **LIVE**.
-- [ ] **Conflict test:** open same roadmap in a second tab. Save from tab 2 first, then try to save from tab 1 → badge shows **CONFLICT**, toast: "This roadmap changed elsewhere — reload before saving." Clicking the toast/button reloads from server and discards tab 1 local edits.
+- [ ] **Conflict test:** open same roadmap in a second tab. Save from tab 2 first, then try to save from tab 1 → badge shows **CONFLICT**, toast says local edits are preserved, and the conflict banner offers review plus reload fallback.
 
 ---
 
@@ -346,11 +346,16 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ## 25 — 409 conflict recovery
 
-- [ ] Open roadmap in two Owner tabs (same session or two accounts).
+- [ ] Open roadmap in two Owner tabs (same session or two owner participants).
 - [ ] Tab 2: save a change → success.
-- [ ] Tab 1: save a different change → 409 toast: "This roadmap changed elsewhere — reload before saving."
-- [ ] Tab 1: click the toast action / reload button.
-- [ ] Tab 1: loads server version. Local unsaved edits from tab 1 are discarded (expected — no merge UI).
+- [ ] Tab 1: save a different change → 409 toast says the roadmap changed elsewhere and local edits are preserved.
+- [ ] Tab 1: conflict banner shows **Review conflict** and **Reload server version**.
+- [ ] Click **Review conflict**. Panel shows server updated time, local unsynced state, server state, and name/phase/task differences.
+- [ ] Click **Keep editing locally**. Panel closes, badge remains **CONFLICT**, and local unsynced edits remain visible.
+- [ ] Reopen review and click **Keep my local version**. Save retries against the latest server timestamp, clears conflict on success, and Activity refreshes if open.
+- [ ] Repeat conflict, then click **Reload server version**. Confirm dialog appears before discarding local unsynced edits.
+- [ ] Confirm reload. Tab 1 loads the server version. Local unsynced edits from tab 1 are discarded only after confirmation.
+- [ ] If a 409 response has no structured metadata, the reload-only fallback still works.
 
 ---
 
@@ -500,7 +505,7 @@ Stop QA and file a blocker if any of the following are true:
 - SSE events (roadmap.updated, participant.revoked, roadmap.deleted) do not fire within 5 seconds under normal conditions.
 - Any multi-worker deployment runs with `ROADFORGE_REALTIME_BACKEND=memory` or without Redis connectivity.
 - RF-886 multi-worker checks cannot prove cross-worker routing.
-- 409 conflict recovery leaves the UI in a broken/unrecoverable state.
+- 409 conflict recovery leaves the UI in a broken/unrecoverable state or discards local edits without explicit confirmation.
 - Any exported JSON contains session tokens, invite tokens, or passwords.
 - Import replace changes the `serverRoadmapId` stored in localStorage.
 - Participant revoke does not reflect within 5 seconds in the revoked participant's window.
@@ -511,7 +516,7 @@ Stop QA and file a blocker if any of the following are true:
 
 ## Known acceptable limitations
 
-- **No CRDT / merge UI.** Conflict recovery (§25) reloads the server version and discards local edits. There is no three-way merge. This is expected behavior, not a bug.
+- **No CRDT / three-way merge.** Conflict recovery (§25) offers structured review, keep-local retry, and reload-server fallback. It does not automatically merge fields or silently discard local edits.
 - **Memory backend is single-worker only.** Running multiple Uvicorn workers with `ROADFORGE_REALTIME_BACKEND=memory` would break realtime features. Container startup refuses that configuration. Multi-worker mode requires `ROADFORGE_REALTIME_BACKEND=redis` and successful RF-886 validation.
 - **No accounts / OAuth.** Session tokens in localStorage are the auth primitive. There is no login page, no password reset, and no user dashboard.
 - **Link revoke does not kick active participants.** Revoking a share link prevents new joins via that link but does not terminate existing sessions. To remove an active participant, use participant revoke (§7).
