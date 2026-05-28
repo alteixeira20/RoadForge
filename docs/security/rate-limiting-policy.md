@@ -142,6 +142,9 @@ Redis-backed limiter:
 - Supports atomic increments with TTL across workers and instances.
 - Better for production scaling and consistent enforcement.
 - Adds operational dependency and failure-mode decisions.
+- Current RF-885 behavior uses Redis fixed-window counters only when
+  `ROADFORGE_REALTIME_BACKEND=redis`; Redis check failures fail open with a
+  warning that logs the action name, not raw limiter keys.
 
 Database-backed counters:
 

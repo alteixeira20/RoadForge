@@ -418,6 +418,12 @@ Risks:
 
 ### RF-884: move edit locks to Redis TTL storage
 
+Implementation status: complete for the edit-lock adapter. RF-884 adds
+Redis TTL lock storage selected by `ROADFORGE_REALTIME_BACKEND=redis`, while
+`memory` remains the default backend. Lock acquire/refresh and owner-only
+release use Redis Lua operations. Multi-worker mode remains blocked until
+RF-886.
+
 Likely files touched:
 
 - `apps/api/src/api/services/lock_service.py`
@@ -442,6 +448,11 @@ Risks:
 - Lock key target escaping bugs.
 
 ### RF-885: move rate limiter storage adapter to Redis
+
+Implementation status: complete for the rate-limit storage adapter. RF-885 adds
+Redis fixed-window counters selected by `ROADFORGE_REALTIME_BACKEND=redis`,
+while `memory` remains the default backend. Redis limiter failures fail open
+with warning logs. Multi-worker mode remains blocked until RF-886.
 
 Likely files touched:
 
