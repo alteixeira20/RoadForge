@@ -1,4 +1,4 @@
-.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-lint web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-lint api-test web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -54,6 +54,7 @@ help:
 	@echo "  make api-health    Check if backend is reachable"
 	@echo "  make api-check     Validate ORM/migration drift (alembic check)"
 	@echo "  make api-lint      Run ruff linter against apps/api/src"
+	@echo "  make api-test      Run backend pytest suite (requires roadforge_test DB)"
 	@echo ""
 	@echo "  make web-start     Start frontend in the background"
 	@echo "  make web-stop      Stop background frontend process"
@@ -215,6 +216,10 @@ api-check:
 
 api-lint:
 	cd apps/api && ruff check src/
+
+api-test:
+	cd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
+		pytest tests/ -v
 
 api-reset: api-down
 	docker compose down -v

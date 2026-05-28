@@ -43,3 +43,6 @@ Thumbs.db
 rebranding/
 
 tmp/
+
+__pycache__/
+*.py[cod]
