@@ -80,7 +80,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const canManageShare = role === 'owner'
   const canRenameRoadmap = !readOnly && (!serverRoadmapId || role !== 'viewer')
 
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>('RF-05')
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const { toast, showToast } = useToastState()
   const {
     showSave,
