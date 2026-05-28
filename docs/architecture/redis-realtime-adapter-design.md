@@ -357,6 +357,12 @@ Risks:
 
 ### RF-882: move SSE event bus to Redis Pub/Sub
 
+Implementation status: complete for the SSE event bus adapter. RF-882 adds a
+Redis Pub/Sub event bus selected by `ROADFORGE_REALTIME_BACKEND=redis`, while
+`memory` remains the default backend. Event tickets, edit locks, and rate-limit
+storage remain memory-backed until RF-883, RF-884, and RF-885. Multi-worker mode
+remains blocked until RF-886.
+
 Likely files touched:
 
 - `apps/api/src/api/services/event_bus.py`

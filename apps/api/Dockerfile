@@ -17,7 +17,8 @@ RUN uv pip install --system --no-cache \
     "alembic>=1.14" \
     "pydantic>=2.10" \
     "pydantic-settings>=2.7" \
-    "python-dotenv>=1.0"
+    "python-dotenv>=1.0" \
+    "redis>=5.0"
 
 # Copy Alembic config and migration scripts
 COPY alembic.ini .
