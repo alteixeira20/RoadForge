@@ -44,6 +44,9 @@ class Roadmap(Base):
     versions: Mapped[list[RoadmapVersion]] = relationship(
         "RoadmapVersion", back_populates="roadmap", cascade="all, delete-orphan"
     )
+    projection_phases: Mapped[list[RoadmapPhase]] = relationship(
+        "RoadmapPhase", back_populates="roadmap", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         sa.Index("ix_roadmaps_created_at", "created_at"),
@@ -182,4 +185,151 @@ class RoadmapVersion(Base):
         sa.UniqueConstraint("roadmap_id", "version_number", name="uq_roadmap_versions_number"),
         sa.Index("ix_roadmap_versions_roadmap_created", "roadmap_id", sa.text("created_at DESC")),
         sa.Index("ix_roadmap_versions_roadmap_number", "roadmap_id", "version_number"),
+    )
+
+
+class RoadmapPhase(Base):
+    __tablename__ = "roadmap_phases"
+
+    id: Mapped[str] = mapped_column(sa.String, primary_key=True)
+    roadmap_id: Mapped[str] = mapped_column(
+        sa.String, sa.ForeignKey("roadmaps.id", ondelete="CASCADE"), nullable=False
+    )
+    client_phase_id: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    num: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    name: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    color: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    status: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    progress: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    source_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now(), onupdate=sa.func.now()
+    )
+
+    roadmap: Mapped[Roadmap] = relationship("Roadmap", back_populates="projection_phases")
+    tasks: Mapped[list[RoadmapTask]] = relationship(
+        "RoadmapTask", back_populates="phase", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        sa.UniqueConstraint("roadmap_id", "client_phase_id", name="uq_roadmap_phases_client_id"),
+        sa.Index("ix_roadmap_phases_roadmap_position", "roadmap_id", "position"),
+    )
+
+
+class RoadmapTask(Base):
+    __tablename__ = "roadmap_tasks"
+
+    id: Mapped[str] = mapped_column(sa.String, primary_key=True)
+    roadmap_id: Mapped[str] = mapped_column(
+        sa.String, sa.ForeignKey("roadmaps.id", ondelete="CASCADE"), nullable=False
+    )
+    phase_id: Mapped[str] = mapped_column(
+        sa.String, sa.ForeignKey("roadmap_phases.id", ondelete="CASCADE"), nullable=False
+    )
+    client_task_id: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    title: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    done: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
+    next: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True)
+    est: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    desc: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    parent_task_id: Mapped[str | None] = mapped_column(
+        sa.String, sa.ForeignKey("roadmap_tasks.id", ondelete="SET NULL"), nullable=True
+    )
+    tags_json: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    source_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now(), onupdate=sa.func.now()
+    )
+
+    phase: Mapped[RoadmapPhase] = relationship("RoadmapPhase", back_populates="tasks")
+    parent_task: Mapped[RoadmapTask | None] = relationship("RoadmapTask", remote_side=[id])
+    dependencies: Mapped[list[RoadmapTaskDependency]] = relationship(
+        "RoadmapTaskDependency",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        foreign_keys="RoadmapTaskDependency.task_id",
+    )
+    assignees: Mapped[list[RoadmapTaskAssignee]] = relationship(
+        "RoadmapTaskAssignee", back_populates="task", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        sa.UniqueConstraint("roadmap_id", "client_task_id", name="uq_roadmap_tasks_client_id"),
+        sa.Index("ix_roadmap_tasks_roadmap_phase_position", "roadmap_id", "phase_id", "position"),
+        sa.Index("ix_roadmap_tasks_roadmap_done", "roadmap_id", "done"),
+        sa.Index("ix_roadmap_tasks_roadmap_next", "roadmap_id", "next"),
+        sa.Index("ix_roadmap_tasks_parent_task_id", "parent_task_id"),
+    )
+
+
+class RoadmapTaskDependency(Base):
+    __tablename__ = "roadmap_task_dependencies"
+
+    id: Mapped[str] = mapped_column(sa.String, primary_key=True)
+    roadmap_id: Mapped[str] = mapped_column(
+        sa.String, sa.ForeignKey("roadmaps.id", ondelete="CASCADE"), nullable=False
+    )
+    task_id: Mapped[str] = mapped_column(
+        sa.String, sa.ForeignKey("roadmap_tasks.id", ondelete="CASCADE"), nullable=False
+    )
+    depends_on_task_id: Mapped[str] = mapped_column(
+        sa.String, sa.ForeignKey("roadmap_tasks.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+    )
+
+    task: Mapped[RoadmapTask] = relationship(
+        "RoadmapTask", back_populates="dependencies", foreign_keys=[task_id]
+    )
+    depends_on_task: Mapped[RoadmapTask] = relationship("RoadmapTask", foreign_keys=[depends_on_task_id])
+
+    __table_args__ = (
+        sa.UniqueConstraint("task_id", "depends_on_task_id", name="uq_roadmap_task_dependencies_edge"),
+        sa.CheckConstraint("task_id <> depends_on_task_id", name="ck_roadmap_task_dependencies_not_self"),
+        sa.Index("ix_roadmap_task_dependencies_roadmap_task", "roadmap_id", "task_id"),
+        sa.Index(
+            "ix_roadmap_task_dependencies_roadmap_depends_on",
+            "roadmap_id",
+            "depends_on_task_id",
+        ),
+    )
+
+
+class RoadmapTaskAssignee(Base):
+    __tablename__ = "roadmap_task_assignees"
+
+    id: Mapped[str] = mapped_column(sa.String, primary_key=True)
+    roadmap_id: Mapped[str] = mapped_column(
+        sa.String, sa.ForeignKey("roadmaps.id", ondelete="CASCADE"), nullable=False
+    )
+    task_id: Mapped[str] = mapped_column(
+        sa.String, sa.ForeignKey("roadmap_tasks.id", ondelete="CASCADE"), nullable=False
+    )
+    display_name: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    position: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="0")
+    participant_id: Mapped[str | None] = mapped_column(
+        sa.String, sa.ForeignKey("participants.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+    )
+
+    task: Mapped[RoadmapTask] = relationship("RoadmapTask", back_populates="assignees")
+    participant: Mapped[Participant | None] = relationship("Participant")
+
+    __table_args__ = (
+        sa.UniqueConstraint("task_id", "display_name", name="uq_roadmap_task_assignees_name"),
+        sa.Index("ix_roadmap_task_assignees_roadmap_display_name", "roadmap_id", "display_name"),
+        sa.Index("ix_roadmap_task_assignees_roadmap_task_position", "roadmap_id", "task_id", "position"),
+        sa.Index("ix_roadmap_task_assignees_participant_id", "participant_id"),
     )
