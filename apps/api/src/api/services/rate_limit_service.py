@@ -48,9 +48,13 @@ class _Bucket:
 
 
 class RateLimiter(Protocol):
-    def check(self, action: str, key: str, limit: int, window_seconds: int) -> RateLimitResult: ...
+    def check(
+        self, action: str, key: str, limit: int, window_seconds: int
+    ) -> RateLimitResult: ...
 
-    def enforce(self, action: str, key: str, limit: int, window_seconds: int) -> RateLimitResult: ...
+    def enforce(
+        self, action: str, key: str, limit: int, window_seconds: int
+    ) -> RateLimitResult: ...
 
 
 class MemoryRateLimiter:
@@ -73,7 +77,9 @@ class MemoryRateLimiter:
             return RateLimitResult(allowed=False, remaining=0, retry_after=retry_after)
 
         bucket.count += 1
-        return RateLimitResult(allowed=True, remaining=max(limit - bucket.count, 0), retry_after=retry_after)
+        return RateLimitResult(
+            allowed=True, remaining=max(limit - bucket.count, 0), retry_after=retry_after
+        )
 
     def enforce(self, action: str, key: str, limit: int, window_seconds: int) -> RateLimitResult:
         result = self.check(action, key, limit, window_seconds)
@@ -98,7 +104,9 @@ class MemoryRateLimiter:
                 overflow = len(self._buckets) - len(expired) - _MAX_BUCKETS
                 oldest = [
                     key
-                    for key, _bucket in sorted(self._buckets.items(), key=lambda item: item[1].reset_at)
+                    for key, _bucket in sorted(
+                        self._buckets.items(), key=lambda item: item[1].reset_at
+                    )
                     if key not in expired
                 ]
                 expired.extend(oldest[:overflow])
@@ -139,7 +147,9 @@ class RedisRateLimiter:
                 window_seconds,
             )
         except RedisError:
-            logger.warning("Rate limiter Redis check failed; allowing request for action=%s", action)
+            logger.warning(
+                "Rate limiter Redis check failed; allowing request for action=%s", action
+            )
             return RateLimitResult(allowed=True, remaining=limit, retry_after=0)
 
         count = int(count)

@@ -39,6 +39,27 @@ jobs:
       - name: Run validation gate
         run: make check
 
+  api-lint:
+    name: API Lint (ruff)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install API with dev extras
+        working-directory: apps/api
+        run: pip install -e ".[dev]"
+
+      - name: Run ruff
+        working-directory: apps/api
+        run: ruff check src/
+
   api-syntax:
     name: API Syntax Check
     runs-on: ubuntu-latest
@@ -54,3 +75,47 @@ jobs:
 
       - name: Compile Python sources
         run: python -m compileall -q apps/api/src
+
+  migration-check:
+    name: Migration / Schema Drift
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: roadforge
+          POSTGRES_PASSWORD: roadforge
+          POSTGRES_DB: roadforge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U roadforge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: pip install -e .
+
+      - name: Run migrations
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge
+        run: alembic upgrade head
+
+      - name: Check for ORM/migration drift
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge
+        run: alembic check

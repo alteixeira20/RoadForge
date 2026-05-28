@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone
 import logging
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import delete, select
@@ -14,8 +14,8 @@ from api.schemas.roadmap import (
     CreateRoadmapResponse,
     JoinRoadmapRequest,
     JoinRoadmapResponse,
-    PhaseDTO,
     ParticipantResponse,
+    PhaseDTO,
     RoadmapConflictMetadata,
     RoadmapConflictResponse,
     RoadmapConflictServerSnapshot,
@@ -107,7 +107,9 @@ def _phase_task_ids(phases: list[PhaseDTO]) -> tuple[set[str], set[str]]:
     return phase_ids, task_ids
 
 
-def _conflict_summary(server_phases: list[PhaseDTO], client_phases: list[PhaseDTO] | None) -> RoadmapConflictSummary:
+def _conflict_summary(
+    server_phases: list[PhaseDTO], client_phases: list[PhaseDTO] | None
+) -> RoadmapConflictSummary:
     phase_count = len(server_phases)
     task_count = sum(len(phase.tasks) for phase in server_phases)
     if client_phases is None:
@@ -160,7 +162,9 @@ async def _create_roadmap_version(
     )
     latest = latest_result.scalar_one_or_none()
 
-    if not force and latest and latest.roadmap_name == roadmap.name and latest.snapshot_json == roadmap.snapshot_json:
+    if not force and latest and (
+        latest.roadmap_name == roadmap.name and latest.snapshot_json == roadmap.snapshot_json
+    ):
         return
 
     next_number = (latest.version_number if latest else 0) + 1
@@ -302,7 +306,11 @@ async def create_roadmap(
 
 
 _ROLE_ORDER: dict[str, int] = {"owner": 0, "editor": 1, "viewer": 2}
-_ROLE_LABELS: dict[str, str] = {"owner": "Owner link", "editor": "Editor link", "viewer": "Viewer link"}
+_ROLE_LABELS: dict[str, str] = {
+    "owner": "Owner link",
+    "editor": "Editor link",
+    "viewer": "Viewer link",
+}
 
 
 def _phases_from_snapshot(snapshot_json: dict) -> list[PhaseDTO]:
@@ -542,7 +550,9 @@ async def restore_roadmap_version(
         after_json={"name": roadmap.name, "phase_count": phase_count},
         metadata_json=metadata_json,
     ))
-    await _create_roadmap_version(db, roadmap, participant, "roadmap.restored", metadata_json, force=True)
+    await _create_roadmap_version(
+        db, roadmap, participant, "roadmap.restored", metadata_json, force=True
+    )
     await sync_roadmap_projection_best_effort(db, roadmap, "restore")
 
     await db.commit()
@@ -583,7 +593,9 @@ async def create_roadmap_checkpoint(
     latest = latest_result.scalar_one_or_none()
 
     # Return latest unchanged when snapshot is identical to current state
-    if latest and latest.roadmap_name == roadmap.name and latest.snapshot_json == roadmap.snapshot_json:
+    if latest and (
+        latest.roadmap_name == roadmap.name and latest.snapshot_json == roadmap.snapshot_json
+    ):
         phase_count, task_count = _snapshot_counts(latest.snapshot_json)
         return False, RoadmapVersionSummaryResponse(
             id=latest.id,

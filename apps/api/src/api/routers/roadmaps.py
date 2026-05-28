@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
-from fastapi.responses import JSONResponse
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
@@ -31,6 +31,7 @@ from api.services.event_bus import event_bus
 from api.services.lock_service import lock_service
 from api.services.rate_limit_service import rate_limiter
 from api.services.roadmap_service import (
+    RoadmapConflictError,
     create_roadmap,
     create_roadmap_checkpoint,
     delete_roadmap,
@@ -41,11 +42,10 @@ from api.services.roadmap_service import (
     get_roadmap_versions,
     get_share_links,
     join_roadmap,
+    restore_roadmap_version,
     revoke_participant,
     revoke_share_link,
-    restore_roadmap_version,
     rotate_share_link,
-    RoadmapConflictError,
     update_roadmap,
 )
 from api.services.ticket_service import ticket_service
@@ -226,7 +226,10 @@ async def fetch_participants(
     return await get_participants(db, roadmap_id, participant)
 
 
-@router.post("/{roadmap_id}/participants/{participant_id}/revoke", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/{roadmap_id}/participants/{participant_id}/revoke",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 async def post_revoke_participant(
     roadmap_id: str,
     participant_id: str,
@@ -246,7 +249,9 @@ async def post_event_ticket(
     authorization: str | None = Header(default=None),
 ) -> EventTicketResponse:
     # All roles (owner, editor, viewer) can subscribe to events.
-    participant = await require_participant(db, roadmap_id, authorization, {"owner", "editor", "viewer"})
+    participant = await require_participant(
+        db, roadmap_id, authorization, {"owner", "editor", "viewer"}
+    )
     rate_limiter.enforce(
         "events.ticket.participant",
         f"{participant.id}:{roadmap_id}",
@@ -259,7 +264,9 @@ async def post_event_ticket(
         limit=60,
         window_seconds=60,
     )
-    ticket = ticket_service.create_ticket(roadmap_id, participant.id, participant.session_expires_at)
+    ticket = ticket_service.create_ticket(
+        roadmap_id, participant.id, participant.session_expires_at
+    )
     return EventTicketResponse(ticket=ticket, expires_in=30)
 
 
@@ -296,7 +303,7 @@ async def post_lock(
     )
     if not lock:
         raise HTTPException(status_code=409, detail="Target is locked by another participant")
-    
+
     return LockResponse(
         roadmap_id=lock.roadmap_id,
         target=lock.target,
@@ -329,13 +336,13 @@ async def get_locks(
     locks = lock_service.get_locks_for_roadmap(roadmap_id)
     return [
         LockResponse(
-            roadmap_id=l.roadmap_id,
-            target=l.target,
-            participant_id=l.participant_id,
-            display_name=l.display_name,
-            expires_at=datetime.fromtimestamp(l.expires_at, timezone.utc),
+            roadmap_id=lock.roadmap_id,
+            target=lock.target,
+            participant_id=lock.participant_id,
+            display_name=lock.display_name,
+            expires_at=datetime.fromtimestamp(lock.expires_at, timezone.utc),
         )
-        for l in locks
+        for lock in locks
     ]
 
 

@@ -10,7 +10,6 @@ from redis.exceptions import RedisError
 
 from api.config import get_settings
 
-
 logger = logging.getLogger(__name__)
 _HEARTBEAT_INTERVAL_SECONDS = 25.0
 

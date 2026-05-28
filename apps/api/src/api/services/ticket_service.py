@@ -1,5 +1,5 @@
-import secrets
 import json
+import secrets
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -9,7 +9,6 @@ import redis
 from redis.exceptions import RedisError, ResponseError
 
 from api.config import get_settings
-
 
 _TICKET_TTL_SECONDS = 30
 _GETDEL_FALLBACK_SCRIPT = """

@@ -22,13 +22,18 @@ class Roadmap(Base):
     # Full phases snapshot stored as JSONB — shape: {"phases": [...]}
     snapshot_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     schema_version: Mapped[str] = mapped_column(sa.String(16), nullable=False, server_default="1.0")
-    is_password_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
+    is_password_enabled: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.false()
+    )
     password_hash: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now(), onupdate=sa.func.now()
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.now(),
+        onupdate=sa.func.now(),
     )
     deleted_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
 
@@ -62,8 +67,9 @@ class ShareLink(Base):
         sa.String, sa.ForeignKey("roadmaps.id", ondelete="CASCADE"), nullable=False
     )
     role: Mapped[str] = mapped_column(sa.String(16), nullable=False)
-    # SHA-256 hex digest of the raw invite token; private raw tokens are shown only on create/rotate.
-    # Uniqueness enforced by uq_share_links_token_hash in __table_args__ (no column-level unique=True).
+    # SHA-256 hex of the raw invite token; private raw tokens shown only on create/rotate.
+    # Uniqueness enforced by uq_share_links_token_hash in __table_args__ below
+    # (no column-level unique=True).
     token_hash: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # Raw token is persisted only for public read-only viewer/demo links so owners can re-copy them.
     public_token: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
@@ -77,13 +83,15 @@ class ShareLink(Base):
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
 
     roadmap: Mapped[Roadmap] = relationship("Roadmap", back_populates="share_links")
-    participants: Mapped[list[Participant]] = relationship("Participant", back_populates="share_link")
+    participants: Mapped[list[Participant]] = relationship(
+        "Participant", back_populates="share_link"
+    )
 
     __table_args__ = (
         _ROLE_CHECK,
         # One active link per roadmap+role for MVP; rotate replaces in-place.
         sa.UniqueConstraint("roadmap_id", "role", name="uq_share_links_roadmap_role"),
-        # token_hash uniqueness is enforced by uq_share_links_token_hash above (no separate index needed).
+        sa.UniqueConstraint("token_hash", name="uq_share_links_token_hash"),
         sa.Index("ix_share_links_roadmap_id", "roadmap_id"),
     )
 
@@ -107,7 +115,9 @@ class Participant(Base):
         sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
     )
     last_seen_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
-    session_expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    session_expires_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True
+    )
     revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
 
     roadmap: Mapped[Roadmap] = relationship("Roadmap", back_populates="participants")
@@ -150,7 +160,9 @@ class ActivityLog(Base):
     )
 
     roadmap: Mapped[Roadmap] = relationship("Roadmap", back_populates="activity_logs")
-    participant: Mapped[Participant | None] = relationship("Participant", back_populates="activity_logs")
+    participant: Mapped[Participant | None] = relationship(
+        "Participant", back_populates="activity_logs"
+    )
 
     __table_args__ = (
         # Queries are almost always filtered by roadmap and ordered newest-first.
@@ -207,7 +219,10 @@ class RoadmapPhase(Base):
         sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now(), onupdate=sa.func.now()
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.now(),
+        onupdate=sa.func.now(),
     )
 
     roadmap: Mapped[Roadmap] = relationship("Roadmap", back_populates="projection_phases")
@@ -247,7 +262,10 @@ class RoadmapTask(Base):
         sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now(), onupdate=sa.func.now()
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.now(),
+        onupdate=sa.func.now(),
     )
 
     phase: Mapped[RoadmapPhase] = relationship("RoadmapPhase", back_populates="tasks")
@@ -291,11 +309,17 @@ class RoadmapTaskDependency(Base):
     task: Mapped[RoadmapTask] = relationship(
         "RoadmapTask", back_populates="dependencies", foreign_keys=[task_id]
     )
-    depends_on_task: Mapped[RoadmapTask] = relationship("RoadmapTask", foreign_keys=[depends_on_task_id])
+    depends_on_task: Mapped[RoadmapTask] = relationship(
+        "RoadmapTask", foreign_keys=[depends_on_task_id]
+    )
 
     __table_args__ = (
-        sa.UniqueConstraint("task_id", "depends_on_task_id", name="uq_roadmap_task_dependencies_edge"),
-        sa.CheckConstraint("task_id <> depends_on_task_id", name="ck_roadmap_task_dependencies_not_self"),
+        sa.UniqueConstraint(
+            "task_id", "depends_on_task_id", name="uq_roadmap_task_dependencies_edge"
+        ),
+        sa.CheckConstraint(
+            "task_id <> depends_on_task_id", name="ck_roadmap_task_dependencies_not_self"
+        ),
         sa.Index("ix_roadmap_task_dependencies_roadmap_task", "roadmap_id", "task_id"),
         sa.Index(
             "ix_roadmap_task_dependencies_roadmap_depends_on",
@@ -330,6 +354,8 @@ class RoadmapTaskAssignee(Base):
     __table_args__ = (
         sa.UniqueConstraint("task_id", "display_name", name="uq_roadmap_task_assignees_name"),
         sa.Index("ix_roadmap_task_assignees_roadmap_display_name", "roadmap_id", "display_name"),
-        sa.Index("ix_roadmap_task_assignees_roadmap_task_position", "roadmap_id", "task_id", "position"),
+        sa.Index(
+            "ix_roadmap_task_assignees_roadmap_task_position", "roadmap_id", "task_id", "position"
+        ),
         sa.Index("ix_roadmap_task_assignees_participant_id", "participant_id"),
     )

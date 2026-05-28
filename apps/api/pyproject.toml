@@ -19,8 +19,20 @@ dependencies = [
     "redis>=5.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/api"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/", "alembic/", "alembic.ini"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

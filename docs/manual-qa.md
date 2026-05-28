@@ -428,6 +428,7 @@ Run on hosting-bay (or a staging clone of the deploy setup):
 - [ ] `curl https://roadforge.alexandreteixeira.dev/api/health` → `{"status":"ok","version":"0.1.0"}`.
 - [ ] Confirm normal deployment uses `ROADFORGE_API_WORKERS=1`.
 - [ ] Confirm any deployment with `ROADFORGE_API_WORKERS` greater than `1` also sets `ROADFORGE_REALTIME_BACKEND=redis`.
+- [ ] Migration/schema drift check passes — run `make api-check` (requires running stack) or `alembic check` directly. Expect: `No new upgrade operations detected.`
 
 ---
 

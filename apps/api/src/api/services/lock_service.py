@@ -12,7 +12,6 @@ from redis.exceptions import RedisError
 from api.config import get_settings
 from api.services.event_bus import Event, event_bus
 
-
 logger = logging.getLogger(__name__)
 _LOCK_TTL_SECONDS = 30
 _ACQUIRE_LOCK_SCRIPT = """
@@ -90,13 +89,13 @@ class MemoryLockService:
         async with self._lock:
             key = (roadmap_id, target)
             now = time.time()
-            
+
             existing = self._locks.get(key)
             if existing and now < existing.expires_at:
                 if existing.participant_id != participant_id:
                     # Locked by someone else
                     return None
-            
+
             # Create or refresh lock
             lock = Lock(
                 roadmap_id=roadmap_id,
@@ -106,7 +105,7 @@ class MemoryLockService:
                 expires_at=now + self._ttl
             )
             self._locks[key] = lock
-            
+
             # Broadast event
             await event_bus.publish(Event(
                 roadmap_id=roadmap_id,
@@ -118,14 +117,14 @@ class MemoryLockService:
                     "display_name": display_name,
                 }
             ))
-            
+
             return lock
 
     async def release_lock(self, roadmap_id: str, target: str, participant_id: str):
         async with self._lock:
             key = (roadmap_id, target)
             existing = self._locks.get(key)
-            
+
             if not existing:
                 return
 
@@ -134,7 +133,7 @@ class MemoryLockService:
                 return
 
             del self._locks[key]
-            
+
             # Broadcast event
             await event_bus.publish(Event(
                 roadmap_id=roadmap_id,
@@ -150,13 +149,13 @@ class MemoryLockService:
         now = time.time()
         # Prune expired locks for this roadmap opportunistically
         expired_keys = [
-            k for k, l in self._locks.items() 
-            if k[0] == roadmap_id and now > l.expires_at
+            k for k, lk in self._locks.items()
+            if k[0] == roadmap_id and now > lk.expires_at
         ]
         for k in expired_keys:
             del self._locks[k]
 
-        return [l for k, l in self._locks.items() if k[0] == roadmap_id]
+        return [lk for k, lk in self._locks.items() if k[0] == roadmap_id]
 
 
 class RedisLockService:

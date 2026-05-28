@@ -8,17 +8,8 @@ WORKDIR /app
 # Copy metadata first — dependency install is cached separately from source changes
 COPY pyproject.toml .
 
-# Install runtime dependencies listed in pyproject.toml
-RUN uv pip install --system --no-cache \
-    "fastapi>=0.115" \
-    "uvicorn[standard]>=0.34" \
-    "sqlalchemy[asyncio]>=2.0" \
-    "asyncpg>=0.30" \
-    "alembic>=1.14" \
-    "pydantic>=2.10" \
-    "pydantic-settings>=2.7" \
-    "python-dotenv>=1.0" \
-    "redis>=5.0"
+# Install runtime dependencies from pyproject.toml (non-editable; no dev extras)
+RUN uv pip install --system --no-cache .
 
 # Copy Alembic config and migration scripts
 COPY alembic.ini .

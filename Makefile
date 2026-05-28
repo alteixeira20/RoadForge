@@ -1,4 +1,4 @@
-.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-lint web-start web-stop web-status start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -52,6 +52,8 @@ help:
 	@echo "  make api-reset     Complete backend reset: down, up, migrate, health"
 	@echo "  make api-migrate   Run database migrations"
 	@echo "  make api-health    Check if backend is reachable"
+	@echo "  make api-check     Validate ORM/migration drift (alembic check)"
+	@echo "  make api-lint      Run ruff linter against apps/api/src"
 	@echo ""
 	@echo "  make web-start     Start frontend in the background"
 	@echo "  make web-stop      Stop background frontend process"
@@ -207,6 +209,12 @@ api-migrate:
 
 api-health:
 	@curl -s $(API_URL)/api/health | python3 -m json.tool || curl -s $(API_URL)/api/health
+
+api-check:
+	docker compose exec api alembic check
+
+api-lint:
+	cd apps/api && ruff check src/
 
 api-reset: api-down
 	docker compose down -v

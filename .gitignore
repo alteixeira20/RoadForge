@@ -41,3 +41,5 @@ Thumbs.db
 
 # Local rebranding prep packs
 rebranding/
+
+tmp/

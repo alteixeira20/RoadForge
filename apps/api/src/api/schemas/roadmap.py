@@ -6,6 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from api.schemas.limits import (
+    ASSIGNEE_MAX,
     DISPLAY_NAME_MAX,
     ID_MAX,
     PASSWORD_MAX,
@@ -15,7 +16,6 @@ from api.schemas.limits import (
     PHASE_NUM_MAX,
     PHASES_MAX,
     ROADMAP_NAME_MAX,
-    ASSIGNEE_MAX,
     TAG_MAX,
     TASK_ASSIGNEES_MAX,
     TASK_DEPS_MAX,

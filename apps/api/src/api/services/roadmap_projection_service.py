@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import logging
+from dataclasses import dataclass, field
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -64,8 +64,12 @@ def _snapshot_counts(snapshot_json: dict[str, Any]) -> tuple[int, int]:
 
 
 async def clear_roadmap_projection(db: AsyncSession, roadmap_id: str) -> None:
-    await db.execute(delete(RoadmapTaskAssignee).where(RoadmapTaskAssignee.roadmap_id == roadmap_id))
-    await db.execute(delete(RoadmapTaskDependency).where(RoadmapTaskDependency.roadmap_id == roadmap_id))
+    await db.execute(
+        delete(RoadmapTaskAssignee).where(RoadmapTaskAssignee.roadmap_id == roadmap_id)
+    )
+    await db.execute(
+        delete(RoadmapTaskDependency).where(RoadmapTaskDependency.roadmap_id == roadmap_id)
+    )
     await db.execute(delete(RoadmapTask).where(RoadmapTask.roadmap_id == roadmap_id))
     await db.execute(delete(RoadmapPhase).where(RoadmapPhase.roadmap_id == roadmap_id))
     await db.flush()
@@ -115,7 +119,9 @@ async def rebuild_roadmap_projection(db: AsyncSession, roadmap: Roadmap) -> None
                 next=task_data.get("next") if isinstance(task_data.get("next"), bool) else None,
                 est=task_data.get("est") if isinstance(task_data.get("est"), str) else None,
                 desc=task_data.get("desc") if isinstance(task_data.get("desc"), str) else None,
-                tags_json=task_data.get("tags") if isinstance(task_data.get("tags"), list) else None,
+                tags_json=(
+                    task_data.get("tags") if isinstance(task_data.get("tags"), list) else None
+                ),
                 source_json=_source_json(task_data, _TASK_KEYS),
             )
             db.add(task)
@@ -228,7 +234,11 @@ async def serialize_projection_to_snapshot(db: AsyncSession, roadmap_id: str) ->
     assignees_result = await db.execute(
         select(RoadmapTaskAssignee)
         .where(RoadmapTaskAssignee.roadmap_id == roadmap_id)
-        .order_by(RoadmapTaskAssignee.task_id.asc(), RoadmapTaskAssignee.position.asc(), RoadmapTaskAssignee.id.asc())
+        .order_by(
+            RoadmapTaskAssignee.task_id.asc(),
+            RoadmapTaskAssignee.position.asc(),
+            RoadmapTaskAssignee.id.asc(),
+        )
     )
     assignees_by_task_id: dict[str, list[str]] = {}
     for assignee in assignees_result.scalars().all():
@@ -392,7 +402,9 @@ async def validate_projection_parity(db: AsyncSession, roadmap: Roadmap) -> Proj
             snapshot_parent = snapshot_task.get("parentId")
             if snapshot_parent not in snapshot_task_ids:
                 snapshot_parent = None
-            _compare_scalar(issues, "parentId", task_owner, snapshot_parent, projection_task.get("parentId"))
+            _compare_scalar(
+                issues, "parentId", task_owner, snapshot_parent, projection_task.get("parentId")
+            )
             snapshot_deps = snapshot_task.get("deps")
             if isinstance(snapshot_deps, list):
                 snapshot_deps = [
@@ -401,9 +413,17 @@ async def validate_projection_parity(db: AsyncSession, roadmap: Roadmap) -> Proj
                     if isinstance(dep, str) and dep in snapshot_task_ids and dep != task_id
                 ]
             # Dependency edge order is not canonical during this projection phase.
-            _compare_optional_set(issues, "deps", task_id, snapshot_deps, projection_task.get("deps"))
-            _compare_optional_list(issues, "assignees", task_id, snapshot_task.get("assignees"), projection_task.get("assignees"))
-            _compare_optional_list(issues, "tags", task_id, snapshot_task.get("tags"), projection_task.get("tags"))
+            _compare_optional_set(
+                issues, "deps", task_id, snapshot_deps, projection_task.get("deps")
+            )
+            _compare_optional_list(
+                issues, "assignees", task_id,
+                snapshot_task.get("assignees"), projection_task.get("assignees"),
+            )
+            _compare_optional_list(
+                issues, "tags", task_id,
+                snapshot_task.get("tags"), projection_task.get("tags"),
+            )
 
     return ProjectionParityResult(
         ok=not issues,
