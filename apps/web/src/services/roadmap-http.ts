@@ -2,6 +2,8 @@
 // Shared request infrastructure used by all domain service files.
 // No business logic lives here — only transport concerns.
 
+import type { RoadmapConflictMetadata } from '@/types/roadmap'
+
 // ─── API configuration ─────────────────────────────────────────────────────────
 
 export const API_BASE_URL = (
@@ -27,6 +29,8 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly detail: string,
+    public readonly code?: string,
+    public readonly conflict?: RoadmapConflictMetadata,
   ) {
     super(`API ${status}: ${detail}`)
     this.name = 'ApiError'
@@ -42,6 +46,12 @@ export function isApiError(error: unknown, status?: number, detail?: string): er
 
 export function isSessionExpiredError(error: unknown): boolean {
   return isApiError(error, 401, 'Session expired')
+}
+
+export function getConflictMetadata(error: unknown): RoadmapConflictMetadata | null {
+  if (!(error instanceof ApiError)) return null
+  if (error.status !== 409 || error.code !== 'roadmap_conflict') return null
+  return error.conflict ?? null
 }
 
 // ─── HTTP helper ───────────────────────────────────────────────────────────────
@@ -71,13 +81,22 @@ export async function requestJson<T>(
   if (res.status === 204) return undefined as T
   if (!res.ok) {
     let detail = res.statusText
+    let code: string | undefined
+    let conflict: RoadmapConflictMetadata | undefined
     try {
-      const body = await res.json() as { detail?: string }
-      if (body.detail) detail = String(body.detail)
+      const body = await res.json() as {
+        detail?: string | { detail?: string; code?: string; conflict?: RoadmapConflictMetadata }
+        code?: string
+        conflict?: RoadmapConflictMetadata
+      }
+      if (typeof body.detail === 'string') detail = body.detail
+      if (typeof body.detail === 'object' && body.detail?.detail) detail = body.detail.detail
+      code = body.code ?? (typeof body.detail === 'object' ? body.detail.code : undefined)
+      conflict = body.conflict ?? (typeof body.detail === 'object' ? body.detail.conflict : undefined)
     } catch {
       // leave detail as statusText
     }
-    throw new ApiError(res.status, detail)
+    throw new ApiError(res.status, detail, code, conflict)
   }
   return res.json() as Promise<T>
 }

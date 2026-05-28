@@ -216,6 +216,100 @@
   margin: 0;
 }
 
+/* ─── Conflict review ──────────────────────────────────────────────────────── */
+.conflict-review {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.conflict-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.conflict-review-meta b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.conflict-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.conflict-review-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+}
+.conflict-review-label {
+  font-size: 11px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.conflict-review-grid strong {
+  color: var(--ink);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.conflict-review-grid span:last-child {
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+.conflict-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+}
+.conflict-review-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+}
+.conflict-review-row strong {
+  color: var(--ink);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.conflict-review-row span {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--ink-3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.conflict-review-row p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.conflict-review-empty {
+  margin: 0;
+  padding: 12px;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+}
+
 /* ─── Note line — used across multiple modal types ─────────────────────────── */
 .note-line {
   display: flex; gap: 10px; align-items: flex-start;
@@ -243,6 +337,10 @@
   .modal-head { padding: 18px 18px 10px; }
   .modal-body { padding: 10px 18px 14px; }
   .modal-foot { padding: 12px 18px 14px; flex-wrap: wrap; }
+  .conflict-review-grid,
+  .conflict-review-row {
+    grid-template-columns: 1fr;
+  }
   .wizard-step { padding: 22px 22px 6px; }
   .wizard-foot { padding: 14px 22px; }
 }

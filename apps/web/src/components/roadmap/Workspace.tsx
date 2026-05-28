@@ -10,6 +10,7 @@ import { WorkspaceToolbar } from './WorkspaceToolbar'
 import { PhaseList } from './PhaseList'
 import { WorkspaceBanners, WorkspaceUpgradeNotice } from './WorkspaceBanners'
 import { WorkspaceModals } from './WorkspaceModals'
+import { ConflictReviewPanel } from './ConflictReviewPanel'
 import { ActivityPanel } from './ActivityPanel'
 import { TeamPanel } from './TeamPanel'
 import { VersionsPanel } from './VersionsPanel'
@@ -163,6 +164,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const {
     syncStatus,
     isConflict,
+    conflictMetadata,
+    showConflictReview,
+    keepLocalLoading,
     confirmReload,
     activityRefreshKey,
     addPendingActivityChange,
@@ -170,6 +174,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     refreshActivity,
     markServerStateHealthy,
     handleConfirmSave,
+    handleOpenConflictReview,
+    handleCloseConflictReview,
+    handleKeepLocalVersion,
     handleReloadServerVersion,
     handleReloadConfirm,
     closeReloadConfirm,
@@ -354,6 +361,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         sessionExpired={!!sessionExpiredRoadmapId}
         onDismissSessionExpired={clearSessionExpiredNotice}
         onCreateOwn={onCreateOwn}
+        onReviewConflict={conflictMetadata ? handleOpenConflictReview : undefined}
         onReloadServerVersion={handleReloadServerVersion}
       />
 
@@ -440,6 +448,17 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       />
 
       {toast && <Toast message={toast} />}
+
+      <ConflictReviewPanel
+        open={showConflictReview}
+        conflict={conflictMetadata}
+        localName={roadmapName}
+        localPhases={phases}
+        keepLocalLoading={keepLocalLoading}
+        onClose={handleCloseConflictReview}
+        onUseServerVersion={handleReloadServerVersion}
+        onKeepLocalVersion={handleKeepLocalVersion}
+      />
 
       <ConfirmDialog
         open={confirmReload}

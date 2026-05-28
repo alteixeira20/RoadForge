@@ -10,6 +10,7 @@ interface WorkspaceBannersProps {
   sessionExpired: boolean
   onDismissSessionExpired: () => void
   onCreateOwn?: () => void
+  onReviewConflict?: () => void
   onReloadServerVersion: () => void
 }
 
@@ -21,6 +22,7 @@ export function WorkspaceBanners({
   sessionExpired,
   onDismissSessionExpired,
   onCreateOwn,
+  onReviewConflict,
   onReloadServerVersion,
 }: WorkspaceBannersProps) {
   return (
@@ -50,6 +52,11 @@ export function WorkspaceBanners({
             The roadmap changed elsewhere. Your edits are preserved locally.
           </span>
           <span className="spacer" />
+          {onReviewConflict && (
+            <button className="btn sm primary" onClick={onReviewConflict}>
+              <Icon name="eye" size={13} /> Review conflict
+            </button>
+          )}
           <button className="btn sm" onClick={onReloadServerVersion}>
             <Icon name="cloud" size={13} /> Reload server version
           </button>

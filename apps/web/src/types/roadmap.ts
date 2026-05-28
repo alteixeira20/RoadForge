@@ -58,6 +58,30 @@ export interface Roadmap {
   updatedAt: string
 }
 
+export interface RoadmapConflictSummary {
+  phase_count: number
+  task_count: number
+  phase_ids?: string[]
+  task_ids?: string[]
+}
+
+export interface RoadmapConflictMetadata {
+  roadmap_id: string
+  server_updated_at: string
+  client_last_updated_at: string
+  server: {
+    name: string
+    phases: Phase[]
+  }
+  summary?: RoadmapConflictSummary | null
+}
+
+export interface RoadmapConflictResponse {
+  detail: string
+  code: 'roadmap_conflict'
+  conflict: RoadmapConflictMetadata
+}
+
 export type ActivityAction =
   | 'roadmap.updated'
   | 'roadmap.renamed'

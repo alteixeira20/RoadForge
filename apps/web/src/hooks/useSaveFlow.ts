@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
-import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
+import { getConflictMetadata, isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
 import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-changes'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
@@ -60,6 +60,8 @@ export function useSaveFlow({
   const [activityRefreshKey, setActivityRefreshKey] = useState(0)
   const [pendingActivityChanges, setPendingActivityChanges] = useState<ActivityChange[]>([])
   const [confirmReload, setConfirmReload] = useState(false)
+  const [showConflictReview, setShowConflictReview] = useState(false)
+  const [keepLocalLoading, setKeepLocalLoading] = useState(false)
 
   const addPendingActivityChange = (change: ActivityChange) => {
     setPendingActivityChanges((prev) => mergePendingActivityChange(prev, change))
@@ -83,7 +85,14 @@ export function useSaveFlow({
     showToast('Session expired. Rejoin through an active invite link.')
   }
 
-  const { isConflict, setIsOffline, setIsConflict, syncStatus } = useAutoSync({
+  const {
+    isConflict,
+    conflictMetadata,
+    setIsOffline,
+    setIsConflict,
+    setConflictMetadata,
+    syncStatus,
+  } = useAutoSync({
     serverRoadmapId,
     sessionToken,
     readOnly,
@@ -101,11 +110,13 @@ export function useSaveFlow({
     onActivityRefresh: refreshActivity,
     onToast: showToast,
     onSessionExpired: handleSessionExpired,
+    onConflictMetadata: () => setShowConflictReview(true),
   })
 
   const markServerStateHealthy = () => {
     setIsOffline(false)
     setIsConflict(false)
+    setConflictMetadata(null)
   }
 
   const handleConfirmSave = async (password?: string) => {
@@ -141,12 +152,16 @@ export function useSaveFlow({
       setSaved(true)
       setIsOffline(false)
       setIsConflict(false)
+      setConflictMetadata(null)
       if (showActivity) setActivityRefreshKey((k) => k + 1)
       showToast('Saved · collaboration enabled')
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('409')) {
+      const nextConflict = getConflictMetadata(err)
+      if (nextConflict || msg.includes('409')) {
         setIsConflict(true)
+        setConflictMetadata(nextConflict)
+        if (nextConflict) setShowConflictReview(true)
         showToast('The roadmap changed elsewhere. Your edits are preserved locally.')
       } else if (isSessionExpiredError(err)) {
         handleSessionExpired()
@@ -167,6 +182,52 @@ export function useSaveFlow({
     setConfirmReload(true)
   }
 
+  const handleOpenConflictReview = () => setShowConflictReview(true)
+  const handleCloseConflictReview = () => setShowConflictReview(false)
+
+  const handleKeepLocalVersion = async () => {
+    if (!serverRoadmapId || !sessionToken || !conflictMetadata) return
+
+    setKeepLocalLoading(true)
+    const changeSummary = buildChangeSummary(pendingActivityChanges, serverRoadmapId)
+    try {
+      const data = await saveToServer(
+        serverRoadmapId,
+        roadmapName,
+        phases,
+        sessionToken,
+        conflictMetadata.server_updated_at,
+        changeSummary,
+      )
+      setUpdatedAt(data.updated_at)
+      setPendingActivityChanges([])
+      setSaved(true)
+      setIsConflict(false)
+      setConflictMetadata(null)
+      setIsOffline(false)
+      setShowConflictReview(false)
+      if (showActivity) setActivityRefreshKey((k) => k + 1)
+      showToast('Saved your local version.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      const nextConflict = getConflictMetadata(err)
+      if (nextConflict || msg.includes('409')) {
+        setIsConflict(true)
+        setConflictMetadata(nextConflict)
+        showToast('The server changed again. Review the latest conflict.')
+      } else if (isSessionExpiredError(err)) {
+        handleSessionExpired()
+      } else if (isApiConnectionError(err)) {
+        setIsOffline(true)
+        showToast('Could not reach the server — try again later.')
+      } else {
+        showToast('Could not keep your local version.')
+      }
+    } finally {
+      setKeepLocalLoading(false)
+    }
+  }
+
   const handleReloadConfirm = async () => {
     if (!serverRoadmapId || !sessionToken) return
     setConfirmReload(false)
@@ -183,6 +244,8 @@ export function useSaveFlow({
       setPendingActivityChanges([])
       setSaved(!upgraded.changed)
       setIsConflict(false)
+      setConflictMetadata(null)
+      setShowConflictReview(false)
       setIsOffline(false)
       showToast('Reloaded server version.')
     } catch (err) {
@@ -204,6 +267,9 @@ export function useSaveFlow({
   return {
     syncStatus,
     isConflict,
+    conflictMetadata,
+    showConflictReview,
+    keepLocalLoading,
     confirmReload,
     activityRefreshKey,
     pendingActivityChanges,
@@ -215,6 +281,9 @@ export function useSaveFlow({
     markServerStateHealthy,
 
     handleConfirmSave,
+    handleOpenConflictReview,
+    handleCloseConflictReview,
+    handleKeepLocalVersion,
     handleReloadServerVersion,
     handleReloadConfirm,
     closeReloadConfirm,

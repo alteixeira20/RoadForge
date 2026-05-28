@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { saveToServer } from '@/services/roadmap-crud.service'
-import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
+import { getConflictMetadata, isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
 import { buildChangeSummary } from '@/lib/activity-changes'
-import type { Phase, ActivityChange, SyncStatus } from '@/types/roadmap'
+import type { Phase, ActivityChange, RoadmapConflictMetadata, SyncStatus } from '@/types/roadmap'
 
 interface AutoSyncParams {
   serverRoadmapId: string | null
@@ -20,14 +20,17 @@ interface AutoSyncParams {
   onActivityRefresh: () => void
   onToast: (msg: string) => void
   onSessionExpired: () => void
+  onConflictMetadata?: (metadata: RoadmapConflictMetadata) => void
 }
 
 interface AutoSyncResult {
   isSyncing: boolean
   isOffline: boolean
   isConflict: boolean
+  conflictMetadata: RoadmapConflictMetadata | null
   setIsOffline: (v: boolean) => void
   setIsConflict: (v: boolean) => void
+  setConflictMetadata: (v: RoadmapConflictMetadata | null) => void
   syncStatus: SyncStatus
 }
 
@@ -45,10 +48,12 @@ export function useAutoSync({
   onActivityRefresh,
   onToast,
   onSessionExpired,
+  onConflictMetadata,
 }: AutoSyncParams): AutoSyncResult {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
   const [isConflict, setIsConflict] = useState(false)
+  const [conflictMetadata, setConflictMetadata] = useState<RoadmapConflictMetadata | null>(null)
 
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Ref prevents concurrent autosync calls without adding isSyncing to effect deps
@@ -67,6 +72,7 @@ export function useAutoSync({
     onActivityRefresh,
     onToast,
     onSessionExpired,
+    onConflictMetadata,
   })
 
   // Keep ref fresh so the debounced callback always reads the latest values
@@ -83,6 +89,7 @@ export function useAutoSync({
     onActivityRefresh,
     onToast,
     onSessionExpired,
+    onConflictMetadata,
   }
 
   // ─── Debounced autosync for server-backed roadmaps ─────────────────────────
@@ -109,6 +116,7 @@ export function useAutoSync({
         onActivityRefresh: activityRefresh,
         onToast: toast,
         onSessionExpired: sessionExpired,
+        onConflictMetadata: openConflict,
       } = syncParamsRef.current
 
       if (!rid || !tok || currentSaved) {
@@ -123,10 +131,14 @@ export function useAutoSync({
         syncSuccess(data.updated_at)
         setIsOffline(false)
         setIsConflict(false)
+        setConflictMetadata(null)
         if (showAct) activityRefresh()
       } catch (err) {
-        if (err instanceof Error && err.message.includes('409')) {
+        const nextConflict = getConflictMetadata(err)
+        if (nextConflict || (err instanceof Error && err.message.includes('409'))) {
           setIsConflict(true)
+          setConflictMetadata(nextConflict)
+          if (nextConflict) openConflict?.(nextConflict)
           setIsOffline(false)
           toast('The roadmap changed elsewhere. Your edits are preserved locally.')
         } else if (isSessionExpiredError(err)) {
@@ -160,5 +172,14 @@ export function useAutoSync({
           ? 'offline'
           : 'live'
 
-  return { isSyncing, isOffline, isConflict, setIsOffline, setIsConflict, syncStatus }
+  return {
+    isSyncing,
+    isOffline,
+    isConflict,
+    conflictMetadata,
+    setIsOffline,
+    setIsConflict,
+    setConflictMetadata,
+    syncStatus,
+  }
 }
