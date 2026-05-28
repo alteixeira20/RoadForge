@@ -64,6 +64,13 @@
   border-color: rgba(217,116,66,0.30);
   background: linear-gradient(180deg, var(--bg-2), rgba(217,116,66,0.04));
 }
+.io-action.destructive {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+}
+.io-action.destructive .io-action-icon {
+  color: var(--warning);
+}
 .io-action-icon {
   width: 30px;
   height: 30px;

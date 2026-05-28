@@ -21,6 +21,7 @@ interface IOModalProps {
 
 type Tab = 'export' | 'import'
 type ImportMode = 'replace-current' | 'new-local'
+type ReplaceImportScope = 'synced' | 'local'
 
 function updateUrlForLocalRoadmap(roadmapId: string): void {
   if (typeof window === 'undefined') return
@@ -31,6 +32,7 @@ interface PendingImport {
   result: ImportedRoadmap
   mode: ImportMode
   upgradeNotices: RoadmapUpgradeNotice[]
+  replaceScope: ReplaceImportScope
 }
 
 export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalProps) {
@@ -69,6 +71,20 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'roadmap'
 
+  const padDatePart = (value: number) => String(value).padStart(2, '0')
+
+  const formatExportTimestamp = (date = new Date()) => {
+    const year = date.getFullYear()
+    const month = padDatePart(date.getMonth() + 1)
+    const day = padDatePart(date.getDate())
+    const hours = padDatePart(date.getHours())
+    const minutes = padDatePart(date.getMinutes())
+    return `${year}${month}${day}-${hours}${minutes}`
+  }
+
+  const jsonExportFilename = () =>
+    `${slug(roadmapName)}.${formatExportTimestamp()}.roadforge.json`
+
   const exportMetadata = {
     roadmapName,
     saved,
@@ -81,7 +97,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
   const handleJsonExport = async () => {
     try {
       const blob = await exportRoadmap(phases, 'json', exportMetadata)
-      downloadBlob(blob, `${slug(roadmapName)}.roadforge.json`)
+      downloadBlob(blob, jsonExportFilename())
       onToast('JSON file downloaded')
       onClose()
     } catch {
@@ -154,8 +170,16 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
           phases: upgraded.phases,
         }
         const mode = importModeRef.current
-        if (imported.warnings.length > 0 || imported.repairs.length > 0 || upgraded.notices.length > 0) {
-          setPendingImport({ result: imported, mode, upgradeNotices: upgraded.notices })
+        const hasNotices = imported.warnings.length > 0 ||
+          imported.repairs.length > 0 ||
+          upgraded.notices.length > 0
+        if (mode === 'replace-current' || hasNotices) {
+          setPendingImport({
+            result: imported,
+            mode,
+            upgradeNotices: upgraded.notices,
+            replaceScope: serverRoadmapId ? 'synced' : 'local',
+          })
         } else {
           executeImport(imported, mode)
         }
@@ -270,6 +294,30 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
             <button
               type="button"
               className="io-action primary"
+              onClick={() => selectImportFile('new-local')}
+              aria-label="Import as new local roadmap"
+            >
+              <span className="io-action-icon">
+                <Icon name="plus" size={15} />
+              </span>
+              <span className="io-action-copy">
+                <span className="io-action-title">Import as new local roadmap</span>
+                <span className="io-action-desc">
+                  Safer option: create and activate a separate local draft.
+                  Collaborators are not affected.
+                </span>
+                <span className="io-action-note">
+                  Keeps your current roadmap unchanged.
+                </span>
+              </span>
+              <span className="io-action-go" aria-hidden>
+                <Icon name="arrow-right" size={15} />
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className="io-action destructive"
               onClick={() => selectImportFile('replace-current')}
               disabled={!canReplaceCurrent}
               aria-label="Replace current roadmap from JSON"
@@ -281,31 +329,11 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
                 <span className="io-action-title">Replace current roadmap</span>
                 <span className="io-action-desc">
                   {serverRoadmapId
-                    ? 'This will replace the current shared roadmap for everyone after sync.'
-                    : 'Replace this local draft with a RoadForge JSON file.'}
+                    ? 'Destructive: overwrite this shared roadmap with the imported file.'
+                    : 'Destructive: overwrite this local draft with the imported file.'}
                 </span>
                 <span className="io-action-note">
-                  Keeps the current roadmap ID, session, and switcher entry.
-                </span>
-              </span>
-              <span className="io-action-go" aria-hidden>
-                <Icon name="arrow-right" size={15} />
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className="io-action"
-              onClick={() => selectImportFile('new-local')}
-              aria-label="Import as new local roadmap"
-            >
-              <span className="io-action-icon">
-                <Icon name="plus" size={15} />
-              </span>
-              <span className="io-action-copy">
-                <span className="io-action-title">Import as new local roadmap</span>
-                <span className="io-action-desc">
-                  Create and activate a separate local draft. Collaborators are not affected.
+                  Requires confirmation. Keeps the current roadmap ID, session, and switcher entry.
                 </span>
               </span>
               <span className="io-action-go" aria-hidden>
