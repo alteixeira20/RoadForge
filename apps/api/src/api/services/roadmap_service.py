@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta, timezone
+import logging
 
 from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.config import get_settings
 from api.models.roadmap import ActivityLog, Participant, Roadmap, RoadmapVersion, ShareLink
 from api.schemas.roadmap import (
     ActivityLogListResponse,
@@ -25,8 +27,16 @@ from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.password_service import hash_password, verify_password
 from api.services.rate_limit_service import rate_limiter
+from api.services.roadmap_projection_service import (
+    serialize_projection_to_snapshot,
+    sync_roadmap_projection_best_effort,
+    validate_projection_parity,
+)
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
+
+logger = logging.getLogger(__name__)
+
 
 def _ensure_aware_utc(dt: datetime) -> datetime:
     """Return dt as a timezone-aware UTC datetime.
@@ -205,6 +215,7 @@ async def create_roadmap(
         metadata_json=metadata_json,
     ))
     await _create_roadmap_version(db, roadmap, participant, "roadmap.created", metadata_json)
+    await sync_roadmap_projection_best_effort(db, roadmap, "create")
 
     await db.commit()
     # Refresh roadmap to read server-set created_at / updated_at timestamps.
@@ -258,6 +269,30 @@ def _roadmap_response(roadmap: Roadmap, phases: list[PhaseDTO]) -> RoadmapRespon
     )
 
 
+async def _phases_for_read(db: AsyncSession, roadmap: Roadmap) -> list[PhaseDTO]:
+    if not get_settings().roadmap_projection_read_enabled:
+        return _phases_from_snapshot(roadmap.snapshot_json)
+
+    try:
+        parity = await validate_projection_parity(db, roadmap)
+        if not parity.ok:
+            logger.warning(
+                "roadmap projection parity failed; falling back to snapshot",
+                extra={"roadmap_id": roadmap.id, "issues": parity.issues},
+            )
+            return _phases_from_snapshot(roadmap.snapshot_json)
+
+        projection_snapshot = await serialize_projection_to_snapshot(db, roadmap.id)
+        return _phases_from_snapshot(projection_snapshot)
+    except Exception as exc:
+        logger.warning(
+            "roadmap projection read failed; falling back to snapshot",
+            extra={"roadmap_id": roadmap.id, "error": str(exc)},
+            exc_info=True,
+        )
+        return _phases_from_snapshot(roadmap.snapshot_json)
+
+
 async def _fetch_active_roadmap(db: AsyncSession, roadmap_id: str) -> Roadmap:
     result = await db.execute(
         select(Roadmap).where(Roadmap.id == roadmap_id, Roadmap.deleted_at.is_(None))
@@ -270,7 +305,7 @@ async def _fetch_active_roadmap(db: AsyncSession, roadmap_id: str) -> Roadmap:
 
 async def get_roadmap(db: AsyncSession, roadmap_id: str) -> RoadmapResponse:
     roadmap = await _fetch_active_roadmap(db, roadmap_id)
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return _roadmap_response(roadmap, await _phases_for_read(db, roadmap))
 
 
 async def update_roadmap(
@@ -298,6 +333,7 @@ async def update_roadmap(
         after_json["name"] = payload.name
         roadmap.name = payload.name
 
+    phases_changed = payload.phases is not None
     if payload.phases is not None:
         before_json["phase_count"] = len(roadmap.snapshot_json.get("phases", []))
         after_json["phase_count"] = len(payload.phases)
@@ -328,6 +364,8 @@ async def update_roadmap(
     ))
     if _should_create_version(action, metadata_json):
         await _create_roadmap_version(db, roadmap, participant, action, metadata_json)
+    if phases_changed:
+        await sync_roadmap_projection_best_effort(db, roadmap, "update")
 
     await db.commit()
     await db.refresh(roadmap)
@@ -450,6 +488,7 @@ async def restore_roadmap_version(
         metadata_json=metadata_json,
     ))
     await _create_roadmap_version(db, roadmap, participant, "roadmap.restored", metadata_json, force=True)
+    await sync_roadmap_projection_best_effort(db, roadmap, "restore")
 
     await db.commit()
     await db.refresh(roadmap)

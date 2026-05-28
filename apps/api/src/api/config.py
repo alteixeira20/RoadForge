@@ -34,6 +34,10 @@ class Settings(BaseSettings):
 
     # Base URL of the Next.js frontend — used to build invite link join URLs.
     web_base_url: str = Field(default="http://localhost:3020", alias="ROADFORGE_WEB_BASE_URL")
+    roadmap_projection_read_enabled: bool = Field(
+        default=False,
+        alias="ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED",
+    )
 
 
 @lru_cache
