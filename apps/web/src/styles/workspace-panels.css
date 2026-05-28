@@ -7,7 +7,7 @@
   width: 360px;
   background: var(--bg);
   border-left: 1px solid var(--border);
-  z-index: 100;
+  z-index: var(--z-panel);
   display: flex; flex-direction: column;
   box-shadow: -10px 0 30px rgba(0,0,0,0.25);
   animation: slideIn 240ms cubic-bezier(.2,.8,.2,1);

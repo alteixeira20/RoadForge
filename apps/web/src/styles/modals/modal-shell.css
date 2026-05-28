@@ -3,7 +3,7 @@
 /* ─── Wizard scrim ─────────────────────────────────────────────────────────── */
 .wizard-scrim {
   position: fixed; inset: 0;
-  z-index: 100;
+  z-index: var(--z-wizard);
   background: rgba(8,8,10,0.78);
   backdrop-filter: blur(10px);
   display: grid; place-items: center;
@@ -109,7 +109,7 @@
 
 /* ─── Generic modal scrim ──────────────────────────────────────────────────── */
 .modal-scrim {
-  position: fixed; inset: 0; z-index: 80;
+  position: fixed; inset: 0; z-index: var(--z-modal);
   background: rgba(8,6,4,0.62);
   backdrop-filter: blur(6px);
   display: grid; place-items: center;
@@ -326,8 +326,8 @@
   font-size: 12.5px;
 }
 .note-line.warning {
-  border-color: rgba(217,116,66,0.25);
-  background: rgba(217,116,66,0.06);
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
 }
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */

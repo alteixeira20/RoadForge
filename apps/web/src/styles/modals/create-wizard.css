@@ -1,17 +1,17 @@
 /* ─── Create wizard step content — form fields, option cards, local note, bullets ── */
 
 /* ─── Form fields ──────────────────────────────────────────────────────────── */
-.field {
+.wizard .field {
   display: flex; flex-direction: column;
   gap: 8px;
   margin-top: 6px;
 }
-.field label {
+.wizard .field label {
   font-size: 14px;
   color: var(--ink-2);
   font-weight: 500;
 }
-.field .input {
+.wizard .field .input {
   height: 52px;
   padding: 0 16px;
   background: var(--bg-inset);
@@ -22,9 +22,9 @@
   outline: none;
   transition: border-color 160ms, box-shadow 160ms;
 }
-.field .input:focus { border-color: var(--ember); box-shadow: 0 0 0 4px var(--lava-glow); }
-.field .input::placeholder { color: var(--ink-4); }
-.field .hint { font-size: 13px; color: var(--ink-3); }
+.wizard .field .input:focus { border-color: var(--ember); box-shadow: 0 0 0 4px var(--lava-glow); }
+.wizard .field .input::placeholder { color: var(--ink-4); }
+.wizard .field .hint { font-size: 13px; color: var(--ink-3); }
 
 /* ─── Starting point options ───────────────────────────────────────────────── */
 .starting-point-options {
