@@ -69,8 +69,20 @@ export function WorkspaceHead({
   return (
     <div className="workspace-head">
       <div className="crumbline">Roadmap</div>
-      <div className="roadmap-title-row">
-        <h1 onDoubleClick={startEditing}>
+      <div className={`roadmap-title-row ${canRename && !isEditing ? 'rename-available' : ''}`}>
+        <h1
+          className={canRename && !isEditing ? 'roadmap-title-renamable' : undefined}
+          onDoubleClick={startEditing}
+          tabIndex={canRename && !isEditing ? 0 : undefined}
+          title={canRename && !isEditing ? 'Double-click to rename' : undefined}
+          onKeyDown={(event) => {
+            if (!canRename || isEditing) return
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              startEditing()
+            }
+          }}
+        >
           {isEditing ? (
             <input
               ref={inputRef}

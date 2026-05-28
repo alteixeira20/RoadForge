@@ -68,12 +68,35 @@
   flex: 1;
   min-width: 0;
   margin: 0;
+  padding: 4px 8px;
+  margin-left: -8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   font-family: var(--font-display);
   font-size: 34px;
   font-weight: 500;
   letter-spacing: -0.025em;
   line-height: 1.15;
   overflow-wrap: anywhere;
+}
+.roadmap-title-renamable {
+  cursor: text;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.roadmap-title-row.rename-available:hover .roadmap-title-renamable,
+.roadmap-title-renamable:focus-visible {
+  background: var(--bg-2);
+  border-color: var(--border-faint);
+  outline: none;
+}
+.roadmap-title-row.rename-available:hover .roadmap-title-renamable {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 6px;
+  text-decoration-color: var(--border-strong);
+}
+.roadmap-title-renamable:focus-visible {
+  box-shadow: 0 0 0 3px var(--lava-glow);
 }
 .roadmap-title-input {
   width: 100%;
@@ -131,6 +154,24 @@
 
 /* ─── Phases container ─────────────────────────────────────────────────────── */
 .phases { display: flex; flex-direction: column; gap: 12px; }
+.filtered-empty-state {
+  padding: 28px 24px;
+  background: var(--bg-2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--ink-3);
+  text-align: center;
+}
+.filtered-empty-state strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ink-1);
+  font-size: 14px;
+}
+.filtered-empty-state p {
+  margin: 0;
+  font-size: 13.5px;
+}
 
 /* ─── Animations ───────────────────────────────────────────────────────────── */
 @keyframes highlightFlash {

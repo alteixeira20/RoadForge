@@ -166,7 +166,8 @@ export function WorkspaceToolbar({
         <button
           className="toolbar-action"
           onClick={onOpenActivity}
-          title={hasServerActivity ? 'View recent activity' : 'Activity logs become available after saving to RoadForge.'}
+          disabled={!hasServerActivity}
+          title={hasServerActivity ? 'View recent activity' : 'Activity appears after saving or syncing this roadmap.'}
         >
           <Icon name="activity" size={14} /> Activity
         </button>

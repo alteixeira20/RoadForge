@@ -178,6 +178,14 @@
   color: var(--ink-3);
 }
 .toolbar-action:hover { color: var(--ink); background: var(--bg); }
+.toolbar-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.toolbar-action:disabled:hover {
+  color: var(--ink-3);
+  background: transparent;
+}
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 

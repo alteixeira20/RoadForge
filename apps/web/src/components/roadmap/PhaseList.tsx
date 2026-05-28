@@ -104,6 +104,17 @@ export function PhaseList({
 
   const activePhase = activePhaseId ? phases.find((p) => p.id === activePhaseId) : null
 
+  if (isFiltering && phases.length === 0) {
+    return (
+      <div className="phases">
+        <div className="filtered-empty-state" role="status">
+          <strong>No matching tasks</strong>
+          <p>No tasks match the current search or filter.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       <DndContext
