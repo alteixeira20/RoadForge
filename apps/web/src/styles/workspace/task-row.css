@@ -7,6 +7,11 @@
 .task:last-child { border-bottom: none; }
 .task.expanded { background: var(--bg-2); }
 .task.next { background: linear-gradient(180deg, rgba(217,116,66,0.04), transparent 30%); }
+.task.locked {
+  background: linear-gradient(90deg, var(--ink-6), transparent 62%);
+  box-shadow: inset 3px 0 0 var(--border-strong);
+}
+.task.locked.expanded { background: linear-gradient(90deg, var(--ink-6), var(--bg-2) 62%); }
 
 /* ─── Task row ─────────────────────────────────────────────────────────────── */
 .task-row {
@@ -64,7 +69,13 @@
   font-family: var(--font-mono);
 }
 .task-row .meta-pill.blocked { color: var(--ink-4); }
-.task-row .meta-pill.meta-pill-lock { color: var(--ink-3); background: var(--ink-6); }
+.task-row .meta-pill.meta-pill-lock {
+  color: var(--ink-2);
+  background: var(--ink-6);
+  border: 1px solid var(--border-faint);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
 
 /* ─── Disabled check state ─────────────────────────────────────────────────── */
 .task-row .check.task-check-disabled {
@@ -119,6 +130,15 @@
 }
 
 .task-detail .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.task-action-note {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--ink-3);
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
 
 /* ─── Task detail sections ─────────────────────────────────────────────────── */
 .task-detail-section { margin-top: 12px; }
@@ -165,10 +185,13 @@
 }
 
 /* ─── Drag handles (task-level) ────────────────────────────────────────────── */
+/* Task rows always reserve this left drag slot. Disabled placeholders preserve
+   row alignment; only the active handle receives dnd-kit listeners. */
 .drag-handle {
   width: 24px; height: 32px;
   display: grid; place-items: center;
   color: var(--ink-4);
+  flex: 0 0 24px;
   cursor: grab;
   margin-left: -12px;
   transition: all 160ms;

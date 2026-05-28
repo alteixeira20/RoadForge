@@ -68,8 +68,26 @@ export function TaskRow({
   const target = `task:${task.id}`
   const lock = locks[target]
   const isLockedByMe = lock?.participantId === participantId
-  const isLockedByOther = lock && !isLockedByMe
+  const isLockedByOther = Boolean(lock && !isLockedByMe)
+  const lockHolderName = lock?.displayName || 'Another participant'
   const effectivelyReadOnly = readOnly || isLockedByOther
+  const canDragTask =
+    !effectivelyReadOnly && !expanded && !dragDisabled && Boolean(dragHandleProps)
+  let dragHandleTitle = 'Reordering unavailable'
+  if (canDragTask) {
+    dragHandleTitle = 'Drag to reorder'
+  } else if (isLockedByOther) {
+    dragHandleTitle = 'Reordering temporarily locked'
+  } else if (readOnly) {
+    dragHandleTitle = 'Reordering unavailable in read-only mode'
+  } else if (expanded) {
+    dragHandleTitle = 'Collapse task to reorder'
+  }
+  const unavailableActionsMessage = isLockedByOther
+    ? `${lockHolderName} is editing this task. Actions are temporarily locked.`
+    : readOnly
+      ? 'Read-only view. Task actions are unavailable.'
+      : null
 
   // ─── Effects ──────────────────────────────────────────────────────────────
 
@@ -164,17 +182,18 @@ export function TaskRow({
         .join(' ')}
     >
       <div className="task-row">
-        {!effectivelyReadOnly && !expanded && (
-          <div 
-            className={`drag-handle ${dragDisabled ? 'disabled' : ''}`}
-            title={dragDisabled ? "Collapse task to reorder" : "Drag to reorder"}
-            {...dragHandleProps}
-          >
-            <Icon name="grip" size={14} />
-          </div>
-        )}
+        <div
+          className={`drag-handle ${canDragTask ? '' : 'disabled'}`}
+          title={dragHandleTitle}
+          aria-hidden={!canDragTask}
+          {...(canDragTask ? dragHandleProps : {})}
+        >
+          <Icon name="grip" size={14} />
+        </div>
         <div
           className={`check${effectivelyReadOnly ? ' task-check-disabled' : ''}`}
+          aria-disabled={effectivelyReadOnly}
+          title={effectivelyReadOnly ? 'Task check is unavailable' : undefined}
           onClick={(e) => {
             e.stopPropagation()
             if (!effectivelyReadOnly) onCheck(task.id)
@@ -183,7 +202,7 @@ export function TaskRow({
         <div className="title">{task.title}</div>
         {isLockedByOther && (
           <span className="meta-pill meta-pill-lock">
-            <Icon name="shield" size={11} /> {lock.displayName} is editing
+            <Icon name="shield" size={11} /> {lockHolderName} is editing
           </span>
         )}
         {task.next && !task.done && <span className="next-pip">Next</span>}
@@ -301,9 +320,14 @@ export function TaskRow({
                 </div>
               )}
 
-              {!effectivelyReadOnly && !isEditing && (
+              {!isEditing && (
                 <div className="task-actions-footer">
-                  {showSubtaskForm ? (
+                  {unavailableActionsMessage ? (
+                    <div className="task-action-note">
+                      <Icon name="shield" size={14} />
+                      {unavailableActionsMessage}
+                    </div>
+                  ) : showSubtaskForm ? (
                     <SubtaskForm
                       onAdd={(title) => {
                         onAddSubtask(task.id, title)
