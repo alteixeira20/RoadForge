@@ -1,5 +1,7 @@
 # Dependency Audit Policy
 
+See also: [Security documentation index](./README.md) | [SECURITY.md](../../SECURITY.md)
+
 ## Overview
 
 RoadForge audits both JS (pnpm workspace) and Python (FastAPI API) runtime dependencies for known vulnerabilities. Audit gates run locally via `make` targets and run in CI as the `js-audit` and `api-audit` jobs.
