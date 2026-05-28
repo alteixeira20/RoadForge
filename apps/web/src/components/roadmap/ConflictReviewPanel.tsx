@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
 import type { Phase, RoadmapConflictMetadata, Task } from '@/types/roadmap'
@@ -12,7 +13,7 @@ interface ConflictReviewPanelProps {
   keepLocalLoading: boolean
   onClose: () => void
   onUseServerVersion: () => void
-  onKeepLocalVersion: () => void
+  onKeepLocalVersion: () => Promise<string | null> | string | null | void
 }
 
 interface ConflictDiff {
@@ -141,20 +142,35 @@ export function ConflictReviewPanel({
   onUseServerVersion,
   onKeepLocalVersion,
 }: ConflictReviewPanelProps) {
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const serverName = conflict?.server.name ?? ''
   const serverPhases = conflict?.server.phases ?? []
   const diffs = conflict ? buildDiffs(localName, localPhases, serverName, serverPhases) : []
 
+  useEffect(() => {
+    if (open) setErrorMessage(null)
+  }, [open])
+
+  const closePanel = () => {
+    setErrorMessage(null)
+    onClose()
+  }
+
+  const keepLocalVersion = async () => {
+    const message = await onKeepLocalVersion()
+    setErrorMessage(message ?? null)
+  }
+
   const footer = (
     <>
-      <button className="btn sm ghost" onClick={onClose} disabled={keepLocalLoading}>
+      <button className="btn sm ghost" onClick={closePanel} disabled={keepLocalLoading}>
         Keep editing locally
       </button>
       <span className="spacer" />
       <button className="btn sm" onClick={onUseServerVersion} disabled={keepLocalLoading}>
         <Icon name="cloud" size={13} /> Use server version
       </button>
-      <button className="btn sm primary" onClick={onKeepLocalVersion} disabled={keepLocalLoading || !conflict}>
+      <button className="btn sm primary" onClick={keepLocalVersion} disabled={keepLocalLoading || !conflict}>
         {keepLocalLoading ? 'Saving...' : 'Keep my local version'}
       </button>
     </>
@@ -164,7 +180,7 @@ export function ConflictReviewPanel({
     <Modal
       open={open && !!conflict}
       onClose={() => {
-        if (!keepLocalLoading) onClose()
+        if (!keepLocalLoading) closePanel()
       }}
       icon={{ name: 'shield', plain: true }}
       title="Review conflict"
@@ -178,6 +194,12 @@ export function ConflictReviewPanel({
             <Icon name="shield" size={15} />
             <span>Your local edits are still in this browser. Choose an explicit resolution before RoadForge overwrites anything.</span>
           </div>
+          {errorMessage && (
+            <div className="note-line warning" role="alert">
+              <Icon name="circle" size={15} />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
           <div className="conflict-review-meta">
             <span>Server updated: <b>{formatTimestamp(conflict.server_updated_at)}</b></span>

@@ -139,7 +139,7 @@ export function useRoadmapRealtime({
             // If this client has pending unsynced changes, do NOT overwrite local
             // phases, roadmap name, or updatedAt — preserve the user's work and
             // keep the stale updatedAt so the next autosync sends an outdated
-            // last_updated_at and receives a 409, surfacing as OFFLINE.
+            // last_updated_at and receives a 409, surfacing as CONFLICT.
             if (savedRef.current === false) {
               return
             }

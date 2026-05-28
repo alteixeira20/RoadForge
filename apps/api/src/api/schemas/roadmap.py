@@ -190,8 +190,8 @@ class RoadmapConflictServerSnapshot(BaseModel):
 class RoadmapConflictSummary(BaseModel):
     phase_count: int
     task_count: int
-    phase_ids: list[str] = []
-    task_ids: list[str] = []
+    phase_ids: list[str] = Field(default_factory=list)
+    task_ids: list[str] = Field(default_factory=list)
 
 
 class RoadmapConflictMetadata(BaseModel):

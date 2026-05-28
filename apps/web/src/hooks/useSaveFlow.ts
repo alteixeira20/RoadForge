@@ -110,7 +110,9 @@ export function useSaveFlow({
     onActivityRefresh: refreshActivity,
     onToast: showToast,
     onSessionExpired: handleSessionExpired,
-    onConflictMetadata: () => setShowConflictReview(true),
+    onConflictMetadata: () => {
+      setShowConflictReview(true)
+    },
   })
 
   const markServerStateHealthy = () => {
@@ -161,7 +163,9 @@ export function useSaveFlow({
       if (nextConflict || msg.includes('409')) {
         setIsConflict(true)
         setConflictMetadata(nextConflict)
-        if (nextConflict) setShowConflictReview(true)
+        if (nextConflict) {
+          setShowConflictReview(true)
+        }
         showToast('The roadmap changed elsewhere. Your edits are preserved locally.')
       } else if (isSessionExpiredError(err)) {
         handleSessionExpired()
@@ -179,14 +183,19 @@ export function useSaveFlow({
 
   const handleReloadServerVersion = () => {
     if (!serverRoadmapId || !sessionToken) return
+    setShowConflictReview(false)
     setConfirmReload(true)
   }
 
-  const handleOpenConflictReview = () => setShowConflictReview(true)
-  const handleCloseConflictReview = () => setShowConflictReview(false)
+  const handleOpenConflictReview = () => {
+    setShowConflictReview(true)
+  }
+  const handleCloseConflictReview = () => {
+    setShowConflictReview(false)
+  }
 
-  const handleKeepLocalVersion = async () => {
-    if (!serverRoadmapId || !sessionToken || !conflictMetadata) return
+  const handleKeepLocalVersion = async (): Promise<string | null> => {
+    if (!serverRoadmapId || !sessionToken || !conflictMetadata) return null
 
     setKeepLocalLoading(true)
     const changeSummary = buildChangeSummary(pendingActivityChanges, serverRoadmapId)
@@ -208,20 +217,25 @@ export function useSaveFlow({
       setShowConflictReview(false)
       if (showActivity) setActivityRefreshKey((k) => k + 1)
       showToast('Saved your local version.')
+      return null
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       const nextConflict = getConflictMetadata(err)
       if (nextConflict || msg.includes('409')) {
         setIsConflict(true)
-        setConflictMetadata(nextConflict)
+        if (nextConflict) setConflictMetadata(nextConflict)
         showToast('The server changed again. Review the latest conflict.')
+        return 'The server changed again. Review the latest conflict.'
       } else if (isSessionExpiredError(err)) {
         handleSessionExpired()
+        return 'Session expired. Rejoin through an active invite link before resolving this conflict.'
       } else if (isApiConnectionError(err)) {
         setIsOffline(true)
         showToast('Could not reach the server — try again later.')
+        return 'Could not reach the server. Your local edits are still preserved in this browser.'
       } else {
         showToast('Could not keep your local version.')
+        return 'Could not keep your local version. Your local edits are still preserved in this browser.'
       }
     } finally {
       setKeepLocalLoading(false)

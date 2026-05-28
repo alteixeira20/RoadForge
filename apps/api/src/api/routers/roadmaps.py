@@ -18,6 +18,7 @@ from api.schemas.roadmap import (
     LockRequest,
     LockResponse,
     ParticipantResponse,
+    RoadmapConflictResponse,
     RoadmapResponse,
     RoadmapVersionDetailResponse,
     RoadmapVersionSummaryResponse,
@@ -93,7 +94,11 @@ async def fetch_roadmap(
     return await get_roadmap(db, roadmap_id)
 
 
-@router.put("/{roadmap_id}", response_model=RoadmapResponse)
+@router.put(
+    "/{roadmap_id}",
+    response_model=RoadmapResponse,
+    responses={409: {"model": RoadmapConflictResponse}},
+)
 async def put_roadmap(
     roadmap_id: str,
     payload: UpdateRoadmapRequest,
