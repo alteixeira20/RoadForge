@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import { Modal } from './Modal'
 
 interface ConfirmDialogProps {
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   onClose,
 }: ConfirmDialogProps) {
   const confirmClass = tone === 'danger' ? 'btn sm danger' : 'btn sm primary'
+  const messageId = useId()
 
   const footer = (
     <>
@@ -40,8 +42,15 @@ export function ConfirmDialog({
   )
 
   return (
-    <Modal open={open} onClose={onClose} title={title} footer={footer} width={420}>
-      <p className="confirm-dialog-message">{message}</p>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      footer={footer}
+      width={420}
+      describedBy={messageId}
+    >
+      <p id={messageId} className="confirm-dialog-message">{message}</p>
     </Modal>
   )
 }

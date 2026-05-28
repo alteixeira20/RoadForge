@@ -15,15 +15,20 @@ interface ModalProps {
   icon?: ModalIcon
   title: string
   sub?: string
+  describedBy?: string
   children: ReactNode
   footer?: ReactNode
   width?: number
 }
 
-export function Modal({ open, onClose, icon, title, sub, children, footer, width }: ModalProps) {
+export function Modal({ open, onClose, icon, title, sub, describedBy, children, footer, width }: ModalProps) {
   const titleId = useId()
   const descriptionId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
+  const ariaDescription = [
+    sub ? descriptionId : null,
+    describedBy,
+  ].filter(Boolean).join(' ') || undefined
 
   useEffect(() => {
     if (!open) return
@@ -57,7 +62,7 @@ export function Modal({ open, onClose, icon, title, sub, children, footer, width
         role="dialog"
         aria-modal
         aria-labelledby={titleId}
-        aria-describedby={sub ? descriptionId : undefined}
+        aria-describedby={ariaDescription}
         tabIndex={-1}
       >
         <div className="modal-head">

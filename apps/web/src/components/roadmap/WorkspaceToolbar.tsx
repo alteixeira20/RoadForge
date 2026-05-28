@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import type { TaskFilter, WorkspaceView } from '@/types/roadmap'
 
@@ -48,6 +48,7 @@ export function WorkspaceToolbar({
   const filterRef = useRef<HTMLDivElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
   const selectedFilter = taskFilterOptions.find((option) => option.value === taskFilter) ?? taskFilterOptions[0]
+  const activityHelpId = useId()
 
   useEffect(() => {
     if (!filterOpen) return
@@ -167,10 +168,16 @@ export function WorkspaceToolbar({
           className="toolbar-action"
           onClick={onOpenActivity}
           disabled={!hasServerActivity}
+          aria-describedby={!hasServerActivity ? activityHelpId : undefined}
           title={hasServerActivity ? 'View recent activity' : 'Activity appears after saving or syncing this roadmap.'}
         >
           <Icon name="activity" size={14} /> Activity
         </button>
+        {!hasServerActivity && (
+          <span id={activityHelpId} className="activity-helper">
+            Available after save or sync.
+          </span>
+        )}
 
         {canViewVersions && (
           <button
