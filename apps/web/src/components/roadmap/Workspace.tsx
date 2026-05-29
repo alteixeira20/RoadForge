@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Toast } from '@/components/ui/Toast'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -21,10 +21,11 @@ import { useToastState } from '@/hooks/useToastState'
 import { useSaveFlow } from '@/hooks/useSaveFlow'
 import { useWorkspaceParticipants } from '@/hooks/useWorkspaceParticipants'
 import { createTaskMutations } from '@/hooks/useTaskMutations'
+import { useTaskDonePatch } from '@/hooks/useTaskDonePatch'
 import { revokeParticipant } from '@/services/roadmap-sharing.service'
 import { renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
-import type { WorkspaceMode, Phase as PhaseType, Participant, Roadmap } from '@/types/roadmap'
+import type { WorkspaceMode, Phase as PhaseType, Participant, Roadmap, RoadmapConflictMetadata } from '@/types/roadmap'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -76,9 +77,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     roadmapUpgradeNotice,
     dismissRoadmapUpgradeNotice,
   } = useRoadmap()
-  const readOnly = mode === 'viewer'
+  const readOnly = mode === 'viewer' || role === 'viewer'
   const canManageShare = role === 'owner'
-  const canRenameRoadmap = !readOnly && (!serverRoadmapId || role !== 'viewer')
+  const canRenameRoadmap = !readOnly
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const { toast, showToast } = useToastState()
@@ -95,6 +96,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
+  const taskDoneSuccessRef = useRef<() => void>(() => {})
+  const taskDoneConflictRef = useRef<(metadata: RoadmapConflictMetadata | null) => void>(() => {})
+  const taskDoneSessionExpiredRef = useRef<() => void>(() => {})
   const {
     participants,
     participantsLoading,
@@ -162,6 +166,26 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const taskCountFor = (phaseList: PhaseType[]) => phaseList.reduce((count, phase) => count + phase.tasks.length, 0)
 
   const {
+    pendingTaskDoneIds,
+    partialWriteInFlight,
+    isTaskDonePatchInFlight,
+    patchSyncedTaskDone,
+  } = useTaskDonePatch({
+    phases,
+    setPhases,
+    saved,
+    setSaved,
+    serverRoadmapId,
+    sessionToken,
+    updatedAt,
+    setUpdatedAt,
+    showToast,
+    onSuccess: () => taskDoneSuccessRef.current(),
+    onConflict: (metadata) => taskDoneConflictRef.current(metadata),
+    onSessionExpired: () => taskDoneSessionExpiredRef.current(),
+  })
+
+  const {
     syncStatus,
     isConflict,
     conflictMetadata,
@@ -173,6 +197,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setPendingActivityChanges,
     refreshActivity,
     markServerStateHealthy,
+    handleSessionExpired,
+    handlePartialWriteConflict,
     handleConfirmSave,
     handleOpenConflictReview,
     handleCloseConflictReview,
@@ -198,11 +224,19 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setOwnerDisplayName,
     updatedAt,
     setUpdatedAt,
+    partialWriteInFlight,
     showActivity,
     closeSave,
     showToast,
     routerReplace: (href) => router.replace(href),
   })
+
+  taskDoneSuccessRef.current = () => {
+    markServerStateHealthy()
+    if (showActivity) refreshActivity()
+  }
+  taskDoneConflictRef.current = handlePartialWriteConflict
+  taskDoneSessionExpiredRef.current = handleSessionExpired
 
   const handleRenameRoadmap = (name: string) => {
     if (!canRenameRoadmap) return false
@@ -246,10 +280,15 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     phases,
     setPhases,
     setSaved,
+    serverRoadmapId,
+    sessionToken,
+    updatedAt,
     addActivity: addPendingActivityChange,
     showToast,
     setExpandedTaskId,
     readOnly,
+    isTaskDonePatchInFlight,
+    patchSyncedTaskDone,
   })
 
   const handleUpdatePhaseColor = (phaseId: string, color: string) => {
@@ -419,6 +458,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             onTogglePhase={togglePhase}
             onToggleTask={onToggleTask}
             onCheckTask={onCheckTask}
+            pendingTaskDoneIds={pendingTaskDoneIds}
             onUpdateTask={handleUpdateTask}
             onUpdatePhaseColor={handleUpdatePhaseColor}
             onAddTask={handleAddTask}

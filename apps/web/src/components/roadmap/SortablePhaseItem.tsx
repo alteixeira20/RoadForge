@@ -13,6 +13,7 @@ interface SortablePhaseItemProps {
   expandedTaskId: string | null
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
+  pendingTaskDoneIds: ReadonlySet<string>
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onUpdatePhaseColor: (phaseId: string, color: string) => void
   onAddTask: (phaseId: string) => void

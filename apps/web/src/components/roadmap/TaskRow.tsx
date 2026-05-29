@@ -18,6 +18,7 @@ interface TaskRowProps {
   readOnly: boolean
   onToggle: (id: string) => void
   onCheck: (id: string) => void
+  pendingTaskDoneIds: ReadonlySet<string>
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onAddTask: (phaseId: string) => void
   onAddSubtask: (parentId: string, title: string) => void
@@ -40,6 +41,7 @@ export function TaskRow({
   readOnly,
   onToggle,
   onCheck,
+  pendingTaskDoneIds,
   onUpdateTask,
   onAddTask: _onAddTask,
   onAddSubtask,
@@ -70,7 +72,8 @@ export function TaskRow({
   const isLockedByMe = lock?.participantId === participantId
   const isLockedByOther = Boolean(lock && !isLockedByMe)
   const lockHolderName = lock?.displayName || 'Another participant'
-  const effectivelyReadOnly = readOnly || isLockedByOther
+  const isTaskDonePending = pendingTaskDoneIds.has(task.id)
+  const effectivelyReadOnly = readOnly || isLockedByOther || isTaskDonePending
   const canDragTask =
     !effectivelyReadOnly && !expanded && !dragDisabled && Boolean(dragHandleProps)
   let dragHandleTitle = 'Reordering unavailable'
@@ -88,6 +91,11 @@ export function TaskRow({
     : readOnly
       ? 'Read-only view. Task actions are unavailable.'
       : null
+  const checkTitle = isTaskDonePending
+    ? 'Task update is saving'
+    : effectivelyReadOnly
+      ? 'Task check is unavailable'
+      : undefined
 
   // ─── Effects ──────────────────────────────────────────────────────────────
 
@@ -193,7 +201,7 @@ export function TaskRow({
         <div
           className={`check${effectivelyReadOnly ? ' task-check-disabled' : ''}`}
           aria-disabled={effectivelyReadOnly}
-          title={effectivelyReadOnly ? 'Task check is unavailable' : undefined}
+          title={checkTitle}
           onClick={(e) => {
             e.stopPropagation()
             if (!effectivelyReadOnly) onCheck(task.id)
@@ -302,6 +310,7 @@ export function TaskRow({
                             readOnly={readOnly}
                             onToggle={onToggle}
                             onCheck={onCheck}
+                            pendingTaskDoneIds={pendingTaskDoneIds}
                             onUpdateTask={onUpdateTask}
                             onAddTask={_onAddTask}
                             onAddSubtask={onAddSubtask}

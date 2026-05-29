@@ -8,7 +8,7 @@ import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-c
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { storage } from '@/lib/storage'
-import type { ActivityChange, Phase, ShareRole } from '@/types/roadmap'
+import type { ActivityChange, Phase, RoadmapConflictMetadata, ShareRole } from '@/types/roadmap'
 
 interface UseSaveFlowParams {
   displayName: string
@@ -28,6 +28,7 @@ interface UseSaveFlowParams {
   setOwnerDisplayName: (name: string) => void
   updatedAt: string | null
   setUpdatedAt: (updatedAt: string) => void
+  partialWriteInFlight: boolean
   showActivity: boolean
   closeSave: () => void
   showToast: (message: string) => void
@@ -52,6 +53,7 @@ export function useSaveFlow({
   setOwnerDisplayName,
   updatedAt,
   setUpdatedAt,
+  partialWriteInFlight,
   showActivity,
   closeSave,
   showToast,
@@ -101,6 +103,7 @@ export function useSaveFlow({
     roadmapName,
     updatedAt,
     pendingActivityChanges,
+    partialWriteInFlight,
     showActivity,
     onSyncSuccess: (newUpdatedAt) => {
       setUpdatedAt(newUpdatedAt)
@@ -121,8 +124,19 @@ export function useSaveFlow({
     setConflictMetadata(null)
   }
 
+  const handlePartialWriteConflict = (metadata: RoadmapConflictMetadata | null) => {
+    setIsConflict(true)
+    setConflictMetadata(metadata)
+    if (metadata) setShowConflictReview(true)
+    setIsOffline(false)
+  }
+
   const handleConfirmSave = async (password?: string) => {
     closeSave()
+    if (partialWriteInFlight) {
+      showToast('Wait for the task update to finish before saving.')
+      return
+    }
     const changeSummary = buildChangeSummary(pendingActivityChanges, serverRoadmapId)
     try {
       if (!serverRoadmapId) {
@@ -294,6 +308,8 @@ export function useSaveFlow({
     clearPendingActivityChanges,
     refreshActivity,
     markServerStateHealthy,
+    handleSessionExpired,
+    handlePartialWriteConflict,
 
     handleConfirmSave,
     handleOpenConflictReview,

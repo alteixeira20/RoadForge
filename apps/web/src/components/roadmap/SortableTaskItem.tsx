@@ -14,6 +14,7 @@ interface SortableTaskItemProps {
   dragDisabled: boolean
   onToggle: (id: string) => void
   onCheck: (id: string) => void
+  pendingTaskDoneIds: ReadonlySet<string>
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onAddTask: (phaseId: string) => void
   onAddSubtask: (parentId: string, title: string) => void

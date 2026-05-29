@@ -15,6 +15,7 @@ interface AutoSyncParams {
   roadmapName: string
   updatedAt: string | null
   pendingActivityChanges: ActivityChange[]
+  partialWriteInFlight: boolean
   showActivity: boolean
   onSyncSuccess: (updatedAt: string) => void
   onActivityRefresh: () => void
@@ -43,6 +44,7 @@ export function useAutoSync({
   roadmapName,
   updatedAt,
   pendingActivityChanges,
+  partialWriteInFlight,
   showActivity,
   onSyncSuccess,
   onActivityRefresh,
@@ -67,6 +69,7 @@ export function useAutoSync({
     serverRoadmapId,
     sessionToken,
     saved,
+    partialWriteInFlight,
     showActivity,
     onSyncSuccess,
     onActivityRefresh,
@@ -84,6 +87,7 @@ export function useAutoSync({
     serverRoadmapId,
     sessionToken,
     saved,
+    partialWriteInFlight,
     showActivity,
     onSyncSuccess,
     onActivityRefresh,
@@ -94,9 +98,8 @@ export function useAutoSync({
 
   // ─── Debounced autosync for server-backed roadmaps ─────────────────────────
   useEffect(() => {
-    if (!serverRoadmapId || !sessionToken || readOnly || saved) return
-
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
+    if (!serverRoadmapId || !sessionToken || readOnly || saved || partialWriteInFlight) return
 
     syncTimerRef.current = setTimeout(async () => {
       if (isSyncingRef.current) return
@@ -111,6 +114,7 @@ export function useAutoSync({
         serverRoadmapId: rid,
         sessionToken: tok,
         saved: currentSaved,
+        partialWriteInFlight: currentPartialWriteInFlight,
         showActivity: showAct,
         onSyncSuccess: syncSuccess,
         onActivityRefresh: activityRefresh,
@@ -119,7 +123,7 @@ export function useAutoSync({
         onConflictMetadata: openConflict,
       } = syncParamsRef.current
 
-      if (!rid || !tok || currentSaved) {
+      if (!rid || !tok || currentSaved || currentPartialWriteInFlight) {
         isSyncingRef.current = false
         setIsSyncing(false)
         return
@@ -167,7 +171,7 @@ export function useAutoSync({
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
     }
   // phases/roadmapName resets the debounce; other values read from syncParamsRef to avoid stale closures
-  }, [serverRoadmapId, sessionToken, readOnly, saved, phases, roadmapName])
+  }, [serverRoadmapId, sessionToken, readOnly, saved, partialWriteInFlight, phases, roadmapName])
 
   const syncStatus: SyncStatus = !serverRoadmapId
     ? 'local'

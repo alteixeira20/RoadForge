@@ -41,6 +41,20 @@ Behavior:
 - Same-value no-op returns 200 with the current roadmap and does not create an
   activity log or SSE event.
 
+## Frontend behavior
+
+The workspace keeps local-only roadmaps on the existing local mutation path.
+For synced owner/editor roadmaps, task checkbox toggles optimistically call the
+task done PATCH endpoint with the last observed roadmap `updated_at`.
+
+While a task done PATCH is in flight, the same task checkbox is temporarily
+guarded against repeat toggles and autosync/full-save PUTs are suppressed until
+the partial write finishes. On success, clean local state is reconciled from the
+server roadmap response and `updatedAt` is advanced. On failure, the optimistic
+checkbox change is reverted. A 409 conflict leaves the server state untouched,
+shows the stale-write message, and reuses the roadmap conflict review path when
+the API returns conflict metadata.
+
 ## Proposed endpoints
 
 - `POST /api/roadmaps/{roadmap_id}/phases`: create a phase after an optional `after_phase_id`, or at the end when omitted.

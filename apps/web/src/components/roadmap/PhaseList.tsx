@@ -33,6 +33,7 @@ interface PhaseListProps {
   onTogglePhase: (id: string) => void
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
+  pendingTaskDoneIds: ReadonlySet<string>
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onUpdatePhaseColor: (phaseId: string, color: string) => void
   onAddTask: (phaseId: string) => void
@@ -57,6 +58,7 @@ export function PhaseList({
   onTogglePhase,
   onToggleTask,
   onCheckTask,
+  pendingTaskDoneIds,
   onUpdateTask,
   onUpdatePhaseColor,
   onAddTask,
@@ -137,6 +139,7 @@ export function PhaseList({
                 expandedTaskId={expandedTaskId}
                 onToggleTask={onToggleTask}
                 onCheckTask={onCheckTask}
+                pendingTaskDoneIds={pendingTaskDoneIds}
                 onUpdateTask={onUpdateTask}
                 onUpdatePhaseColor={onUpdatePhaseColor}
                 onAddTask={onAddTask}

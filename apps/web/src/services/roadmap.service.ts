@@ -24,6 +24,7 @@ export {
   getRoadmap,
   deleteRoadmap,
   saveToServer,
+  patchTaskDone,
   getRoadmapVersions,
   getRoadmapVersion,
   restoreRoadmapVersion,

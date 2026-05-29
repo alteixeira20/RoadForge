@@ -3,15 +3,33 @@
 import type { Phase, Task, ActivityChange } from '@/types/roadmap'
 import { generateTaskId, hasCycle as hasCycleGraph } from '@/lib/task-graph'
 import { getTaskCompletionBlocker } from '@/lib/task-completion'
+import {
+  buildTaskDoneActivityChanges,
+  buildTaskDonePhases,
+  findPhaseForTask,
+  isPhaseComplete,
+} from './taskMutationHelpers'
+
+interface PatchSyncedTaskDoneParams {
+  task: Task
+  done: boolean
+  nextPhases: Phase[]
+  revertPhases: (taskId: string, done: boolean, phases: Phase[]) => Phase[]
+}
 
 interface CreateTaskMutationsParams {
   phases: Phase[]
   setPhases: (phases: Phase[]) => void
   setSaved: (saved: boolean) => void
+  serverRoadmapId: string | null
+  sessionToken: string | null
+  updatedAt: string | null
   addActivity: (change: ActivityChange) => void
   showToast: (msg: string) => void
   setExpandedTaskId: (id: string) => void
   readOnly: boolean
+  isTaskDonePatchInFlight: (taskId: string) => boolean
+  patchSyncedTaskDone: (params: PatchSyncedTaskDoneParams) => Promise<boolean>
 }
 
 export interface TaskMutations {
@@ -30,102 +48,61 @@ export function createTaskMutations({
   phases,
   setPhases,
   setSaved,
+  serverRoadmapId,
+  sessionToken,
+  updatedAt,
   addActivity,
   showToast,
   setExpandedTaskId,
   readOnly,
+  isTaskDonePatchInFlight,
+  patchSyncedTaskDone,
 }: CreateTaskMutationsParams): TaskMutations {
   const allTasks = phases.flatMap((p) => p.tasks)
-
-  const findPhaseForTask = (taskId: string) =>
-    phases.find((phase) => phase.tasks.some((task) => task.id === taskId))
-
-  const isPhaseComplete = (phase: Phase) =>
-    phase.tasks.length > 0 && phase.tasks.every((t) => t.done)
-
-  const phaseLabel = (phase: Phase) => `${phase.num} — ${phase.name}`
 
   const hasCycle = (taskId: string, depId: string): boolean =>
     hasCycleGraph(taskId, depId, allTasks)
 
   const onCheckTask = (id: string) => {
-    if (readOnly) return
+    if (readOnly || isTaskDonePatchInFlight(id)) return
 
     const task = allTasks.find((t) => t.id === id)
     if (!task) return
 
-    // Reopening is always allowed
-    if (task.done) {
-      const affectedPhase = findPhaseForTask(id)
-      const wasPhaseComplete = affectedPhase ? isPhaseComplete(affectedPhase) : false
-      const nextPhases = phases.map((p) => ({
-        ...p,
-        tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: false } : t)),
-      }))
-      const nextPhase = affectedPhase ? nextPhases.find((p) => p.id === affectedPhase.id) : null
-      const isNowPhaseComplete = nextPhase ? isPhaseComplete(nextPhase) : false
-      setPhases(nextPhases)
-      addActivity({
-        action: 'task.reopened',
-        entity_type: 'task',
-        entity_id: task.id,
-        taskId: task.id,
-        taskTitle: task.title,
-        phaseId: affectedPhase?.id,
-        phaseName: affectedPhase?.name,
-      })
-      if (affectedPhase && wasPhaseComplete && !isNowPhaseComplete) {
-        addActivity({
-          action: 'phase.reopened',
-          entity_type: 'phase',
-          entity_id: affectedPhase.id,
-          phaseId: affectedPhase.id,
-          phaseName: affectedPhase.name,
-          phaseNum: affectedPhase.num,
-          details: phaseLabel(affectedPhase),
-        })
+    const nextDone = !task.done
+    if (nextDone) {
+      const blocker = getTaskCompletionBlocker(task, allTasks)
+      if (blocker) {
+        showToast(blocker)
+        return
       }
-      setSaved(false)
-      return
     }
 
-    // ─── Completion Guard ────────────────────────────────────────────────────
-
-    const blocker = getTaskCompletionBlocker(task, allTasks)
-    if (blocker) {
-      showToast(blocker)
-      return
-    }
-
-    const affectedPhase = findPhaseForTask(id)
+    const affectedPhase = findPhaseForTask(phases, id)
     const wasPhaseComplete = affectedPhase ? isPhaseComplete(affectedPhase) : false
-    const nextPhases = phases.map((p) => ({
-      ...p,
-      tasks: p.tasks.map((t) => (t.id === id ? { ...t, done: true } : t)),
-    }))
-    const nextPhase = affectedPhase ? nextPhases.find((p) => p.id === affectedPhase.id) : null
-    const isNowPhaseComplete = nextPhase ? isPhaseComplete(nextPhase) : false
-    setPhases(nextPhases)
-    addActivity({
-      action: 'task.completed',
-      entity_type: 'task',
-      entity_id: task.id,
-      taskId: task.id,
-      taskTitle: task.title,
-      phaseId: affectedPhase?.id,
-      phaseName: affectedPhase?.name,
-    })
-    if (affectedPhase && !wasPhaseComplete && isNowPhaseComplete) {
-      addActivity({
-        action: 'phase.completed',
-        entity_type: 'phase',
-        entity_id: affectedPhase.id,
-        phaseId: affectedPhase.id,
-        phaseName: affectedPhase.name,
-        phaseNum: affectedPhase.num,
-        details: phaseLabel(affectedPhase),
+    const nextPhases = buildTaskDonePhases(id, nextDone, phases)
+
+    if (serverRoadmapId && sessionToken) {
+      if (!updatedAt) {
+        showToast('Reload the server roadmap before updating tasks.')
+        return
+      }
+      void patchSyncedTaskDone({
+        task,
+        done: nextDone,
+        nextPhases,
+        revertPhases: buildTaskDonePhases,
       })
+      return
     }
+
+    setPhases(nextPhases)
+    buildTaskDoneActivityChanges({
+      task,
+      affectedPhase,
+      wasPhaseComplete,
+      nextPhases,
+    }).forEach(addActivity)
     setSaved(false)
   }
 
@@ -159,7 +136,7 @@ export function createTaskMutations({
       }),
     )
 
-    const phase = findPhaseForTask(parentId)
+    const phase = findPhaseForTask(phases, parentId)
     addActivity({
       action: 'task.created',
       entity_type: 'task',
@@ -213,7 +190,7 @@ export function createTaskMutations({
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {
     if (readOnly) return
     const task = allTasks.find((t) => t.id === id)
-    const phase = findPhaseForTask(id)
+    const phase = findPhaseForTask(phases, id)
     setPhases(
       phases.map((p) => ({
         ...p,
@@ -254,7 +231,7 @@ export function createTaskMutations({
         }),
       })),
     )
-    const phase = findPhaseForTask(taskId)
+    const phase = findPhaseForTask(phases, taskId)
     addActivity({
       action: 'task.dependency.linked',
       entity_type: 'task',
@@ -284,7 +261,7 @@ export function createTaskMutations({
         }),
       })),
     )
-    const phase = findPhaseForTask(taskId)
+    const phase = findPhaseForTask(phases, taskId)
     addActivity({
       action: 'task.dependency.unlinked',
       entity_type: 'task',
@@ -360,7 +337,7 @@ export function createTaskMutations({
         return { ...p, tasks: newTasks }
       }),
     )
-    const phase = findPhaseForTask(parentId)
+    const phase = findPhaseForTask(phases, parentId)
     addActivity({
       action: 'task.reordered',
       entity_type: 'task',

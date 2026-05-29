@@ -37,6 +37,7 @@ interface PhaseProps {
   expandedTaskId: string | null
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
+  pendingTaskDoneIds: ReadonlySet<string>
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onUpdatePhaseColor: (phaseId: string, color: string) => void
   onAddTask: (phaseId: string) => void
@@ -81,6 +82,7 @@ export function Phase({
   expandedTaskId,
   onToggleTask,
   onCheckTask,
+  pendingTaskDoneIds,
   onUpdateTask,
   onUpdatePhaseColor,
   onAddTask,
@@ -324,6 +326,7 @@ export function Phase({
                       dragDisabled={isAnyTaskInPhaseExpanded}
                       onToggle={onToggleTask}
                       onCheck={onCheckTask}
+                      pendingTaskDoneIds={pendingTaskDoneIds}
                       onUpdateTask={onUpdateTask}
                       onAddTask={onAddTask}
                       onAddSubtask={onAddSubtask}
@@ -355,6 +358,7 @@ export function Phase({
                       dragDisabled={false}
                       onToggle={() => {}}
                       onCheck={() => {}}
+                      pendingTaskDoneIds={pendingTaskDoneIds}
                       onUpdateTask={() => {}}
                       onAddTask={() => {}}
                       onAddSubtask={() => {}}

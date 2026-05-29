@@ -148,6 +148,14 @@ export async function saveToServer(
   }, sessionToken)
 }
 
+export interface PatchTaskDoneParams {
+  roadmapId: string
+  taskId: string
+  done: boolean
+  sessionToken: string
+  lastUpdatedAt: string
+}
+
 // ─── Roadmap versions ──────────────────────────────────────────────────────────
 
 export async function getRoadmapVersions(
@@ -203,15 +211,34 @@ export async function createRoadmapCheckpoint(
 // ─── Task mutations ────────────────────────────────────────────────────────────
 
 /**
- * Toggle a task's done state.
- * TODO(backend): PATCH /api/roadmaps/:roadmapId/tasks/:taskId  { done }
+ * Toggle a task's done state through the first partial roadmap write endpoint.
  */
-export async function updateTaskDone(
-  _roadmapId: string,
-  _taskId: string,
-  _done: boolean,
-): Promise<void> {
-  // Optimistic update handled in RoadmapContext; backend endpoint not yet implemented.
+export async function patchTaskDone({
+  roadmapId,
+  taskId,
+  done,
+  sessionToken,
+  lastUpdatedAt,
+}: PatchTaskDoneParams): Promise<Roadmap> {
+  const data = await requestJson<ApiRoadmapResponse>(
+    `/api/roadmaps/${roadmapId}/tasks/${taskId}/done`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        done,
+        last_updated_at: lastUpdatedAt,
+      }),
+    },
+    sessionToken,
+  )
+  return toRoadmap(data)
+}
+
+/**
+ * Backwards-compatible alias for older imports.
+ */
+export async function updateTaskDone(params: PatchTaskDoneParams): Promise<Roadmap> {
+  return patchTaskDone(params)
 }
 
 // ─── Phase mutations (future) ──────────────────────────────────────────────────
