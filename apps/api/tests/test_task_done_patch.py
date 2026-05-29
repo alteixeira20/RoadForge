@@ -257,6 +257,17 @@ async def test_patch_task_done_requires_last_updated_at(client: AsyncClient):
     assert resp.status_code == 422
 
 
+async def test_patch_task_done_unauthenticated_returns_401(client: AsyncClient):
+    body = await create_with_phases(client)
+
+    resp = await client.patch(
+        f"/api/roadmaps/{body['id']}/tasks/tk_a1/done",
+        json={"done": True, "last_updated_at": body["updated_at"]},
+    )
+
+    assert resp.status_code == 401
+
+
 async def test_patch_task_done_forbids_extra_fields(client: AsyncClient):
     body = await create_with_phases(client)
 

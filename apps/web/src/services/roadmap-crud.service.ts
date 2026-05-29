@@ -234,13 +234,6 @@ export async function patchTaskDone({
   return toRoadmap(data)
 }
 
-/**
- * Backwards-compatible alias for older imports.
- */
-export async function updateTaskDone(params: PatchTaskDoneParams): Promise<Roadmap> {
-  return patchTaskDone(params)
-}
-
 // ─── Phase mutations (future) ──────────────────────────────────────────────────
 
 /**

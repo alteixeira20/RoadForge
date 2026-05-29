@@ -29,7 +29,6 @@ export {
   getRoadmapVersion,
   restoreRoadmapVersion,
   createRoadmapCheckpoint,
-  updateTaskDone,
   exportRoadmap,
   importRoadmap,
   addPhase,
