@@ -4,10 +4,11 @@ RF-1101 — Backend auth and share-link tests.
 Groups:
   A  Create roadmap / auth basics
   B  Join flow
-  C  Role restrictions
-  D  Rotate / revoke share links
-  E  Revoke participant
-  F  Expired session
+  C  Rotate / revoke share links
+  D  Revoke participant
+  E  Expired session
+
+PUT /api/roadmaps/{id} tests live in test_roadmap_updates.py.
 """
 
 from __future__ import annotations
@@ -171,72 +172,7 @@ async def test_viewer_token_can_get_roadmap(client: AsyncClient):
     assert resp.status_code == 200
 
 
-# ─── Group C — Role restrictions ─────────────────────────────────────────────
-
-
-async def test_viewer_cannot_put_roadmap(client: AsyncClient):
-    body = await create_roadmap(client)
-    roadmap_id = body["id"]
-    owner_token = body["owner_session_token"]
-
-    links = await _get_share_links(client, roadmap_id, owner_token)
-    join_resp = await _join(client, links["viewer"]["url"])
-    viewer_token = join_resp.json()["session_token"]
-
-    resp = await client.put(
-        f"/api/roadmaps/{roadmap_id}",
-        headers=_auth(viewer_token),
-        json={"name": "Hacked", "last_updated_at": body["updated_at"]},
-    )
-    assert resp.status_code == 403
-
-
-async def test_editor_can_put_roadmap(client: AsyncClient):
-    body = await create_roadmap(client)
-    roadmap_id = body["id"]
-    owner_token = body["owner_session_token"]
-
-    editor_url = await _rotate_link(client, roadmap_id, owner_token, "editor")
-    join_resp = await _join(client, editor_url)
-    editor_token = join_resp.json()["session_token"]
-
-    resp = await client.put(
-        f"/api/roadmaps/{roadmap_id}",
-        headers=_auth(editor_token),
-        json={"name": "Editor Renamed", "last_updated_at": body["updated_at"]},
-    )
-    assert resp.status_code == 200
-    assert resp.json()["name"] == "Editor Renamed"
-
-
-async def test_put_roadmap_requires_last_updated_at(client: AsyncClient):
-    body = await create_roadmap(client)
-    roadmap_id = body["id"]
-    owner_token = body["owner_session_token"]
-
-    resp = await client.put(
-        f"/api/roadmaps/{roadmap_id}",
-        headers=_auth(owner_token),
-        json={"name": "Missing Timestamp"},
-    )
-    assert resp.status_code == 422
-
-
-async def test_put_roadmap_rejects_unknown_change_summary_action(client: AsyncClient):
-    body = await create_roadmap(client)
-    roadmap_id = body["id"]
-    owner_token = body["owner_session_token"]
-
-    resp = await client.put(
-        f"/api/roadmaps/{roadmap_id}",
-        headers=_auth(owner_token),
-        json={
-            "name": "Unknown Action",
-            "last_updated_at": body["updated_at"],
-            "change_summary": {"action": "roadmap.pwned"},
-        },
-    )
-    assert resp.status_code == 422
+# ─── Group C — Rotate / revoke share links ───────────────────────────────────
 
 
 async def test_viewer_cannot_rotate_share_links(client: AsyncClient):
@@ -269,9 +205,6 @@ async def test_editor_cannot_rotate_share_links(client: AsyncClient):
         headers=_auth(editor_token),
     )
     assert resp.status_code == 403
-
-
-# ─── Group D — Rotate / revoke share links ────────────────────────────────────
 
 
 async def test_rotating_editor_link_invalidates_old_token(client: AsyncClient):
@@ -325,7 +258,7 @@ async def test_revoked_viewer_link_cannot_join(client: AsyncClient):
     assert resp.status_code == 401
 
 
-# ─── Group E — Revoke participant ─────────────────────────────────────────────
+# ─── Group D — Revoke participant ────────────────────────────────────────────
 
 
 async def test_revoked_editor_session_returns_401(client: AsyncClient):
@@ -353,7 +286,7 @@ async def test_revoked_editor_session_returns_401(client: AsyncClient):
     assert resp.status_code == 401
 
 
-# ─── Group F — Expired session ────────────────────────────────────────────────
+# ─── Group E — Expired session ───────────────────────────────────────────────
 
 
 async def test_expired_session_returns_401(client: AsyncClient, db_session: AsyncSession):
