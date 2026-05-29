@@ -36,6 +36,24 @@ export interface AuthCache {
   role: ShareRole
 }
 
+export interface RoadmapUiState {
+  schemaVersion: 1
+  openPhaseIds: string[]
+  expandedTaskId: string | null
+  updatedAt: string
+}
+
+function isValidRoadmapUiState(value: unknown): value is RoadmapUiState {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  if (v.schemaVersion !== 1) return false
+  if (!Array.isArray(v.openPhaseIds)) return false
+  if (!(v.openPhaseIds as unknown[]).every((id) => typeof id === 'string')) return false
+  if (v.expandedTaskId !== null && typeof v.expandedTaskId !== 'string') return false
+  if (typeof v.updatedAt !== 'string') return false
+  return true
+}
+
 function getLocal(key: string): string | null {
   if (typeof window === 'undefined') return null
   try {
@@ -157,6 +175,7 @@ export const storage = {
   clearRoadmapCache(id: string): void {
     removeLocal(`rf:roadmap:${id}`)
     removeLocal(`rf:auth:${id}`)
+    removeLocal(`rf:ui:${id}`)
   },
 
   removeRoadmap(id: string): void {
@@ -189,6 +208,24 @@ export const storage = {
       const bTime = b.cache.updatedAt ? new Date(b.cache.updatedAt).getTime() : 0
       return bTime - aTime
     })
+  },
+
+  getRoadmapUiState(id: string): RoadmapUiState | null {
+    const raw = getLocal(`rf:ui:${id}`)
+    if (!raw) return null
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (!isValidRoadmapUiState(parsed)) return null
+      return parsed
+    } catch {
+      return null
+    }
+  },
+  setRoadmapUiState(id: string, state: RoadmapUiState): void {
+    setLocal(`rf:ui:${id}`, JSON.stringify(state))
+  },
+  clearRoadmapUiState(id: string): void {
+    removeLocal(`rf:ui:${id}`)
   },
 
   migrateLegacyStorageIfNeeded(): string | null {

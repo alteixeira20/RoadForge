@@ -25,6 +25,7 @@ import { useTaskDonePatch } from '@/hooks/useTaskDonePatch'
 import { revokeParticipant } from '@/services/roadmap-sharing.service'
 import { renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
+import { storage } from '@/lib/storage'
 import type { WorkspaceMode, Phase as PhaseType, Participant, Roadmap, RoadmapConflictMetadata } from '@/types/roadmap'
 
 interface WorkspaceProps {
@@ -70,6 +71,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setOwnerDisplayName,
     updatedAt,
     setUpdatedAt,
+    activeRoadmapId,
     accessRevokedEvent,
     clearAccessRevokedEvent,
     sessionExpiredRoadmapId,
@@ -81,7 +83,15 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const canManageShare = role === 'owner'
   const canRenameRoadmap = !readOnly
 
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(() => {
+    if (!activeRoadmapId) return null
+    return storage.getRoadmapUiState(activeRoadmapId)?.expandedTaskId ?? null
+  })
+  const prevActiveRoadmapIdRef = useRef(activeRoadmapId)
+  // Tracks which roadmap the current expandedTaskId belongs to.
+  // Prevents writing previous-roadmap expandedTaskId into the new roadmap's UI cache
+  // during the render where activeRoadmapId changes but expandedTaskId hasn't updated yet.
+  const expandedTaskOwnerRef = useRef(activeRoadmapId)
   const { toast, showToast } = useToastState()
   const {
     showSave,
@@ -138,7 +148,62 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     role,
     serverRoadmapId,
     sessionToken,
+    activeRoadmapId,
   })
+
+  // Combined effect: handles both roadmap switches and same-roadmap task-list changes.
+  // Merging the two concerns into one effect prevents a race where the re-init
+  // schedules B's saved task and the validate effect, running in the same effect
+  // pass with A's stale expandedTaskId, schedules setExpandedTaskId(null) and wins.
+  useEffect(() => {
+    const roadmapIdChanged = prevActiveRoadmapIdRef.current !== activeRoadmapId
+    prevActiveRoadmapIdRef.current = activeRoadmapId
+
+    if (roadmapIdChanged) {
+      // Roadmap switched: load saved expandedTaskId and validate it against the
+      // current allTasks in this same render. In React 18, activeRoadmapId and
+      // phases (which produce allTasks) update in the same batched render, so
+      // allTasks here is already B's task list.
+      const savedId = activeRoadmapId
+        ? storage.getRoadmapUiState(activeRoadmapId)?.expandedTaskId ?? null
+        : null
+      const valid = savedId !== null && allTasks.some((t) => t.id === savedId) ? savedId : null
+      setExpandedTaskId(valid)
+      return
+    }
+
+    // Same roadmap: clear expanded task if it was deleted from the task list
+    if (expandedTaskId && !allTasks.some((t) => t.id === expandedTaskId)) {
+      setExpandedTaskId(null)
+    }
+  // expandedTaskId is read in the same-roadmap branch but intentionally omitted from
+  // deps: we only need to re-validate when allTasks changes (covers task deletion),
+  // not when the user merely toggles the expanded task.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoadmapId, allTasks])
+
+  // Persist expandedTaskId to UI state.
+  // Guard: if expandedTaskId still belongs to the previous roadmap (expandedTaskOwnerRef lags behind),
+  // skip this write and advance the owner ref. The persist will fire again once
+  // setExpandedTaskId delivers the new roadmap's value.
+  useEffect(() => {
+    if (!activeRoadmapId) return
+    if (expandedTaskOwnerRef.current !== activeRoadmapId) {
+      expandedTaskOwnerRef.current = activeRoadmapId
+      return
+    }
+    const current = storage.getRoadmapUiState(activeRoadmapId) ?? {
+      schemaVersion: 1 as const,
+      openPhaseIds: [],
+      expandedTaskId: null,
+      updatedAt: new Date().toISOString(),
+    }
+    storage.setRoadmapUiState(activeRoadmapId, {
+      ...current,
+      expandedTaskId,
+      updatedAt: new Date().toISOString(),
+    })
+  }, [expandedTaskId, activeRoadmapId])
 
   useEffect(() => {
     const title = getShortRoadmapTitle(roadmapName)

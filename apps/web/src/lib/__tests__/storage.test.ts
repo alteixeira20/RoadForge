@@ -72,12 +72,15 @@ describe('storage', () => {
       expect(storage.getRoadmapCache('rm-1')).toEqual(cache)
     })
 
-    it('clearRoadmapCache removes the roadmap and auth entries', () => {
+    it('clearRoadmapCache removes the roadmap, auth, and UI state entries', () => {
+      const uiState = { schemaVersion: 1 as const, openPhaseIds: ['ph-1'], expandedTaskId: null, updatedAt: '' }
       storage.setRoadmapCache('rm-1', makeRoadmapCache())
       storage.setAuthCache('rm-1', makeAuthCache())
+      storage.setRoadmapUiState('rm-1', uiState)
       storage.clearRoadmapCache('rm-1')
       expect(storage.getRoadmapCache('rm-1')).toBeNull()
       expect(storage.getAuthCache('rm-1')).toBeNull()
+      expect(storage.getRoadmapUiState('rm-1')).toBeNull()
     })
   })
 
@@ -142,6 +145,78 @@ describe('storage', () => {
       storage.setActiveRoadmapId('rm-1')
       storage.removeRoadmap('rm-1')
       expect(storage.getActiveRoadmapId()).toBeNull()
+    })
+  })
+
+  describe('getRoadmapUiState / setRoadmapUiState / clearRoadmapUiState', () => {
+    it('returns null when no UI state exists', () => {
+      expect(storage.getRoadmapUiState('rm-none')).toBeNull()
+    })
+
+    it('round-trips a valid UI state', () => {
+      const state = {
+        schemaVersion: 1 as const,
+        openPhaseIds: ['ph-1', 'ph-2'],
+        expandedTaskId: 'task-abc',
+        updatedAt: '2025-01-01T00:00:00Z',
+      }
+      storage.setRoadmapUiState('rm-1', state)
+      expect(storage.getRoadmapUiState('rm-1')).toEqual(state)
+    })
+
+    it('returns null for unparseable data', () => {
+      window.localStorage.setItem('rf:ui:rm-bad', 'not-json')
+      expect(storage.getRoadmapUiState('rm-bad')).toBeNull()
+    })
+
+    it('returns null when schemaVersion does not match', () => {
+      window.localStorage.setItem('rf:ui:rm-old', JSON.stringify({ schemaVersion: 99, openPhaseIds: [], expandedTaskId: null, updatedAt: '' }))
+      expect(storage.getRoadmapUiState('rm-old')).toBeNull()
+    })
+
+    it('returns null when openPhaseIds is missing', () => {
+      window.localStorage.setItem('rf:ui:rm-x', JSON.stringify({ schemaVersion: 1, expandedTaskId: null, updatedAt: '' }))
+      expect(storage.getRoadmapUiState('rm-x')).toBeNull()
+    })
+
+    it('returns null when openPhaseIds is not an array', () => {
+      window.localStorage.setItem('rf:ui:rm-x', JSON.stringify({ schemaVersion: 1, openPhaseIds: 'ph-1', expandedTaskId: null, updatedAt: '' }))
+      expect(storage.getRoadmapUiState('rm-x')).toBeNull()
+    })
+
+    it('returns null when openPhaseIds contains a non-string', () => {
+      window.localStorage.setItem('rf:ui:rm-x', JSON.stringify({ schemaVersion: 1, openPhaseIds: [1, 'ph-2'], expandedTaskId: null, updatedAt: '' }))
+      expect(storage.getRoadmapUiState('rm-x')).toBeNull()
+    })
+
+    it('returns null when expandedTaskId is not a string or null', () => {
+      window.localStorage.setItem('rf:ui:rm-x', JSON.stringify({ schemaVersion: 1, openPhaseIds: [], expandedTaskId: 42, updatedAt: '' }))
+      expect(storage.getRoadmapUiState('rm-x')).toBeNull()
+    })
+
+    it('returns null when updatedAt is not a string', () => {
+      window.localStorage.setItem('rf:ui:rm-x', JSON.stringify({ schemaVersion: 1, openPhaseIds: [], expandedTaskId: null, updatedAt: null }))
+      expect(storage.getRoadmapUiState('rm-x')).toBeNull()
+    })
+
+    it('accepts a string expandedTaskId', () => {
+      const state = { schemaVersion: 1 as const, openPhaseIds: [], expandedTaskId: 'task-1', updatedAt: '2025-01-01T00:00:00Z' }
+      storage.setRoadmapUiState('rm-1', state)
+      expect(storage.getRoadmapUiState('rm-1')).toEqual(state)
+    })
+
+    it('clearRoadmapUiState removes the entry', () => {
+      const state = { schemaVersion: 1 as const, openPhaseIds: [], expandedTaskId: null, updatedAt: '' }
+      storage.setRoadmapUiState('rm-1', state)
+      storage.clearRoadmapUiState('rm-1')
+      expect(storage.getRoadmapUiState('rm-1')).toBeNull()
+    })
+
+    it('uses a key separate from roadmap and auth caches', () => {
+      const state = { schemaVersion: 1 as const, openPhaseIds: ['ph-x'], expandedTaskId: null, updatedAt: '' }
+      storage.setRoadmapUiState('rm-1', state)
+      expect(window.localStorage.getItem('rf:ui:rm-1')).not.toBeNull()
+      expect(window.localStorage.getItem('rf:roadmap:rm-1')).toBeNull()
     })
   })
 

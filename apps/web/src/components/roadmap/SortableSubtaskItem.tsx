@@ -11,8 +11,8 @@ interface SortableSubtaskItemProps {
   pendingTaskDoneIds: ReadonlySet<string>
   dragDisabled: boolean
   onCheck: (id: string) => void
-  onUpdateTitle: (id: string, title: string) => void
   onDelete: (id: string) => void
+  displayNumber?: string
 }
 
 export function SortableSubtaskItem({ task, dragDisabled, ...rowProps }: SortableSubtaskItemProps) {

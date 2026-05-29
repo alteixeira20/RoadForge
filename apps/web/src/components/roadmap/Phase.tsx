@@ -29,6 +29,7 @@ import { SortableTaskItem } from './SortableTaskItem'
 import { TaskRow } from './TaskRow'
 import { DraftTaskRow } from './DraftTaskRow'
 import { useRoadmap } from '@/context/RoadmapContext'
+import { computeTaskDisplayNumbers } from '@/lib/task-display'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 import type { ForgeStyle } from '@/types/ui'
 
@@ -249,11 +250,13 @@ export function Phase({
   const topLevelTasks = phase.tasks.filter((t) => !t.parentId)
   const taskIds = topLevelTasks.map((t) => t.id)
 
+  const displayNumbers = computeTaskDisplayNumbers([phase])
   const isAnyTaskInPhaseExpanded = expandedTaskId !== null && phase.tasks.some(t => t.id === expandedTaskId)
 
   // ─── dnd-kit Setup ────────────────────────────────────────────────────────
 
   const [activeId, setActiveId] = useState<string | null>(null)
+  const activeTaskDisplayNumber = activeId ? displayNumbers.get(activeId) : undefined
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -376,6 +379,7 @@ export function Phase({
                       assignmentNames={assignmentNames}
                       startEditing={t.id === draftCreatedTaskId}
                       onDirtyChange={handleTaskDirtyChange}
+                      displayNumber={displayNumbers.get(t.id)}
                     />
                   ))}
                 </div>
@@ -416,6 +420,7 @@ export function Phase({
                       hasCycle={() => false}
                       onToast={onToast}
                       assignmentNames={assignmentNames}
+                      displayNumber={activeTaskDisplayNumber}
                     />
                   </div>
                 ) : null}

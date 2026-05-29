@@ -1,7 +1,6 @@
 'use client'
 
 import { Icon } from '@/components/ui/Icon'
-import { InlineEditableField } from './InlineEditableField'
 import type { Task } from '@/types/roadmap'
 
 interface SubtaskRowProps {
@@ -10,8 +9,8 @@ interface SubtaskRowProps {
   pendingTaskDoneIds: ReadonlySet<string>
   dragHandleProps?: Record<string, unknown>
   onCheck: (id: string) => void
-  onUpdateTitle: (id: string, title: string) => void
   onDelete: (id: string) => void
+  displayNumber?: string
 }
 
 export function SubtaskRow({
@@ -20,8 +19,8 @@ export function SubtaskRow({
   pendingTaskDoneIds,
   dragHandleProps,
   onCheck,
-  onUpdateTitle,
   onDelete,
+  displayNumber,
 }: SubtaskRowProps) {
   const isPending = pendingTaskDoneIds.has(task.id)
   const isEffectivelyReadOnly = readOnly || isPending
@@ -46,13 +45,8 @@ export function SubtaskRow({
           if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!isEffectivelyReadOnly) onCheck(task.id) }
         }}
       />
-      <InlineEditableField
-        value={task.title}
-        onSave={(title) => onUpdateTitle(task.id, title)}
-        readOnly={isEffectivelyReadOnly}
-        placeholder="Subtask title…"
-        className="subtask-title"
-      />
+      <span className="subtask-title">{task.title}</span>
+      {displayNumber && <span className="task-num">{displayNumber}</span>}
       <span className="subtask-id">{task.id}</span>
       {!isEffectivelyReadOnly && (
         <button

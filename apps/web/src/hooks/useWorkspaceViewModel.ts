@@ -11,6 +11,7 @@ interface UseWorkspaceViewModelParams {
   role: ShareRole | null
   serverRoadmapId: string | null
   sessionToken: string | null
+  activeRoadmapId: string | null
 }
 
 const normalizeFilterValue = (value: string) => value.trim().toLowerCase()
@@ -33,8 +34,9 @@ export function useWorkspaceViewModel({
   role,
   serverRoadmapId,
   sessionToken,
+  activeRoadmapId,
 }: UseWorkspaceViewModelParams) {
-  const { openPhases, togglePhase, allOpen, collapseAll, expandAll } = usePhaseCollapse(phases)
+  const { openPhases, togglePhase, allOpen, collapseAll, expandAll } = usePhaseCollapse(phases, activeRoadmapId)
   const { searchQuery, setSearchQuery, filteredPhases } = usePhaseSearch(phases)
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
   const [workspaceView, setWorkspaceViewState] = useState<WorkspaceView>('roadmap')

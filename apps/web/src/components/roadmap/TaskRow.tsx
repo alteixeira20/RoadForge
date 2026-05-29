@@ -7,7 +7,6 @@ import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-as
 import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
-import { InlineEditableField } from './InlineEditableField'
 import { TaskSubtaskList } from './TaskSubtaskList'
 import { useEditLock } from '@/hooks/useEditLock'
 import type { Task } from '@/types/roadmap'
@@ -36,6 +35,7 @@ interface TaskRowProps {
   assignmentNames: string[]
   startEditing?: boolean
   onDirtyChange?: (taskId: string, dirty: boolean) => void
+  displayNumber?: string
 }
 
 export function TaskRow({
@@ -62,6 +62,7 @@ export function TaskRow({
   assignmentNames,
   startEditing = false,
   onDirtyChange,
+  displayNumber,
 }: TaskRowProps) {
   const {
     displayName,
@@ -75,7 +76,6 @@ export function TaskRow({
   const [showDepPicker, setShowDepPicker] = useState(false)
   const [isEditing, setIsEditing] = useState(startEditing)
   const [editDirty, setEditDirty] = useState(false)
-  const [inlineEditFields, setInlineEditFields] = useState<Set<string>>(() => new Set())
 
   const target = `task:${task.id}`
   const lock = locks[target]
@@ -90,7 +90,6 @@ export function TaskRow({
       setShowDepPicker(false)
       setIsEditing(false)
       setEditDirty(false)
-      setInlineEditFields(new Set())
       onDirtyChange?.(task.id, false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,7 +102,7 @@ export function TaskRow({
 
   // ─── Lock lifecycle ──────────────────────────────────────────────────────────
 
-  const activeForm = isEditing || showSubtaskForm || showDepPicker || inlineEditFields.size > 0
+  const activeForm = isEditing || showSubtaskForm || showDepPicker
 
   const lockRef = useRef(lock)
   lockRef.current = lock
@@ -155,15 +154,6 @@ export function TaskRow({
     if (readOnly) return false
     return tryAcquireLock()
   }
-
-  const handleInlineEditingChange = useCallback((field: string, editing: boolean) => {
-    setInlineEditFields((current) => {
-      const next = new Set(current)
-      if (editing) next.add(field)
-      else next.delete(field)
-      return next
-    })
-  }, [])
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
@@ -233,15 +223,7 @@ export function TaskRow({
             if (!effectivelyReadOnly) onCheck(task.id)
           }}
         />
-        <InlineEditableField
-          value={task.title}
-          onSave={(title) => onUpdateTask(task.id, { title })}
-          readOnly={effectivelyReadOnly || isEditing}
-          onBeforeEdit={tryAcquireEditLock}
-          placeholder="Task title…"
-          className="title"
-          onEditingChange={(editing) => handleInlineEditingChange('title', editing)}
-        />
+        <span className="title">{task.title}</span>
         {isLockedByOther && (
           <span className="meta-pill meta-pill-lock">
             <Icon name="shield" size={11} /> {lockHolderName} is editing
@@ -254,6 +236,7 @@ export function TaskRow({
         {task.est && blockedBy.length === 0 && !isNested && (
           <span className="meta-pill">{task.est}</span>
         )}
+        {displayNumber && <span className="task-num">{displayNumber}</span>}
         <span className="id">{task.id}</span>
         <button
           type="button"
@@ -298,11 +281,6 @@ export function TaskRow({
                 isNested={isNested}
                 assignedNames={assignedNames}
                 visibleTags={visibleTags}
-                readOnly={effectivelyReadOnly}
-                onBeforeEdit={tryAcquireEditLock}
-                onSaveDesc={(desc) => onUpdateTask(task.id, { desc })}
-                onSaveEst={(est) => onUpdateTask(task.id, { est })}
-                onInlineEditingChange={handleInlineEditingChange}
               />
 
               {depTasks.length > 0 && (
@@ -349,9 +327,9 @@ export function TaskRow({
                       readOnly={readOnly}
                       pendingTaskDoneIds={pendingTaskDoneIds}
                       onCheck={onCheck}
-                      onUpdateTitle={(id, title) => onUpdateTask(id, { title })}
                       onDelete={onDeleteSubtask}
                       onReorder={onReorderSubtasks}
+                      parentDisplayNumber={displayNumber}
                     />
                   </div>
                 </div>

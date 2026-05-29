@@ -27,6 +27,7 @@ interface SortableTaskItemProps {
   assignmentNames: string[]
   startEditing?: boolean
   onDirtyChange?: (taskId: string, dirty: boolean) => void
+  displayNumber?: string
 }
 
 export function SortableTaskItem(props: SortableTaskItemProps) {

@@ -1,7 +1,6 @@
 'use client'
 
 import { type CSSProperties } from 'react'
-import { InlineEditableField } from './InlineEditableField'
 import type { Task } from '@/types/roadmap'
 
 interface TaskDetailMetaProps {
@@ -9,11 +8,6 @@ interface TaskDetailMetaProps {
   isNested: boolean
   assignedNames: string[]
   visibleTags: string[]
-  readOnly?: boolean
-  onBeforeEdit?: () => Promise<boolean>
-  onSaveDesc?: (desc: string) => void
-  onSaveEst?: (est: string) => void
-  onInlineEditingChange?: (field: string, editing: boolean) => void
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -46,55 +40,16 @@ function getTagColor(tag: string): string {
   return palette[Math.abs(hash) % palette.length]
 }
 
-export function TaskDetailMeta({
-  task,
-  isNested,
-  assignedNames,
-  visibleTags,
-  readOnly = true,
-  onBeforeEdit,
-  onSaveDesc,
-  onSaveEst,
-  onInlineEditingChange,
-}: TaskDetailMetaProps) {
+export function TaskDetailMeta({ task, isNested, assignedNames, visibleTags }: TaskDetailMetaProps) {
   return (
     <>
-      {onSaveDesc ? (
-        <InlineEditableField
-          value={task.desc ?? ''}
-          onSave={onSaveDesc}
-          readOnly={readOnly}
-          onBeforeEdit={onBeforeEdit}
-          multiline
-          placeholder="Add a description…"
-          className="desc"
-          allowBlank
-          emptyText="No description. Double-click to add."
-          onEditingChange={(editing) => onInlineEditingChange?.('desc', editing)}
-        />
-      ) : (
-        task.desc && <div className="desc">{task.desc}</div>
-      )}
+      {task.desc && <div className="desc">{task.desc}</div>}
 
       <div className="grid">
         {!isNested && (
           <>
             <div className="label">Estimate</div>
-            {onSaveEst ? (
-              <InlineEditableField
-                value={task.est ?? ''}
-                onSave={onSaveEst}
-                readOnly={readOnly}
-                onBeforeEdit={onBeforeEdit}
-                placeholder="e.g. 2d, 5h…"
-                className="value"
-                allowBlank
-                emptyText="—"
-                onEditingChange={(editing) => onInlineEditingChange?.('est', editing)}
-              />
-            ) : (
-              <div className="value">{task.est ?? '—'}</div>
-            )}
+            <div className="value">{task.est ?? '—'}</div>
           </>
         )}
         <div className="label">Assigned</div>

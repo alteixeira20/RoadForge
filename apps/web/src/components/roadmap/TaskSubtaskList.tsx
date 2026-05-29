@@ -28,9 +28,9 @@ interface TaskSubtaskListProps {
   readOnly: boolean
   pendingTaskDoneIds: ReadonlySet<string>
   onCheck: (id: string) => void
-  onUpdateTitle: (id: string, title: string) => void
   onDelete: (id: string) => void
   onReorder: (parentId: string, subtaskIds: string[]) => void
+  parentDisplayNumber?: string
 }
 
 export function TaskSubtaskList({
@@ -39,9 +39,9 @@ export function TaskSubtaskList({
   readOnly,
   pendingTaskDoneIds,
   onCheck,
-  onUpdateTitle,
   onDelete,
   onReorder,
+  parentDisplayNumber,
 }: TaskSubtaskListProps) {
   const [activeSubtaskId, setActiveSubtaskId] = useState<string | null>(null)
   const activeSubtask = activeSubtaskId ? subtasks.find((t) => t.id === activeSubtaskId) ?? null : null
@@ -70,7 +70,7 @@ export function TaskSubtaskList({
       modifiers={[restrictToVerticalAxis]}
     >
       <SortableContext items={subtaskIds} strategy={verticalListSortingStrategy}>
-        {subtasks.map((st) => (
+        {subtasks.map((st, idx) => (
           <SortableSubtaskItem
             key={st.id}
             task={st}
@@ -78,8 +78,8 @@ export function TaskSubtaskList({
             pendingTaskDoneIds={pendingTaskDoneIds}
             dragDisabled={readOnly}
             onCheck={onCheck}
-            onUpdateTitle={onUpdateTitle}
             onDelete={onDelete}
+            displayNumber={parentDisplayNumber ? `${parentDisplayNumber}.${idx + 1}` : undefined}
           />
         ))}
       </SortableContext>
@@ -97,7 +97,6 @@ export function TaskSubtaskList({
               readOnly
               pendingTaskDoneIds={new Set()}
               onCheck={() => {}}
-              onUpdateTitle={() => {}}
               onDelete={() => {}}
             />
           </div>
