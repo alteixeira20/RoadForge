@@ -1,18 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import type { ImportedRoadmap } from '@/lib/roadmap-validation'
-import type { RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
-
-type ImportMode = 'replace-current' | 'new-local'
-type ReplaceImportScope = 'synced' | 'local'
-
-interface PendingImport {
-  result: ImportedRoadmap
-  mode: ImportMode
-  upgradeNotices: RoadmapUpgradeNotice[]
-  replaceScope: ReplaceImportScope
-}
+import { ConflictReviewPanel } from '@/components/share/ConflictReviewPanel'
+import type { PendingImport } from '@/lib/import-merge/types'
 
 interface ImportNoticeProps {
   pendingImport: PendingImport
@@ -20,71 +11,207 @@ interface ImportNoticeProps {
   onCancel: () => void
 }
 
+// ─── Sub-sections ──────────────────────────────────────────────────────────────
+
+function MergeSummaryLines({ pendingImport }: { pendingImport: PendingImport }) {
+  const p = pendingImport.mergePreview
+  if (!p) return null
+  return (
+    <ul className="import-summary-list">
+      {p.phasesAdded > 0 && <li>{p.phasesAdded} new phase{p.phasesAdded !== 1 ? 's' : ''} will be added.</li>}
+      {p.tasksAdded > 0 && <li>{p.tasksAdded} new task{p.tasksAdded !== 1 ? 's' : ''} will be added.</li>}
+      {p.matchedPhases > 0 && <li>{p.matchedPhases} existing phase{p.matchedPhases !== 1 ? 's' : ''} matched — not modified.</li>}
+      {p.matchedTasks > 0 && <li>{p.matchedTasks} existing task{p.matchedTasks !== 1 ? 's' : ''} matched — not modified.</li>}
+      {p.phasesAdded === 0 && p.tasksAdded === 0 && (
+        <li>No new content to add — everything already exists in the current roadmap.</li>
+      )}
+    </ul>
+  )
+}
+
+function RepairsAndWarnings({ pendingImport }: { pendingImport: PendingImport }) {
+  const { repairs, warnings } = pendingImport.result
+  const { upgradeNotices } = pendingImport
+  const hasAny = repairs.length > 0 || warnings.length > 0 || upgradeNotices.length > 0
+  if (!hasAny) return null
+  return (
+    <>
+      {repairs.length > 0 && (
+        <>
+          <span className="import-compat-note">
+            RoadForge repaired minor compatibility issues so this file can be imported safely.
+          </span>
+          <ul className="import-summary-list">
+            {repairs.map((r, i) => <li key={i}>{r.message}</li>)}
+          </ul>
+        </>
+      )}
+      {warnings.length > 0 && (
+        <ul className="import-summary-list">
+          {warnings.map((w, i) => <li key={i}>{w.message}</li>)}
+        </ul>
+      )}
+      {upgradeNotices.length > 0 && (
+        <ul className="import-summary-list">
+          {upgradeNotices.map((n, i) => <li key={i}>{n.message}</li>)}
+        </ul>
+      )}
+      <span className="import-compat-success">
+        This file will still import successfully.
+      </span>
+    </>
+  )
+}
+
+// ─── Danger confirmation section (replace-current only) ───────────────────────
+
+interface DangerConfirmProps {
+  pendingImport: PendingImport
+  acknowledged: boolean
+  onAcknowledge: (checked: boolean) => void
+}
+
+function DangerConfirmSection({ pendingImport, acknowledged, onAcknowledge }: DangerConfirmProps) {
+  const { currentStats, result, replaceScope } = pendingImport
+  const importedPhaseCount = pendingImport.mergePreview?.phasesAdded ?? result.phases.length
+  const importedTaskCount = pendingImport.mergePreview?.tasksAdded ?? result.phases.reduce((sum, p) => sum + p.tasks.length, 0)
+
+  return (
+    <div className="danger-confirm-section">
+      {currentStats && (
+        <div className="danger-stats-grid">
+          <div className="danger-stats-row current">
+            <span className="danger-stats-label">Current roadmap</span>
+            <span className="danger-stats-value">
+              {currentStats.phaseCount} phase{currentStats.phaseCount !== 1 ? 's' : ''}, {currentStats.taskCount} task{currentStats.taskCount !== 1 ? 's' : ''}
+            </span>
+            <span className="danger-stats-fate">will be removed</span>
+          </div>
+          <div className="danger-stats-row imported">
+            <span className="danger-stats-label">Imported file</span>
+            <span className="danger-stats-value">
+              {importedPhaseCount} phase{importedPhaseCount !== 1 ? 's' : ''}, {importedTaskCount} task{importedTaskCount !== 1 ? 's' : ''}
+            </span>
+            <span className="danger-stats-fate">will replace it</span>
+          </div>
+        </div>
+      )}
+      <label className="danger-ack-label">
+        <input
+          type="checkbox"
+          className="danger-ack-checkbox"
+          checked={acknowledged}
+          onChange={(e) => onAcknowledge(e.target.checked)}
+        />
+        <span>
+          {replaceScope === 'synced'
+            ? 'I understand this will permanently overwrite the shared roadmap for all collaborators.'
+            : 'I understand this will permanently overwrite my current roadmap content.'}
+        </span>
+      </label>
+    </div>
+  )
+}
+
+// ─── Header helpers ────────────────────────────────────────────────────────────
+
+function importTitle(pendingImport: PendingImport): string {
+  if (pendingImport.mode === 'safe-additions') return 'Confirm safe merge'
+  if (pendingImport.mode === 'replace-current') return 'Confirm replacement'
+  return 'Import preview'
+}
+
+function importDescription(pendingImport: PendingImport): string {
+  const { mode, result, replaceScope } = pendingImport
+  const name = result.roadmapName ? `"${result.roadmapName}"` : 'the imported roadmap'
+  const phaseCount = mode === 'safe-additions'
+    ? result.phases.length
+    : pendingImport.mergePreview?.phasesAdded ?? result.phases.length
+  const taskCount = mode === 'safe-additions'
+    ? result.phases.reduce((sum, p) => sum + p.tasks.length, 0)
+    : pendingImport.mergePreview?.tasksAdded ?? result.phases.reduce((sum, p) => sum + p.tasks.length, 0)
+  const counts = `${phaseCount} phase${phaseCount !== 1 ? 's' : ''}, ${taskCount} task${taskCount !== 1 ? 's' : ''}`
+
+  if (mode === 'safe-additions') {
+    return `Merging ${name} (${counts}). Only new phases and tasks will be added. No existing data will be changed.`
+  }
+  if (mode === 'replace-current') {
+    return replaceScope === 'synced'
+      ? `This will overwrite the shared roadmap with ${name} (${counts}).`
+      : `This will overwrite the current local draft with ${name} (${counts}).`
+  }
+  return `Importing ${name} as a new local roadmap (${counts}).`
+}
+
+function confirmLabel(mode: PendingImport['mode']): string {
+  if (mode === 'safe-additions') return 'Merge safe additions'
+  if (mode === 'replace-current') return 'Confirm replace current roadmap'
+  return 'Import as new local roadmap'
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function ImportNotice({ pendingImport, onConfirm, onCancel }: ImportNoticeProps) {
-  const isReplace = pendingImport.mode === 'replace-current'
-  const hasNotices = pendingImport.result.repairs.length > 0 ||
-    pendingImport.result.warnings.length > 0 ||
-    pendingImport.upgradeNotices.length > 0
+  const [acknowledged, setAcknowledged] = useState(false)
+  const { mode } = pendingImport
+  const isReplace = mode === 'replace-current'
+  const isMerge = mode === 'safe-additions'
+  const conflicts = pendingImport.mergePreview?.conflicts ?? []
+
+  const hasNoAdditions =
+    isMerge &&
+    (pendingImport.mergePreview?.phasesAdded ?? 0) === 0 &&
+    (pendingImport.mergePreview?.tasksAdded ?? 0) === 0
+
+  const confirmDisabled =
+    (isMerge && hasNoAdditions) ||
+    (isReplace && !acknowledged)
 
   return (
     <>
-      <div className="note-line warning">
+      <div className={`note-line ${isReplace ? 'warning' : ''}`}>
         <span className="ic">
-          <Icon name="shield" size={14} />
+          <Icon name={isMerge ? 'import' : 'shield'} size={14} />
         </span>
         <div>
-          <strong style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--ink)' }}>
-            {isReplace ? 'Confirm replacement' : 'Import notice'}
+          <strong className="import-notice-title">
+            {importTitle(pendingImport)}
           </strong>
-          {isReplace && (
-            <span style={{ display: 'block', fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 6 }}>
-              {pendingImport.replaceScope === 'synced'
-                ? 'This will overwrite the current roadmap contents. After save or autosync, the replacement can sync to collaborators.'
-                : 'This will overwrite the current local draft with the imported roadmap contents.'}
-            </span>
-          )}
-          {pendingImport.result.repairs.length > 0 && (
+          <span className="import-notice-description">
+            {importDescription(pendingImport)}
+          </span>
+
+          {isMerge && (
             <>
-              <span style={{ display: 'block', fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 4 }}>
-                RoadForge repaired minor compatibility issues so this file can be imported safely.
-              </span>
-              <ul style={{ margin: '0 0 6px', paddingLeft: 16, fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55 }}>
-                {pendingImport.result.repairs.map((r, i) => (
-                  <li key={i}>{r.message}</li>
-                ))}
-              </ul>
+              <MergeSummaryLines pendingImport={pendingImport} />
+              <RepairsAndWarnings pendingImport={pendingImport} />
             </>
           )}
-          {pendingImport.result.warnings.length > 0 && (
-            <ul style={{ margin: '0 0 6px', paddingLeft: 16, fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55 }}>
-              {pendingImport.result.warnings.map((w, i) => (
-                <li key={i}>{w.message}</li>
-              ))}
-            </ul>
-          )}
-          {pendingImport.upgradeNotices.length > 0 && (
-            <ul style={{ margin: '0 0 6px', paddingLeft: 16, fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55 }}>
-              {pendingImport.upgradeNotices.map((notice, i) => (
-                <li key={i}>{notice.message}</li>
-              ))}
-            </ul>
-          )}
-          {hasNotices && (
-            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              This file will still import successfully.
-            </span>
-          )}
+
+          {!isMerge && <RepairsAndWarnings pendingImport={pendingImport} />}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+
+      {isMerge && conflicts.length > 0 && (
+        <ConflictReviewPanel conflicts={conflicts} />
+      )}
+
+      {isReplace && (
+        <DangerConfirmSection
+          pendingImport={pendingImport}
+          acknowledged={acknowledged}
+          onAcknowledge={setAcknowledged}
+        />
+      )}
+
+      <div className="import-notice-actions">
         <button
           type="button"
           className={isReplace ? 'btn sm danger' : 'btn sm primary'}
           onClick={onConfirm}
+          disabled={confirmDisabled}
         >
-          {pendingImport.mode === 'replace-current'
-            ? 'Confirm replace current roadmap'
-            : 'Import as new local roadmap'}
+          {confirmLabel(mode)}
         </button>
         <button
           type="button"

@@ -286,6 +286,16 @@ export async function exportRoadmap(
   return new Blob([json], { type: 'application/json' })
 }
 
+function collectTagRegistry(phases: Phase[]): string[] {
+  const tags = new Set<string>()
+  for (const phase of phases) {
+    for (const task of phase.tasks) {
+      for (const tag of task.tags ?? []) tags.add(tag)
+    }
+  }
+  return Array.from(tags).sort()
+}
+
 function buildRoadmapExport(
   phases: Phase[],
   metadata: {
@@ -311,6 +321,11 @@ function buildRoadmapExport(
       role: metadata.role ?? null,
       ownerDisplayName: metadata.ownerDisplayName ?? null,
     },
+    meta: {
+      phaseCount: phases.length,
+      taskCount: phases.reduce((sum, p) => sum + p.tasks.length, 0),
+    },
+    tagRegistry: collectTagRegistry(phases),
     phases,
   }
 }

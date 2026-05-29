@@ -1,14 +1,13 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
+import { ImportActions } from '@/components/share/ImportActions'
 import { ImportNotice } from '@/components/share/ImportNotice'
+import { useImportFlow } from '@/components/share/useImportFlow'
 import { exportRoadmap } from '@/services/roadmap-crud.service'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { parseImportedRoadmapJson, IMPORT_MAX_BYTES } from '@/lib/roadmap-validation'
-import type { ImportedRoadmap } from '@/lib/roadmap-validation'
-import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
 import type { Phase } from '@/types/roadmap'
 import { AI_ROADMAP_TEMPLATE } from '@/lib/ai-roadmap-template'
 
@@ -20,24 +19,9 @@ interface IOModalProps {
 }
 
 type Tab = 'export' | 'import'
-type ImportMode = 'replace-current' | 'new-local'
-type ReplaceImportScope = 'synced' | 'local'
-
-function updateUrlForLocalRoadmap(roadmapId: string): void {
-  if (typeof window === 'undefined') return
-  window.history.replaceState(null, '', `/workspace?roadmap=${encodeURIComponent(roadmapId)}`)
-}
-
-interface PendingImport {
-  result: ImportedRoadmap
-  mode: ImportMode
-  upgradeNotices: RoadmapUpgradeNotice[]
-  replaceScope: ReplaceImportScope
-}
 
 export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalProps) {
   const [tab, setTab] = useState<Tab>('export')
-  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const {
     roadmapName,
     phases,
@@ -52,9 +36,27 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     ownerDisplayName,
     updatedAt,
   } = useRoadmap()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const importModeRef = useRef<ImportMode>('replace-current')
   const canReplaceCurrent = !serverRoadmapId || role === 'owner' || role === 'editor'
+  const {
+    fileInputRef,
+    pendingImport,
+    selectImportFile,
+    handleImportFile,
+    handleConfirm,
+    handleCancelPendingImport,
+  } = useImportFlow({
+    roadmapName,
+    phases,
+    canReplaceCurrent,
+    serverRoadmapId,
+    setPhases,
+    setRoadmapName,
+    setSaved,
+    createLocalRoadmap,
+    onRoadmapImported,
+    onClose,
+    onToast,
+  })
 
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob)
@@ -115,82 +117,10 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     }
   }
 
-  const selectImportFile = (mode: ImportMode) => {
-    importModeRef.current = mode
-    fileInputRef.current?.click()
-  }
-
-  const executeImport = useCallback((imported: ImportedRoadmap, mode: ImportMode) => {
-    const nextName = imported.roadmapName || roadmapName
-    if (mode === 'replace-current') {
-      if (!canReplaceCurrent) {
-        onToast('Viewers can import as a new local roadmap only.')
-        return
-      }
-      setPhases(imported.phases)
-      if (imported.roadmapName) setRoadmapName(imported.roadmapName)
-      setSaved(false)
-      onToast(serverRoadmapId ? 'Roadmap replaced — syncing after autosave' : 'Roadmap replaced from JSON')
-    } else {
-      const newId = createLocalRoadmap(nextName, imported.phases)
-      updateUrlForLocalRoadmap(newId)
-      onToast('Imported as new local roadmap')
-    }
-    onRoadmapImported?.(imported.roadmapName, imported.phases)
-    onClose()
-  }, [roadmapName, canReplaceCurrent, setPhases, setRoadmapName, setSaved, serverRoadmapId,
-      createLocalRoadmap, onRoadmapImported, onClose, onToast])
-
   const handleClose = useCallback(() => {
-    setPendingImport(null)
+    handleCancelPendingImport()
     onClose()
-  }, [onClose])
-
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (file.size > IMPORT_MAX_BYTES) {
-      onToast('Import failed — file is too large')
-      e.target.value = ''
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      try {
-        const parsed = parseImportedRoadmapJson(ev.target?.result as string)
-        const upgraded = upgradeRoadmapSnapshot({
-          roadmapName: parsed.roadmapName,
-          phases: parsed.phases,
-        })
-        const imported: ImportedRoadmap = {
-          ...parsed,
-          roadmapName: upgraded.roadmapName || parsed.roadmapName,
-          phases: upgraded.phases,
-        }
-        const mode = importModeRef.current
-        const hasNotices = imported.warnings.length > 0 ||
-          imported.repairs.length > 0 ||
-          upgraded.notices.length > 0
-        if (mode === 'replace-current' || hasNotices) {
-          setPendingImport({
-            result: imported,
-            mode,
-            upgradeNotices: upgraded.notices,
-            replaceScope: serverRoadmapId ? 'synced' : 'local',
-          })
-        } else {
-          executeImport(imported, mode)
-        }
-      } catch (err) {
-        onToast(err instanceof Error ? err.message : 'Import failed: invalid roadmap file.')
-      }
-    }
-    reader.readAsText(file)
-    // reset so the same file can be re-selected
-    e.target.value = ''
-  }
+  }, [handleCancelPendingImport, onClose])
 
   const handleReset = () => {
     resetToSample()
@@ -219,7 +149,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
       <div className="io-tab">
         <button
           className={tab === 'export' ? 'active' : ''}
-          onClick={() => { setTab('export'); setPendingImport(null) }}
+          onClick={() => { setTab('export'); handleCancelPendingImport() }}
         >
           Export
         </button>
@@ -281,66 +211,16 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
       ) : pendingImport ? (
         <ImportNotice
           pendingImport={pendingImport}
-          onConfirm={() => {
-            const p = pendingImport
-            setPendingImport(null)
-            executeImport(p.result, p.mode)
-          }}
-          onCancel={() => setPendingImport(null)}
+          onConfirm={handleConfirm}
+          onCancel={handleCancelPendingImport}
         />
       ) : (
         <>
-          <div className="io-actions">
-            <button
-              type="button"
-              className="io-action primary"
-              onClick={() => selectImportFile('new-local')}
-              aria-label="Import as new local roadmap"
-            >
-              <span className="io-action-icon">
-                <Icon name="plus" size={15} />
-              </span>
-              <span className="io-action-copy">
-                <span className="io-action-title">Import as new local roadmap</span>
-                <span className="io-action-desc">
-                  Safer option: create and activate a separate local draft.
-                  Collaborators are not affected.
-                </span>
-                <span className="io-action-note">
-                  Keeps your current roadmap unchanged.
-                </span>
-              </span>
-              <span className="io-action-go" aria-hidden>
-                <Icon name="arrow-right" size={15} />
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className="io-action destructive"
-              onClick={() => selectImportFile('replace-current')}
-              disabled={!canReplaceCurrent}
-              aria-label="Replace current roadmap from JSON"
-            >
-              <span className="io-action-icon">
-                <Icon name="import" size={15} />
-              </span>
-              <span className="io-action-copy">
-                <span className="io-action-title">Replace current roadmap</span>
-                <span className="io-action-desc">
-                  {serverRoadmapId
-                    ? 'Destructive: overwrite this shared roadmap with the imported file.'
-                    : 'Destructive: overwrite this local draft with the imported file.'}
-                </span>
-                <span className="io-action-note">
-                  Requires confirmation. Keeps the current roadmap ID, session, and switcher entry.
-                </span>
-              </span>
-              <span className="io-action-go" aria-hidden>
-                <Icon name="arrow-right" size={15} />
-              </span>
-            </button>
-          </div>
+          <ImportActions
+            canReplaceCurrent={canReplaceCurrent}
+            serverRoadmapId={serverRoadmapId}
+            onSelectImportFile={selectImportFile}
+          />
           <div className="note-line compact">
             <span className="ic">
               <Icon name="shield" size={14} />

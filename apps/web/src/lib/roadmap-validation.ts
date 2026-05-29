@@ -190,6 +190,7 @@ const KNOWN_SCHEMAS = new Set([
 ])
 const KNOWN_TOP_LEVEL_KEYS = new Set([
   'schema', 'version', 'exportedAt', 'roadmap', 'collaborator', 'phases',
+  'tagRegistry', 'meta',
 ])
 const KNOWN_PHASE_KEYS = new Set([
   'id', 'num', 'name', 'color', 'status', 'progress', 'tasks',
@@ -284,9 +285,10 @@ function detectCompatibilityWarnings(raw: unknown): CompatibilityWarning[] {
 
 // ─── Import repair pipeline ───────────────────────────────────────────────────
 
-let _repairSeq = 0
-function genTaskId(): string {
-  return `rf-t-${(++_repairSeq).toString(36)}`
+interface IdGen { seq: number }
+function makeIdGen(): IdGen { return { seq: 0 } }
+function genTaskId(gen: IdGen): string {
+  return `rf-t-${++gen.seq}`
 }
 
 function genPhaseId(index: number): string {
@@ -303,10 +305,11 @@ function repairTaskRaw(
   raw: unknown,
   seenIds: Set<string>,
   counts: RepairCounts,
+  gen: IdGen,
 ): Record<string, unknown> {
   if (!isPlainObject(raw)) {
     bump(counts, 'generated_required')
-    const id = genTaskId()
+    const id = genTaskId(gen)
     seenIds.add(id)
     return { id, title: 'Untitled task', done: false }
   }
@@ -316,7 +319,7 @@ function repairTaskRaw(
   // id: must be non-empty string
   if (typeof t.id !== 'string' || !t.id.trim()) {
     bump(counts, 'generated_required')
-    t.id = genTaskId()
+    t.id = genTaskId(gen)
   } else {
     const trimmed = t.id.trim()
     if (seenIds.has(trimmed)) {
@@ -433,6 +436,7 @@ function repairPhaseRaw(
   index: number,
   seenIds: Set<string>,
   counts: RepairCounts,
+  gen: IdGen,
 ): Record<string, unknown> {
   if (!isPlainObject(raw)) {
     bump(counts, 'inferred_phase_field')
@@ -491,7 +495,7 @@ function repairPhaseRaw(
 
   // Repair tasks (pass 1)
   const repairedTasks = (p.tasks as unknown[]).map((task) =>
-    repairTaskRaw(task, seenIds, counts),
+    repairTaskRaw(task, seenIds, counts, gen),
   )
   p.tasks = repairedTasks
 
@@ -513,6 +517,7 @@ function repairImportedRoadmap(
 ): { repairedRaw: unknown; repairs: ImportRepair[] } {
   const counts: RepairCounts = {}
   const seenIds = new Set<string>()
+  const gen = makeIdGen()
 
   // Determine the phases array
   let phasesArray: unknown[]
@@ -538,7 +543,7 @@ function repairImportedRoadmap(
 
   // Pass 1: repair each phase and all tasks, collect all task IDs
   const repairedPhases = phasesArray.map((phase, i) =>
-    repairPhaseRaw(phase, i, seenIds, counts),
+    repairPhaseRaw(phase, i, seenIds, counts, gen),
   )
 
   // Pass 2: remove stale parentId references
