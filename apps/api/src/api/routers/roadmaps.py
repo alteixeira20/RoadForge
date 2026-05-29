@@ -115,6 +115,12 @@ async def put_roadmap(
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse | JSONResponse:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
+    await rate_limiter.enforce(
+        "roadmap.update",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=60,
+        window_seconds=60,
+    )
     try:
         return await update_roadmap(db, roadmap_id, payload, participant)
     except RoadmapConflictError as exc:
@@ -128,6 +134,12 @@ async def remove_roadmap(
     authorization: str | None = Header(default=None),
 ) -> DeleteRoadmapResponse:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await rate_limiter.enforce(
+        "roadmap.delete",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=10,
+        window_seconds=60,
+    )
     result = await delete_roadmap(db, roadmap_id, participant)
     return DeleteRoadmapResponse(**result)
 
@@ -246,6 +258,12 @@ async def post_restore_roadmap_version(
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await rate_limiter.enforce(
+        "versions.restore",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=10,
+        window_seconds=60,
+    )
     return await restore_roadmap_version(db, roadmap_id, version_id, participant)
 
 
@@ -337,6 +355,12 @@ async def post_lock(
     authorization: str | None = Header(default=None),
 ) -> LockResponse:
     participant = await require_participant(db, roadmap_id, authorization, {"owner", "editor"})
+    await rate_limiter.enforce(
+        "locks.acquire",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
     lock = await lock_service.acquire_lock(
         roadmap_id, payload.target, participant.id, participant.display_name
     )
@@ -360,6 +384,12 @@ async def delete_lock(
     authorization: str | None = Header(default=None),
 ) -> Response:
     participant = await require_participant(db, roadmap_id, authorization, {"owner", "editor"})
+    await rate_limiter.enforce(
+        "locks.release",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
     await lock_service.release_lock(roadmap_id, target, participant.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

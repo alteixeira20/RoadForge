@@ -36,7 +36,34 @@ SSE responses at `/api/roadmaps/{id}/events` keep their streaming headers and ar
 
 ## Rate limiting
 
-App-level rate limiting covers unauthenticated create/join paths, password failures, share-link mutation, SSE ticket creation, manual checkpoints, and authenticated roadmap/share/version/participant/activity/lock reads. Redis-backed rate limits are shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`; memory-backed limits are single-worker.
+Main app-level and service-level rate limits include:
+
+| Action | Limit | Window | Scope |
+|---|---|---|---|
+| `roadmap.create.ip` (unauthenticated) | 10 | 3600 s | IP |
+| `join.ip` (unauthenticated) | 20 | 60 s | IP |
+| `join.share_link` | 30 | 600 s | share link |
+| `join.password_failure.ip_share` | 5 | 600 s | IP + share link |
+| `join.password_failure.share` | 30 | 600 s | share link |
+| `roadmap.read` | 240 | 60 s | participant |
+| `roadmap.update` | 60 | 60 s | participant |
+| `roadmap.delete` | 10 | 60 s | participant |
+| `share_links.read` | 60 | 60 s | participant |
+| `share_link.rotate` | 5 | 60 s | participant |
+| `share_link.revoke` | 10 | 60 s | participant |
+| `versions.read` | 120 | 60 s | participant |
+| `versions.checkpoint` | 10 | 60 s | participant |
+| `version.read` | 120 | 60 s | participant |
+| `versions.restore` | 10 | 60 s | participant |
+| `participants.read` | 120 | 60 s | participant |
+| `events.ticket.participant` | 10 | 60 s | participant |
+| `events.ticket.ip` | 60 | 60 s | IP |
+| `locks.acquire` | 120 | 60 s | participant |
+| `locks.release` | 120 | 60 s | participant |
+| `locks.read` | 120 | 60 s | participant |
+| `activity.read` | 120 | 60 s | participant |
+
+Participant-scoped limits use a `{participant_id}:{roadmap_id}` key. IP-scoped limits use the resolved client IP. Redis-backed rate limits are shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`; memory-backed limits are single-worker.
 
 ## Reverse proxy and HTTPS
 
