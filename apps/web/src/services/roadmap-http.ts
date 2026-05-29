@@ -48,6 +48,14 @@ export function isSessionExpiredError(error: unknown): boolean {
   return isApiError(error, 401, 'Session expired') || isApiError(error, 401, 'Session revoked')
 }
 
+export function isAuthError(error: unknown): boolean {
+  return isApiError(error, 401) || isApiError(error, 403)
+}
+
+export function isConflictError(error: unknown): boolean {
+  return isApiError(error, 409)
+}
+
 export function getConflictMetadata(error: unknown): RoadmapConflictMetadata | null {
   if (!(error instanceof ApiError)) return null
   if (error.status !== 409 || error.code !== 'roadmap_conflict') return null

@@ -106,11 +106,8 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
         </span>
       </div>
 
-      <div style={{ marginTop: 20 }}>
-        <label
-          htmlFor="rm-pw"
-          style={{ fontSize: 13, color: 'var(--ink-3)', display: 'block', marginBottom: 6 }}
-        >
+      <div className="password-section">
+        <label htmlFor="rm-pw" className="password-label">
           Password (optional)
         </label>
         <div className="password-field">
@@ -136,17 +133,15 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
           </button>
         </div>
         {pwError ? (
-          <span style={{ fontSize: 12, color: 'var(--ember)', marginTop: 4, display: 'block' }}>
-            {pwError}
-          </span>
+          <span className="password-hint error">{pwError}</span>
         ) : (
-          <span style={{ fontSize: 12, color: 'var(--ink-4)', marginTop: 4, display: 'block' }}>
+          <span className="password-hint">
             People joining with an invite link will also need this password.
           </span>
         )}
       </div>
 
-      <div className="note-line" style={{ marginTop: 16 }}>
+      <div className="note-line">
         <span className="ic">
           <Icon name="shield" size={14} />
         </span>

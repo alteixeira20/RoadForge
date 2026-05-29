@@ -7,6 +7,7 @@ import { MOCK_SHARE_LINKS } from '@/data/sample-roadmap'
 import { getParticipants, getShareLinks, regenerateShareLink, revokeParticipant, revokeShareLink } from '@/services/roadmap-sharing.service'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { ShareRoleSection } from '@/components/share/ShareRoleSection'
+import { isApiError, isAuthError } from '@/services/roadmap-http'
 import type { Participant, ShareLink, ShareRole } from '@/types/roadmap'
 
 const SHARE_ROLES: ShareRole[] = ['owner', 'editor', 'viewer']
@@ -72,8 +73,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       .then((data) => { if (!cancelled) setLinks(data) })
       .catch((err) => {
         if (cancelled) return
-        const msg = err instanceof Error ? err.message : ''
-        if (msg.includes('401') || msg.includes('403')) {
+        if (isAuthError(err)) {
           setOwnerOnly(true)
           onToast('Only the owner can manage share links.')
         } else {
@@ -85,8 +85,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       .then((data) => { if (!cancelled) setParticipants(data) })
       .catch((err) => {
         if (cancelled) return
-        const msg = err instanceof Error ? err.message : ''
-        if (msg.includes('401') || msg.includes('403')) {
+        if (isAuthError(err)) {
           setOwnerOnly(true)
           onToast('Only the owner can manage share links.')
         } else {
@@ -189,8 +188,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       replaceRoleLink(updated)
       onToast('New link generated — copy it now')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('401') || msg.includes('403')) onToast('Only the owner can manage share links.')
+      if (isAuthError(err)) onToast('Only the owner can manage share links.')
       else onToast('Could not rotate link')
     }
   }
@@ -206,8 +204,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       markRoleInactive(targetRole)
       onToast('Link revoked')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('401') || msg.includes('403')) onToast('Only the owner can manage share links.')
+      if (isAuthError(err)) onToast('Only the owner can manage share links.')
       else onToast('Could not revoke link')
     }
   }
@@ -235,9 +232,8 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       onToast('Participant revoked')
       await refreshParticipants()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('401') || msg.includes('403')) onToast('Only the owner can manage participants.')
-      else if (msg.includes('400')) onToast('You cannot revoke your current owner session.')
+      if (isAuthError(err)) onToast('Only the owner can manage participants.')
+      else if (isApiError(err, 400)) onToast('You cannot revoke your current owner session.')
       else onToast('Could not revoke participant')
     }
   }
@@ -318,14 +314,10 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
 
       <div className="share-list">
         {loading && (
-          <div style={{ padding: '12px 0', color: 'var(--ink-4)', fontSize: 13 }}>
-            Loading share links…
-          </div>
+          <div className="share-list-status">Loading share links…</div>
         )}
         {!loading && ownerOnly && (
-          <div style={{ padding: '12px 0', color: 'var(--ink-4)', fontSize: 13 }}>
-            Owner only
-          </div>
+          <div className="share-list-status">Owner only</div>
         )}
         {!loading && !ownerOnly && SHARE_ROLES.map((targetRole) => {
           const link = linkForRole(targetRole)

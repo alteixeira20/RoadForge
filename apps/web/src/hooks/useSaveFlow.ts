@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
-import { getConflictMetadata, isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
+import { getConflictMetadata, isApiConnectionError, isApiError, isAuthError, isConflictError, isSessionExpiredError } from '@/services/roadmap-http'
 import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-changes'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
@@ -162,9 +162,8 @@ export function useSaveFlow({
       if (showActivity) setActivityRefreshKey((k) => k + 1)
       showToast('Saved · collaboration enabled')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
       const nextConflict = getConflictMetadata(err)
-      if (nextConflict || msg.includes('409')) {
+      if (nextConflict || isConflictError(err)) {
         setIsConflict(true)
         setConflictMetadata(nextConflict)
         if (nextConflict) {
@@ -173,9 +172,9 @@ export function useSaveFlow({
         showToast('The roadmap changed elsewhere. Your edits are preserved locally.')
       } else if (isSessionExpiredError(err)) {
         handleSessionExpired()
-      } else if (msg.includes('401')) {
+      } else if (isApiError(err, 401)) {
         showToast('Session expired — rejoin from the invite link')
-      } else if (msg.includes('403')) {
+      } else if (isApiError(err, 403)) {
         showToast('You do not have permission for this action')
       } else if (isApiConnectionError(err)) {
         showToast('RoadForge API is not reachable. Start the backend with make start.')
@@ -223,9 +222,8 @@ export function useSaveFlow({
       showToast('Saved your local version.')
       return null
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
       const nextConflict = getConflictMetadata(err)
-      if (nextConflict || msg.includes('409')) {
+      if (nextConflict || isConflictError(err)) {
         setIsConflict(true)
         if (nextConflict) setConflictMetadata(nextConflict)
         showToast('The server changed again. Review the latest conflict.')
@@ -267,12 +265,11 @@ export function useSaveFlow({
       setIsOffline(false)
       showToast('Reloaded server version.')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
       if (isApiConnectionError(err)) {
         showToast('Could not reach the server — try again later.')
       } else if (isSessionExpiredError(err)) {
         handleSessionExpired()
-      } else if (msg.includes('401') || msg.includes('403')) {
+      } else if (isAuthError(err)) {
         showToast('Session expired — rejoin from the invite link.')
       } else {
         showToast('Could not reload server version.')

@@ -102,8 +102,6 @@ export function ShareRoleSection({
                     )}
                   </button>
                 </>
-              ) : link.isActive ? (
-                <span className="link-hint">{linkHint(targetRole, link)}</span>
               ) : (
                 <span className="link-hint">{linkHint(targetRole, link)}</span>
               )}

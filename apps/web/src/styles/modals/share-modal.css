@@ -286,6 +286,13 @@
   border-color: var(--border);
 }
 
+/* ─── Share list status (loading / owner-only placeholder) ────────────────── */
+.share-list-status {
+  padding: 12px 0;
+  color: var(--ink-4);
+  font-size: 13px;
+}
+
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
