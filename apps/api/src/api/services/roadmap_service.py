@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import delete, select
@@ -31,6 +31,7 @@ from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.password_service import hash_password, verify_password
 from api.services.rate_limit_service import rate_limiter
+from api.services.session_policy import ensure_aware_utc, session_expires_at
 from api.services.roadmap_projection_service import (
     serialize_projection_to_snapshot,
     sync_roadmap_projection_best_effort,
@@ -48,17 +49,6 @@ class RoadmapConflictError(Exception):
         super().__init__(response.detail)
 
 
-def _ensure_aware_utc(dt: datetime) -> datetime:
-    """Return dt as a timezone-aware UTC datetime.
-
-    If dt is naive (no tzinfo), treat it as UTC.
-    If dt already carries timezone info, convert to UTC.
-    """
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
-
-
 # Role → invite-token prefix (non-secret hint only).
 _SHARE_PREFIXES: dict[str, str] = {
     "owner": "ow_",
@@ -67,7 +57,6 @@ _SHARE_PREFIXES: dict[str, str] = {
 }
 
 _MAX_ROADMAP_VERSIONS = 100
-_SESSION_LIFETIME_DAYS = 30
 
 # Actions that warrant a restore point in version history.
 # Default is False for any unknown action — version history is conservative.
@@ -79,8 +68,16 @@ _VERSION_WORTHY_ACTIONS: frozenset[str] = frozenset({
 })
 
 
-def _session_expires_at(now: datetime) -> datetime:
-    return now + timedelta(days=_SESSION_LIFETIME_DAYS)
+async def _trim_old_versions(db: AsyncSession, roadmap_id: str) -> None:
+    old_ids_result = await db.execute(
+        select(RoadmapVersion.id)
+        .where(RoadmapVersion.roadmap_id == roadmap_id)
+        .order_by(RoadmapVersion.version_number.desc())
+        .offset(_MAX_ROADMAP_VERSIONS)
+    )
+    old_ids = old_ids_result.scalars().all()
+    if old_ids:
+        await db.execute(delete(RoadmapVersion).where(RoadmapVersion.id.in_(old_ids)))
 
 
 def _should_create_version(action: str | None, metadata: dict | None) -> bool:
@@ -201,16 +198,7 @@ async def _create_roadmap_version(
         metadata_json=metadata_json,
     ))
     await db.flush()
-
-    old_ids_result = await db.execute(
-        select(RoadmapVersion.id)
-        .where(RoadmapVersion.roadmap_id == roadmap.id)
-        .order_by(RoadmapVersion.version_number.desc())
-        .offset(_MAX_ROADMAP_VERSIONS)
-    )
-    old_ids = old_ids_result.scalars().all()
-    if old_ids:
-        await db.execute(delete(RoadmapVersion).where(RoadmapVersion.id.in_(old_ids)))
+    await _trim_old_versions(db, roadmap.id)
 
 
 async def create_roadmap(
@@ -248,7 +236,7 @@ async def create_roadmap(
         display_name=payload.owner_display_name,
         role="owner",
         session_token_hash=hash_token(owner_session_token),
-        session_expires_at=_session_expires_at(now),
+        session_expires_at=session_expires_at(now),
     )
     db.add(participant)
 
@@ -411,7 +399,7 @@ async def update_roadmap(
     # DB updated_at might have more precision than the client's version,
     # so we check if the DB is strictly newer.
     # Coerce naive client timestamps to UTC to avoid TypeError on comparison.
-    client_ts = _ensure_aware_utc(payload.last_updated_at)
+    client_ts = ensure_aware_utc(payload.last_updated_at)
     if roadmap.updated_at > client_ts:
         raise RoadmapConflictError(
             _roadmap_conflict_response(roadmap, client_ts, payload.phases)
@@ -647,16 +635,7 @@ async def create_roadmap_checkpoint(
     )
     db.add(new_version)
     await db.flush()
-
-    old_ids_result = await db.execute(
-        select(RoadmapVersion.id)
-        .where(RoadmapVersion.roadmap_id == roadmap_id)
-        .order_by(RoadmapVersion.version_number.desc())
-        .offset(_MAX_ROADMAP_VERSIONS)
-    )
-    old_ids = old_ids_result.scalars().all()
-    if old_ids:
-        await db.execute(delete(RoadmapVersion).where(RoadmapVersion.id.in_(old_ids)))
+    await _trim_old_versions(db, roadmap_id)
 
     await db.commit()
     await db.refresh(new_version)
@@ -1059,7 +1038,7 @@ async def join_roadmap(
         role=share_link.role,
         share_link_id=share_link.id,
         session_token_hash=hash_token(session_token),
-        session_expires_at=_session_expires_at(now),
+        session_expires_at=session_expires_at(now),
     )
     db.add(participant)
 
