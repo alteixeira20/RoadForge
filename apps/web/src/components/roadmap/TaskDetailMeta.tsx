@@ -13,6 +13,7 @@ interface TaskDetailMetaProps {
   onBeforeEdit?: () => Promise<boolean>
   onSaveDesc?: (desc: string) => void
   onSaveEst?: (est: string) => void
+  onInlineEditingChange?: (field: string, editing: boolean) => void
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -54,6 +55,7 @@ export function TaskDetailMeta({
   onBeforeEdit,
   onSaveDesc,
   onSaveEst,
+  onInlineEditingChange,
 }: TaskDetailMetaProps) {
   return (
     <>
@@ -68,6 +70,7 @@ export function TaskDetailMeta({
           className="desc"
           allowBlank
           emptyText="No description. Double-click to add."
+          onEditingChange={(editing) => onInlineEditingChange?.('desc', editing)}
         />
       ) : (
         task.desc && <div className="desc">{task.desc}</div>
@@ -87,6 +90,7 @@ export function TaskDetailMeta({
                 className="value"
                 allowBlank
                 emptyText="—"
+                onEditingChange={(editing) => onInlineEditingChange?.('est', editing)}
               />
             ) : (
               <div className="value">{task.est ?? '—'}</div>

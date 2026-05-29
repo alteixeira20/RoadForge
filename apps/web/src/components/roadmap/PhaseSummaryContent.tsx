@@ -24,11 +24,10 @@ interface PhaseSummaryContentProps {
   progressPercent: number
   doneCount: number
   taskCount: number
-  readOnly: boolean
   inputRef: React.RefObject<HTMLInputElement | null>
   onDraftChange: (value: string) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
-  onDoubleClick: (e: React.MouseEvent) => void
+  onBlur: () => void
 }
 
 export function PhaseSummaryContent({
@@ -41,11 +40,10 @@ export function PhaseSummaryContent({
   progressPercent,
   doneCount,
   taskCount,
-  readOnly,
   inputRef,
   onDraftChange,
   onKeyDown,
-  onDoubleClick,
+  onBlur,
 }: PhaseSummaryContentProps) {
   const progressStyle: ForgeStyle = { '--p': `${progressPercent}%` }
 
@@ -62,14 +60,13 @@ export function PhaseSummaryContent({
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           onKeyDown={onKeyDown}
+          onBlur={onBlur}
           onClick={(e) => e.stopPropagation()}
           maxLength={120}
         />
       ) : (
         <span
-          className={`name${readOnly ? '' : ' editable'}`}
-          onDoubleClick={onDoubleClick}
-          title={readOnly ? undefined : 'Double-click to rename'}
+          className="name"
         >
           {name}
         </span>

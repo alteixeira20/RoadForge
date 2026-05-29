@@ -19,7 +19,6 @@ interface PhaseHeaderProps {
   dragHandleProps?: React.HTMLAttributes<Element>
   colorControlRef: React.RefObject<HTMLDivElement | null>
   onPhaseToggle: () => void
-  onBeforeNameEdit: () => Promise<boolean>
   onNameSave: (name: string) => void
   onNameEditingChange: (editing: boolean) => void
   onMenuRename: () => void
@@ -42,7 +41,6 @@ export function PhaseHeader({
   dragHandleProps,
   colorControlRef,
   onPhaseToggle,
-  onBeforeNameEdit,
   onNameSave,
   onNameEditingChange,
   onMenuRename,
@@ -69,11 +67,8 @@ export function PhaseHeader({
         progressPercent={phase.progress}
         doneCount={doneCount}
         taskCount={phase.tasks.length}
-        readOnly={readOnly}
-        isLockedByOther={isColorLockedByOther}
         renameKey={renameKey}
         onPhaseToggle={onPhaseToggle}
-        onBeforeEdit={onBeforeNameEdit}
         onSave={onNameSave}
         onEditingChange={onNameEditingChange}
       />

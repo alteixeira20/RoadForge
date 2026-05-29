@@ -312,7 +312,6 @@ export function Phase({
         dragHandleProps={dragHandleProps}
         colorControlRef={colorControlRef}
         onPhaseToggle={handlePhaseToggle}
-        onBeforeNameEdit={handleNameBeforeEdit}
         onNameSave={handleNameSave}
         onNameEditingChange={setIsNameEditing}
         renameKey={renameKey}

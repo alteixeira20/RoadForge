@@ -42,7 +42,7 @@ export function TaskRow({
   task,
   allTasks,
   expanded,
-  expandedTaskId,
+  expandedTaskId: _expandedTaskId,
   readOnly,
   onToggle,
   onCheck,
@@ -75,6 +75,7 @@ export function TaskRow({
   const [showDepPicker, setShowDepPicker] = useState(false)
   const [isEditing, setIsEditing] = useState(startEditing)
   const [editDirty, setEditDirty] = useState(false)
+  const [inlineEditFields, setInlineEditFields] = useState<Set<string>>(() => new Set())
 
   const target = `task:${task.id}`
   const lock = locks[target]
@@ -114,6 +115,7 @@ export function TaskRow({
       setShowDepPicker(false)
       setIsEditing(false)
       setEditDirty(false)
+      setInlineEditFields(new Set())
       onDirtyChange?.(task.id, false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,7 +128,7 @@ export function TaskRow({
 
   // ─── Lock lifecycle ──────────────────────────────────────────────────────────
 
-  const activeForm = isEditing || showSubtaskForm || showDepPicker
+  const activeForm = isEditing || showSubtaskForm || showDepPicker || inlineEditFields.size > 0
 
   const lockRef = useRef(lock)
   lockRef.current = lock
@@ -152,6 +154,15 @@ export function TaskRow({
     if (readOnly) return false
     return tryAcquireLock()
   }
+
+  const handleInlineEditingChange = useCallback((field: string, editing: boolean) => {
+    setInlineEditFields((current) => {
+      const next = new Set(current)
+      if (editing) next.add(field)
+      else next.delete(field)
+      return next
+    })
+  }, [])
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
@@ -228,6 +239,7 @@ export function TaskRow({
           onBeforeEdit={tryAcquireEditLock}
           placeholder="Task title…"
           className="title"
+          onEditingChange={(editing) => handleInlineEditingChange('title', editing)}
         />
         {isLockedByOther && (
           <span className="meta-pill meta-pill-lock">
@@ -289,6 +301,7 @@ export function TaskRow({
                 onBeforeEdit={tryAcquireEditLock}
                 onSaveDesc={(desc) => onUpdateTask(task.id, { desc })}
                 onSaveEst={(est) => onUpdateTask(task.id, { est })}
+                onInlineEditingChange={handleInlineEditingChange}
               />
 
               {depTasks.length > 0 && (

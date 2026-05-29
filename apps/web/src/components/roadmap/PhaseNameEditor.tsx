@@ -13,11 +13,8 @@ interface PhaseNameEditorProps {
   progressPercent: number
   doneCount: number
   taskCount: number
-  readOnly: boolean
-  isLockedByOther: boolean
   renameKey?: number
   onPhaseToggle: () => void
-  onBeforeEdit: () => Promise<boolean>
   onSave: (name: string) => void
   onEditingChange?: (editing: boolean) => void
 }
@@ -30,11 +27,8 @@ export function PhaseNameEditor({
   progressPercent,
   doneCount,
   taskCount,
-  readOnly,
-  isLockedByOther,
   renameKey,
   onPhaseToggle,
-  onBeforeEdit,
   onSave,
   onEditingChange,
 }: PhaseNameEditorProps) {
@@ -45,18 +39,19 @@ export function PhaseNameEditor({
     confirmDiscard,
     setConfirmDiscard,
     inputRef,
+    focusInputAtStart,
     exitEditing,
-    handleDoubleClick,
     handleKeyDown,
-  } = usePhaseNameEditor({ name, readOnly, isLockedByOther, renameKey, onBeforeEdit, onSave, onEditingChange })
+    handleBlur,
+  } = usePhaseNameEditor({ name, renameKey, onSave, onEditingChange })
 
   const summaryProps = {
     name, num, editing, draft, isActive, displayStatus,
-    progressPercent, doneCount, taskCount, readOnly,
+    progressPercent, doneCount, taskCount,
     inputRef,
     onDraftChange: setDraft,
     onKeyDown: handleKeyDown,
-    onDoubleClick: handleDoubleClick,
+    onBlur: handleBlur,
   }
 
   return (
@@ -78,7 +73,7 @@ export function PhaseNameEditor({
         cancelLabel="Keep editing"
         tone="danger"
         onConfirm={() => { setConfirmDiscard(false); exitEditing() }}
-        onClose={() => { setConfirmDiscard(false); inputRef.current?.focus() }}
+        onClose={() => { setConfirmDiscard(false); focusInputAtStart() }}
       />
     </>
   )

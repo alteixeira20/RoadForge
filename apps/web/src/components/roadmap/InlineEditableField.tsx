@@ -13,6 +13,7 @@ interface InlineEditableFieldProps {
   className?: string
   allowBlank?: boolean
   emptyText?: string
+  onEditingChange?: (editing: boolean) => void
 }
 
 export function InlineEditableField({
@@ -25,18 +26,37 @@ export function InlineEditableField({
   className = '',
   allowBlank = false,
   emptyText = '—',
+  onEditingChange,
 }: InlineEditableFieldProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const editingRef = useRef(false)
+  const onEditingChangeRef = useRef(onEditingChange)
+
+  onEditingChangeRef.current = onEditingChange
 
   const isDirty = draft !== value
+
+  const notifyEditingChange = (nextEditing: boolean) => {
+    editingRef.current = nextEditing
+    onEditingChangeRef.current?.(nextEditing)
+  }
 
   useEffect(() => {
     if (!editing) setDraft(value)
   }, [value, editing])
+
+  useEffect(() => {
+    return () => {
+      if (editingRef.current) {
+        editingRef.current = false
+        onEditingChangeRef.current?.(false)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!editing) return
@@ -56,6 +76,7 @@ export function InlineEditableField({
     }
     setDraft(value)
     setEditing(true)
+    notifyEditingChange(true)
   }
 
   const commitSave = () => {
@@ -63,6 +84,7 @@ export function InlineEditableField({
     if (!allowBlank && !trimmed) return
     onSave(trimmed)
     setEditing(false)
+    notifyEditingChange(false)
   }
 
   const requestCancel = () => {
@@ -71,11 +93,13 @@ export function InlineEditableField({
       return
     }
     setEditing(false)
+    notifyEditingChange(false)
   }
 
   const doDiscard = () => {
     setConfirmDiscard(false)
     setEditing(false)
+    notifyEditingChange(false)
   }
 
   const handleSingleLineKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
