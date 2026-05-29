@@ -56,6 +56,7 @@ Main app-level and service-level rate limits include:
 | `version.read` | 120 | 60 s | participant |
 | `versions.restore` | 10 | 60 s | participant |
 | `participants.read` | 120 | 60 s | participant |
+| `participants.revoke` | 10 | 60 s | participant |
 | `events.ticket.participant` | 10 | 60 s | participant |
 | `events.ticket.ip` | 60 | 60 s | IP |
 | `locks.acquire` | 120 | 60 s | participant |
@@ -64,6 +65,29 @@ Main app-level and service-level rate limits include:
 | `activity.read` | 120 | 60 s | participant |
 
 Participant-scoped limits use a `{participant_id}:{roadmap_id}` key. IP-scoped limits use the resolved client IP. Redis-backed rate limits are shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`; memory-backed limits are single-worker.
+
+## Database migrations and deployment ordering
+
+The `hosting-bay` Compose file starts the API after Postgres is healthy, but it
+does **not** run migrations automatically.  If a deployment includes schema
+changes, the API may fail requests with database errors until migrations are
+applied.
+
+Current operator workflow:
+
+1. Deploy the new API image (`docker compose up -d --build roadforge-api`).
+2. Wait for the container to be healthy (`make api-health` or watch
+   `docker compose ps`).
+3. Apply migrations: `make migrate` (or
+   `docker compose exec roadforge-api alembic upgrade head`).
+
+If the API starts before migrations complete, it will return 500 errors on any
+route that touches a new or changed table.  Restart the API container after
+migrations if needed.
+
+A dedicated migration job/container is a future hardening step; for the current
+single-operator self-hosted topology, the manual sequence above is the expected
+workflow.
 
 ## Reverse proxy and HTTPS
 

@@ -294,6 +294,12 @@ async def post_revoke_participant(
     authorization: str | None = Header(default=None),
 ) -> Response:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await rate_limiter.enforce(
+        "participants.revoke",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=10,
+        window_seconds=60,
+    )
     await revoke_participant(db, roadmap_id, participant_id, participant)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

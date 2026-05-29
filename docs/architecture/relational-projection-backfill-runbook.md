@@ -81,6 +81,13 @@ asyncio.run(check("rm_your_roadmap_id"))
 - `snapshot_json` is never modified by backfill — it is read-only input.
 - Each roadmap is committed individually; a mid-run failure leaves previously
   processed roadmaps in a valid state.
+- **Partial failure**: if a roadmap's snapshot is malformed and triggers an
+  exception, that roadmap's projection rows will be empty (cleared but not
+  rebuilt) and the run exits non-zero.  This is safe while
+  `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED=false` or while the parity
+  fallback is active.  Fix the offending snapshot, then rerun backfill for
+  that roadmap.  Run parity validation after any backfill to confirm all
+  roadmaps passed before enabling the read flag.
 - Projection tables are additive. Backfill only writes to projection tables and does
   not touch any other roadmap data.
 - The backfill script exits non-zero naturally on unhandled failure.

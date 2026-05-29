@@ -8,13 +8,20 @@ Groups:
   C  Version detail
   D  Non-owner access denied (covers both 1904 and 1905)
   E  Restore
+  F  Version trim boundary (PS-008)
+  G  Restore design contract — no stale check (PS-010)
 """
 
 from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.models.roadmap import Roadmap, RoadmapVersion
+from api.services.id_service import generate_id
+from api.services.roadmap_service import _MAX_ROADMAP_VERSIONS, _trim_old_versions
 from tests.conftest import create_roadmap
 
 pytestmark = pytest.mark.asyncio
@@ -371,3 +378,83 @@ async def test_restore_nonexistent_version_returns_404(client: AsyncClient):
         headers=_auth(owner_token),
     )
     assert resp.status_code == 404
+
+
+# ─── Group F — Version trim boundary (PS-008) ────────────────────────────────
+
+
+async def test_version_trim_removes_oldest_beyond_cap(db_session: AsyncSession):
+    """_trim_old_versions keeps the newest _MAX_ROADMAP_VERSIONS and deletes older ones."""
+    roadmap = Roadmap(
+        id=generate_id("rm_"),
+        name="Trim Boundary",
+        owner_display_name="Owner",
+        snapshot_json={"phases": []},
+        schema_version="1.0",
+        is_password_enabled=False,
+    )
+    db_session.add(roadmap)
+    await db_session.flush()
+
+    over_cap = _MAX_ROADMAP_VERSIONS + 1
+    for i in range(1, over_cap + 1):
+        db_session.add(RoadmapVersion(
+            id=generate_id("rv_"),
+            roadmap_id=roadmap.id,
+            version_number=i,
+            roadmap_name="Trim Boundary",
+            snapshot_json={"phases": [], "v": i},
+            action="roadmap.checkpoint",
+        ))
+    await db_session.flush()
+
+    await _trim_old_versions(db_session, roadmap.id)
+
+    count_result = await db_session.execute(
+        select(func.count()).where(RoadmapVersion.roadmap_id == roadmap.id)
+    )
+    assert count_result.scalar_one() == _MAX_ROADMAP_VERSIONS
+
+    # Version 1 (oldest) must be gone; the newest version must survive.
+    min_result = await db_session.execute(
+        select(func.min(RoadmapVersion.version_number)).where(
+            RoadmapVersion.roadmap_id == roadmap.id
+        )
+    )
+    max_result = await db_session.execute(
+        select(func.max(RoadmapVersion.version_number)).where(
+            RoadmapVersion.roadmap_id == roadmap.id
+        )
+    )
+    assert min_result.scalar_one() == 2  # oldest (version_number=1) was trimmed
+    assert max_result.scalar_one() == over_cap
+
+
+# ─── Group G — Restore design contract — no stale check (PS-010) ─────────────
+
+
+async def test_restore_does_not_require_last_updated_at(client: AsyncClient):
+    """Restore is owner-authoritative and intentionally has no stale-check.
+
+    The restore endpoint accepts no request body — there is no last_updated_at
+    field.  This is by design: restore is a destructive owner action, not a
+    concurrent save.  It must succeed even when the roadmap has been updated
+    since the version was created.
+    """
+    body = await create_roadmap(client, name="Restore Contract Test")
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    versions = await _list_versions(client, roadmap_id, owner_token)
+    v1_id = versions[0]["id"]
+
+    # Advance roadmap state so v1 is now "stale" relative to the current snapshot.
+    await _update_name(client, roadmap_id, owner_token, "Updated Name", body["updated_at"])
+
+    # Restore to v1 — no body, no last_updated_at.  Must return 200.
+    resp = await client.post(
+        f"/api/roadmaps/{roadmap_id}/versions/{v1_id}/restore",
+        headers=_auth(owner_token),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Restore Contract Test"

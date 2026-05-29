@@ -6,6 +6,7 @@ Groups:
   B  Share-link mutation rate limit (rotate)
   C  Version checkpoint rate limit
   D  Roadmap update write rate limit
+  E  Participant revoke rate limit
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ _JOIN_LIMIT = 20
 _ROTATE_LIMIT = 5
 _CHECKPOINT_LIMIT = 10
 _UPDATE_LIMIT = 60
+_REVOKE_PARTICIPANT_LIMIT = 10
 
 
 def _auth(token: str) -> dict:
@@ -119,5 +121,28 @@ async def test_roadmap_update_rate_limit(client: AsyncClient):
         f"/api/roadmaps/{roadmap_id}",
         headers=_auth(owner_token),
         json={"name": "Test Roadmap", "last_updated_at": updated_at},
+    )
+    _expect_exhausted(resp)
+
+
+# ─── Group E — Participant revoke rate limit ──────────────────────────────────
+
+
+async def test_revoke_participant_rate_limit(client: AsyncClient):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    # Requests use a nonexistent participant_id — they return 404 from business
+    # logic, but the rate limiter counter still increments on each request.
+    for _ in range(_REVOKE_PARTICIPANT_LIMIT):
+        await client.post(
+            f"/api/roadmaps/{roadmap_id}/participants/pt_nonexistent/revoke",
+            headers=_auth(owner_token),
+        )
+
+    resp = await client.post(
+        f"/api/roadmaps/{roadmap_id}/participants/pt_nonexistent/revoke",
+        headers=_auth(owner_token),
     )
     _expect_exhausted(resp)

@@ -198,6 +198,8 @@ async def _create_roadmap_version(
         metadata_json=metadata_json,
     ))
     await db.flush()
+    # Trim is called after flush so the freshly inserted version is visible
+    # in the count, ensuring the cap is accurate.
     await _trim_old_versions(db, roadmap.id)
 
 
@@ -396,8 +398,12 @@ async def update_roadmap(
     roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
 
     # ── Concurrency check ─────────────────────────────────────────────────────
-    # DB updated_at might have more precision than the client's version,
-    # so we check if the DB is strictly newer.
+    # Strict > (not >=): equal timestamps mean no concurrent write occurred and
+    # the update is safe.  >= would cause spurious 409s on first-writer-wins
+    # saves because the client echoes back the exact timestamp it received.
+    # DB microsecond precision can exceed client serialization precision, so a
+    # slightly-truncated client timestamp landing below the DB value correctly
+    # fires the conflict (safe direction: spurious 409, never silent overwrite).
     # Coerce naive client timestamps to UTC to avoid TypeError on comparison.
     client_ts = ensure_aware_utc(payload.last_updated_at)
     if roadmap.updated_at > client_ts:
