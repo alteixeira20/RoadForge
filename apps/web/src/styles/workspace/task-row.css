@@ -327,3 +327,9 @@
     text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px;
   }
 }
+
+/* ── 600px — mobile: compact task density ───────────────────────────────── */
+@media (max-width: 600px) {
+  .task-row { padding: 12px 14px; gap: 10px; }
+  .draft-task-row { padding: 10px 14px; }
+}

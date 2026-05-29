@@ -1,8 +1,8 @@
 /* ─── Roadmap layout ───────────────────────────────────────────────────────── */
 .workspace {
-  max-width: 880px;
+  max-width: var(--workspace-max-width);
   margin: 0 auto;
-  padding: 40px 32px 80px;
+  padding: var(--workspace-y-pad-top) var(--workspace-x-pad) var(--workspace-y-pad-bottom);
   width: 100%;
 }
 .upgrade-notice {

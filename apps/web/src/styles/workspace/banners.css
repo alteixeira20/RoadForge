@@ -43,8 +43,8 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 720px — banner polish ──────────────────────────────────────────────── */
-@media (max-width: 720px) {
+/* ── 760px — banner polish ──────────────────────────────────────────────── */
+@media (max-width: 760px) {
   .readonly-banner .who { font-size: 12px; }
   .readonly-banner, .conflict-banner { flex-wrap: wrap; gap: 8px; }
 }

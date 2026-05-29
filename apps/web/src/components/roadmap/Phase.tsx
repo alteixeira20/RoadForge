@@ -282,37 +282,38 @@ export function Phase({
         .join(' ')}
       style={headStyle}
     >
-      <div className="phase-head" onClick={handlePhaseToggle}>
+      <div className="phase-head">
         {dragHandleProps && (
           <span
             className="phase-drag-handle"
-            onClick={(e) => e.stopPropagation()}
             {...(dragHandleProps as React.HTMLAttributes<HTMLSpanElement>)}
           >
             <Icon name="grip" size={14} />
           </span>
         )}
-        <span className="chev">
-          <Icon name="chevron-right" size={16} />
-        </span>
-        <span className="num">{phase.num}</span>
-        <span className="name">{phase.name}</span>
-        <span className={`status ${isActive ? 'active' : ''}`}>
-          {phaseStatusLabel(displayStatus)}
-        </span>
-        <span className="progress-mini" style={progressStyle}>
-          <i />
-        </span>
-        <span className="count">
-          {doneCount}/{phase.tasks.length}
-        </span>
+        <button type="button" className="phase-toggle-btn" onClick={handlePhaseToggle}>
+          <span className="chev">
+            <Icon name="chevron-right" size={16} />
+          </span>
+          <span className="num">{phase.num}</span>
+          <span className="name">{phase.name}</span>
+          <span className={`status ${isActive ? 'active' : ''}`}>
+            {phaseStatusLabel(displayStatus)}
+          </span>
+          <span className="progress-mini" style={progressStyle}>
+            <i />
+          </span>
+          <span className="count">
+            {doneCount}/{phase.tasks.length}
+          </span>
+        </button>
         {isColorLockedByOther && (
           <span className="phase-lock-pill">
             <Icon name="shield" size={11} /> {colorLock.displayName} is editing
           </span>
         )}
         {!readOnly && !isColorLockedByOther && (
-          <div ref={colorControlRef} className="phase-color-control" onClick={(e) => e.stopPropagation()}>
+          <div ref={colorControlRef} className="phase-color-control">
             <button
               type="button"
               className="phase-color-trigger"

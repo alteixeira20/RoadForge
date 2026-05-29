@@ -159,3 +159,8 @@
 }
 
 .form-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+
+/* ── 600px — mobile: compact edit form ──────────────────────────────────── */
+@media (max-width: 600px) {
+  .edit-form { padding: 10px; gap: 10px; }
+}

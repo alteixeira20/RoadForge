@@ -195,6 +195,13 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
+/* ── 900px — half-screen: tighten toolbar to prevent premature wrap ──────── */
+@media (max-width: 900px) {
+  .workspace-bar .search { min-width: 180px; }
+  .workspace-bar .kbd { display: none; }
+  .toolbar-action { padding: 0 9px; }
+}
+
 /* ── 600px — mobile: tabs full-width, search+filter fill remaining row ─── */
 @media (max-width: 600px) {
   .workspace-bar { gap: 6px; padding: 6px; }

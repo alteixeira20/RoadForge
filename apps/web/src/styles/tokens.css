@@ -45,6 +45,10 @@
 
   --container: 1120px;
   --header-h: 76px;
+  --workspace-max-width: 1080px;
+  --workspace-x-pad: 32px;
+  --workspace-y-pad-top: 40px;
+  --workspace-y-pad-bottom: 80px;
 
   --z-header: 50;
   --z-popover: 30;

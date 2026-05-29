@@ -15,10 +15,15 @@
 .phase-head {
   display: flex; align-items: center; gap: 16px;
   padding: 18px 22px;
-  cursor: pointer;
-  user-select: none;
   transition: background 160ms;
   position: relative;
+}
+.phase-toggle-btn {
+  display: flex; align-items: center; gap: 16px;
+  flex: 1; min-width: 0;
+  border: none; background: transparent; padding: 0; margin: 0;
+  font: inherit; color: inherit;
+  cursor: pointer; user-select: none; text-align: left;
 }
 .phase-head:hover { background: var(--bg-2); }
 .phase-head::before {
@@ -238,6 +243,7 @@
 /* ── 760px — tablet: tighten phase layout ───────────────────────────────── */
 @media (max-width: 760px) {
   .phase-head { padding: 14px 16px; gap: 10px; }
+  .phase-toggle-btn { gap: 10px; }
   .phase-color-trigger { opacity: 1; }
   .phase-head .progress-mini { display: none; }
   .phase-head .name { font-size: 17px; }

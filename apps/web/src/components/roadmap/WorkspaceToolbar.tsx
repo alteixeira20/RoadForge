@@ -155,6 +155,7 @@ export function WorkspaceToolbar({
           </div>
 
           <button
+            type="button"
             className="toolbar-action"
             onClick={allOpen ? onCollapseAll : onExpandAll}
           >
