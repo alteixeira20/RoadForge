@@ -405,6 +405,12 @@ async def update_roadmap(
             _roadmap_conflict_response(roadmap, client_ts, payload.phases)
         )
 
+    # Advance updated_at explicitly so subsequent stale-check comparisons work.
+    # sa.func.now() (onupdate) emits SQL NOW() = transaction_timestamp(), which
+    # is pinned to the outer transaction start — shared in tests and in long-lived
+    # DB transactions. A Python-side timestamp is always strictly newer.
+    roadmap.updated_at = datetime.now(timezone.utc)
+
     before_json: dict = {}
     after_json: dict = {}
 
