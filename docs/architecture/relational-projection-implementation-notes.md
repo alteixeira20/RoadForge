@@ -67,7 +67,10 @@ RF-821 is complete when all of the following are true:
 - Partial relational write endpoints. RF-877 is deferred because it requires new API
   schemas, router authorization wiring, conflict behavior, activity-log details, and
   manual QA beyond this projection pass.
-- RF-821 completion audit (2107) remains intentionally deferred.
+- RF-821 completion audit (2107) passed with minor follow-ups. The relational
+  projection foundation is complete: projection tables remain derivative,
+  `snapshot_json` remains canonical, backfill/verification is available, and
+  guarded projection reads fall back safely.
 
 ## Validation Commands
 

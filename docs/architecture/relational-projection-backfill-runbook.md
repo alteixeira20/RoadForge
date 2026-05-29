@@ -115,12 +115,12 @@ asyncio.run(check("rm_your_roadmap_id"))
 - Each roadmap is committed individually; a mid-run failure leaves previously
   processed roadmaps in a valid state.
 - **Partial failure**: if a roadmap's snapshot is malformed and triggers an
-  exception, that roadmap's projection rows will be empty (cleared but not
-  rebuilt) and the run exits non-zero.  This is safe while
-  `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED=false` or while the parity
-  fallback is active.  Fix the offending snapshot, then rerun backfill for
-  that roadmap.  Run parity validation after any backfill to confirm all
-  roadmaps passed before enabling the read flag.
+  exception, previously committed roadmaps stay committed. The currently
+  failing roadmap's delete/rebuild should roll back because it has not been
+  committed when the error occurs. Fix the offending snapshot, then rerun
+  verification/backfill. Projection reads stay safe because `snapshot_json`
+  remains canonical and the read path falls back to it when parity or
+  serialization fails.
 - `--verify-only` does not write projection tables. It checks current projection
   parity and reports whether the read flag is safe to enable.
 - Projection tables are additive. Backfill only writes to projection tables and does
