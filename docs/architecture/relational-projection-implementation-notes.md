@@ -10,12 +10,25 @@
 - Added `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED`, disabled by default, to allow GET roadmap reads from projection only when parity passes.
 - Documented the future partial write endpoint contract.
 
+## Completed in RF-1906–1910
+
+- Operator backfill script: `apps/api/src/api/scripts/backfill_projection.py`.
+  Makefile target: `make api-backfill-projection`.
+  Runbook: `docs/architecture/relational-projection-backfill-runbook.md`.
+- Automated tests split across three files:
+  - `apps/api/tests/test_roadmap_projection_roundtrip.py` — phase/task field preservation,
+    source_json passthrough, invalid dep/parent normalization (RF-1906).
+  - `apps/api/tests/test_roadmap_projection_parity.py` — parity after create, update,
+    and restore (RF-1907).
+  - `apps/api/tests/test_roadmap_projection_read_flag.py` — disabled-by-default check,
+    parity-OK path, and parity-failure fallback (RF-1910).
+
 ## Remaining
 
-- Operator CLI or admin-only job wiring for backfill.
-- Automated tests for mapper parity and sync once test execution is allowed.
 - Migration application and rollback validation against a local database copy.
-- Partial relational write endpoints. RF-877 is deferred because it requires new API schemas, router authorization wiring, conflict behavior, activity-log details, and manual QA beyond this projection pass.
+- Partial relational write endpoints. RF-877 is deferred because it requires new API
+  schemas, router authorization wiring, conflict behavior, activity-log details, and
+  manual QA beyond this projection pass.
 
 ## Validation Commands
 

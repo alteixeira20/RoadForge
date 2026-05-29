@@ -31,12 +31,12 @@ from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.password_service import hash_password, verify_password
 from api.services.rate_limit_service import rate_limiter
-from api.services.session_policy import ensure_aware_utc, session_expires_at
 from api.services.roadmap_projection_service import (
     serialize_projection_to_snapshot,
     sync_roadmap_projection_best_effort,
     validate_projection_parity,
 )
+from api.services.session_policy import ensure_aware_utc, session_expires_at
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
 

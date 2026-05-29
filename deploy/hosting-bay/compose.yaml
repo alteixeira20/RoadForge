@@ -41,6 +41,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://roadforge:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@roadforge-postgres:5432/roadforge
       ROADFORGE_ENVIRONMENT: production
+      ROADFORGE_SECRET_KEY: ${ROADFORGE_SECRET_KEY:?ROADFORGE_SECRET_KEY is required}
       ROADFORGE_WEB_BASE_URL: ${ROADFORGE_WEB_BASE_URL:?ROADFORGE_WEB_BASE_URL is required}
       ROADFORGE_CORS_ORIGINS: ${ROADFORGE_CORS_ORIGINS:?ROADFORGE_CORS_ORIGINS is required}
       REDIS_URL: ${REDIS_URL:-redis://roadforge-redis:6379/0}

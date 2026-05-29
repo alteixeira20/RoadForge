@@ -1,4 +1,4 @@
-.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-check-fast api-check-prepare api-lint api-test api-test-prepare api-test-fast api-audit web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-check-fast api-check-prepare api-lint api-test api-test-prepare api-test-fast api-audit api-backfill-projection web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -60,6 +60,7 @@ help:
 	@echo "  make api-test           Run backend pytest suite (starts/prepares Postgres automatically)"
 	@echo "  make api-test-fast      Run backend pytest suite (skips Docker preparation; DB must be ready)"
 	@echo "  make api-test-prepare   Start Postgres and ensure roadforge_test DB exists"
+	@echo "  make api-backfill-projection  Backfill relational projection tables for all active roadmaps"
 	@echo ""
 	@echo "  make web-start     Start frontend in the background"
 	@echo "  make web-stop      Stop background frontend process"
@@ -254,6 +255,14 @@ api-check-fast:
 
 api-lint:
 	cd apps/api && ruff check src/
+
+# Local operator tool: backfills projection tables using the local dev Postgres (port 5433).
+# For production, run inside the container instead:
+#   docker compose exec roadforge-api python -m api.scripts.backfill_projection
+# Set LIMIT=N to process at most N roadmaps (default: all).
+api-backfill-projection:
+	cd apps/api && DATABASE_URL=$${DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge} \
+		python -m api.scripts.backfill_projection $${LIMIT:+--limit $$LIMIT}
 
 # Bounded wait: up to 30 s (15 × 2 s) for Postgres to report healthy, then
 # ensure the test database exists (idempotent: createdb exits 0 if it already
