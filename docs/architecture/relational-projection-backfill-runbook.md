@@ -33,6 +33,12 @@ make api-backfill-projection
 # Cap at N roadmaps (useful for staged rollouts or testing)
 LIMIT=50 make api-backfill-projection
 
+# Backfill, then verify parity for processed active roadmaps
+VERIFY=1 make api-backfill-projection
+
+# Verify current projection rows without rebuilding
+VERIFY_ONLY=1 make api-backfill-projection
+
 # Direct invocation (if running outside of the Makefile)
 cd apps/api
 DATABASE_URL=postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge \
@@ -40,6 +46,12 @@ DATABASE_URL=postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadfor
 
 # With a limit
 python -m api.scripts.backfill_projection --limit 100
+
+# Backfill with verification
+python -m api.scripts.backfill_projection --verify
+
+# Verification only
+python -m api.scripts.backfill_projection --verify-only
 ```
 
 ## Running inside the deployed API container
@@ -52,12 +64,33 @@ docker compose exec roadforge-api \
 # With a limit
 docker compose exec roadforge-api \
   python -m api.scripts.backfill_projection --limit 100
+
+# Backfill with verification
+docker compose exec roadforge-api \
+  python -m api.scripts.backfill_projection --verify
+
+# Verification only
+docker compose exec roadforge-api \
+  python -m api.scripts.backfill_projection --verify-only
 ```
 
 ## Validating after backfill
 
-Currently parity must be checked programmatically. To verify a single roadmap
-from a Python shell inside the container:
+Use the operator verification mode after any backfill:
+
+```bash
+python -m api.scripts.backfill_projection --verify
+```
+
+The command reports:
+
+- checked roadmaps;
+- successful parity count;
+- drift/error count;
+- whether projection reads can be considered safe to enable.
+
+It exits non-zero when drift/errors are found. To inspect a single roadmap from
+a Python shell inside the container:
 
 ```python
 import asyncio
@@ -88,6 +121,8 @@ asyncio.run(check("rm_your_roadmap_id"))
   fallback is active.  Fix the offending snapshot, then rerun backfill for
   that roadmap.  Run parity validation after any backfill to confirm all
   roadmaps passed before enabling the read flag.
+- `--verify-only` does not write projection tables. It checks current projection
+  parity and reports whether the read flag is safe to enable.
 - Projection tables are additive. Backfill only writes to projection tables and does
   not touch any other roadmap data.
 - The backfill script exits non-zero naturally on unhandled failure.
@@ -95,7 +130,8 @@ asyncio.run(check("rm_your_roadmap_id"))
 
 ## Enabling projection reads after backfill
 
-Once parity is confirmed, set the flag in the deployment environment:
+Once `--verify` or `--verify-only` reports zero drift/errors, set the flag in
+the deployment environment:
 
 ```env
 ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED=true

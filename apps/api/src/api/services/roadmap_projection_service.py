@@ -44,6 +44,36 @@ class ProjectionParityResult:
     issues: list[str] = field(default_factory=list)
 
 
+@dataclass(slots=True)
+class ProjectionDriftFinding:
+    roadmap_id: str
+    ok: bool
+    issue_count: int
+    issues: list[str] = field(default_factory=list)
+    phase_count_snapshot: int = 0
+    phase_count_projection: int = 0
+    task_count_snapshot: int = 0
+    task_count_projection: int = 0
+
+
+@dataclass(slots=True)
+class ProjectionDriftReport:
+    checked_count: int
+    successful_parity_count: int
+    drift_count: int
+    findings: list[ProjectionDriftFinding] = field(default_factory=list)
+
+    @property
+    def safe_to_enable_projection_reads(self) -> bool:
+        return self.drift_count == 0
+
+
+@dataclass(slots=True)
+class ProjectionBackfillResult:
+    backfilled_count: int
+    drift_report: ProjectionDriftReport | None = None
+
+
 def _source_json(row: dict[str, Any], explicit_keys: set[str]) -> dict[str, Any] | None:
     extra = {key: value for key, value in row.items() if key not in explicit_keys}
     return extra or None
@@ -190,18 +220,41 @@ async def sync_roadmap_projection_best_effort(
         )
 
 
-async def backfill_all_roadmap_projections(db: AsyncSession, limit: int | None = None) -> int:
+def _active_roadmaps_stmt(limit: int | None = None):
     stmt = select(Roadmap).where(Roadmap.deleted_at.is_(None)).order_by(Roadmap.created_at.asc())
     if limit is not None:
         stmt = stmt.limit(limit)
+    return stmt
 
-    result = await db.execute(stmt)
+
+async def _active_roadmaps(db: AsyncSession, limit: int | None = None) -> list[Roadmap]:
+    result = await db.execute(_active_roadmaps_stmt(limit))
+    return list(result.scalars().all())
+
+
+async def backfill_all_roadmap_projections(db: AsyncSession, limit: int | None = None) -> int:
+    roadmaps = await _active_roadmaps(db, limit)
+
     count = 0
-    for roadmap in result.scalars().all():
+    for roadmap in roadmaps:
         await rebuild_roadmap_projection(db, roadmap)
         await db.commit()
         count += 1
     return count
+
+
+async def backfill_and_report_projection_drift(
+    db: AsyncSession,
+    limit: int | None = None,
+    *,
+    verify: bool = False,
+) -> ProjectionBackfillResult:
+    backfilled_count = await backfill_all_roadmap_projections(db, limit=limit)
+    drift_report = await report_projection_drift(db, limit=limit) if verify else None
+    return ProjectionBackfillResult(
+        backfilled_count=backfilled_count,
+        drift_report=drift_report,
+    )
 
 
 async def serialize_projection_to_snapshot(db: AsyncSession, roadmap_id: str) -> dict[str, Any]:
@@ -432,4 +485,51 @@ async def validate_projection_parity(db: AsyncSession, roadmap: Roadmap) -> Proj
         task_count_snapshot=snapshot_task_count,
         task_count_projection=projection_task_count,
         issues=issues,
+    )
+
+
+async def report_roadmap_projection_drift(
+    db: AsyncSession,
+    roadmap: Roadmap,
+) -> ProjectionDriftFinding:
+    try:
+        parity = await validate_projection_parity(db, roadmap)
+    except Exception as exc:
+        snapshot_phase_count, snapshot_task_count = _snapshot_counts(roadmap.snapshot_json)
+        return ProjectionDriftFinding(
+            roadmap_id=roadmap.id,
+            ok=False,
+            issue_count=1,
+            issues=[f"parity check raised {type(exc).__name__}"],
+            phase_count_snapshot=snapshot_phase_count,
+            task_count_snapshot=snapshot_task_count,
+        )
+
+    return ProjectionDriftFinding(
+        roadmap_id=roadmap.id,
+        ok=parity.ok,
+        issue_count=len(parity.issues),
+        issues=parity.issues,
+        phase_count_snapshot=parity.phase_count_snapshot,
+        phase_count_projection=parity.phase_count_projection,
+        task_count_snapshot=parity.task_count_snapshot,
+        task_count_projection=parity.task_count_projection,
+    )
+
+
+async def report_projection_drift(
+    db: AsyncSession,
+    limit: int | None = None,
+) -> ProjectionDriftReport:
+    findings = [
+        await report_roadmap_projection_drift(db, roadmap)
+        for roadmap in await _active_roadmaps(db, limit)
+    ]
+    successful_parity_count = sum(1 for finding in findings if finding.ok)
+    drift_count = len(findings) - successful_parity_count
+    return ProjectionDriftReport(
+        checked_count=len(findings),
+        successful_parity_count=successful_parity_count,
+        drift_count=drift_count,
+        findings=findings,
     )

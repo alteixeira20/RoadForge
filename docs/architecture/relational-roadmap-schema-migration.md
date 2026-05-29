@@ -262,7 +262,7 @@ Risk:
 
 Likely files touched:
 
-- A one-off backfill script or management command under `apps/api` (proposed).
+- `apps/api/src/api/scripts/backfill_projection.py` operator command.
 - Possibly an Alembic data migration only if the team accepts longer migration
   runtime; prefer an explicit command for safer operations.
 
@@ -272,6 +272,9 @@ Validation:
 - Compare dependency counts from task `deps`.
 - Reconstruct a sample snapshot from relational rows and compare to
   `roadmaps.snapshot_json` after normalizing order and omitted null fields.
+- Run `python -m api.scripts.backfill_projection --verify` after backfill, or
+  `python -m api.scripts.backfill_projection --verify-only` to check current
+  projection rows without rebuilding.
 
 Rollback strategy:
 
@@ -290,14 +293,15 @@ Likely files touched:
 
 - `apps/api/src/api/services/roadmap_service.py`.
 - `apps/api/src/api/models/roadmap.py`.
-- Focused service/helper module for snapshot-to-relational projection
-  (proposed).
+- `apps/api/src/api/services/roadmap_projection_service.py`.
 
 Validation:
 
 - Create, update, import-style save, and version restore all update both
   `snapshot_json` and projection rows.
 - Projection rebuild is transactional with the snapshot update.
+- Drift reporting can identify active roadmaps whose projection rows no longer
+  match `snapshot_json`.
 - SSE behavior remains `roadmap.updated` with clients re-fetching the stable
   response.
 
@@ -323,6 +327,10 @@ Likely files touched:
 Validation:
 
 - `GET /api/roadmaps/{id}` returns the same phase/task JSON shape as before.
+- Projection reads are behind `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED`, which
+  remains disabled by default.
+- The read path validates parity and falls back to `roadmaps.snapshot_json` if
+  parity or projection serialization fails.
 - Version detail endpoints still read from `roadmap_versions.snapshot_json`.
 - Import/export snapshots still round-trip.
 
@@ -517,16 +525,19 @@ Non-goals for the first migration:
 
 RF-870 through RF-875 add the projection schema, mapper, service-level
 backfill helper, snapshot-write sync, parity helpers, and a disabled-by-default
-read-path flag named `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED`. Public API
-behavior remains snapshot-first unless the flag is enabled and parity passes.
+read-path flag named `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED`. Phase 22 adds
+operator verification mode, reusable drift reporting, explicit read fallback
+coverage, and the RF-821 completion criteria. Public API behavior remains
+snapshot-first unless the flag is enabled and parity passes.
 
-The service-level backfill helper intentionally has no public route in this pass
-because there is no existing admin-only endpoint framework. Operator command
-wiring should be added in a later deployment-focused slice.
+The backfill and verification workflow is operator-only through
+`apps/api/src/api/scripts/backfill_projection.py`. There is no public route
+because there is no existing admin-only endpoint framework.
 
 The partial write endpoint contract is documented in
 `docs/architecture/partial-roadmap-write-endpoints.md`; endpoint implementation
-is deferred until conflict behavior and QA are scoped per endpoint.
+is deferred until conflict behavior and QA are scoped per endpoint. Future
+partial relational writes require a separate canonical-state policy decision.
 
 ## 13. Recommended decision
 

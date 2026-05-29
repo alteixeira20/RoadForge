@@ -6,6 +6,8 @@ Groups:
   F  Parity after update
   G  Parity after restore
   H  Multi-roadmap rebuild isolation (PS-009)
+  I  Drift reporting
+  J  Backfill verification report
 """
 
 from __future__ import annotations
@@ -16,8 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.models.roadmap import Roadmap
 from api.services.id_service import generate_id
 from api.services.roadmap_projection_service import (
+    backfill_and_report_projection_drift,
     clear_roadmap_projection,
     rebuild_roadmap_projection,
+    report_projection_drift,
     validate_projection_parity,
 )
 from tests.helpers_projection import auth, create_with_phases
@@ -198,3 +202,53 @@ async def test_rebuild_projection_for_multiple_roadmaps_is_isolated(
     assert parity_a_after.ok is True
     assert parity_b_after.ok is True
     assert parity_b_after.phase_count_snapshot == 3
+
+
+# ─── Group I — Drift reporting ───────────────────────────────────────────────
+
+
+async def test_drift_report_detects_parity_ok(client, db_session: AsyncSession):
+    body = await create_with_phases(client)
+
+    report = await report_projection_drift(db_session)
+
+    assert report.checked_count == 1
+    assert report.successful_parity_count == 1
+    assert report.drift_count == 0
+    assert report.safe_to_enable_projection_reads is True
+    assert report.findings[0].roadmap_id == body["id"]
+    assert report.findings[0].ok is True
+
+
+async def test_drift_report_detects_parity_failure(client, db_session: AsyncSession):
+    body = await create_with_phases(client)
+    await clear_roadmap_projection(db_session, body["id"])
+
+    report = await report_projection_drift(db_session)
+
+    assert report.checked_count == 1
+    assert report.successful_parity_count == 0
+    assert report.drift_count == 1
+    assert report.safe_to_enable_projection_reads is False
+    assert report.findings[0].roadmap_id == body["id"]
+    assert report.findings[0].ok is False
+    assert "phase count mismatch" in report.findings[0].issues
+
+
+# ─── Group J — Backfill verification report ──────────────────────────────────
+
+
+async def test_backfill_verify_rebuilds_projection_and_reports_safe(
+    client, db_session: AsyncSession
+):
+    body = await create_with_phases(client)
+    await clear_roadmap_projection(db_session, body["id"])
+
+    result = await backfill_and_report_projection_drift(db_session, verify=True)
+
+    assert result.backfilled_count == 1
+    assert result.drift_report is not None
+    assert result.drift_report.checked_count == 1
+    assert result.drift_report.successful_parity_count == 1
+    assert result.drift_report.drift_count == 0
+    assert result.drift_report.safe_to_enable_projection_reads is True

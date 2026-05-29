@@ -89,6 +89,23 @@ A dedicated migration job/container is a future hardening step; for the current
 single-operator self-hosted topology, the manual sequence above is the expected
 workflow.
 
+## Relational projection rollout
+
+`roadmaps.snapshot_json` remains canonical. The relational roadmap projection
+tables are derivative and can be rebuilt from the snapshot.
+
+For deployments that include projection schema or mapper changes:
+
+1. Apply database migrations.
+2. Run projection backfill:
+   `docker compose exec roadforge-api python -m api.scripts.backfill_projection --verify`
+3. Confirm the command reports zero drift/errors before enabling
+   `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED=true`.
+
+The projection-read flag is disabled by default. If enabled and parity or
+projection serialization fails for a roadmap, the API falls back to
+`roadmaps.snapshot_json` and logs a warning.
+
 ## Reverse proxy and HTTPS
 
 Terminate HTTPS at the public edge or reverse proxy and forward only to the API over a private network. Public deployments should use HSTS-capable HTTPS for all browser traffic. Do not expose the API directly behind an untrusted proxy that preserves client-supplied forwarding headers.

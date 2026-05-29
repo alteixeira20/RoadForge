@@ -6,44 +6,86 @@
 - Added a snapshot-to-projection mapper that rebuilds derivative rows from `roadmaps.snapshot_json`.
 - Added a service-level backfill helper for active, non-deleted roadmaps.
 - Wired projection rebuilds after canonical snapshot writes on create, full update/import-style save, and version restore.
-- Added projection serialization and parity validation helpers.
+- Added projection serialization, parity validation, and drift reporting helpers.
 - Added `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED`, disabled by default, to allow GET roadmap reads from projection only when parity passes.
 - Documented the future partial write endpoint contract.
 
-## Completed in RF-1906–1910
+## RF-821 Completion Criteria
+
+RF-821 is complete when all of the following are true:
+
+- The additive relational projection schema exists and its migration is applied.
+- Projection rows can be rebuilt from `roadmaps.snapshot_json`.
+- Parity tests cover create, full update/import-style save, and version restore.
+- An operator backfill command exists.
+- Drift/parity reporting exists for one or many active roadmaps.
+- `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED` remains off by default.
+- `roadmaps.snapshot_json` remains the canonical write source of truth.
+- Projection reads fall back safely to the canonical snapshot when parity or
+  serialization fails.
+- Deployment/operator runbook coverage exists for backfill, verification, and
+  guarded read-flag enablement.
+- The deferred RF-821 completion audit can verify all of the above.
+
+## Snapshot Canonical Policy
+
+- `roadmaps.snapshot_json` is the write source of truth for the full roadmap.
+- Projection tables are derivative, read-optimized, and rebuildable.
+- Full-roadmap writes update `snapshot_json` first, then synchronize projection
+  rows on a best-effort/additive basis.
+- Backfill can rebuild projection rows from `snapshot_json` without changing the
+  canonical snapshot.
+- Projection reads are optional and guarded by
+  `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED`; the flag stays disabled by
+  default and should only be enabled after parity verification passes.
+- Future partial relational writes require a separate policy decision. RF-821
+  does not make relational rows canonical and does not finish partial write
+  semantics.
+
+## Completed in RF-1906–1910 and Phase 22
 
 - Operator backfill script: `apps/api/src/api/scripts/backfill_projection.py`.
   Makefile target: `make api-backfill-projection`.
   Runbook: `docs/architecture/relational-projection-backfill-runbook.md`.
+- Operator verification modes:
+  - `python -m api.scripts.backfill_projection --verify` rebuilds projection
+    rows, then verifies parity for the processed active roadmaps.
+  - `python -m api.scripts.backfill_projection --verify-only` verifies current
+    projection rows without rebuilding.
+  - The report includes checked roadmaps, successful parity count, drift/error
+    count, and whether projection reads can be considered safe to enable.
 - Automated tests split across three files:
   - `apps/api/tests/test_roadmap_projection_roundtrip.py` — phase/task field preservation,
     source_json passthrough, invalid dep/parent normalization (RF-1906).
   - `apps/api/tests/test_roadmap_projection_parity.py` — parity after create, update,
-    and restore (RF-1907).
+    restore, drift reporting, and backfill verification reporting (RF-1907).
   - `apps/api/tests/test_roadmap_projection_read_flag.py` — disabled-by-default check,
-    parity-OK path, and parity-failure fallback (RF-1910).
+    parity-OK path, parity-failure fallback, and serialization-failure fallback (RF-1910).
 
 ## Remaining
 
-- Migration application and rollback validation against a local database copy.
 - Partial relational write endpoints. RF-877 is deferred because it requires new API
   schemas, router authorization wiring, conflict behavior, activity-log details, and
   manual QA beyond this projection pass.
+- RF-821 completion audit (2107) remains intentionally deferred.
 
 ## Validation Commands
 
-Migration validation:
+Backend validation:
 
 ```bash
-alembic upgrade head
-alembic downgrade 0006
-alembic upgrade head
+make api-test
+make api-check
+make api-lint
+make check
 ```
 
-Backend syntax/tests:
+Projection/operator verification:
 
 ```bash
-pytest apps/api
+make api-backfill-projection
+VERIFY=1 make api-backfill-projection
+VERIFY_ONLY=1 make api-backfill-projection
 ```
 
 Projection/manual QA:
@@ -58,5 +100,6 @@ Projection/manual QA:
 - Existing create, save, import-style save, version checkpoint, and version restore flows behave the same.
 - `roadmaps.snapshot_json` remains canonical.
 - Version restore copies `roadmap_versions.snapshot_json` back to `roadmaps.snapshot_json` before rebuilding projection.
-- The read-path flag is off by default and falls back to snapshots if projection parity fails.
+- The read-path flag is off by default and falls back to snapshots if projection parity
+  or projection serialization fails.
 - No frontend behavior changes are expected.

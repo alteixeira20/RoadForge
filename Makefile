@@ -260,9 +260,14 @@ api-lint:
 # For production, run inside the container instead:
 #   docker compose exec roadforge-api python -m api.scripts.backfill_projection
 # Set LIMIT=N to process at most N roadmaps (default: all).
+# Set VERIFY=1 to run parity verification after backfill.
+# Set VERIFY_ONLY=1 to verify current projection rows without rebuilding.
 api-backfill-projection:
 	cd apps/api && DATABASE_URL=$${DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge} \
-		python -m api.scripts.backfill_projection $${LIMIT:+--limit $$LIMIT}
+		python -m api.scripts.backfill_projection \
+			$${LIMIT:+--limit $$LIMIT} \
+			$${VERIFY:+--verify} \
+			$${VERIFY_ONLY:+--verify-only}
 
 # Bounded wait: up to 30 s (15 × 2 s) for Postgres to report healthy, then
 # ensure the test database exists (idempotent: createdb exits 0 if it already
