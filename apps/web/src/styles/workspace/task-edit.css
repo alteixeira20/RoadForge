@@ -101,6 +101,7 @@
   border-radius: 10px;
   display: flex; flex-direction: column; gap: 12px;
   animation: detailIn 200ms ease-out;
+  width: 100%;
 }
 
 .task-action-form .form-input {

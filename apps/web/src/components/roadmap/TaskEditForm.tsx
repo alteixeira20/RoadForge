@@ -209,7 +209,7 @@ export function TaskEditForm({
         />
       </div>
       <div className="edit-actions">
-        <button className="btn sm ghost" onClick={onCancel}>Discard</button>
+        <button className="btn sm ghost" onClick={onCancel}>Cancel</button>
         <button
           className="btn sm primary"
           onClick={handleSave}

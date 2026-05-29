@@ -84,7 +84,7 @@ export function useWorkspaceViewModel({
     { value: 'mine' as TaskFilter, label: 'My tasks' },
     ...peopleFilterOptions,
     { value: 'pair' as TaskFilter, label: 'Pair' },
-    { value: 'next' as TaskFilter, label: 'Next' },
+    { value: 'next' as TaskFilter, label: 'Recommended' },
     { value: 'open' as TaskFilter, label: 'Open' },
     { value: 'done' as TaskFilter, label: 'Done' },
   ]), [peopleFilterOptions])

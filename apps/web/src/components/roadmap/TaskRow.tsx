@@ -226,7 +226,7 @@ export function TaskRow({
             <Icon name="shield" size={11} /> {lockHolderName} is editing
           </span>
         )}
-        {task.next && !task.done && <span className="next-pip">Next</span>}
+        {task.next && !task.done && <span className="next-pip">Recommended</span>}
         {blockedBy.length > 0 && (
           <span className="meta-pill blocked">⊘ Blocked</span>
         )}

@@ -26,7 +26,7 @@ export function MiniPreview() {
         <div className="task-mini">
           <span className="ck" />
           <span className="tt">Inline task detail and dependencies</span>
-          <span className="pp">NEXT</span>
+          <span className="pp">RECOMMENDED</span>
         </div>
         <div className="task-mini">
           <span className="ck" />
