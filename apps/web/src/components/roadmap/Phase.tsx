@@ -24,6 +24,7 @@ import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifi
 
 import React from 'react'
 import { Icon } from '@/components/ui/Icon'
+import { PhaseHeader } from './PhaseHeader'
 import { SortableTaskItem } from './SortableTaskItem'
 import { TaskRow } from './TaskRow'
 import { DraftTaskRow } from './DraftTaskRow'
@@ -41,6 +42,7 @@ interface PhaseProps {
   pendingTaskDoneIds: ReadonlySet<string>
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onUpdatePhaseColor: (phaseId: string, color: string) => void
+  onUpdatePhaseName: (phaseId: string, name: string) => void
   onAddTask: (phaseId: string, title?: string) => string
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
@@ -55,27 +57,6 @@ interface PhaseProps {
   dragHandleProps?: React.HTMLAttributes<Element>
 }
 
-function phaseStatusLabel(status: PhaseType['status']): string {
-  switch (status) {
-    case 'done':   return 'Complete'
-    case 'active': return 'In progress'
-    case 'next':   return 'Up next'
-    default:       return 'Future'
-  }
-}
-
-const PHASE_COLOR_PRESETS = [
-  { label: 'Orange', value: '#f97316' },
-  { label: 'Green', value: '#22c55e' },
-  { label: 'Blue', value: '#38bdf8' },
-  { label: 'Purple', value: '#a855f7' },
-  { label: 'Yellow', value: '#eab308' },
-  { label: 'Teal', value: '#14b8a6' },
-  { label: 'Slate', value: '#64748b' },
-  { label: 'Red', value: '#ef4444' },
-  { label: 'Cyan', value: '#0ea5e9' },
-]
-
 export function Phase({
   phase,
   isOpen,
@@ -86,6 +67,7 @@ export function Phase({
   pendingTaskDoneIds,
   onUpdateTask,
   onUpdatePhaseColor,
+  onUpdatePhaseName,
   onAddTask,
   onAddSubtask,
   onLinkDependency,
@@ -107,6 +89,7 @@ export function Phase({
   const [draftDirty, setDraftDirty] = useState(false)
   const [dirtyTaskId, setDirtyTaskId] = useState<string | null>(null)
   const [draftCreatedTaskId, setDraftCreatedTaskId] = useState<string | null>(null)
+  const [isNameEditing, setIsNameEditing] = useState(false)
   const colorControlRef = useRef<HTMLDivElement | null>(null)
 
   const { locks, serverRoadmapId, sessionToken, participantId } = useRoadmap()
@@ -132,7 +115,7 @@ export function Phase({
     release: releaseColorLock,
   } = useEditLock({
     target: colorLockTarget,
-    active: showColorPicker && !readOnly,
+    active: (showColorPicker || isNameEditing) && !readOnly,
     serverRoadmapId,
     sessionToken,
     onAcquireError: handleColorLockError,
@@ -149,6 +132,31 @@ export function Phase({
   const handleTryAcquireColorLock = async (): Promise<boolean> => {
     if (readOnly) return false
     return tryAcquireColorLock()
+  }
+
+  const handleNameBeforeEdit = async (): Promise<boolean> => {
+    if (readOnly || isColorLockedByOther) return false
+    const ok = await tryAcquireColorLock()
+    if (ok) setIsNameEditing(true)
+    return ok
+  }
+
+  const handleNameSave = (name: string) => {
+    onUpdatePhaseName(phase.id, name)
+  }
+
+  const handleColorTriggerClick = async () => {
+    if (showColorPicker) {
+      closeColorPicker()
+      return
+    }
+    const success = await handleTryAcquireColorLock()
+    if (success) setShowColorPicker(true)
+  }
+
+  const handleColorSelect = (color: string) => {
+    onUpdatePhaseColor(phase.id, color)
+    closeColorPicker()
   }
 
   useEffect(() => {
@@ -223,10 +231,9 @@ export function Phase({
     }
   }, [draftCreatedTaskId])
 
-  const displayStatus = allDone ? 'done' : (phase.status === 'done' ? 'active' : phase.status)
+  const displayStatus: PhaseType['status'] = allDone ? 'done' : (phase.status === 'done' ? 'active' : phase.status)
 
   const headStyle: ForgeStyle = { '--phase-color': phase.color }
-  const progressStyle: ForgeStyle = { '--p': `${phase.progress}%` }
 
   const topLevelTasks = phase.tasks.filter((t) => !t.parentId)
   const taskIds = topLevelTasks.map((t) => t.id)
@@ -282,78 +289,24 @@ export function Phase({
         .join(' ')}
       style={headStyle}
     >
-      <div className="phase-head">
-        {dragHandleProps && (
-          <span
-            className="phase-drag-handle"
-            {...(dragHandleProps as React.HTMLAttributes<HTMLSpanElement>)}
-          >
-            <Icon name="grip" size={14} />
-          </span>
-        )}
-        <button type="button" className="phase-toggle-btn" onClick={handlePhaseToggle}>
-          <span className="chev">
-            <Icon name="chevron-right" size={16} />
-          </span>
-          <span className="num">{phase.num}</span>
-          <span className="name">{phase.name}</span>
-          <span className={`status ${isActive ? 'active' : ''}`}>
-            {phaseStatusLabel(displayStatus)}
-          </span>
-          <span className="progress-mini" style={progressStyle}>
-            <i />
-          </span>
-          <span className="count">
-            {doneCount}/{phase.tasks.length}
-          </span>
-        </button>
-        {isColorLockedByOther && (
-          <span className="phase-lock-pill">
-            <Icon name="shield" size={11} /> {colorLock.displayName} is editing
-          </span>
-        )}
-        {!readOnly && !isColorLockedByOther && (
-          <div ref={colorControlRef} className="phase-color-control">
-            <button
-              type="button"
-              className="phase-color-trigger"
-              title="Change phase color"
-              aria-label={`Change color for ${phase.name}`}
-              aria-expanded={showColorPicker}
-              onClick={async (e) => {
-                e.stopPropagation()
-                if (showColorPicker) {
-                  closeColorPicker()
-                  return
-                }
-                const success = await handleTryAcquireColorLock()
-                if (success) setShowColorPicker(true)
-              }}
-            >
-              <span style={{ backgroundColor: phase.color }} />
-            </button>
-            {showColorPicker && (
-              <div className="phase-color-popover" role="menu" aria-label="Phase colors">
-                {PHASE_COLOR_PRESETS.map((preset) => (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    className={preset.value.toLowerCase() === phase.color.toLowerCase() ? 'selected' : ''}
-                    title={preset.label}
-                    aria-label={preset.label}
-                    onClick={() => {
-                      onUpdatePhaseColor(phase.id, preset.value)
-                      closeColorPicker()
-                    }}
-                  >
-                    <span style={{ backgroundColor: preset.value }} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <PhaseHeader
+        phase={phase}
+        isActive={isActive}
+        displayStatus={displayStatus}
+        doneCount={doneCount}
+        readOnly={readOnly}
+        isColorLockedByOther={isColorLockedByOther}
+        colorLockDisplayName={colorLock?.displayName}
+        showColorPicker={showColorPicker}
+        dragHandleProps={dragHandleProps}
+        colorControlRef={colorControlRef}
+        onPhaseToggle={handlePhaseToggle}
+        onBeforeNameEdit={handleNameBeforeEdit}
+        onNameSave={handleNameSave}
+        onNameEditingChange={setIsNameEditing}
+        onColorTriggerClick={handleColorTriggerClick}
+        onColorSelect={handleColorSelect}
+      />
 
       {isOpen && (
         <div className="phase-body">

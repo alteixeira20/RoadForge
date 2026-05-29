@@ -1,6 +1,7 @@
 'use client'
 
 import { type CSSProperties } from 'react'
+import { InlineEditableField } from './InlineEditableField'
 import type { Task } from '@/types/roadmap'
 
 interface TaskDetailMetaProps {
@@ -8,6 +9,10 @@ interface TaskDetailMetaProps {
   isNested: boolean
   assignedNames: string[]
   visibleTags: string[]
+  readOnly?: boolean
+  onBeforeEdit?: () => Promise<boolean>
+  onSaveDesc?: (desc: string) => void
+  onSaveEst?: (est: string) => void
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -40,16 +45,52 @@ function getTagColor(tag: string): string {
   return palette[Math.abs(hash) % palette.length]
 }
 
-export function TaskDetailMeta({ task, isNested, assignedNames, visibleTags }: TaskDetailMetaProps) {
+export function TaskDetailMeta({
+  task,
+  isNested,
+  assignedNames,
+  visibleTags,
+  readOnly = true,
+  onBeforeEdit,
+  onSaveDesc,
+  onSaveEst,
+}: TaskDetailMetaProps) {
   return (
     <>
-      {task.desc && <div className="desc">{task.desc}</div>}
+      {onSaveDesc ? (
+        <InlineEditableField
+          value={task.desc ?? ''}
+          onSave={onSaveDesc}
+          readOnly={readOnly}
+          onBeforeEdit={onBeforeEdit}
+          multiline
+          placeholder="Add a description…"
+          className="desc"
+          allowBlank
+          emptyText="No description. Double-click to add."
+        />
+      ) : (
+        task.desc && <div className="desc">{task.desc}</div>
+      )}
 
       <div className="grid">
         {!isNested && (
           <>
             <div className="label">Estimate</div>
-            <div className="value">{task.est ?? '—'}</div>
+            {onSaveEst ? (
+              <InlineEditableField
+                value={task.est ?? ''}
+                onSave={onSaveEst}
+                readOnly={readOnly}
+                onBeforeEdit={onBeforeEdit}
+                placeholder="e.g. 2d, 5h…"
+                className="value"
+                allowBlank
+                emptyText="—"
+              />
+            ) : (
+              <div className="value">{task.est ?? '—'}</div>
+            )}
           </>
         )}
         <div className="label">Assigned</div>

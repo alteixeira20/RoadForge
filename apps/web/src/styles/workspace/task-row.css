@@ -318,6 +318,47 @@
 .tag-chip-input:focus { border-color: var(--ember); }
 .tag-chip-input::placeholder { color: var(--ink-4); }
 
+/* ─── Inline editing (InlineEditableField) ─────────────────────────────────── */
+.inline-edit-display { min-height: 1em; }
+.inline-edit-display.editable { cursor: text; }
+.inline-edit-display.editable:hover {
+  outline: 1px dashed var(--border-strong);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.inline-edit-empty { color: var(--ink-4); font-style: italic; }
+
+.inline-edit-input {
+  background: var(--bg);
+  border: 1px solid var(--ember);
+  border-radius: 5px;
+  padding: 3px 7px;
+  font-size: inherit;
+  font-family: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  color: var(--ink);
+  outline: none;
+  width: 100%;
+}
+.inline-edit-input.multiline {
+  resize: vertical;
+  min-height: 64px;
+  padding: 6px 8px;
+  line-height: 1.5;
+}
+
+/* Title field: must stay flex-1 inside task-row flex container */
+.task-row .inline-edit-display.title { flex: 1; }
+.task-row .inline-edit-input.title {
+  flex: 1;
+  width: auto;
+  font-size: 15.5px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  padding: 4px 8px;
+}
+
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
 /* ── 760px — tablet: tighten task row and detail layout ─────────────────── */

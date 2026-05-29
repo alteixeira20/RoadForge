@@ -7,6 +7,7 @@ import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-as
 import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
+import { InlineEditableField } from './InlineEditableField'
 import { useEditLock } from '@/hooks/useEditLock'
 import type { Task } from '@/types/roadmap'
 
@@ -220,7 +221,14 @@ export function TaskRow({
             if (!effectivelyReadOnly) onCheck(task.id)
           }}
         />
-        <div className="title">{task.title}</div>
+        <InlineEditableField
+          value={task.title}
+          onSave={(title) => onUpdateTask(task.id, { title })}
+          readOnly={effectivelyReadOnly || isEditing}
+          onBeforeEdit={tryAcquireEditLock}
+          placeholder="Task title…"
+          className="title"
+        />
         {isLockedByOther && (
           <span className="meta-pill meta-pill-lock">
             <Icon name="shield" size={11} /> {lockHolderName} is editing
@@ -277,6 +285,10 @@ export function TaskRow({
                 isNested={isNested}
                 assignedNames={assignedNames}
                 visibleTags={visibleTags}
+                readOnly={effectivelyReadOnly}
+                onBeforeEdit={tryAcquireEditLock}
+                onSaveDesc={(desc) => onUpdateTask(task.id, { desc })}
+                onSaveEst={(est) => onUpdateTask(task.id, { est })}
               />
 
               {depTasks.length > 0 && (

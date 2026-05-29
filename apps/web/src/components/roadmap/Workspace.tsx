@@ -303,6 +303,18 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setSaved(false)
   }
 
+  const handleUpdatePhaseName = (phaseId: string, name: string) => {
+    if (readOnly) return
+
+    const phase = phases.find((p) => p.id === phaseId)
+    if (!phase || phase.name === name) return
+
+    setPhases(
+      phases.map((p) => (p.id === phaseId ? { ...p, name } : p)),
+    )
+    setSaved(false)
+  }
+
   const handleReorderPhases = (phaseIds: string[]) => {
     if (readOnly) return
     const reordered = renumberPhases(
@@ -461,6 +473,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             pendingTaskDoneIds={pendingTaskDoneIds}
             onUpdateTask={handleUpdateTask}
             onUpdatePhaseColor={handleUpdatePhaseColor}
+            onUpdatePhaseName={handleUpdatePhaseName}
             onAddTask={handleAddTask}
             onAddSubtask={handleAddSubtask}
             onLinkDependency={handleLinkDependency}

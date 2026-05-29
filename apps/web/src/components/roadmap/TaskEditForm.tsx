@@ -8,6 +8,7 @@ import {
   getVisibleTaskTags,
 } from '@/lib/task-assignment'
 import { TagInput, splitAndNormalizeTags } from './TagInput'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import type { Task } from '@/types/roadmap'
 
 interface TaskEditFormProps {
@@ -60,6 +61,7 @@ export function TaskEditForm({
 }: TaskEditFormProps) {
   const [draft, setDraft] = useState<EditDraft>(() => initialDraft(task))
   const [assigneeDraft, setAssigneeDraft] = useState('')
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false)
 
   const isDirty = isDraftDirty(draft, task)
 
@@ -99,6 +101,14 @@ export function TaskEditForm({
     setAssigneeDraft('')
   }
 
+  const requestCancel = () => {
+    if (isDirty) {
+      setConfirmCancelOpen(true)
+      return
+    }
+    onCancel()
+  }
+
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.nativeEvent.isComposing) return
     if (e.key === 'Enter') {
@@ -106,7 +116,7 @@ export function TaskEditForm({
       handleSave()
     } else if (e.key === 'Escape') {
       e.preventDefault()
-      onCancel()
+      requestCancel()
     }
   }
 
@@ -114,7 +124,7 @@ export function TaskEditForm({
     if (e.nativeEvent.isComposing) return
     if (e.key === 'Escape') {
       e.preventDefault()
-      onCancel()
+      requestCancel()
     }
     // Enter in textarea keeps default newline behavior
   }
@@ -126,7 +136,7 @@ export function TaskEditForm({
       handleAddAssignee()
     } else if (e.key === 'Escape') {
       e.preventDefault()
-      onCancel()
+      requestCancel()
     }
   }
 
@@ -209,7 +219,7 @@ export function TaskEditForm({
         />
       </div>
       <div className="edit-actions">
-        <button className="btn sm ghost" onClick={onCancel}>Cancel</button>
+        <button className="btn sm ghost" onClick={requestCancel}>Cancel</button>
         <button
           className="btn sm primary"
           onClick={handleSave}
@@ -218,6 +228,16 @@ export function TaskEditForm({
           Save
         </button>
       </div>
+      <ConfirmDialog
+        open={confirmCancelOpen}
+        title="Discard unsaved changes?"
+        message="Your edits will be lost."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        tone="danger"
+        onConfirm={onCancel}
+        onClose={() => setConfirmCancelOpen(false)}
+      />
     </div>
   )
 }

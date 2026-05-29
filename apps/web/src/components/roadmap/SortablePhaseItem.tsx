@@ -16,6 +16,7 @@ interface SortablePhaseItemProps {
   pendingTaskDoneIds: ReadonlySet<string>
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onUpdatePhaseColor: (phaseId: string, color: string) => void
+  onUpdatePhaseName: (phaseId: string, name: string) => void
   onAddTask: (phaseId: string, title?: string) => string
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
