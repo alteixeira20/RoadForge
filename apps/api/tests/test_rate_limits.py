@@ -7,6 +7,7 @@ Groups:
   C  Version checkpoint rate limit
   D  Roadmap update write rate limit
   E  Participant revoke rate limit
+  F  Task done patch rate limit
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import pytest
 from httpx import AsyncClient
 
 from tests.conftest import create_roadmap
+from tests.helpers_projection import create_with_phases
 
 pytestmark = pytest.mark.asyncio
 
@@ -24,6 +26,7 @@ _ROTATE_LIMIT = 5
 _CHECKPOINT_LIMIT = 10
 _UPDATE_LIMIT = 60
 _REVOKE_PARTICIPANT_LIMIT = 10
+_TASK_DONE_PATCH_LIMIT = 120
 
 
 def _auth(token: str) -> dict:
@@ -144,5 +147,37 @@ async def test_revoke_participant_rate_limit(client: AsyncClient):
     resp = await client.post(
         f"/api/roadmaps/{roadmap_id}/participants/pt_nonexistent/revoke",
         headers=_auth(owner_token),
+    )
+    _expect_exhausted(resp)
+
+
+# ─── Group F — Task done patch rate limit ────────────────────────────────────
+
+
+async def test_task_done_patch_rate_limit(client: AsyncClient):
+    body = await create_with_phases(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    first = await client.patch(
+        f"/api/roadmaps/{roadmap_id}/tasks/tk_a1/done",
+        headers=_auth(owner_token),
+        json={"done": True, "last_updated_at": body["updated_at"]},
+    )
+    assert first.status_code == 200, first.text
+    updated_at = first.json()["updated_at"]
+
+    for _ in range(_TASK_DONE_PATCH_LIMIT - 1):
+        resp = await client.patch(
+            f"/api/roadmaps/{roadmap_id}/tasks/tk_a1/done",
+            headers=_auth(owner_token),
+            json={"done": True, "last_updated_at": updated_at},
+        )
+        assert resp.status_code == 200, resp.text
+
+    resp = await client.patch(
+        f"/api/roadmaps/{roadmap_id}/tasks/tk_a1/done",
+        headers=_auth(owner_token),
+        json={"done": True, "last_updated_at": updated_at},
     )
     _expect_exhausted(resp)

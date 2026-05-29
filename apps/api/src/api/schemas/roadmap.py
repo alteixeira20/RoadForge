@@ -216,6 +216,13 @@ class UpdateRoadmapRequest(BaseModel):
         return validate_change_summary(v)
 
 
+class PatchTaskDoneRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    done: bool
+    last_updated_at: datetime
+
+
 # ─── Roadmap responses ────────────────────────────────────────────────────────
 
 

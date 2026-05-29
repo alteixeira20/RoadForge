@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import delete, select
@@ -15,6 +16,7 @@ from api.schemas.roadmap import (
     JoinRoadmapRequest,
     JoinRoadmapResponse,
     ParticipantResponse,
+    PatchTaskDoneRequest,
     PhaseDTO,
     RoadmapConflictMetadata,
     RoadmapConflictResponse,
@@ -117,6 +119,48 @@ def _snapshot_counts(snapshot_json: dict) -> tuple[int, int]:
         return 0, 0
     task_count = sum(len(p.get("tasks", [])) for p in phases if isinstance(p, dict))
     return len(phases), task_count
+
+
+def _patch_task_done_snapshot(
+    snapshot_json: dict[str, Any],
+    task_id: str,
+    done: bool,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]] | None:
+    phases = snapshot_json.get("phases", [])
+    if not isinstance(phases, list):
+        return None
+
+    next_phases: list[Any] = []
+    found: tuple[dict[str, Any], dict[str, Any]] | None = None
+    for phase in phases:
+        if not isinstance(phase, dict):
+            next_phases.append(phase)
+            continue
+
+        tasks = phase.get("tasks", [])
+        if not isinstance(tasks, list):
+            next_phases.append(dict(phase))
+            continue
+
+        next_tasks = []
+        for task in tasks:
+            if not isinstance(task, dict) or task.get("id") != task_id or found is not None:
+                next_tasks.append(task)
+                continue
+
+            next_task = dict(task)
+            found = (phase, task)
+            next_task["done"] = done
+            next_tasks.append(next_task)
+
+        next_phase = dict(phase)
+        next_phase["tasks"] = next_tasks
+        next_phases.append(next_phase)
+
+    if found is None:
+        return None
+    phase, task = found
+    return {"phases": next_phases}, phase, task
 
 
 def _phase_task_ids(phases: list[PhaseDTO]) -> tuple[set[str], set[str]]:
@@ -466,6 +510,67 @@ async def update_roadmap(
             "roadmap_id": roadmap_id,
             "updated_at": roadmap.updated_at.isoformat(),
             "participant_id": participant.id if participant else None,
+        }
+    ))
+
+    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+
+
+async def patch_task_done(
+    db: AsyncSession,
+    roadmap_id: str,
+    task_id: str,
+    payload: PatchTaskDoneRequest,
+    participant: Participant,
+) -> RoadmapResponse:
+    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+
+    client_ts = ensure_aware_utc(payload.last_updated_at)
+    if roadmap.updated_at > client_ts:
+        raise RoadmapConflictError(_roadmap_conflict_response(roadmap, client_ts, None))
+
+    patched = _patch_task_done_snapshot(roadmap.snapshot_json, task_id, payload.done)
+    if patched is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    snapshot_json, phase, task = patched
+    before_done = bool(task.get("done", False))
+    if before_done == payload.done:
+        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+
+    action = "task.completed" if payload.done else "task.reopened"
+    roadmap.snapshot_json = snapshot_json
+    roadmap.updated_at = datetime.now(timezone.utc)
+
+    db.add(ActivityLog(
+        id=generate_id("al_"),
+        roadmap_id=roadmap_id,
+        participant_id=participant.id,
+        actor_name=participant.display_name,
+        action=action,
+        entity_type="task",
+        entity_id=task_id,
+        before_json={"done": before_done},
+        after_json={"done": payload.done},
+        metadata_json={
+            "phase_id": phase.get("id"),
+            "task_title": task.get("title"),
+        },
+    ))
+    await sync_roadmap_projection_best_effort(db, roadmap, "task_done_patch")
+
+    await db.commit()
+    await db.refresh(roadmap)
+
+    await event_bus.publish(Event(
+        roadmap_id=roadmap_id,
+        action="roadmap.updated",
+        payload={
+            "roadmap_id": roadmap_id,
+            "updated_at": roadmap.updated_at.isoformat(),
+            "participant_id": participant.id,
+            "task_id": task_id,
+            "action": action,
         }
     ))
 

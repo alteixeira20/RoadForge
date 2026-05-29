@@ -47,6 +47,7 @@ Main app-level and service-level rate limits include:
 | `join.password_failure.share` | 30 | 600 s | share link |
 | `roadmap.read` | 240 | 60 s | participant |
 | `roadmap.update` | 60 | 60 s | participant |
+| `task.done.patch` | 120 | 60 s | participant |
 | `roadmap.delete` | 10 | 60 s | participant |
 | `share_links.read` | 60 | 60 s | participant |
 | `share_link.rotate` | 5 | 60 s | participant |

@@ -8,7 +8,8 @@
 - Wired projection rebuilds after canonical snapshot writes on create, full update/import-style save, and version restore.
 - Added projection serialization, parity validation, and drift reporting helpers.
 - Added `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED`, disabled by default, to allow GET roadmap reads from projection only when parity passes.
-- Documented the future partial write endpoint contract.
+- Documented the partial write endpoint contract. RF-877 adds the first
+  snapshot-first partial write for task done toggles only.
 
 ## RF-821 Completion Criteria
 
@@ -25,7 +26,7 @@ RF-821 is complete when all of the following are true:
   serialization fails.
 - Deployment/operator runbook coverage exists for backfill, verification, and
   guarded read-flag enablement.
-- The deferred RF-821 completion audit can verify all of the above.
+- The RF-821 completion audit verified all of the above.
 
 ## Snapshot Canonical Policy
 
@@ -38,9 +39,9 @@ RF-821 is complete when all of the following are true:
 - Projection reads are optional and guarded by
   `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED`; the flag stays disabled by
   default and should only be enabled after parity verification passes.
-- Future partial relational writes require a separate policy decision. RF-821
-  does not make relational rows canonical and does not finish partial write
-  semantics.
+- Broader partial relational writes require separate endpoint-specific policy
+  decisions. RF-821 does not make relational rows canonical, and RF-877 keeps
+  `snapshot_json` canonical for the first task done toggle.
 
 ## Completed in RF-1906–1910 and Phase 22
 
@@ -64,9 +65,9 @@ RF-821 is complete when all of the following are true:
 
 ## Remaining
 
-- Partial relational write endpoints. RF-877 is deferred because it requires new API
-  schemas, router authorization wiring, conflict behavior, activity-log details, and
-  manual QA beyond this projection pass.
+- Broader partial relational write endpoints remain deferred. RF-877 implements
+  only the task done toggle; generic task editing, phase writes, dependency
+  writes, assignees, and tags are still future work.
 - RF-821 completion audit (2107) passed with minor follow-ups. The relational
   projection foundation is complete: projection tables remain derivative,
   `snapshot_json` remains canonical, backfill/verification is available, and

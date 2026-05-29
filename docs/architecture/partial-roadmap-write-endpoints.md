@@ -1,10 +1,45 @@
 # Partial Roadmap Write Endpoints
 
-This document defines the contract for future partial roadmap writes after the relational projection is proven. It is design only; the current full-save API remains canonical.
+This document defines the contract for partial roadmap writes after the
+relational projection is proven. The first implemented slice is task done
+toggling only; broader partial task editing remains deferred. The current
+full-save API remains available, and `roadmaps.snapshot_json` remains canonical.
 
 ## Scope
 
-Partial writes will use owner/editor authorization and keep viewer access read-only. `roadmaps.snapshot_json` remains the compatibility cache during the staged transition so existing GET, import/export, version, and restore flows keep their shape.
+Partial writes use owner/editor authorization and keep viewer access read-only.
+For the first slice, partial writes update `roadmaps.snapshot_json` first and
+then rebuild/sync derivative projection rows. Existing GET, import/export,
+version, and restore flows keep their shape.
+
+## Implemented endpoint: task done toggle
+
+`PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}/done`
+
+Request:
+
+```json
+{
+  "done": true,
+  "last_updated_at": "2026-05-29T12:00:00Z"
+}
+```
+
+Response: the normal `RoadmapResponse`.
+
+Behavior:
+
+- owner/editor only; viewers receive 403.
+- Uses the same roadmap-level optimistic concurrency policy as full `PUT`:
+  stale `last_updated_at` returns structured 409 `RoadmapConflictResponse`.
+- Returns 404 when the roadmap is missing/deleted or the task ID does not exist
+  in the current canonical snapshot.
+- Updates only the target task's `done` field in `roadmaps.snapshot_json`.
+- Rebuilds derivative projection rows after the canonical snapshot update.
+- Creates `task.completed` or `task.reopened` activity only when the value
+  actually changes.
+- Same-value no-op returns 200 with the current roadmap and does not create an
+  activity log or SSE event.
 
 ## Proposed endpoints
 
@@ -13,7 +48,8 @@ Partial writes will use owner/editor authorization and keep viewer access read-o
 - `DELETE /api/roadmaps/{roadmap_id}/phases/{phase_id}`: delete a phase and its tasks.
 - `POST /api/roadmaps/{roadmap_id}/phases/reorder`: submit ordered client phase IDs.
 - `POST /api/roadmaps/{roadmap_id}/tasks`: create a task in a phase after an optional `after_task_id`, or at the end when omitted.
-- `PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}`: update task fields such as `title`, `done`, `next`, `est`, `desc`, and `parentId`.
+- `PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}`: future broad task patching
+  for fields such as `title`, `next`, `est`, `desc`, and `parentId`.
 - `DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}`: delete a task, dependency edges, and assignees.
 - `POST /api/roadmaps/{roadmap_id}/tasks/reorder`: submit ordered task IDs for one phase, or a task move between phases.
 - `POST /api/roadmaps/{roadmap_id}/tasks/{task_id}/dependencies`: link a dependency by `depends_on_task_id`.
