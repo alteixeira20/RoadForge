@@ -1,7 +1,7 @@
 'use client'
 
 import type { Phase, Task, ActivityChange } from '@/types/roadmap'
-import { generateTaskId, hasCycle as hasCycleGraph } from '@/lib/task-graph'
+import { generateTaskId, generateSubtaskId, hasCycle as hasCycleGraph } from '@/lib/task-graph'
 import { getTaskCompletionBlocker } from '@/lib/task-completion'
 import {
   buildTaskDoneActivityChanges,
@@ -37,6 +37,7 @@ export interface TaskMutations {
   onCheckTask: (id: string) => void
   handleAddTask: (phaseId: string, title?: string) => string
   handleAddSubtask: (parentId: string, title: string) => void
+  handleDeleteSubtask: (subtaskId: string) => void
   handleUpdateTask: (id: string, updates: Partial<Task>) => void
   handleLinkDependency: (taskId: string, depId: string) => void
   handleUnlinkDependency: (taskId: string, depId: string) => void
@@ -111,7 +112,7 @@ export function createTaskMutations({
     const parent = allTasks.find((t) => t.id === parentId)
     if (!parent) return
 
-    const newId = generateTaskId(allTasks)
+    const newId = generateSubtaskId(parentId, allTasks)
     const newSubtask: Task = {
       id: newId,
       title,
@@ -148,7 +149,19 @@ export function createTaskMutations({
       parentId,
     })
     setSaved(false)
-    setExpandedTaskId(newId)
+  }
+
+  const handleDeleteSubtask = (subtaskId: string) => {
+    if (readOnly) return
+    const subtask = allTasks.find((t) => t.id === subtaskId)
+    if (!subtask?.parentId) return
+    setPhases(
+      phases.map((p) => ({
+        ...p,
+        tasks: p.tasks.filter((t) => t.id !== subtaskId && t.parentId !== subtaskId),
+      })),
+    )
+    setSaved(false)
   }
 
   const handleAddTask = (phaseId: string, title?: string): string => {
@@ -357,6 +370,7 @@ export function createTaskMutations({
     onCheckTask,
     handleAddTask,
     handleAddSubtask,
+    handleDeleteSubtask,
     handleUpdateTask,
     handleLinkDependency,
     handleUnlinkDependency,

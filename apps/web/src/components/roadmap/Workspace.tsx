@@ -276,6 +276,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     handleUnlinkDependency,
     handleReorderTasks,
     handleReorderSubtasks,
+    handleDeleteSubtask,
   } = createTaskMutations({
     phases,
     setPhases,
@@ -488,6 +489,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             onUnlinkDependency={handleUnlinkDependency}
             onReorderTasks={handleReorderTasks}
             onReorderSubtasks={handleReorderSubtasks}
+            onDeleteSubtask={handleDeleteSubtask}
             onReorderPhases={handleReorderPhases}
             hasCycle={hasCycle}
             assignmentNames={taskEditorAssigneeNames}

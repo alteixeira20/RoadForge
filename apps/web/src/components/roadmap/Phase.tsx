@@ -50,6 +50,7 @@ interface PhaseProps {
   onUnlinkDependency: (taskId: string, depId: string) => void
   onReorderTasks: (phaseId: string, taskIds: string[]) => void
   onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
+  onDeleteSubtask: (subtaskId: string) => void
   hasCycle: (taskId: string, depId: string) => boolean
   allTasks: Task[]
   readOnly: boolean
@@ -76,6 +77,7 @@ export function Phase({
   onUnlinkDependency,
   onReorderTasks,
   onReorderSubtasks,
+  onDeleteSubtask,
   hasCycle,
   allTasks,
   readOnly,
@@ -369,6 +371,7 @@ export function Phase({
                       onLinkDependency={onLinkDependency}
                       onUnlinkDependency={onUnlinkDependency}
                       onReorderSubtasks={onReorderSubtasks}
+                      onDeleteSubtask={onDeleteSubtask}
                       hasCycle={hasCycle}
                       onToast={onToast}
                       assignmentNames={assignmentNames}
@@ -410,6 +413,7 @@ export function Phase({
                       onLinkDependency={() => {}}
                       onUnlinkDependency={() => {}}
                       onReorderSubtasks={() => {}}
+                      onDeleteSubtask={() => {}}
                       hasCycle={() => false}
                       onToast={onToast}
                       assignmentNames={assignmentNames}

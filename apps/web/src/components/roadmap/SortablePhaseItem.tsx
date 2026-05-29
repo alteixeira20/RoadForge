@@ -24,6 +24,7 @@ interface SortablePhaseItemProps {
   onUnlinkDependency: (taskId: string, depId: string) => void
   onReorderTasks: (phaseId: string, taskIds: string[]) => void
   onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
+  onDeleteSubtask: (subtaskId: string) => void
   hasCycle: (taskId: string, depId: string) => boolean
   allTasks: Task[]
   readOnly: boolean

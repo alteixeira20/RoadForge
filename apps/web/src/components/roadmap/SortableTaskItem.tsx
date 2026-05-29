@@ -21,6 +21,7 @@ interface SortableTaskItemProps {
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void
   onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
+  onDeleteSubtask: (subtaskId: string) => void
   hasCycle: (taskId: string, depId: string) => boolean
   onToast: (message: string) => void
   assignmentNames: string[]

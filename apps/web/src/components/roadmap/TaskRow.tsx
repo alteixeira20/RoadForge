@@ -8,6 +8,7 @@ import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
 import { InlineEditableField } from './InlineEditableField'
+import { TaskSubtaskList } from './TaskSubtaskList'
 import { useEditLock } from '@/hooks/useEditLock'
 import type { Task } from '@/types/roadmap'
 
@@ -26,6 +27,7 @@ interface TaskRowProps {
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void
   onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
+  onDeleteSubtask: (subtaskId: string) => void
   hasCycle: (taskId: string, depId: string) => boolean
   onToast: (message: string) => void
   isNested?: boolean
@@ -51,6 +53,7 @@ export function TaskRow({
   onLinkDependency,
   onUnlinkDependency,
   onReorderSubtasks,
+  onDeleteSubtask,
   hasCycle,
   onToast,
   isNested = false,
@@ -186,9 +189,6 @@ export function TaskRow({
 
   const subtasks = allTasks.filter((t) => t.parentId === task.id)
 
-  // ─── Subtask Reordering ──────────────────────────────────────────────────
-  // Subtask reordering is intentionally disabled for now.
-  // If needed later, it should use the same dnd-kit sortable pattern as top-level tasks.
   return (
     <div
       id={`task-${task.id}`}
@@ -329,36 +329,16 @@ export function TaskRow({
                 <div className="task-detail-section">
                   <div className="section-label">Subtasks</div>
                   <div className="subtasks">
-                    {subtasks.map((st) => {
-                      const isStExpanded = expandedTaskId === st.id
-                      return (
-                        <div
-                          key={st.id}
-                          className="draggable-task-wrapper"
-                        >
-                          <TaskRow
-                            task={st}
-                            allTasks={allTasks}
-                            expanded={isStExpanded}
-                            expandedTaskId={expandedTaskId}
-                            readOnly={readOnly}
-                            onToggle={onToggle}
-                            onCheck={onCheck}
-                            pendingTaskDoneIds={pendingTaskDoneIds}
-                            onUpdateTask={onUpdateTask}
-                            onAddTask={_onAddTask}
-                            onAddSubtask={onAddSubtask}
-                            onLinkDependency={onLinkDependency}
-                            onUnlinkDependency={onUnlinkDependency}
-                            onReorderSubtasks={onReorderSubtasks}
-                            hasCycle={hasCycle}
-                            onToast={onToast}
-                            isNested
-                            assignmentNames={assignmentNames}
-                          />
-                        </div>
-                      )
-                    })}
+                    <TaskSubtaskList
+                      parentId={task.id}
+                      subtasks={subtasks}
+                      readOnly={readOnly}
+                      pendingTaskDoneIds={pendingTaskDoneIds}
+                      onCheck={onCheck}
+                      onUpdateTitle={(id, title) => onUpdateTask(id, { title })}
+                      onDelete={onDeleteSubtask}
+                      onReorder={onReorderSubtasks}
+                    />
                   </div>
                 </div>
               )}

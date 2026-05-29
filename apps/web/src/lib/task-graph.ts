@@ -1,5 +1,14 @@
 import type { Task } from '@/types/roadmap'
 
+export function generateSubtaskId(parentId: string, allTasks: Task[]): string {
+  const allIds = new Set(allTasks.map((t) => t.id))
+  for (let n = 1; n <= 99; n++) {
+    const candidate = `${parentId}-${n.toString().padStart(2, '0')}`
+    if (!allIds.has(candidate)) return candidate
+  }
+  return `${parentId}-${Date.now().toString().slice(-4)}`
+}
+
 export function generateTaskId(allTasks: Task[]): string {
   const rfIds = allTasks
     .map((t) => t.id)
