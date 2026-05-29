@@ -43,6 +43,7 @@ interface PhaseProps {
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onUpdatePhaseColor: (phaseId: string, color: string) => void
   onUpdatePhaseName: (phaseId: string, name: string) => void
+  onDeletePhase: (phaseId: string) => void
   onAddTask: (phaseId: string, title?: string) => string
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
@@ -68,6 +69,7 @@ export function Phase({
   onUpdateTask,
   onUpdatePhaseColor,
   onUpdatePhaseName,
+  onDeletePhase,
   onAddTask,
   onAddSubtask,
   onLinkDependency,
@@ -85,6 +87,8 @@ export function Phase({
   const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
   const isActive = phase.status === 'active'
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false)
+  const [renameKey, setRenameKey] = useState(0)
   const [hasDraft, setHasDraft] = useState(false)
   const [draftDirty, setDraftDirty] = useState(false)
   const [dirtyTaskId, setDirtyTaskId] = useState<string | null>(null)
@@ -157,6 +161,11 @@ export function Phase({
   const handleColorSelect = (color: string) => {
     onUpdatePhaseColor(phase.id, color)
     closeColorPicker()
+  }
+
+  const handleMenuRename = async () => {
+    const ok = await handleNameBeforeEdit()
+    if (ok) setRenameKey((k) => k + 1)
   }
 
   useEffect(() => {
@@ -283,7 +292,7 @@ export function Phase({
         'phase',
         isOpen ? 'expanded' : '',
         isActive ? 'active-phase' : '',
-        showColorPicker ? 'phase-color-open' : '',
+        (showColorPicker || showSettingsMenu) ? 'phase-color-open' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -304,8 +313,12 @@ export function Phase({
         onBeforeNameEdit={handleNameBeforeEdit}
         onNameSave={handleNameSave}
         onNameEditingChange={setIsNameEditing}
+        renameKey={renameKey}
+        onMenuRename={handleMenuRename}
         onColorTriggerClick={handleColorTriggerClick}
         onColorSelect={handleColorSelect}
+        onDeletePhase={onDeletePhase}
+        onSettingsMenuChange={setShowSettingsMenu}
       />
 
       {isOpen && (

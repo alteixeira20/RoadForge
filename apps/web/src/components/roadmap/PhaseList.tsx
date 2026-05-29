@@ -37,6 +37,7 @@ interface PhaseListProps {
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onUpdatePhaseColor: (phaseId: string, color: string) => void
   onUpdatePhaseName: (phaseId: string, name: string) => void
+  onDeletePhase: (phaseId: string) => void
   onAddTask: (phaseId: string, title?: string) => string
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
@@ -63,6 +64,7 @@ export function PhaseList({
   onUpdateTask,
   onUpdatePhaseColor,
   onUpdatePhaseName,
+  onDeletePhase,
   onAddTask,
   onAddSubtask,
   onLinkDependency,
@@ -145,6 +147,7 @@ export function PhaseList({
                 onUpdateTask={onUpdateTask}
                 onUpdatePhaseColor={onUpdatePhaseColor}
                 onUpdatePhaseName={onUpdatePhaseName}
+                onDeletePhase={onDeletePhase}
                 onAddTask={onAddTask}
                 onAddSubtask={onAddSubtask}
                 onLinkDependency={onLinkDependency}

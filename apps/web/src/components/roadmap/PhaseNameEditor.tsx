@@ -15,6 +15,7 @@ interface PhaseNameEditorProps {
   taskCount: number
   readOnly: boolean
   isLockedByOther: boolean
+  renameKey?: number
   onPhaseToggle: () => void
   onBeforeEdit: () => Promise<boolean>
   onSave: (name: string) => void
@@ -31,6 +32,7 @@ export function PhaseNameEditor({
   taskCount,
   readOnly,
   isLockedByOther,
+  renameKey,
   onPhaseToggle,
   onBeforeEdit,
   onSave,
@@ -46,7 +48,7 @@ export function PhaseNameEditor({
     exitEditing,
     handleDoubleClick,
     handleKeyDown,
-  } = usePhaseNameEditor({ name, readOnly, isLockedByOther, onBeforeEdit, onSave, onEditingChange })
+  } = usePhaseNameEditor({ name, readOnly, isLockedByOther, renameKey, onBeforeEdit, onSave, onEditingChange })
 
   const summaryProps = {
     name, num, editing, draft, isActive, displayStatus,

@@ -89,14 +89,14 @@
   font-family: var(--font-mono);
 }
 
-/* ─── Phase color picker ───────────────────────────────────────────────────── */
-.phase-color-control {
+/* ─── Phase settings menu ──────────────────────────────────────────────────── */
+.phase-settings-control {
   position: relative;
   display: flex;
   align-items: center;
   margin-left: -6px;
 }
-.phase-color-trigger {
+.phase-settings-trigger {
   width: 28px;
   height: 28px;
   display: grid;
@@ -108,17 +108,65 @@
   opacity: 0;
   transition: opacity 160ms, background 160ms, border-color 160ms;
 }
-.phase:hover .phase-color-trigger,
-.phase-color-trigger:focus-visible,
-.phase-color-trigger[aria-expanded="true"] {
+.phase:hover .phase-settings-trigger,
+.phase-settings-trigger:focus-visible,
+.phase-settings-trigger.open {
   opacity: 1;
 }
-.phase-color-trigger:hover,
-.phase-color-trigger[aria-expanded="true"] {
+.phase-settings-trigger:hover,
+.phase-settings-trigger.open {
   background: var(--bg);
   border-color: var(--border);
 }
-.phase-color-trigger > span,
+.phase-settings-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: var(--z-popover);
+  min-width: 148px;
+  padding: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.phase-settings-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms, color 120ms;
+}
+.phase-settings-menu button:hover { background: var(--bg-3); color: var(--ink); }
+.phase-settings-menu button.danger { color: var(--danger, #ef4444); }
+.phase-settings-menu button.danger:hover { background: rgba(239,68,68,0.08); }
+.phase-settings-sep {
+  height: 1px;
+  background: var(--border-faint);
+  margin: 3px 0;
+}
+.phase-settings-color-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+  flex-shrink: 0;
+}
+
+/* ─── Phase color picker ───────────────────────────────────────────────────── */
 .phase-color-popover button > span {
   width: 14px;
   height: 14px;

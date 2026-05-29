@@ -331,6 +331,13 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setSaved(false)
   }
 
+  const handleDeletePhase = (phaseId: string) => {
+    if (readOnly) return
+    const remaining = phases.filter((p) => p.id !== phaseId)
+    setPhases(renumberPhases(remaining))
+    setSaved(false)
+  }
+
   const handleRoadmapImported = (importedName: string | undefined, importedPhases: PhaseType[]) => {
     setPendingActivityChanges([{
       action: 'roadmap.imported',
@@ -474,6 +481,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             onUpdateTask={handleUpdateTask}
             onUpdatePhaseColor={handleUpdatePhaseColor}
             onUpdatePhaseName={handleUpdatePhaseName}
+            onDeletePhase={handleDeletePhase}
             onAddTask={handleAddTask}
             onAddSubtask={handleAddSubtask}
             onLinkDependency={handleLinkDependency}

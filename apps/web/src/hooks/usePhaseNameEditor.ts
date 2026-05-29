@@ -7,6 +7,7 @@ interface UsePhaseNameEditorParams {
   name: string
   readOnly: boolean
   isLockedByOther: boolean
+  renameKey?: number
   onBeforeEdit: () => Promise<boolean>
   onSave: (name: string) => void
   onEditingChange?: (editing: boolean) => void
@@ -16,6 +17,7 @@ export function usePhaseNameEditor({
   name,
   readOnly,
   isLockedByOther,
+  renameKey,
   onBeforeEdit,
   onSave,
   onEditingChange,
@@ -26,6 +28,16 @@ export function usePhaseNameEditor({
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const isDirty = draft.trim() !== name
+
+  const prevRenameKeyRef = useRef(renameKey ?? 0)
+  // Triggered programmatically (e.g. menu rename). Lock has already been acquired by caller.
+  useEffect(() => {
+    if (!renameKey || renameKey === prevRenameKeyRef.current) return
+    prevRenameKeyRef.current = renameKey
+    setDraft(name)
+    setEditing(true)
+    onEditingChange?.(true)
+  }, [renameKey, name, onEditingChange])
 
   const exitEditing = () => {
     setEditing(false)
