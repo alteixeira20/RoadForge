@@ -24,6 +24,8 @@ interface SortableTaskItemProps {
   hasCycle: (taskId: string, depId: string) => boolean
   onToast: (message: string) => void
   assignmentNames: string[]
+  startEditing?: boolean
+  onDirtyChange?: (taskId: string, dirty: boolean) => void
 }
 
 export function SortableTaskItem(props: SortableTaskItemProps) {

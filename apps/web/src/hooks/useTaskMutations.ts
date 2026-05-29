@@ -35,7 +35,7 @@ interface CreateTaskMutationsParams {
 export interface TaskMutations {
   hasCycle: (taskId: string, depId: string) => boolean
   onCheckTask: (id: string) => void
-  handleAddTask: (phaseId: string) => void
+  handleAddTask: (phaseId: string, title?: string) => string
   handleAddSubtask: (parentId: string, title: string) => void
   handleUpdateTask: (id: string, updates: Partial<Task>) => void
   handleLinkDependency: (taskId: string, depId: string) => void
@@ -151,13 +151,14 @@ export function createTaskMutations({
     setExpandedTaskId(newId)
   }
 
-  const handleAddTask = (phaseId: string) => {
-    if (readOnly) return
+  const handleAddTask = (phaseId: string, title?: string): string => {
+    if (readOnly) return ''
 
     const newId = generateTaskId(allTasks)
+    const taskTitle = title?.trim() || 'New task'
     const newTask: Task = {
       id: newId,
-      title: 'New task',
+      title: taskTitle,
       done: false,
       next: false,
       est: '',
@@ -179,12 +180,13 @@ export function createTaskMutations({
       entity_type: 'task',
       entity_id: newId,
       taskId: newId,
-      taskTitle: newTask.title,
+      taskTitle,
       phaseId: phase?.id,
       phaseName: phase?.name,
     })
     setSaved(false)
     setExpandedTaskId(newId)
+    return newId
   }
 
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {

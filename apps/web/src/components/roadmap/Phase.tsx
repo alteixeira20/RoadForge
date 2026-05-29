@@ -26,6 +26,7 @@ import React from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { SortableTaskItem } from './SortableTaskItem'
 import { TaskRow } from './TaskRow'
+import { DraftTaskRow } from './DraftTaskRow'
 import { useRoadmap } from '@/context/RoadmapContext'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 import type { ForgeStyle } from '@/types/ui'
@@ -40,7 +41,7 @@ interface PhaseProps {
   pendingTaskDoneIds: ReadonlySet<string>
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onUpdatePhaseColor: (phaseId: string, color: string) => void
-  onAddTask: (phaseId: string) => void
+  onAddTask: (phaseId: string, title?: string) => string
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void
@@ -102,6 +103,10 @@ export function Phase({
   const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
   const isActive = phase.status === 'active'
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [hasDraft, setHasDraft] = useState(false)
+  const [draftDirty, setDraftDirty] = useState(false)
+  const [dirtyTaskId, setDirtyTaskId] = useState<string | null>(null)
+  const [draftCreatedTaskId, setDraftCreatedTaskId] = useState<string | null>(null)
   const colorControlRef = useRef<HTMLDivElement | null>(null)
 
   const { locks, serverRoadmapId, sessionToken, participantId } = useRoadmap()
@@ -163,6 +168,61 @@ export function Phase({
     if (!isOpen && showColorPicker) closeColorPicker()
   }, [isOpen, showColorPicker, closeColorPicker])
 
+  useEffect(() => {
+    if (!isOpen && hasDraft) {
+      setHasDraft(false)
+      setDraftDirty(false)
+    }
+  }, [isOpen, hasDraft])
+
+  const handleTaskDirtyChange = useCallback((taskId: string, dirty: boolean) => {
+    setDirtyTaskId(dirty ? taskId : null)
+  }, [])
+
+  const handleToggleTask = useCallback((taskId: string) => {
+    if (dirtyTaskId && taskId !== dirtyTaskId) {
+      onToast('Save or discard your edits first.')
+      return
+    }
+    onToggleTask(taskId)
+  }, [dirtyTaskId, onToggleTask, onToast])
+
+  const handlePhaseToggle = () => {
+    if (dirtyTaskId) {
+      onToast('Save or discard your edits first.')
+      return
+    }
+    if (draftDirty) {
+      onToast('Discard the draft task first.')
+      return
+    }
+    onToggle(phase.id)
+  }
+
+  const handleOpenDraft = () => {
+    if (!isOpen) onToggle(phase.id)
+    setHasDraft(true)
+  }
+
+  const handleDraftConfirm = (title: string) => {
+    const newId = onAddTask(phase.id, title)
+    setHasDraft(false)
+    setDraftDirty(false)
+    if (newId) setDraftCreatedTaskId(newId)
+  }
+
+  const handleDraftDiscard = () => {
+    setHasDraft(false)
+    setDraftDirty(false)
+  }
+
+  useEffect(() => {
+    if (draftCreatedTaskId) {
+      const t = setTimeout(() => setDraftCreatedTaskId(null), 0)
+      return () => clearTimeout(t)
+    }
+  }, [draftCreatedTaskId])
+
   const displayStatus = allDone ? 'done' : (phase.status === 'done' ? 'active' : phase.status)
 
   const headStyle: ForgeStyle = { '--phase-color': phase.color }
@@ -222,7 +282,7 @@ export function Phase({
         .join(' ')}
       style={headStyle}
     >
-      <div className="phase-head" onClick={() => onToggle(phase.id)}>
+      <div className="phase-head" onClick={handlePhaseToggle}>
         {dragHandleProps && (
           <span
             className="phase-drag-handle"
@@ -259,7 +319,8 @@ export function Phase({
               title="Change phase color"
               aria-label={`Change color for ${phase.name}`}
               aria-expanded={showColorPicker}
-              onClick={async () => {
+              onClick={async (e) => {
+                e.stopPropagation()
                 if (showColorPicker) {
                   closeColorPicker()
                   return
@@ -295,14 +356,22 @@ export function Phase({
 
       {isOpen && (
         <div className="phase-body">
-          {topLevelTasks.length === 0 ? (
+          {topLevelTasks.length === 0 && !hasDraft ? (
             <div className="empty-phase">
               <p>No tasks yet.</p>
               {!readOnly && (
-                <button className="btn sm ghost" onClick={() => onAddTask(phase.id)}>
+                <button className="btn sm ghost" onClick={handleOpenDraft}>
                   <Icon name="plus" size={13} /> Add first task
                 </button>
               )}
+            </div>
+          ) : topLevelTasks.length === 0 && hasDraft ? (
+            <div className="empty-phase-draft">
+              <DraftTaskRow
+                onConfirm={handleDraftConfirm}
+                onDiscard={handleDraftDiscard}
+                onDirtyChange={setDraftDirty}
+              />
             </div>
           ) : (
             <DndContext
@@ -324,7 +393,7 @@ export function Phase({
                       expandedTaskId={expandedTaskId}
                       readOnly={readOnly}
                       dragDisabled={isAnyTaskInPhaseExpanded}
-                      onToggle={onToggleTask}
+                      onToggle={handleToggleTask}
                       onCheck={onCheckTask}
                       pendingTaskDoneIds={pendingTaskDoneIds}
                       onUpdateTask={onUpdateTask}
@@ -336,10 +405,19 @@ export function Phase({
                       hasCycle={hasCycle}
                       onToast={onToast}
                       assignmentNames={assignmentNames}
+                      startEditing={t.id === draftCreatedTaskId}
+                      onDirtyChange={handleTaskDirtyChange}
                     />
                   ))}
                 </div>
               </SortableContext>
+              {hasDraft && (
+                <DraftTaskRow
+                  onConfirm={handleDraftConfirm}
+                  onDiscard={handleDraftDiscard}
+                  onDirtyChange={setDraftDirty}
+                />
+              )}
               <DragOverlay 
                 dropAnimation={{ 
                   duration: 110,
@@ -375,9 +453,9 @@ export function Phase({
             </DndContext>
           )}
 
-          {!readOnly && topLevelTasks.length > 0 && (
+          {!readOnly && topLevelTasks.length > 0 && !hasDraft && (
             <div className="phase-foot">
-              <button className="add-task-btn" onClick={() => onAddTask(phase.id)}>
+              <button className="add-task-btn" onClick={handleOpenDraft}>
                 <Icon name="plus" size={14} /> Add task
               </button>
             </div>

@@ -228,6 +228,92 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ─── Draft task row ───────────────────────────────────────────────────────── */
+.draft-task-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--border-faint);
+  background: var(--bg-2);
+  animation: detailIn 200ms cubic-bezier(.2,.8,.2,1);
+}
+
+.draft-task-check {
+  width: 20px; height: 20px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 6px;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.draft-task-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 14.5px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 160ms;
+}
+.draft-task-input:focus { border-color: var(--ember); }
+.draft-task-input::placeholder { color: var(--ink-4); }
+
+.draft-task-actions {
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
+}
+
+.empty-phase-draft {
+  padding: 8px 0;
+}
+
+/* ─── Tag chip input ───────────────────────────────────────────────────────── */
+.tag-input-field {
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.tag-chip-list {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+
+.tag-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 6px 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  font-size: 12px; font-weight: 500;
+  color: var(--ink-2);
+}
+
+.tag-chip-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-4);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  display: flex; align-items: center;
+  transition: color 120ms;
+}
+.tag-chip-remove:hover { color: var(--ember); }
+
+.tag-chip-input {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 160ms;
+  width: 100%;
+}
+.tag-chip-input:focus { border-color: var(--ember); }
+.tag-chip-input::placeholder { color: var(--ink-4); }
+
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
 /* ── 760px — tablet: tighten task row and detail layout ─────────────────── */

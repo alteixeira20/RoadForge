@@ -31,6 +31,8 @@ interface TaskRowProps {
   dragDisabled?: boolean
   dragHandleProps?: Record<string, unknown>
   assignmentNames: string[]
+  startEditing?: boolean
+  onDirtyChange?: (taskId: string, dirty: boolean) => void
 }
 
 export function TaskRow({
@@ -54,6 +56,8 @@ export function TaskRow({
   dragDisabled = false,
   dragHandleProps,
   assignmentNames,
+  startEditing = false,
+  onDirtyChange,
 }: TaskRowProps) {
   const {
     displayName,
@@ -65,7 +69,8 @@ export function TaskRow({
 
   const [showSubtaskForm, setShowSubtaskForm] = useState(false)
   const [showDepPicker, setShowDepPicker] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(startEditing)
+  const [editDirty, setEditDirty] = useState(false)
 
   const target = `task:${task.id}`
   const lock = locks[target]
@@ -104,8 +109,16 @@ export function TaskRow({
       setShowSubtaskForm(false)
       setShowDepPicker(false)
       setIsEditing(false)
+      setEditDirty(false)
+      onDirtyChange?.(task.id, false)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded])
+
+  useEffect(() => {
+    onDirtyChange?.(task.id, editDirty)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editDirty])
 
   // ─── Lock lifecycle ──────────────────────────────────────────────────────────
 
@@ -226,6 +239,10 @@ export function TaskRow({
           className="toggle-btn"
           onClick={(e) => {
             e.stopPropagation()
+            if (isEditing && editDirty) {
+              onToast('Save or discard your edits first.')
+              return
+            }
             onToggle(task.id)
           }}
           aria-expanded={expanded}
@@ -245,8 +262,13 @@ export function TaskRow({
               onSave={(updates) => {
                 onUpdateTask(task.id, updates)
                 setIsEditing(false)
+                setEditDirty(false)
               }}
-              onCancel={() => setIsEditing(false)}
+              onCancel={() => {
+                setIsEditing(false)
+                setEditDirty(false)
+              }}
+              onDirtyChange={setEditDirty}
             />
           ) : (
             <>
