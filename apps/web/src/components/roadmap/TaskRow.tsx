@@ -79,33 +79,8 @@ export function TaskRow({
 
   const target = `task:${task.id}`
   const lock = locks[target]
-  const isLockedByMe = lock?.participantId === participantId
-  const isLockedByOther = Boolean(lock && !isLockedByMe)
   const lockHolderName = lock?.displayName || 'Another participant'
   const isTaskDonePending = pendingTaskDoneIds.has(task.id)
-  const effectivelyReadOnly = readOnly || isLockedByOther || isTaskDonePending
-  const canDragTask =
-    !effectivelyReadOnly && !expanded && !dragDisabled && Boolean(dragHandleProps)
-  let dragHandleTitle = 'Reordering unavailable'
-  if (canDragTask) {
-    dragHandleTitle = 'Drag to reorder'
-  } else if (isLockedByOther) {
-    dragHandleTitle = 'Reordering temporarily locked'
-  } else if (readOnly) {
-    dragHandleTitle = 'Reordering unavailable in read-only mode'
-  } else if (expanded) {
-    dragHandleTitle = 'Collapse task to reorder'
-  }
-  const unavailableActionsMessage = isLockedByOther
-    ? `${lockHolderName} is editing this task. Actions are temporarily locked.`
-    : readOnly
-      ? 'Read-only view. Task actions are unavailable.'
-      : null
-  const checkTitle = isTaskDonePending
-    ? 'Task update is saving'
-    : effectivelyReadOnly
-      ? 'Task check is unavailable'
-      : undefined
 
   // ─── Effects ──────────────────────────────────────────────────────────────
 
@@ -142,13 +117,39 @@ export function TaskRow({
     }
   }, [onToast])
 
-  const { tryAcquire: tryAcquireLock } = useEditLock({
+  const { ownsLock, tryAcquire: tryAcquireLock } = useEditLock({
     target,
     active: activeForm && !readOnly,
     serverRoadmapId,
     sessionToken,
     onAcquireError: handleEditLockError,
   })
+
+  const isLockedByMe = ownsLock || (!!participantId && lock?.participantId === participantId)
+  const isLockedByOther = Boolean(lock && !isLockedByMe)
+  const effectivelyReadOnly = readOnly || isLockedByOther || isTaskDonePending
+  const canDragTask =
+    !effectivelyReadOnly && !expanded && !dragDisabled && Boolean(dragHandleProps)
+  let dragHandleTitle = 'Reordering unavailable'
+  if (canDragTask) {
+    dragHandleTitle = 'Drag to reorder'
+  } else if (isLockedByOther) {
+    dragHandleTitle = 'Reordering temporarily locked'
+  } else if (readOnly) {
+    dragHandleTitle = 'Reordering unavailable in read-only mode'
+  } else if (expanded) {
+    dragHandleTitle = 'Collapse task to reorder'
+  }
+  const unavailableActionsMessage = isLockedByOther
+    ? `${lockHolderName} is editing this task. Actions are temporarily locked.`
+    : readOnly
+      ? 'Read-only view. Task actions are unavailable.'
+      : null
+  const checkTitle = isTaskDonePending
+    ? 'Task update is saving'
+    : effectivelyReadOnly
+      ? 'Task check is unavailable'
+      : undefined
 
   const tryAcquireEditLock = async (): Promise<boolean> => {
     if (readOnly) return false
