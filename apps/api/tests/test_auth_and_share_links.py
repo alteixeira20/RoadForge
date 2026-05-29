@@ -73,6 +73,19 @@ async def test_create_roadmap_returns_owner_token(client: AsyncClient):
     assert body["owner_session_token"]
 
 
+async def test_create_roadmap_rejects_unknown_change_summary_action(client: AsyncClient):
+    resp = await client.post(
+        "/api/roadmaps",
+        json={
+            "name": "Bad Import",
+            "owner_display_name": "Owner",
+            "phases": [],
+            "change_summary": {"action": "roadmap.pwned"},
+        },
+    )
+    assert resp.status_code == 422
+
+
 async def test_owner_token_can_get_roadmap(client: AsyncClient):
     body = await create_roadmap(client)
     roadmap_id = body["id"]
@@ -173,7 +186,7 @@ async def test_viewer_cannot_put_roadmap(client: AsyncClient):
     resp = await client.put(
         f"/api/roadmaps/{roadmap_id}",
         headers=_auth(viewer_token),
-        json={"name": "Hacked"},
+        json={"name": "Hacked", "last_updated_at": body["updated_at"]},
     )
     assert resp.status_code == 403
 
@@ -190,10 +203,40 @@ async def test_editor_can_put_roadmap(client: AsyncClient):
     resp = await client.put(
         f"/api/roadmaps/{roadmap_id}",
         headers=_auth(editor_token),
-        json={"name": "Editor Renamed"},
+        json={"name": "Editor Renamed", "last_updated_at": body["updated_at"]},
     )
     assert resp.status_code == 200
     assert resp.json()["name"] == "Editor Renamed"
+
+
+async def test_put_roadmap_requires_last_updated_at(client: AsyncClient):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    resp = await client.put(
+        f"/api/roadmaps/{roadmap_id}",
+        headers=_auth(owner_token),
+        json={"name": "Missing Timestamp"},
+    )
+    assert resp.status_code == 422
+
+
+async def test_put_roadmap_rejects_unknown_change_summary_action(client: AsyncClient):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    resp = await client.put(
+        f"/api/roadmaps/{roadmap_id}",
+        headers=_auth(owner_token),
+        json={
+            "name": "Unknown Action",
+            "last_updated_at": body["updated_at"],
+            "change_summary": {"action": "roadmap.pwned"},
+        },
+    )
+    assert resp.status_code == 422
 
 
 async def test_viewer_cannot_rotate_share_links(client: AsyncClient):

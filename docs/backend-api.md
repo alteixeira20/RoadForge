@@ -21,7 +21,7 @@ Authorization: Bearer sess_<raw_session_token>
 
 Session tokens are returned once at roadmap creation (`owner_session_token`) or invite join (`session_token`). Store them client-side in `localStorage`; they cannot be recovered from the API.
 
-Sessions expire after 30 days of inactivity. Each authenticated request renews the expiry by 30 days and updates `last_seen_at`.
+Sessions expire after 30 days of inactivity. Successful authenticated requests validate expiry and renew `session_expires_at`/`last_seen_at` when the participant presence timestamp is stale, reducing repeated GET write pressure.
 
 **Roles:** `owner`, `editor`, `viewer`
 
@@ -281,8 +281,8 @@ Update the roadmap name and/or phases. Both fields are optional; omit to leave u
 |---|---|---|---|
 | `name` | string or null | no | 1–120 chars |
 | `phases` | array or null | no | full snapshot replacement |
-| `last_updated_at` | ISO datetime or null | no | optimistic concurrency timestamp; returns 409 if server is strictly newer |
-| `change_summary` | object or null | no | customizes the activity log entry; if provided, `action` key is required |
+| `last_updated_at` | ISO datetime | yes | optimistic concurrency timestamp; returns 409 if server is strictly newer |
+| `change_summary` | object or null | no | customizes the activity log entry; if provided, `action` must be in the backend allowlist |
 
 Batch `change_summary` example:
 ```json
@@ -747,11 +747,11 @@ Client compatibility: the browser auto-upgrades older local or server snapshots 
 - **Session tokens** — write endpoints and roadmap read endpoints require `Authorization: Bearer`. Missing or invalid token returns 401; wrong role returns 403.
 - **Token storage** — owner/editor invite tokens are stored only as SHA-256 hex digests. Viewer tokens may be stored while active because they are public read-only demo links.
 - **Short-lived SSE tickets** — SSE connections use 30-second one-time tickets to avoid exposing session tokens in URLs or server logs.
-- **Optimistic concurrency** — `PUT /api/roadmaps/{id}` accepts `last_updated_at`. Returns 409 with the server's current snapshot if the database is strictly newer.
+- **Optimistic concurrency** — `PUT /api/roadmaps/{id}` requires `last_updated_at`. Returns 409 with the server's current snapshot if the database is strictly newer.
 - **Password hashing** — PBKDF2-SHA256, 260,000 iterations, 16-byte random salt per password. Compared with `hmac.compare_digest`.
 - **Body size limit** — requests larger than 512 KB are rejected with 413 before parsing.
 - **Soft deletes** — roadmaps use `deleted_at` timestamp; hard purge is not yet implemented.
-- **Rate limiting** — in-process; shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`. Rate-limited operations include: roadmap create, join, password failures, share link rotate/revoke, and SSE ticket requests.
+- **Rate limiting** — in-process; shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`. Rate-limited operations include: roadmap create, join, password failures, share link rotate/revoke, SSE ticket requests, checkpoints, and authenticated sensitive read paths.
 
 ---
 

@@ -89,6 +89,27 @@ def _should_create_version(action: str | None, metadata: dict | None) -> bool:
     return action in _VERSION_WORTHY_ACTIONS
 
 
+def _change_summary_fields(
+    change_summary: dict | None,
+    *,
+    default_action: str,
+    default_entity_type: str,
+    default_entity_id: str,
+) -> tuple[str, str, str, dict | None]:
+    if change_summary is None:
+        return default_action, default_entity_type, default_entity_id, None
+
+    action = change_summary["action"]
+    entity_type = change_summary.get("entity_type")
+    entity_id = change_summary.get("entity_id")
+    return (
+        action,
+        entity_type if isinstance(entity_type, str) else default_entity_type,
+        entity_id if isinstance(entity_id, str) else default_entity_id,
+        change_summary,
+    )
+
+
 def _snapshot_from_phases(phases: list[PhaseDTO]) -> dict:
     return {"phases": [p.model_dump(exclude_none=True) for p in phases]}
 
@@ -250,15 +271,12 @@ async def create_roadmap(
         share_link_rows.append(sl)
 
     # ── Activity log ──────────────────────────────────────────────────────────
-    action = "roadmap.created"
-    entity_type = "roadmap"
-    entity_id = roadmap_id
-    metadata_json = None
-    if payload.change_summary is not None and isinstance(payload.change_summary.get("action"), str):
-        action = payload.change_summary["action"]
-        entity_type = payload.change_summary.get("entity_type", "roadmap")
-        entity_id = payload.change_summary.get("entity_id", roadmap_id)
-        metadata_json = payload.change_summary
+    action, entity_type, entity_id, metadata_json = _change_summary_fields(
+        payload.change_summary,
+        default_action="roadmap.created",
+        default_entity_type="roadmap",
+        default_entity_id=roadmap_id,
+    )
 
     db.add(ActivityLog(
         id=generate_id("al_"),
@@ -364,6 +382,18 @@ async def _fetch_active_roadmap(db: AsyncSession, roadmap_id: str) -> Roadmap:
     return roadmap
 
 
+async def _fetch_active_roadmap_for_update(db: AsyncSession, roadmap_id: str) -> Roadmap:
+    result = await db.execute(
+        select(Roadmap)
+        .where(Roadmap.id == roadmap_id, Roadmap.deleted_at.is_(None))
+        .with_for_update()
+    )
+    roadmap = result.scalar_one_or_none()
+    if roadmap is None:
+        raise HTTPException(status_code=404, detail="Roadmap not found")
+    return roadmap
+
+
 async def get_roadmap(db: AsyncSession, roadmap_id: str) -> RoadmapResponse:
     roadmap = await _fetch_active_roadmap(db, roadmap_id)
     return _roadmap_response(roadmap, await _phases_for_read(db, roadmap))
@@ -375,18 +405,17 @@ async def update_roadmap(
     payload: UpdateRoadmapRequest,
     participant: Participant | None = None,
 ) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
 
     # ── Concurrency check ─────────────────────────────────────────────────────
-    if payload.last_updated_at:
-        # DB updated_at might have more precision than the client's version,
-        # so we check if the DB is strictly newer.
-        # Coerce naive client timestamps to UTC to avoid TypeError on comparison.
-        client_ts = _ensure_aware_utc(payload.last_updated_at)
-        if roadmap.updated_at > client_ts:
-            raise RoadmapConflictError(
-                _roadmap_conflict_response(roadmap, client_ts, payload.phases)
-            )
+    # DB updated_at might have more precision than the client's version,
+    # so we check if the DB is strictly newer.
+    # Coerce naive client timestamps to UTC to avoid TypeError on comparison.
+    client_ts = _ensure_aware_utc(payload.last_updated_at)
+    if roadmap.updated_at > client_ts:
+        raise RoadmapConflictError(
+            _roadmap_conflict_response(roadmap, client_ts, payload.phases)
+        )
 
     before_json: dict = {}
     after_json: dict = {}
@@ -402,16 +431,12 @@ async def update_roadmap(
         after_json["phase_count"] = len(payload.phases)
         roadmap.snapshot_json = _snapshot_from_phases(payload.phases)
 
-    action = "roadmap.updated"
-    entity_type = "roadmap"
-    entity_id = roadmap_id
-    metadata_json = None
-
-    if payload.change_summary is not None and isinstance(payload.change_summary.get("action"), str):
-        action = payload.change_summary["action"]
-        entity_type = payload.change_summary.get("entity_type", "roadmap")
-        entity_id = payload.change_summary.get("entity_id", roadmap_id)
-        metadata_json = payload.change_summary
+    action, entity_type, entity_id, metadata_json = _change_summary_fields(
+        payload.change_summary,
+        default_action="roadmap.updated",
+        default_entity_type="roadmap",
+        default_entity_id=roadmap_id,
+    )
 
     db.add(ActivityLog(
         id=generate_id("al_"),
@@ -511,7 +536,7 @@ async def restore_roadmap_version(
     version_id: str,
     participant: Participant,
 ) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
     result = await db.execute(
         select(RoadmapVersion).where(
             RoadmapVersion.roadmap_id == roadmap_id,
@@ -582,7 +607,7 @@ async def create_roadmap_checkpoint(
     (created=False, latest) when the current snapshot already matches the
     latest version and no new version is needed.
     """
-    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
 
     latest_result = await db.execute(
         select(RoadmapVersion)
@@ -653,7 +678,7 @@ async def delete_roadmap(
     roadmap_id: str,
     participant: Participant,
 ) -> dict[str, bool]:
-    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
     now = datetime.now(timezone.utc)
 
     result = await db.execute(

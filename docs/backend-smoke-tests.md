@@ -178,17 +178,21 @@ Expected:
 An editor can update the roadmap name and phases:
 
 ```bash
+CURRENT=$(curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID \
+  -H "Authorization: Bearer $EDITOR_TOKEN" | jq -r '.updated_at')
+
 curl -s -X PUT http://localhost:7878/api/roadmaps/$ROADMAP_ID \
   -H "Authorization: Bearer $EDITOR_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{
-    "name": "Smoke Test Roadmap (editor updated)",
-    "phases": [],
-    "change_summary": {
-      "action": "roadmap.updated",
-      "entity_type": "roadmap"
+  -d "{
+    \"name\": \"Smoke Test Roadmap (editor updated)\",
+    \"phases\": [],
+    \"last_updated_at\": \"$CURRENT\",
+    \"change_summary\": {
+      \"action\": \"roadmap.updated\",
+      \"entity_type\": \"roadmap\"
     }
-  }' | jq '{id, name, updated_at}'
+  }" | jq '{id, name, updated_at}'
 ```
 
 Expected:
@@ -267,7 +271,10 @@ CURRENT=$(curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID \
 curl -s -X PUT http://localhost:7878/api/roadmaps/$ROADMAP_ID \
   -H "Authorization: Bearer $OWNER_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"name": "After first save"}' > /dev/null
+  -d "{
+    \"name\": \"After first save\",
+    \"last_updated_at\": \"$CURRENT\"
+  }" > /dev/null
 
 # Now attempt a save with the old timestamp — this should conflict
 curl -s -X PUT http://localhost:7878/api/roadmaps/$ROADMAP_ID \
@@ -333,10 +340,16 @@ curl -s "http://localhost:7878/api/roadmaps/$ROADMAP_ID/events?ticket=$TICKET" &
 SSE_PID=$!
 
 # Trigger an event by saving
+CURRENT=$(curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID \
+  -H "Authorization: Bearer $OWNER_TOKEN" | jq -r '.updated_at')
+
 curl -s -X PUT http://localhost:7878/api/roadmaps/$ROADMAP_ID \
   -H "Authorization: Bearer $OWNER_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"name": "SSE trigger test"}' > /dev/null
+  -d "{
+    \"name\": \"SSE trigger test\",
+    \"last_updated_at\": \"$CURRENT\"
+  }" > /dev/null
 
 sleep 2
 kill $SSE_PID 2>/dev/null

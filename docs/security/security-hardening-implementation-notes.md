@@ -8,7 +8,7 @@ run except where explicitly recorded by the implementer.
 - Participant session expiry schema support exists on `participants.session_expires_at` with a roadmap-scoped expiry index.
 - New owner and joined participant sessions set a 30-day expiry.
 - Central participant auth rejects revoked sessions, expired sessions, and deleted roadmaps before role checks or writes.
-- Valid authenticated requests renew participant sessions by 30 days and update `last_seen_at`.
+- Valid authenticated requests renew participant sessions by 30 days and update `last_seen_at` when the participant presence timestamp is stale.
 - Frontend expired-session handling clears only scoped auth cache, preserves the roadmap cache, marks the local copy unsynced, and asks the user to rejoin through an active invite link.
 - Owner-facing participant views include compact session expiry metadata.
 - App-level in-memory rate limiting covers roadmap creation, join attempts, password failures, event tickets, and owner share-link rotate/revoke.

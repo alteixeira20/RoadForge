@@ -1,8 +1,13 @@
 from functools import lru_cache
+from ipaddress import ip_network
 from typing import Union
+from urllib.parse import urlparse
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEFAULT_DATABASE_URL = "postgresql+asyncpg://roadforge:roadforge_dev@localhost:5432/roadforge"
+_UNSAFE_SECRET_VALUES = {"", "change-me", "changeme", "secret", "roadforge", "development"}
 
 
 class Settings(BaseSettings):
@@ -17,8 +22,13 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = Field(default="development", alias="ROADFORGE_ENVIRONMENT")
     database_url: str = Field(
-        default="postgresql+asyncpg://roadforge:roadforge_dev@localhost:5432/roadforge",
+        default=_DEFAULT_DATABASE_URL,
         alias="DATABASE_URL",
+    )
+    secret_key: str | None = Field(default=None, alias="ROADFORGE_SECRET_KEY")
+    allow_local_database_in_production: bool = Field(
+        default=False,
+        alias="ROADFORGE_ALLOW_LOCAL_DATABASE_IN_PRODUCTION",
     )
     redis_url: str | None = Field(default=None, alias="REDIS_URL")
     realtime_backend: str = Field(default="memory", alias="ROADFORGE_REALTIME_BACKEND")
@@ -35,6 +45,10 @@ class Settings(BaseSettings):
         default=["http://localhost:3020", "http://127.0.0.1:3020", "http://localhost:3000"],
         alias="ROADFORGE_CORS_ORIGINS",
     )
+    trusted_proxy_ips: Union[list[str], str] = Field(
+        default=[],
+        alias="ROADFORGE_TRUSTED_PROXY_IPS",
+    )
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -42,6 +56,20 @@ class Settings(BaseSettings):
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
         return v # type: ignore
+
+    @field_validator("trusted_proxy_ips", mode="before")
+    @classmethod
+    def assemble_trusted_proxy_ips(cls, v: Union[str, list[str]]) -> list[str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v # type: ignore
+
+    @field_validator("trusted_proxy_ips")
+    @classmethod
+    def validate_trusted_proxy_ips(cls, v: list[str]) -> list[str]:
+        for item in v:
+            ip_network(item, strict=False)
+        return v
 
     @field_validator("realtime_backend")
     @classmethod
@@ -56,6 +84,63 @@ class Settings(BaseSettings):
         default=False,
         alias="ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED",
     )
+
+    @property
+    def is_development(self) -> bool:
+        return self.environment.lower() == "development"
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
+
+    @property
+    def is_production_like(self) -> bool:
+        return not self.is_development
+
+    def validate_startup_security(self) -> None:
+        if not self.is_production_like:
+            return
+        _validate_production_secret(self.secret_key)
+        _validate_production_database_url(
+            self.database_url,
+            allow_local=self.allow_local_database_in_production,
+        )
+
+
+def _validate_production_secret(secret_key: str | None) -> None:
+    value = (secret_key or "").strip()
+    lowered = value.lower()
+    if (
+        len(value) < 32
+        or lowered in _UNSAFE_SECRET_VALUES
+        or "change-me" in lowered
+        or "changeme" in lowered
+    ):
+        raise RuntimeError(
+            "ROADFORGE_SECRET_KEY must be set to a non-default value of at least 32 characters "
+            "outside development."
+        )
+
+
+def _validate_production_database_url(database_url: str, *, allow_local: bool) -> None:
+    parsed = urlparse(database_url)
+    hostname = (parsed.hostname or "").lower()
+    username = (parsed.username or "").lower()
+    password = parsed.password or ""
+
+    if database_url == _DEFAULT_DATABASE_URL:
+        raise RuntimeError("Production cannot use the default local development DATABASE_URL.")
+
+    if hostname in {"localhost", "127.0.0.1", "::1"} and not allow_local:
+        raise RuntimeError(
+            "Production DATABASE_URL points at localhost. Set a production database URL, or set "
+            "ROADFORGE_ALLOW_LOCAL_DATABASE_IN_PRODUCTION=true only for a documented safe topology."
+        )
+
+    if username == "roadforge" and password == "roadforge_dev":
+        raise RuntimeError(
+            "Production DATABASE_URL appears to use development database credentials."
+        )
 
 
 @lru_cache

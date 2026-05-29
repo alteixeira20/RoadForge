@@ -27,6 +27,7 @@ from api.schemas.roadmap import (
     UpdateRoadmapRequest,
 )
 from api.services.auth_service import require_participant
+from api.services.client_ip_service import extract_client_ip
 from api.services.event_bus import event_bus
 from api.services.lock_service import lock_service
 from api.services.rate_limit_service import rate_limiter
@@ -56,10 +57,8 @@ _OWNER_EDITOR = {"owner", "editor"}
 _OWNER_ONLY = {"owner"}
 
 
-def _client_ip(request: Request) -> str:
-    # First version deliberately uses the immediate peer. Forwarded headers need
-    # trusted-proxy configuration before they can be safely accepted.
-    return request.client.host if request.client else "unknown"
+def _participant_rate_key(participant_id: str, roadmap_id: str) -> str:
+    return f"{participant_id}:{roadmap_id}"
 
 
 @router.post("", response_model=CreateRoadmapResponse, status_code=status.HTTP_201_CREATED)
@@ -69,7 +68,7 @@ async def post_roadmap(
     db: AsyncSession = Depends(get_db),
 ) -> CreateRoadmapResponse:
     await rate_limiter.enforce(
-        "roadmap.create.ip", _client_ip(request), limit=10, window_seconds=3600
+        "roadmap.create.ip", extract_client_ip(request), limit=10, window_seconds=3600
     )
     settings = get_settings()
     return await create_roadmap(db, payload, settings.web_base_url)
@@ -81,7 +80,7 @@ async def post_join(
     payload: JoinRoadmapRequest,
     db: AsyncSession = Depends(get_db),
 ) -> JoinRoadmapResponse:
-    client_ip = _client_ip(request)
+    client_ip = extract_client_ip(request)
     await rate_limiter.enforce("join.ip", client_ip, limit=20, window_seconds=60)
     return await join_roadmap(db, payload, client_ip)
 
@@ -92,7 +91,15 @@ async def fetch_roadmap(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    await require_participant(db, roadmap_id, authorization, {"owner", "editor", "viewer"})
+    participant = await require_participant(
+        db, roadmap_id, authorization, {"owner", "editor", "viewer"}
+    )
+    await rate_limiter.enforce(
+        "roadmap.read",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=240,
+        window_seconds=60,
+    )
     return await get_roadmap(db, roadmap_id)
 
 
@@ -131,7 +138,13 @@ async def fetch_share_links(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> list[ShareLinkResponse]:
-    await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await rate_limiter.enforce(
+        "share_links.read",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=60,
+        window_seconds=60,
+    )
     settings = get_settings()
     return await get_share_links(db, roadmap_id, settings.web_base_url)
 
@@ -181,7 +194,13 @@ async def fetch_roadmap_versions(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> list[RoadmapVersionSummaryResponse]:
-    await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await rate_limiter.enforce(
+        "versions.read",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
     return await get_roadmap_versions(db, roadmap_id)
 
 
@@ -192,6 +211,12 @@ async def post_checkpoint(
     authorization: str | None = Header(default=None),
 ) -> CheckpointResponse:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await rate_limiter.enforce(
+        "versions.checkpoint",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=10,
+        window_seconds=60,
+    )
     created, version = await create_roadmap_checkpoint(db, roadmap_id, participant)
     return CheckpointResponse(created=created, version=version)
 
@@ -203,7 +228,13 @@ async def fetch_roadmap_version(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapVersionDetailResponse:
-    await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await rate_limiter.enforce(
+        "version.read",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
     return await get_roadmap_version(db, roadmap_id, version_id)
 
 
@@ -225,6 +256,12 @@ async def fetch_participants(
     authorization: str | None = Header(default=None),
 ) -> list[ParticipantResponse]:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await rate_limiter.enforce(
+        "participants.read",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
     return await get_participants(db, roadmap_id, participant)
 
 
@@ -262,7 +299,7 @@ async def post_event_ticket(
     )
     await rate_limiter.enforce(
         "events.ticket.ip",
-        f"{_client_ip(request)}:{roadmap_id}",
+        f"{extract_client_ip(request)}:{roadmap_id}",
         limit=60,
         window_seconds=60,
     )
@@ -334,7 +371,15 @@ async def get_locks(
     authorization: str | None = Header(default=None),
 ) -> list[LockResponse]:
     # Viewer can see locks too
-    await require_participant(db, roadmap_id, authorization, {"owner", "editor", "viewer"})
+    participant = await require_participant(
+        db, roadmap_id, authorization, {"owner", "editor", "viewer"}
+    )
+    await rate_limiter.enforce(
+        "locks.read",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
     locks = await lock_service.get_locks_for_roadmap(roadmap_id)
     return [
         LockResponse(
@@ -356,5 +401,13 @@ async def fetch_activity_logs(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> ActivityLogListResponse:
-    await require_participant(db, roadmap_id, authorization, {"owner", "editor", "viewer"})
+    participant = await require_participant(
+        db, roadmap_id, authorization, {"owner", "editor", "viewer"}
+    )
+    await rate_limiter.enforce(
+        "activity.read",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
     return await get_activity_logs(db, roadmap_id, limit, offset)

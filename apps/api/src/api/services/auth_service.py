@@ -8,6 +8,7 @@ from api.models.roadmap import Participant, Roadmap
 from api.services.token_service import hash_token
 
 _SESSION_LIFETIME_DAYS = 30
+_PARTICIPANT_TOUCH_INTERVAL = timedelta(minutes=1)
 
 
 def get_bearer_token(authorization: str | None) -> str | None:
@@ -28,6 +29,13 @@ def _ensure_aware_utc(dt: datetime) -> datetime:
 
 def _session_expires_at(now: datetime) -> datetime:
     return now + timedelta(days=_SESSION_LIFETIME_DAYS)
+
+
+def _should_touch_participant(participant: Participant, now: datetime) -> bool:
+    if participant.last_seen_at is None:
+        return True
+    last_seen_at = _ensure_aware_utc(participant.last_seen_at)
+    return last_seen_at <= now - _PARTICIPANT_TOUCH_INTERVAL
 
 
 async def require_participant(
@@ -74,9 +82,10 @@ async def require_participant(
     if participant.role not in allowed_roles:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
-    participant.last_seen_at = now
-    participant.session_expires_at = _session_expires_at(now)
-    await db.flush()
-    await db.commit()
+    if _should_touch_participant(participant, now):
+        participant.last_seen_at = now
+        participant.session_expires_at = _session_expires_at(now)
+        await db.flush()
+        await db.commit()
 
     return participant

@@ -32,6 +32,14 @@ Covers the headers currently set by Next.js (`next.config.ts`) and Nginx (`roadf
 
 ---
 
+## Public deployments
+
+**[Public Deployment Security](../public-deployment-security.md)**
+
+Documents required production settings, disabled OpenAPI docs outside development, trusted proxy IP handling, unsafe database guards, API security headers, rate limiting assumptions, reverse proxy expectations, and local development differences. Status: implemented baseline.
+
+---
+
 ## Dependency audits
 
 **[Dependency Audit Policy](./dependency-audit-policy.md)**

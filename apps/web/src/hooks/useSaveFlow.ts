@@ -147,7 +147,11 @@ export function useSaveFlow({
           showToast('Session expired — rejoin from the invite link')
           return
         }
-        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt || undefined, changeSummary)
+        if (!updatedAt) {
+          showToast('Reload the server roadmap before saving again')
+          return
+        }
+        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt, changeSummary)
         setUpdatedAt(data.updated_at)
         setPendingActivityChanges([])
       }

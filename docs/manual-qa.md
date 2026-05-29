@@ -412,7 +412,7 @@ Set browser devtools to 375×812 (iPhone SE / 13 mini):
 - [ ] **Viewer cannot see Share or Save:** both controls absent in `/shared` route.
 - [ ] **Editor cannot access Versions endpoints:** Versions panel absent or restricted; direct API call `POST /api/roadmaps/{id}/versions/checkpoint` with editor Bearer token returns 403.
 - [ ] **Old invite token fails after rotate:** rotating editor link invalidates the previous URL immediately.
-- [ ] **Invalid Bearer token on PUT returns 401:** call `PUT /api/roadmaps/{id}` with a garbage Bearer token → 401.
+- [ ] **Invalid Bearer token on PUT returns 401:** call `PUT /api/roadmaps/{id}` with a garbage Bearer token and a valid `last_updated_at` field → 401.
 
 ---
 
@@ -481,7 +481,7 @@ Use this checklist after migrations, backend checks, frontend checks, and a loca
 or staging stack are available. Do not mark these as complete until you run them.
 
 - [ ] New owner and joined participant sessions receive `session_expires_at`.
-- [ ] Valid authenticated API requests renew `session_expires_at` by 30 days and update `last_seen_at`.
+- [ ] Valid authenticated API requests renew `session_expires_at` by 30 days and update `last_seen_at` when the participant presence timestamp is stale.
 - [ ] Expired participant session returns `401` with `{"detail":"Session expired"}` and does not create activity logs.
 - [ ] Expired frontend session clears only `rf:auth:<roadmapId>`, preserves `rf:roadmap:<roadmapId>`, marks the local copy unsynced, and tells the user to rejoin through an active invite link.
 - [ ] Revoked participant behavior is unchanged: existing session fails, `participant.revoked` copy remains owner/action language, and the local roadmap cache remains.

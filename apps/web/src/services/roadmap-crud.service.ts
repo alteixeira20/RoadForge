@@ -131,16 +131,16 @@ export async function deleteRoadmap(
  */
 export async function saveToServer(
   roadmapId: string,
-  name?: string,
-  phases?: Phase[],
-  sessionToken?: string,
-  lastUpdatedAt?: string,
+  name: string,
+  phases: Phase[],
+  sessionToken: string,
+  lastUpdatedAt: string,
   changeSummary?: ChangeSummary | null,
 ): Promise<ApiRoadmapResponse> {
   const body: Record<string, unknown> = {}
-  if (name !== undefined) body.name = name
-  if (phases !== undefined) body.phases = phases
-  if (lastUpdatedAt !== undefined) body.last_updated_at = lastUpdatedAt
+  body.name = name
+  body.phases = phases
+  body.last_updated_at = lastUpdatedAt
   if (changeSummary) body.change_summary = changeSummary
   return await requestJson<ApiRoadmapResponse>(`/api/roadmaps/${roadmapId}`, {
     method: 'PUT',

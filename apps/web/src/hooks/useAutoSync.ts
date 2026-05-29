@@ -124,10 +124,17 @@ export function useAutoSync({
         setIsSyncing(false)
         return
       }
+      if (!ua) {
+        isSyncingRef.current = false
+        setIsSyncing(false)
+        setIsOffline(true)
+        toast('Reload the server roadmap before saving again')
+        return
+      }
 
       const changeSummary = buildChangeSummary(pac, rid)
       try {
-        const data = await saveToServer(rid, n, p, tok, ua || undefined, changeSummary)
+        const data = await saveToServer(rid, n, p, tok, ua, changeSummary)
         syncSuccess(data.updated_at)
         setIsOffline(false)
         setIsConflict(false)

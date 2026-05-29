@@ -28,6 +28,44 @@ from api.schemas.limits import (
 )
 from api.schemas.validators import clean_optional_text, clean_required_text
 
+ALLOWED_CHANGE_SUMMARY_ACTIONS: frozenset[str] = frozenset({
+    "roadmap.created",
+    "roadmap.imported",
+    "roadmap.updated",
+    "roadmap.renamed",
+    "roadmap.restored",
+    "roadmap.checkpoint",
+    "roadmap.batch_changed",
+    "roadmap.phases_reordered",
+    "phase.created",
+    "phase.updated",
+    "phase.deleted",
+    "phase.reordered",
+    "phase.completed",
+    "phase.reopened",
+    "task.created",
+    "task.updated",
+    "task.deleted",
+    "task.completed",
+    "task.reopened",
+    "task.reordered",
+    "task.dependency.linked",
+    "task.dependency.unlinked",
+})
+
+
+def validate_change_summary(v: object) -> object:
+    if v is None:
+        return None
+    if not isinstance(v, dict):
+        return v
+    action = v.get("action")
+    if not isinstance(action, str) or not action:
+        raise ValueError("change_summary.action is required")
+    if action not in ALLOWED_CHANGE_SUMMARY_ACTIONS:
+        raise ValueError("change_summary.action is not allowed")
+    return v
+
 # ─── Shared enums ─────────────────────────────────────────────────────────────
 
 ShareRole = Literal["owner", "editor", "viewer"]
@@ -151,13 +189,18 @@ class CreateRoadmapRequest(BaseModel):
             raise ValueError(f"password exceeds {PASSWORD_MAX} characters")
         return stripped
 
+    @field_validator("change_summary", mode="before")
+    @classmethod
+    def _validate_change_summary(cls, v: object) -> object:
+        return validate_change_summary(v)
+
 
 class UpdateRoadmapRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(default=None, min_length=1, max_length=ROADMAP_NAME_MAX)
     phases: list[PhaseDTO] | None = Field(default=None, max_length=PHASES_MAX)
-    last_updated_at: datetime | None = None
+    last_updated_at: datetime
     change_summary: dict[str, Any] | None = None
 
     @field_validator("name", mode="before")
@@ -166,6 +209,11 @@ class UpdateRoadmapRequest(BaseModel):
         if not isinstance(v, str):
             return v
         return clean_required_text(v, "name", ROADMAP_NAME_MAX)
+
+    @field_validator("change_summary", mode="before")
+    @classmethod
+    def _validate_change_summary(cls, v: object) -> object:
+        return validate_change_summary(v)
 
 
 # ─── Roadmap responses ────────────────────────────────────────────────────────

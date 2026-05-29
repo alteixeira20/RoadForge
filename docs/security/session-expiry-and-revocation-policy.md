@@ -53,7 +53,7 @@ Recommended first-version defaults:
 | Idle timeout | No separate idle timeout in the first version. |
 | Renewal | Sliding renewal on successful authenticated API requests. |
 | Renewal window | Extend `session_expires_at` to `now + 30 days` when the session is valid and not revoked. |
-| `last_seen_at` | Keep updating it on successful authenticated requests for owner visibility and operational debugging. |
+| `last_seen_at` | Keep updating it on successful authenticated requests when stale for owner visibility and operational debugging. |
 | Owner sessions | Same 30-day sliding lifetime as editor/viewer sessions in the first version. |
 | Role differences | No expiry difference by role initially. Use role only for authorization, not session lifetime. |
 | Public viewer link | The invite link may remain stable and public while active; each joined viewer session still gets its own 30-day sliding expiry. |
@@ -87,7 +87,7 @@ Keep current endpoint shapes stable where possible. Expiry should be enforced in
 
 Expected behavior:
 
-- Authenticated roadmap fetch: `GET /api/roadmaps/{id}` should require a valid, non-revoked, non-expired session. On success, update `last_seen_at` and renew `session_expires_at`.
+- Authenticated roadmap fetch: `GET /api/roadmaps/{id}` should require a valid, non-revoked, non-expired session. On success, update `last_seen_at` and renew `session_expires_at` when the participant presence timestamp is stale.
 - Update/save: `PUT /api/roadmaps/{id}` should reject expired and revoked sessions before concurrency checks or writes. Expiry must not create activity logs.
 - Share management: owner-only share-link list, rotate, and revoke endpoints should reject expired owner sessions as expired auth, not as insufficient role.
 - Participant list: owner-only participant listing should include `last_seen_at`, `revoked_at`, and eventually `session_expires_at` so owners can understand stale sessions.
@@ -196,7 +196,7 @@ Justification:
 Renewal should be bounded by the policy:
 - If the session is revoked, do not renew.
 - If the session is already expired, do not renew.
-- If the session is valid, update `last_seen_at` and set `session_expires_at = now + 30 days`.
+- If the session is valid and the participant presence timestamp is stale, update `last_seen_at` and set `session_expires_at = now + 30 days`.
 
 An optional future hard cap can be considered later, such as requiring rejoin after 180 days even with continuous activity. Do not add that in the first version unless owner controls or compliance requirements demand it.
 
@@ -351,7 +351,7 @@ Mitigations:
 - Preserve local caches on every auth-loss path.
 - Make expired and revoked responses stable and distinguishable.
 - Consider owner-facing warnings if an owner link is inactive and the current owner session is near expiry.
-- Throttle renewal writes later if needed, for example renew only when expiry is within 7 days or `last_seen_at` is older than a small interval.
+- Renewal writes are throttled so repeated polling does not update `last_seen_at` and `session_expires_at` on every request.
 
 ---
 

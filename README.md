@@ -164,6 +164,9 @@ Defined in `.env.example`. Copy to `.env.local` for local overrides.
 | `POSTGRES_USER` | `roadforge` | Docker Compose |
 | `POSTGRES_PASSWORD` | `roadforge_dev` | Docker Compose |
 | `ROADFORGE_ENVIRONMENT` | `development` | Backend — log verbosity, SQL echo |
+| `ROADFORGE_SECRET_KEY` | unset | Backend — required non-default production secret guard outside development |
+| `ROADFORGE_TRUSTED_PROXY_IPS` | unset | Backend — comma-separated proxy IPs/CIDRs allowed to supply forwarded client IP headers |
+| `ROADFORGE_ALLOW_LOCAL_DATABASE_IN_PRODUCTION` | `false` | Backend — explicit override for documented host-local production DB topologies |
 | `ROADFORGE_WEB_BASE_URL` | `http://localhost:3020` | Backend — builds `/join?token=…` URLs |
 | `REDIS_URL` | `redis://redis:6379/0` | Backend Redis connection string |
 | `ROADFORGE_REALTIME_BACKEND` | `memory` | Backend realtime storage, `memory` or `redis` |
@@ -177,6 +180,7 @@ Defined in `.env.example`. Copy to `.env.local` for local overrides.
 See [docs/manual-qa.md](docs/manual-qa.md) for the full pre-release QA checklist (30 sections, covers all features, blocker criteria, known limitations, and deployment verification). For a focused backend API smoke test with curl commands, see [docs/backend-smoke-tests.md](docs/backend-smoke-tests.md).
 
 For security policies and responsible disclosure, see [SECURITY.md](SECURITY.md) and [docs/security/README.md](docs/security/README.md).
+For public deployment security assumptions, see [docs/public-deployment-security.md](docs/public-deployment-security.md).
 
 ---
 

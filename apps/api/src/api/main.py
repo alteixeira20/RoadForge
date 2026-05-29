@@ -9,12 +9,16 @@ from api.routers import health, roadmaps
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    settings.validate_startup_security()
+    docs_url = "/api/docs" if settings.is_development else None
+    redoc_url = "/api/redoc" if settings.is_development else None
+    openapi_url = "/api/openapi.json" if settings.is_development else None
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
-        docs_url="/api/docs",
-        redoc_url="/api/redoc",
-        openapi_url="/api/openapi.json",
+        docs_url=docs_url,
+        redoc_url=redoc_url,
+        openapi_url=openapi_url,
     )
     add_cors(app)
     add_body_limit(app)
