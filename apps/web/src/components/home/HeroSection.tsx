@@ -24,9 +24,9 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           <button className="btn primary lg" onClick={onCreate}>
             Create roadmap <Icon name="arrow-right" size={16} stroke="#fff" />
           </button>
-          <a className="btn lg" href="#" onClick={(e) => e.preventDefault()}>
-            <Icon name="github" size={16} /> View on GitHub
-          </a>
+          <span className="btn lg muted" aria-disabled="true">
+            <Icon name="github" size={16} /> Source coming soon
+          </span>
         </div>
         <div className="meta-row">
           <span><Icon name="lock" size={14} /> No account required</span>

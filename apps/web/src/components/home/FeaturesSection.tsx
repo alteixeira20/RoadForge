@@ -63,9 +63,9 @@ export function FeaturesSection() {
           <strong>Open-source, self-hostable, and built to stay portable.</strong>
           <span>MIT licensed · Exportable JSON · Local hosting</span>
         </div>
-        <a className="btn lg" href="#" onClick={(e) => e.preventDefault()}>
-          <Icon name="github" size={16} /> Star on GitHub
-        </a>
+        <span className="btn lg muted" aria-disabled="true">
+          <Icon name="github" size={16} /> Source coming soon
+        </span>
       </div>
     </section>
   )

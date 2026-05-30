@@ -27,15 +27,11 @@ export function SiteHeader({ onCreate }: SiteHeaderProps) {
       </nav>
       <span className="spacer" />
       <div className="actions">
-        <a
-          className="gh-pill"
-          href="#"
-          onClick={(e) => e.preventDefault()}
-        >
+        <span className="gh-pill muted">
           <Icon name="github" size={18} />
-          <span>GitHub</span>
-          <span className="stars">★ 2.4k</span>
-        </a>
+          <span>Source</span>
+          <span className="stars">private</span>
+        </span>
         <button className="btn primary" onClick={onCreate}>
           Create roadmap
         </button>

@@ -11,10 +11,10 @@ export function SiteFooter() {
         <span>MIT licensed · v1.0</span>
         <span className="flex-1" />
         <div className="links">
-          <a href="#" onClick={(e) => e.preventDefault()}>GitHub</a>
-          <a href="#" onClick={(e) => e.preventDefault()}>Docs</a>
-          <a href="#" onClick={(e) => e.preventDefault()}>Self-host guide</a>
-          <a href="#" onClick={(e) => e.preventDefault()}>Changelog</a>
+          <span className="footer-link-muted">GitHub</span>
+          <span className="footer-link-muted">Docs</span>
+          <span className="footer-link-muted">Self-host guide</span>
+          <span className="footer-link-muted">Changelog</span>
         </div>
       </div>
       <div className="row sub" style={{ marginTop: 16, color: 'var(--ink-4)', fontSize: 13 }}>

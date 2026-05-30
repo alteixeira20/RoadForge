@@ -387,6 +387,23 @@
   letter-spacing: 0.03em;
 }
 
+/* ─── Muted / disabled link states ────────────────────────────────────────── */
+.btn.muted {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+.gh-pill.muted {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+.footer-link-muted {
+  color: var(--ink-4);
+  font-size: 14px;
+  cursor: default;
+}
+
 /* ─── GitHub pill ──────────────────────────────────────────────────────────── */
 .gh-pill {
   display: inline-flex; align-items: center; gap: 10px;
