@@ -1,10 +1,17 @@
 import { useCallback, useState } from 'react'
 
-export function useToastState() {
-  const [toast, setToast] = useState<string | null>(null)
+export type ToastTone = 'success' | 'info' | 'warning' | 'error'
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg)
+export interface ToastState {
+  message: string
+  tone: ToastTone
+}
+
+export function useToastState() {
+  const [toast, setToast] = useState<ToastState | null>(null)
+
+  const showToast = useCallback((msg: string, tone: ToastTone = 'info') => {
+    setToast({ message: msg, tone })
     setTimeout(() => setToast(null), 2400)
   }, [])
 

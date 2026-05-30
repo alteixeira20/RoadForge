@@ -21,6 +21,7 @@ import {
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { SortablePhaseItem } from './SortablePhaseItem'
+import type { ToastTone } from '@/hooks/useToastState'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 
 interface PhaseListProps {
@@ -48,7 +49,7 @@ interface PhaseListProps {
   onReorderPhases: (phaseIds: string[]) => void
   hasCycle: (taskId: string, depId: string) => boolean
   assignmentNames: string[]
-  onToast: (message: string) => void
+  onToast: (message: string, tone?: ToastTone) => void
 }
 
 export function PhaseList({

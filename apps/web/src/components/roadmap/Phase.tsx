@@ -30,6 +30,7 @@ import { TaskRow } from './TaskRow'
 import { DraftTaskRow } from './DraftTaskRow'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { computeTaskDisplayNumbers } from '@/lib/task-display'
+import type { ToastTone } from '@/hooks/useToastState'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 import type { ForgeStyle } from '@/types/ui'
 
@@ -56,7 +57,7 @@ interface PhaseProps {
   allTasks: Task[]
   readOnly: boolean
   assignmentNames: string[]
-  onToast: (message: string) => void
+  onToast: (message: string, tone?: ToastTone) => void
   dragHandleProps?: React.HTMLAttributes<Element>
 }
 

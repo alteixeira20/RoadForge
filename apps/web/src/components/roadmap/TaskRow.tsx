@@ -9,6 +9,7 @@ import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
 import { TaskSubtaskList } from './TaskSubtaskList'
 import { useEditLock } from '@/hooks/useEditLock'
+import type { ToastTone } from '@/hooks/useToastState'
 import type { Task } from '@/types/roadmap'
 
 interface TaskRowProps {
@@ -28,7 +29,7 @@ interface TaskRowProps {
   onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
   onDeleteSubtask: (subtaskId: string) => void
   hasCycle: (taskId: string, depId: string) => boolean
-  onToast: (message: string) => void
+  onToast: (message: string, tone?: ToastTone) => void
   isNested?: boolean
   dragDisabled?: boolean
   dragHandleProps?: Record<string, unknown>
@@ -116,7 +117,7 @@ export function TaskRow({
     }
   }, [onToast])
 
-  const { ownsLock, tryAcquire: tryAcquireLock } = useEditLock({
+  const { ownsLock, isAcquiring, isReleasing, tryAcquire: tryAcquireLock } = useEditLock({
     target,
     active: activeForm && !readOnly,
     serverRoadmapId,
@@ -125,7 +126,20 @@ export function TaskRow({
   })
 
   const isLockedByMe = ownsLock || (!!participantId && lock?.participantId === participantId)
-  const isLockedByOther = Boolean(lock && !isLockedByMe)
+
+  // Track whether this component instance has ever controlled the lock.
+  // Set when acquiring/owning/releasing begins; cleared only once the server
+  // lock entry disappears from context. This bridges the gap between
+  // isReleasing dropping to false and the SSE lock-released event arriving.
+  const hadLocalLockControlRef = useRef(false)
+  if (ownsLock || isReleasing) {
+    hadLocalLockControlRef.current = true
+  } else if (!lock && !isAcquiring) {
+    hadLocalLockControlRef.current = false
+  }
+
+  const hasLocalLockControl = isAcquiring || ownsLock || isReleasing || hadLocalLockControlRef.current
+  const isLockedByOther = Boolean(lock && !isLockedByMe && !hasLocalLockControl)
   const effectivelyReadOnly = readOnly || isLockedByOther || isTaskDonePending
   const canDragTask =
     !effectivelyReadOnly && !expanded && !dragDisabled && Boolean(dragHandleProps)
@@ -267,6 +281,7 @@ export function TaskRow({
                 onUpdateTask(task.id, updates)
                 setIsEditing(false)
                 setEditDirty(false)
+                onToast('Task updated', 'success')
               }}
               onCancel={() => {
                 setIsEditing(false)
@@ -305,6 +320,7 @@ export function TaskRow({
                             onClick={(e) => {
                               e.stopPropagation()
                               onUnlinkDependency(task.id, d.id)
+                              onToast('Dependency removed', 'success')
                             }}
                             title="Unlink dependency"
                           >
@@ -347,6 +363,7 @@ export function TaskRow({
                       onAdd={(title) => {
                         onAddSubtask(task.id, title)
                         setShowSubtaskForm(false)
+                        onToast('Subtask added', 'success')
                       }}
                       onCancel={() => setShowSubtaskForm(false)}
                     />
@@ -358,6 +375,7 @@ export function TaskRow({
                       onLink={(depId) => {
                         onLinkDependency(task.id, depId)
                         setShowDepPicker(false)
+                        onToast('Dependency linked', 'success')
                       }}
                       onCancel={() => setShowDepPicker(false)}
                     />

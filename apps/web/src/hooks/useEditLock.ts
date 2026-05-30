@@ -18,6 +18,8 @@ interface UseEditLockParams {
 
 interface UseEditLockResult {
   ownsLock: boolean
+  isAcquiring: boolean
+  isReleasing: boolean
   tryAcquire: () => Promise<boolean>
   release: () => Promise<void>
 }
@@ -40,6 +42,8 @@ export function useEditLock({
   onAcquireError,
 }: UseEditLockParams): UseEditLockResult {
   const [ownsLock, setOwnsLock] = useState(false)
+  const [isAcquiring, setIsAcquiring] = useState(false)
+  const [isReleasing, setIsReleasing] = useState(false)
   const ownsLockRef = useRef(false)
   const releaseRef = useRef<() => Promise<void>>(async () => {})
 
@@ -51,10 +55,13 @@ export function useEditLock({
 
     if (!serverRoadmapId || !sessionToken) return
 
+    setIsReleasing(true)
     try {
       await releaseLock(serverRoadmapId, target, sessionToken)
     } catch {
       // Server TTL handles any missed cleanup
+    } finally {
+      setIsReleasing(false)
     }
   }, [serverRoadmapId, sessionToken, target])
 
@@ -68,6 +75,7 @@ export function useEditLock({
       return true
     }
 
+    setIsAcquiring(true)
     try {
       await acquireLock(serverRoadmapId, target, sessionToken)
       ownsLockRef.current = true
@@ -77,6 +85,8 @@ export function useEditLock({
       const msg = err instanceof Error ? err.message : ''
       onAcquireError?.(msg.includes('409'))
       return false
+    } finally {
+      setIsAcquiring(false)
     }
   }, [serverRoadmapId, sessionToken, target, onAcquireError])
 
@@ -107,5 +117,5 @@ export function useEditLock({
     return () => { void releaseRef.current() }
   }, []) // intentionally empty — runs only on unmount
 
-  return { ownsLock, tryAcquire, release }
+  return { ownsLock, isAcquiring, isReleasing, tryAcquire, release }
 }
