@@ -1,17 +1,15 @@
 'use client'
 
 import { Icon } from '@/components/ui/Icon'
+import { LandingSectionFrame } from '@/components/home/LandingSectionFrame'
 
 export function FeaturesSection() {
   return (
-    <section className="section container" id="features">
-      <div className="section-head">
-        <h2>Built for solo builders and small teams.</h2>
-        <p className="section-lede">
-          A small set of features, chosen carefully, sized to fit how real
-          planning works.
-        </p>
-      </div>
+    <LandingSectionFrame
+      id="features"
+      title="Built for solo builders and small teams."
+      lede="A small set of features, chosen carefully, sized to fit how real planning works."
+    >
       <div className="features">
         <div className="feature">
           <div className="ic"><Icon name="device" size={20} /></div>
@@ -67,6 +65,6 @@ export function FeaturesSection() {
           <Icon name="github" size={16} /> Source coming soon
         </span>
       </div>
-    </section>
+    </LandingSectionFrame>
   )
 }

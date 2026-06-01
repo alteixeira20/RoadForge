@@ -1,14 +1,13 @@
 import { Icon } from '@/components/ui/Icon'
+import { LandingSectionFrame } from '@/components/home/LandingSectionFrame'
 
 export function HowItWorksSection() {
   return (
-    <section className="section container" id="how">
-      <div className="section-head">
-        <h2>From empty page to shipped roadmap.</h2>
-        <p className="section-lede">
-          Three steps. No setup. You can be planning in under a minute.
-        </p>
-      </div>
+    <LandingSectionFrame
+      id="how"
+      title="From empty page to shipped roadmap."
+      lede="Three steps. No setup. You can be planning in under a minute."
+    >
       <div className="flow-strip" aria-hidden="true">
         <span>Local file</span>
         <span className="flow-sep">→</span>
@@ -45,6 +44,6 @@ export function HowItWorksSection() {
           </p>
         </div>
       </div>
-    </section>
+    </LandingSectionFrame>
   )
 }
