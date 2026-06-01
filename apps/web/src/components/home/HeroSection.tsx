@@ -12,13 +12,13 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
     <>
       <section className="hero container">
         <h1>
-          The roadmap tool that{' '}
-          <span className="accent">starts on your machine.</span>
+          A roadmap tool that{' '}
+          <span className="accent">starts local, stays portable.</span>
         </h1>
         <p className="lede">
-          Plan in phases. Forge your roadmap locally — no account, no sign-up.
-          Save it to a server later if you want collaboration. Built so people
-          and AI agents read the same file.
+          Plan in phases, track tasks and dependencies, and work entirely on
+          your device. Save to a server later when you need to share.
+          No account required to start.
         </p>
         <div className="ctas">
           <button className="btn primary lg" onClick={onCreate}>
@@ -30,8 +30,8 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
         </div>
         <div className="meta-row">
           <span><Icon name="lock" size={14} /> No account required</span>
-          <span><Icon name="github" size={14} /> Open-source</span>
-          <span><Icon name="device" size={14} /> Local hosting</span>
+          <span><Icon name="device" size={14} /> Runs locally</span>
+          <span><Icon name="export" size={14} /> Exportable JSON</span>
           <span><Icon name="shield" size={14} /> MIT licensed</span>
         </div>
       </section>
@@ -40,7 +40,7 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
         <div className="preview">
           <div className="preview-bar">
             <span className="dots"><i /><i /><i /></span>
-            <span className="url">roadforge.local · v1.0 Public Launch</span>
+            <span className="url">roadforge.local · API Integration Sprint</span>
           </div>
           <MiniPreview />
         </div>

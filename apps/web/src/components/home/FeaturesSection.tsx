@@ -8,7 +8,7 @@ export function FeaturesSection() {
     <LandingSectionFrame
       id="features"
       title="Built for solo builders and small teams."
-      lede="A small set of features, chosen carefully, sized to fit how real planning works."
+      lede="A focused set of features, sized to fit how real planning works."
     >
       <div className="features">
         <div className="feature">
@@ -20,46 +20,50 @@ export function FeaturesSection() {
           </p>
         </div>
         <div className="feature">
-          <div className="ic"><Icon name="users" size={20} /></div>
-          <h3>Optional collaboration</h3>
+          <div className="ic"><Icon name="export" size={20} /></div>
+          <h3>Portable JSON</h3>
           <p>
-            Save a roadmap to a server when you want to share. Presence,
-            activity log, signed links.
+            Export and import the full roadmap as JSON. Readable, versionable,
+            and never locked to a service.
+          </p>
+        </div>
+        <div className="feature">
+          <div className="ic"><Icon name="fold" size={20} /></div>
+          <h3>Phase and task structure</h3>
+          <p>
+            Group work into phases. Track tasks, dependencies, and status.
+            Collapse what you don&apos;t need to see right now.
           </p>
         </div>
         <div className="feature">
           <div className="ic"><Icon name="robot" size={20} /></div>
-          <h3>AI-friendly schema</h3>
+          <h3>Agent-readable planning</h3>
           <p>
-            One stable JSON file that humans and coding agents both read.
-            Agents propose; you approve.
+            A structured file humans and coding agents both understand. Agents
+            can read the plan and propose changes — you approve.
+          </p>
+        </div>
+        <div className="feature">
+          <div className="ic"><Icon name="users" size={20} /></div>
+          <h3>Optional sync and sharing</h3>
+          <p>
+            Save to a server when you want participants, an activity log, or
+            signed invite links. The local version always works first.
           </p>
         </div>
         <div className="feature">
           <div className="ic"><Icon name="shield" size={20} /></div>
           <h3>Self-hostable</h3>
-          <p>Single binary, SQLite by default. Deploy on any box you trust.</p>
-        </div>
-        <div className="feature">
-          <div className="ic"><Icon name="export" size={20} /></div>
-          <h3>Portable</h3>
           <p>
-            Export and import JSON. No lock-in, ever.
-          </p>
-        </div>
-        <div className="feature">
-          <div className="ic"><Icon name="github" size={20} /></div>
-          <h3>Open source</h3>
-          <p>
-            MIT-licensed and built in public. Fork it, fix it, ship it your
-            way.
+            Run the backend on your own infrastructure. MIT licensed.
+            No third-party hosted service required.
           </p>
         </div>
       </div>
       <div className="gh-cta">
         <div className="gh-cta-text">
-          <strong>Open-source, self-hostable, and built to stay portable.</strong>
-          <span>MIT licensed · Exportable JSON · Local hosting</span>
+          <strong>Private by default. Portable JSON. MIT licensed.</strong>
+          <span>Local hosting · Exportable · Optional self-hosting</span>
         </div>
         <span className="btn lg muted" aria-disabled="true">
           <Icon name="github" size={16} /> Source coming soon
