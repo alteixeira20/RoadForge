@@ -156,6 +156,12 @@ export interface PatchTaskDoneParams {
   lastUpdatedAt: string
 }
 
+export interface PatchTaskClaimParams {
+  roadmapId: string
+  taskId: string
+  sessionToken: string
+}
+
 // ─── Roadmap versions ──────────────────────────────────────────────────────────
 
 export async function getRoadmapVersions(
@@ -229,6 +235,32 @@ export async function patchTaskDone({
         last_updated_at: lastUpdatedAt,
       }),
     },
+    sessionToken,
+  )
+  return toRoadmap(data)
+}
+
+export async function patchTaskClaim({
+  roadmapId,
+  taskId,
+  sessionToken,
+}: PatchTaskClaimParams): Promise<Roadmap> {
+  const data = await requestJson<ApiRoadmapResponse>(
+    `/api/roadmaps/${roadmapId}/tasks/${taskId}/claim`,
+    { method: 'PATCH' },
+    sessionToken,
+  )
+  return toRoadmap(data)
+}
+
+export async function deleteTaskClaim({
+  roadmapId,
+  taskId,
+  sessionToken,
+}: PatchTaskClaimParams): Promise<Roadmap> {
+  const data = await requestJson<ApiRoadmapResponse>(
+    `/api/roadmaps/${roadmapId}/tasks/${taskId}/claim`,
+    { method: 'DELETE' },
     sessionToken,
   )
   return toRoadmap(data)

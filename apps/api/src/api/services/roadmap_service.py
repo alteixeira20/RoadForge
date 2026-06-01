@@ -29,6 +29,7 @@ from api.schemas.roadmap import (
     ShareRole,
     UpdateRoadmapRequest,
 )
+# PatchTaskClaimRequest is intentionally omitted — the claim endpoint has no body.
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.password_service import hash_password, verify_password
@@ -151,6 +152,64 @@ def _patch_task_done_snapshot(
             next_task = dict(task)
             found = (phase, task)
             next_task["done"] = done
+            if done:
+                # Marking done clears the claim so completed tasks are not stuck as claimed.
+                next_task.pop("claimedBy", None)
+                next_task.pop("claimedById", None)
+                next_task.pop("claimedAt", None)
+            next_tasks.append(next_task)
+
+        next_phase = dict(phase)
+        next_phase["tasks"] = next_tasks
+        next_phases.append(next_phase)
+
+    if found is None:
+        return None
+    phase, task = found
+    return {"phases": next_phases}, phase, task
+
+
+def _patch_task_claim_snapshot(
+    snapshot_json: dict[str, Any],
+    task_id: str,
+    claimed_by: str | None,
+    claimed_by_id: str | None,
+    claimed_at: str | None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]] | None:
+    """Return (next_snapshot, phase_dict, original_task_dict) or None if task not found."""
+    phases = snapshot_json.get("phases", [])
+    if not isinstance(phases, list):
+        return None
+
+    next_phases: list[Any] = []
+    found: tuple[dict[str, Any], dict[str, Any]] | None = None
+
+    for phase in phases:
+        if not isinstance(phase, dict):
+            next_phases.append(phase)
+            continue
+
+        tasks = phase.get("tasks", [])
+        if not isinstance(tasks, list):
+            next_phases.append(dict(phase))
+            continue
+
+        next_tasks = []
+        for task in tasks:
+            if not isinstance(task, dict) or task.get("id") != task_id or found is not None:
+                next_tasks.append(task)
+                continue
+
+            found = (phase, task)
+            next_task = dict(task)
+            if claimed_by is not None:
+                next_task["claimedBy"] = claimed_by
+                next_task["claimedById"] = claimed_by_id
+                next_task["claimedAt"] = claimed_at
+            else:
+                next_task.pop("claimedBy", None)
+                next_task.pop("claimedById", None)
+                next_task.pop("claimedAt", None)
             next_tasks.append(next_task)
 
         next_phase = dict(phase)
@@ -1179,3 +1238,125 @@ async def join_roadmap(
         session_token=session_token,
         participant_id=participant.id,
     )
+
+
+async def patch_task_claim(
+    db: AsyncSession,
+    roadmap_id: str,
+    task_id: str,
+    participant: Participant,
+) -> RoadmapResponse:
+    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    now = datetime.now(timezone.utc)
+
+    patched = _patch_task_claim_snapshot(
+        roadmap.snapshot_json,
+        task_id,
+        participant.display_name,
+        participant.id,
+        now.isoformat(),
+    )
+    if patched is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    snapshot_json, phase, task = patched
+    if task.get("done"):
+        raise HTTPException(status_code=400, detail="Cannot claim a completed task")
+
+    roadmap.snapshot_json = snapshot_json
+    roadmap.updated_at = now
+
+    db.add(ActivityLog(
+        id=generate_id("al_"),
+        roadmap_id=roadmap_id,
+        participant_id=participant.id,
+        actor_name=participant.display_name,
+        action="task.claimed",
+        entity_type="task",
+        entity_id=task_id,
+        metadata_json={
+            "phase_id": phase.get("id"),
+            "task_title": task.get("title"),
+            "claimed_by": participant.display_name,
+        },
+    ))
+    await sync_roadmap_projection_best_effort(db, roadmap, "task_claim")
+
+    await db.commit()
+    await db.refresh(roadmap)
+
+    await event_bus.publish(Event(
+        roadmap_id=roadmap_id,
+        action="roadmap.updated",
+        payload={
+            "roadmap_id": roadmap_id,
+            "updated_at": roadmap.updated_at.isoformat(),
+            "participant_id": participant.id,
+            "task_id": task_id,
+            "action": "task.claimed",
+        }
+    ))
+
+    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+
+
+async def delete_task_claim(
+    db: AsyncSession,
+    roadmap_id: str,
+    task_id: str,
+    participant: Participant,
+) -> RoadmapResponse:
+    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    now = datetime.now(timezone.utc)
+
+    patched = _patch_task_claim_snapshot(
+        roadmap.snapshot_json,
+        task_id,
+        None,
+        None,
+        None,
+    )
+    if patched is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    snapshot_json, phase, task = patched
+    before_claimed_by = task.get("claimedBy")
+
+    if not before_claimed_by:
+        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+
+    roadmap.snapshot_json = snapshot_json
+    roadmap.updated_at = now
+
+    db.add(ActivityLog(
+        id=generate_id("al_"),
+        roadmap_id=roadmap_id,
+        participant_id=participant.id,
+        actor_name=participant.display_name,
+        action="task.unclaimed",
+        entity_type="task",
+        entity_id=task_id,
+        metadata_json={
+            "phase_id": phase.get("id"),
+            "task_title": task.get("title"),
+            "was_claimed_by": before_claimed_by,
+        },
+    ))
+    await sync_roadmap_projection_best_effort(db, roadmap, "task_unclaim")
+
+    await db.commit()
+    await db.refresh(roadmap)
+
+    await event_bus.publish(Event(
+        roadmap_id=roadmap_id,
+        action="roadmap.updated",
+        payload={
+            "roadmap_id": roadmap_id,
+            "updated_at": roadmap.updated_at.isoformat(),
+            "participant_id": participant.id,
+            "task_id": task_id,
+            "action": "task.unclaimed",
+        }
+    ))
+
+    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))

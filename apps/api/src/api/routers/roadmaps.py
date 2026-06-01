@@ -37,6 +37,7 @@ from api.services.roadmap_service import (
     create_roadmap,
     create_roadmap_checkpoint,
     delete_roadmap,
+    delete_task_claim,
     get_activity_logs,
     get_participants,
     get_roadmap,
@@ -44,6 +45,7 @@ from api.services.roadmap_service import (
     get_roadmap_versions,
     get_share_links,
     join_roadmap,
+    patch_task_claim,
     patch_task_done,
     restore_roadmap_version,
     revoke_participant,
@@ -152,6 +154,46 @@ async def patch_roadmap_task_done(
         return await patch_task_done(db, roadmap_id, task_id, payload, participant)
     except RoadmapConflictError as exc:
         return JSONResponse(status_code=409, content=exc.response.model_dump(mode="json"))
+
+
+@router.patch(
+    "/{roadmap_id}/tasks/{task_id}/claim",
+    response_model=RoadmapResponse,
+)
+async def patch_roadmap_task_claim(
+    roadmap_id: str,
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
+    await rate_limiter.enforce(
+        "task.claim.patch",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
+    return await patch_task_claim(db, roadmap_id, task_id, participant)
+
+
+@router.delete(
+    "/{roadmap_id}/tasks/{task_id}/claim",
+    response_model=RoadmapResponse,
+)
+async def delete_roadmap_task_claim(
+    roadmap_id: str,
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
+    await rate_limiter.enforce(
+        "task.claim.delete",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
+    return await delete_task_claim(db, roadmap_id, task_id, participant)
 
 
 @router.delete("/{roadmap_id}", response_model=DeleteRoadmapResponse)

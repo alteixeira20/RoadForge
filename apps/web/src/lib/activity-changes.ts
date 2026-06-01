@@ -8,6 +8,8 @@ const changePriority: Record<ActivityAction, number> = {
   'task.created': 3,
   'task.completed': 4,
   'task.reopened': 4,
+  'task.claimed': 5,
+  'task.unclaimed': 5,
   'task.dependency.linked': 5,
   'task.dependency.unlinked': 5,
   'roadmap.renamed': 6,

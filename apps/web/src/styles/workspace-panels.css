@@ -172,6 +172,16 @@
   color: var(--ink-4);
   font-size: 12px;
 }
+.team-claim-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--sage-glow);
+  border: 1px solid rgba(61,158,107,0.25);
+  color: var(--sage);
+  font-size: 11px;
+}
 .team-row-actions {
   display: flex;
   justify-content: flex-end;

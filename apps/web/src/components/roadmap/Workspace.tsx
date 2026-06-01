@@ -64,6 +64,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setServerRoadmapId,
     sessionToken,
     setSessionToken,
+    participantId,
     setParticipantId,
     role,
     setRole,
@@ -145,6 +146,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     phases,
     participants,
     displayName,
+    participantId,
     role,
     serverRoadmapId,
     sessionToken,
@@ -531,6 +533,10 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             onInvite={openShare}
             onRevokeParticipant={handleRevokeTeamParticipant}
             onBack={() => setWorkspaceView('roadmap')}
+            claimedCountByName={allTasks.reduce<Record<string, number>>((acc, t) => {
+              if (t.claimedBy && !t.done) acc[t.claimedBy] = (acc[t.claimedBy] ?? 0) + 1
+              return acc
+            }, {})}
           />
         ) : (
           <PhaseList

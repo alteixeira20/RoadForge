@@ -8,6 +8,7 @@ interface UseWorkspaceViewModelParams {
   phases: Phase[]
   participants: Participant[]
   displayName: string
+  participantId: string | null
   role: ShareRole | null
   serverRoadmapId: string | null
   sessionToken: string | null
@@ -16,13 +17,23 @@ interface UseWorkspaceViewModelParams {
 
 const normalizeFilterValue = (value: string) => value.trim().toLowerCase()
 
-const taskMatchesFilter = (task: Task, filter: TaskFilter, displayName: string) => {
+const taskMatchesFilter = (
+  task: Task,
+  filter: TaskFilter,
+  displayName: string,
+  participantId: string | null,
+) => {
   if (filter === 'all') return true
   if (filter === 'mine') return taskMatchesAssignee(task, displayName)
   if (filter === 'pair') return getVisibleTaskTags(task).map(normalizeFilterValue).includes('pair')
   if (filter === 'next') return task.next === true
   if (filter === 'open') return task.done === false
   if (filter === 'done') return task.done === true
+  if (filter === 'working') {
+    if (!task.claimedBy) return false
+    if (participantId && task.claimedById) return task.claimedById === participantId
+    return task.claimedBy === displayName
+  }
   if (filter.startsWith('person:')) return taskMatchesAssignee(task, filter.slice('person:'.length))
   return true
 }
@@ -31,6 +42,7 @@ export function useWorkspaceViewModel({
   phases,
   participants,
   displayName,
+  participantId,
   role,
   serverRoadmapId,
   sessionToken,
@@ -84,6 +96,7 @@ export function useWorkspaceViewModel({
   const taskFilterOptions = useMemo(() => ([
     { value: 'all' as TaskFilter, label: 'All' },
     { value: 'mine' as TaskFilter, label: 'My tasks' },
+    { value: 'working' as TaskFilter, label: 'Working on this' },
     ...peopleFilterOptions,
     { value: 'pair' as TaskFilter, label: 'Pair' },
     { value: 'next' as TaskFilter, label: 'Recommended' },
@@ -96,10 +109,10 @@ export function useWorkspaceViewModel({
     return filteredPhases
       .map((phase) => ({
         ...phase,
-        tasks: phase.tasks.filter((task) => taskMatchesFilter(task, taskFilter, displayName)),
+        tasks: phase.tasks.filter((task) => taskMatchesFilter(task, taskFilter, displayName, participantId)),
       }))
       .filter((phase) => phase.tasks.length > 0)
-  }, [filteredPhases, taskFilter, displayName])
+  }, [filteredPhases, taskFilter, displayName, participantId])
 
   const isFiltering = searchQuery.trim().length > 0 || taskFilter !== 'all'
   const effectiveOpenPhases = isFiltering ? visiblePhases.map((phase) => phase.id) : openPhases

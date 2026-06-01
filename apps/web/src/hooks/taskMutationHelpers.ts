@@ -11,7 +11,16 @@ export function isPhaseComplete(phase: Phase): boolean {
 export function buildTaskDonePhases(taskId: string, done: boolean, phases: Phase[]): Phase[] {
   return phases.map((phase) => ({
     ...phase,
-    tasks: phase.tasks.map((task) => (task.id === taskId ? { ...task, done } : task)),
+    tasks: phase.tasks.map((task) => {
+      if (task.id !== taskId) return task
+      if (!done) return { ...task, done }
+      // Marking done clears claim so completed tasks don't stay claimed.
+      const updated: Task = { ...task, done }
+      delete updated.claimedBy
+      delete updated.claimedById
+      delete updated.claimedAt
+      return updated
+    }),
   }))
 }
 

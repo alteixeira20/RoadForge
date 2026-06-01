@@ -9,6 +9,7 @@ import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
 import { TaskSubtaskList } from './TaskSubtaskList'
 import { useEditLock } from '@/hooks/useEditLock'
+import { useTaskClaim } from '@/hooks/useTaskClaim'
 import type { ToastTone } from '@/hooks/useToastState'
 import type { Task } from '@/types/roadmap'
 
@@ -123,6 +124,11 @@ export function TaskRow({
     serverRoadmapId,
     sessionToken,
     onAcquireError: handleEditLockError,
+  })
+
+  const { isClaiming, isClaimedByMe, claimer, handleClaim, handleUnclaim } = useTaskClaim({
+    task,
+    showToast: onToast,
   })
 
   const isLockedByMe = ownsLock || (!!participantId && lock?.participantId === participantId)
@@ -243,6 +249,11 @@ export function TaskRow({
             <Icon name="shield" size={11} /> {lockHolderName} is editing
           </span>
         )}
+        {claimer && !task.done && (
+          <span className="meta-pill meta-pill-claim">
+            <Icon name="user" size={11} /> {isClaimedByMe ? 'On it' : claimer}
+          </span>
+        )}
         {task.next && !task.done && <span className="next-pip">Recommended</span>}
         {blockedBy.length > 0 && (
           <span className="meta-pill blocked">⊘ Blocked</span>
@@ -348,6 +359,40 @@ export function TaskRow({
                       parentDisplayNumber={displayNumber}
                     />
                   </div>
+                </div>
+              )}
+
+              {!isEditing && !task.done && (
+                <div className="task-claim-row">
+                  {claimer ? (
+                    <>
+                      <span className="claim-status">
+                        <Icon name="user" size={13} />
+                        {isClaimedByMe ? 'Working on this' : `${claimer} is working on this`}
+                      </span>
+                      {!readOnly && (
+                        <button
+                          className="btn sm ghost claim-btn"
+                          onClick={() => { void (isClaimedByMe ? handleUnclaim() : handleClaim()) }}
+                          disabled={isClaiming}
+                          title={isClaimedByMe ? 'Stop working on this' : 'Take over this task'}
+                        >
+                          {isClaimedByMe ? 'Stop working' : 'Work on this'}
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    !readOnly && (
+                      <button
+                        className="btn sm ghost claim-btn"
+                        onClick={() => { void handleClaim() }}
+                        disabled={isClaiming}
+                        title="Claim this task as yours"
+                      >
+                        <Icon name="user" size={13} /> Work on this
+                      </button>
+                    )
+                  )}
                 </div>
               )}
 

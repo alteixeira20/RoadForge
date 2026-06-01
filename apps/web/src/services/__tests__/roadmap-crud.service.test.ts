@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, isConflictError } from '@/services/roadmap-http'
-import { patchTaskDone } from '@/services/roadmap-crud.service'
+import { patchTaskDone, patchTaskClaim, deleteTaskClaim } from '@/services/roadmap-crud.service'
 
 const apiRoadmap = {
   id: 'rm_1',
@@ -93,5 +93,82 @@ describe('patchTaskDone', () => {
       error.code === 'roadmap_conflict' &&
       error.conflict?.roadmap_id === 'rm_1'
     ))
+  })
+})
+
+describe('patchTaskClaim', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('PATCHes the task claim endpoint with auth and no body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => apiRoadmap,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const roadmap = await patchTaskClaim({
+      roadmapId: 'rm_1',
+      taskId: 'tk_1',
+      sessionToken: 'session-token',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:7878/api/roadmaps/rm_1/tasks/tk_1/claim',
+      {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer session-token' },
+      },
+    )
+    expect(roadmap.updatedAt).toBe('2026-05-29T10:01:00Z')
+  })
+
+  it('throws ApiError on 403 response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      json: async () => ({ detail: 'Forbidden' }),
+    }))
+
+    await expect(patchTaskClaim({
+      roadmapId: 'rm_1',
+      taskId: 'tk_1',
+      sessionToken: 'viewer-token',
+    })).rejects.toBeInstanceOf(ApiError)
+  })
+})
+
+describe('deleteTaskClaim', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('DELETEs the task claim endpoint with auth and maps the roadmap response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => apiRoadmap,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const roadmap = await deleteTaskClaim({
+      roadmapId: 'rm_1',
+      taskId: 'tk_1',
+      sessionToken: 'session-token',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:7878/api/roadmaps/rm_1/tasks/tk_1/claim',
+      {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer session-token' },
+      },
+    )
+    expect(roadmap.updatedAt).toBe('2026-05-29T10:01:00Z')
   })
 })
