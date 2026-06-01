@@ -257,6 +257,9 @@ class RoadmapTask(Base):
         sa.String, sa.ForeignKey("roadmap_tasks.id", ondelete="SET NULL"), nullable=True
     )
     tags_json: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    claimed_by_display_name: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    claimed_by_participant_id: Mapped[str | None] = mapped_column(sa.String, nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     source_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()

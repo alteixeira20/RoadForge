@@ -107,6 +107,9 @@ function canonicalizeTask(
 
   if (task.est) next.est = task.est
   if (task.desc) next.desc = task.desc
+  if (task.claimedBy) next.claimedBy = task.claimedBy
+  if (task.claimedById) next.claimedById = task.claimedById
+  if (task.claimedAt) next.claimedAt = task.claimedAt
   if (task.parentId && taskIds.has(task.parentId)) {
     next.parentId = task.parentId
   } else if (task.parentId) {

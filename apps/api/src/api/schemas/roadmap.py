@@ -85,6 +85,9 @@ class TaskDTO(BaseModel):
     deps: list[str] | None = Field(default=None, max_length=TASK_DEPS_MAX)
     desc: str | None = Field(default=None, max_length=TASK_DESC_MAX)
     parentId: str | None = Field(default=None, max_length=ID_MAX)
+    claimedBy: str | None = Field(default=None, max_length=DISPLAY_NAME_MAX)
+    claimedById: str | None = Field(default=None, max_length=ID_MAX)
+    claimedAt: str | None = Field(default=None, max_length=32)
 
     @field_validator("id", "title", mode="before")
     @classmethod

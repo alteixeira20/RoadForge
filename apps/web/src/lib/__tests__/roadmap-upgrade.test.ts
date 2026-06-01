@@ -104,5 +104,36 @@ describe('roadmap-upgrade', () => {
       const result = upgradeRoadmapSnapshot(phases)
       expect(result.phases).toHaveLength(1)
     })
+
+    it('preserves valid claim fields through canonicalization', () => {
+      const phase = makePhase({
+        tasks: [
+          {
+            id: 't1',
+            title: 'Claimed task',
+            done: false,
+            claimedBy: 'Alice',
+            claimedById: 'p_abc',
+            claimedAt: '2026-06-01T10:00:00Z',
+          },
+        ],
+      })
+      const result = upgradeRoadmapSnapshot({ phases: [phase] })
+      const task = result.phases[0].tasks[0]
+      expect(task.claimedBy).toBe('Alice')
+      expect(task.claimedById).toBe('p_abc')
+      expect(task.claimedAt).toBe('2026-06-01T10:00:00Z')
+    })
+
+    it('passes through tasks without claim fields unchanged', () => {
+      const phase = makePhase({
+        tasks: [{ id: 't1', title: 'Unclaimed task', done: false }],
+      })
+      const result = upgradeRoadmapSnapshot({ phases: [phase] })
+      const task = result.phases[0].tasks[0]
+      expect(task.claimedBy).toBeUndefined()
+      expect(task.claimedById).toBeUndefined()
+      expect(task.claimedAt).toBeUndefined()
+    })
   })
 })

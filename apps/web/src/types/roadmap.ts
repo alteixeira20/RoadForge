@@ -24,6 +24,12 @@ export interface Task {
   desc?: string
   /** ID of the parent task, if this is a subtask */
   parentId?: string
+  /** Display name of the participant who claimed this task */
+  claimedBy?: string
+  /** Participant ID of the claimer */
+  claimedById?: string
+  /** ISO timestamp when the task was claimed */
+  claimedAt?: string
 }
 
 export interface Phase {

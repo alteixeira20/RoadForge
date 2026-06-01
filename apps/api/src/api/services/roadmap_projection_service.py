@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -31,6 +32,9 @@ _TASK_KEYS = {
     "tags",
     "assignees",
     "deps",
+    "claimedBy",
+    "claimedById",
+    "claimedAt",
 }
 
 
@@ -77,6 +81,18 @@ class ProjectionBackfillResult:
 def _source_json(row: dict[str, Any], explicit_keys: set[str]) -> dict[str, Any] | None:
     extra = {key: value for key, value in row.items() if key not in explicit_keys}
     return extra or None
+
+
+def _parse_claimed_at(value: object) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except ValueError:
+        return None
 
 
 def _snapshot_phases(snapshot_json: dict[str, Any]) -> list[dict[str, Any]]:
@@ -152,6 +168,17 @@ async def rebuild_roadmap_projection(db: AsyncSession, roadmap: Roadmap) -> None
                 tags_json=(
                     task_data.get("tags") if isinstance(task_data.get("tags"), list) else None
                 ),
+                claimed_by_display_name=(
+                    task_data.get("claimedBy")
+                    if isinstance(task_data.get("claimedBy"), str)
+                    else None
+                ),
+                claimed_by_participant_id=(
+                    task_data.get("claimedById")
+                    if isinstance(task_data.get("claimedById"), str)
+                    else None
+                ),
+                claimed_at=_parse_claimed_at(task_data.get("claimedAt")),
                 source_json=_source_json(task_data, _TASK_KEYS),
             )
             db.add(task)
@@ -331,6 +358,12 @@ async def serialize_projection_to_snapshot(db: AsyncSession, roadmap_id: str) ->
                 task_json["assignees"] = assignees_by_task_id[task.id]
             if task.id in deps_by_task_id:
                 task_json["deps"] = deps_by_task_id[task.id]
+            if task.claimed_by_display_name is not None:
+                task_json["claimedBy"] = task.claimed_by_display_name
+            if task.claimed_by_participant_id is not None:
+                task_json["claimedById"] = task.claimed_by_participant_id
+            if task.claimed_at is not None:
+                task_json["claimedAt"] = task.claimed_at.isoformat()
             phase_json["tasks"].append(task_json)
 
         snapshot_phases.append(phase_json)

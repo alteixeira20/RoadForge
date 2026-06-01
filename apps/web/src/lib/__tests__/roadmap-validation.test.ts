@@ -85,5 +85,53 @@ describe('roadmap-validation', () => {
       const repairCodes = result.repairs.map((r) => r.code)
       expect(repairCodes).toContain('progress_recalculated')
     })
+
+    it('preserves valid claim fields on tasks', () => {
+      const task = {
+        ...MINIMAL_TASK,
+        claimedBy: 'Alice',
+        claimedById: 'p_abc123',
+        claimedAt: '2026-06-01T10:00:00.000Z',
+      }
+      const input = JSON.stringify({ phases: [{ ...MINIMAL_PHASE, tasks: [task] }] })
+      const result = parseImportedRoadmapJson(input)
+      const t = result.phases[0].tasks[0]
+      expect(t.claimedBy).toBe('Alice')
+      expect(t.claimedById).toBe('p_abc123')
+      expect(t.claimedAt).toBe('2026-06-01T10:00:00.000Z')
+    })
+
+    it('drops claimedAt when value is not a valid ISO timestamp', () => {
+      const task = { ...MINIMAL_TASK, claimedAt: 'not-a-date' }
+      const input = JSON.stringify({ phases: [{ ...MINIMAL_PHASE, tasks: [task] }] })
+      const result = parseImportedRoadmapJson(input)
+      expect(result.phases[0].tasks[0].claimedAt).toBeUndefined()
+    })
+
+    it('drops claimedBy and claimedById when null', () => {
+      const task = { ...MINIMAL_TASK, claimedBy: null, claimedById: null }
+      const input = JSON.stringify({ phases: [{ ...MINIMAL_PHASE, tasks: [task] }] })
+      const result = parseImportedRoadmapJson(input)
+      const t = result.phases[0].tasks[0]
+      expect(t.claimedBy).toBeUndefined()
+      expect(t.claimedById).toBeUndefined()
+    })
+
+    it('does not emit unknown_fields warning for claim fields', () => {
+      const task = {
+        ...MINIMAL_TASK,
+        claimedBy: 'Alice',
+        claimedById: 'p_abc',
+        claimedAt: '2026-06-01T10:00:00Z',
+      }
+      const input = JSON.stringify({
+        schema: 'roadforge.roadmap.export',
+        version: 1,
+        phases: [{ ...MINIMAL_PHASE, tasks: [task] }],
+      })
+      const result = parseImportedRoadmapJson(input)
+      const warningCodes = result.warnings.map((w) => w.code)
+      expect(warningCodes).not.toContain('unknown_fields')
+    })
   })
 })

@@ -229,3 +229,64 @@ async def test_invalid_parent_ref_is_silently_dropped_during_rebuild(db_session)
 
     assert "parentId" not in task
 
+
+# ─── Group E — Claim fields round-trip ────────────────────────────────────────
+
+
+async def test_round_trip_preserves_claim_fields(db_session):
+    phase = {
+        "id": "ph_e1",
+        "num": "1",
+        "name": "E1",
+        "color": "red",
+        "status": "future",
+        "progress": 0,
+        "tasks": [
+            {
+                "id": "tk_e1",
+                "title": "Claimed task",
+                "done": False,
+                "claimedBy": "Alice",
+                "claimedById": "p_abc123",
+                "claimedAt": "2026-06-01T10:00:00Z",
+            },
+        ],
+    }
+    roadmap = _direct_roadmap([phase])
+    db_session.add(roadmap)
+    await db_session.flush()
+
+    await rebuild_roadmap_projection(db_session, roadmap)
+
+    projection = await serialize_projection_to_snapshot(db_session, roadmap.id)
+    task = projection["phases"][0]["tasks"][0]
+
+    assert task["claimedBy"] == "Alice"
+    assert task["claimedById"] == "p_abc123"
+    assert "claimedAt" in task
+    assert "2026-06-01" in task["claimedAt"]
+
+
+async def test_round_trip_task_without_claim_fields_has_no_claim_keys(db_session):
+    phase = {
+        "id": "ph_e2",
+        "num": "1",
+        "name": "E2",
+        "color": "red",
+        "status": "future",
+        "progress": 0,
+        "tasks": [{"id": "tk_e2", "title": "Unclaimed", "done": False}],
+    }
+    roadmap = _direct_roadmap([phase])
+    db_session.add(roadmap)
+    await db_session.flush()
+
+    await rebuild_roadmap_projection(db_session, roadmap)
+
+    projection = await serialize_projection_to_snapshot(db_session, roadmap.id)
+    task = projection["phases"][0]["tasks"][0]
+
+    assert "claimedBy" not in task
+    assert "claimedById" not in task
+    assert "claimedAt" not in task
+

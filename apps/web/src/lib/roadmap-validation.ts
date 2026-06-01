@@ -157,6 +157,13 @@ function validateTask(value: unknown): Task {
   if (desc !== undefined) task.desc = desc
   const parentId = cleanOptionalText(value.parentId, 'task.parentId', ID_MAX)
   if (parentId !== undefined) task.parentId = parentId
+  const claimedBy = cleanOptionalText(value.claimedBy, 'task.claimedBy', ASSIGNEE_MAX)
+  if (claimedBy !== undefined) task.claimedBy = claimedBy
+  const claimedById = cleanOptionalText(value.claimedById, 'task.claimedById', ID_MAX)
+  if (claimedById !== undefined) task.claimedById = claimedById
+  if (typeof value.claimedAt === 'string' && !isNaN(Date.parse(value.claimedAt))) {
+    task.claimedAt = value.claimedAt
+  }
   return task
 }
 
@@ -197,6 +204,7 @@ const KNOWN_PHASE_KEYS = new Set([
 ])
 const KNOWN_TASK_KEYS = new Set([
   'id', 'title', 'done', 'next', 'est', 'tags', 'assignees', 'deps', 'desc', 'parentId',
+  'claimedBy', 'claimedById', 'claimedAt',
 ])
 
 function detectCompatibilityWarnings(raw: unknown): CompatibilityWarning[] {
@@ -405,6 +413,30 @@ function repairTaskRaw(
     } else if (!Array.isArray(t.deps)) {
       bump(counts, 'coerced_array')
       t.deps = typeof t.deps === 'string' ? [t.deps] : []
+    }
+  }
+
+  // claimedBy: optional string — null or non-string → remove
+  if (t.claimedBy !== undefined) {
+    if (t.claimedBy === null || typeof t.claimedBy !== 'string') {
+      bump(counts, 'null_optional')
+      delete t.claimedBy
+    }
+  }
+
+  // claimedById: optional string — null or non-string → remove
+  if (t.claimedById !== undefined) {
+    if (t.claimedById === null || typeof t.claimedById !== 'string') {
+      bump(counts, 'null_optional')
+      delete t.claimedById
+    }
+  }
+
+  // claimedAt: optional ISO timestamp string — null, non-string, or invalid → remove
+  if (t.claimedAt !== undefined) {
+    if (t.claimedAt === null || typeof t.claimedAt !== 'string' || isNaN(Date.parse(t.claimedAt as string))) {
+      bump(counts, 'null_optional')
+      delete t.claimedAt
     }
   }
 
