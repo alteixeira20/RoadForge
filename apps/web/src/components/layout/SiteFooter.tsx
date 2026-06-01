@@ -8,7 +8,7 @@ export function SiteFooter() {
       <div className="row">
         <Brand />
         <span style={{ color: 'var(--ink-4)' }}>·</span>
-        <span>MIT licensed · v1.0</span>
+        <span>MIT licensed · v0.1</span>
         <span className="flex-1" />
         <div className="links">
           <span className="footer-link-muted">GitHub</span>
