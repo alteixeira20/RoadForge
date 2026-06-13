@@ -11,6 +11,7 @@ from api.schemas.roadmap import (
     CheckpointResponse,
     CreateRoadmapRequest,
     CreateRoadmapResponse,
+    CreateTagRequest,
     DeleteRoadmapResponse,
     EventTicketResponse,
     JoinRoadmapRequest,
@@ -25,7 +26,9 @@ from api.schemas.roadmap import (
     RoadmapVersionSummaryResponse,
     ShareLinkResponse,
     ShareRole,
+    TagResponse,
     UpdateRoadmapRequest,
+    UpdateTagRequest,
 )
 from api.services.auth_service import require_participant
 from api.services.client_ip_service import extract_client_ip
@@ -36,7 +39,9 @@ from api.services.roadmap_service import (
     RoadmapConflictError,
     create_roadmap,
     create_roadmap_checkpoint,
+    create_tag,
     delete_roadmap,
+    delete_tag,
     delete_task_claim,
     get_activity_logs,
     get_participants,
@@ -45,6 +50,7 @@ from api.services.roadmap_service import (
     get_roadmap_versions,
     get_share_links,
     join_roadmap,
+    list_tags,
     patch_task_claim,
     patch_task_done,
     restore_roadmap_version,
@@ -52,6 +58,7 @@ from api.services.roadmap_service import (
     revoke_share_link,
     rotate_share_link,
     update_roadmap,
+    update_tag,
 )
 from api.services.ticket_service import ticket_service
 
@@ -163,6 +170,7 @@ async def patch_roadmap_task_done(
 async def patch_roadmap_task_claim(
     roadmap_id: str,
     task_id: str,
+    override: bool = False,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
@@ -173,7 +181,7 @@ async def patch_roadmap_task_claim(
         limit=120,
         window_seconds=60,
     )
-    return await patch_task_claim(db, roadmap_id, task_id, participant)
+    return await patch_task_claim(db, roadmap_id, task_id, participant, override=override)
 
 
 @router.delete(
@@ -183,6 +191,7 @@ async def patch_roadmap_task_claim(
 async def delete_roadmap_task_claim(
     roadmap_id: str,
     task_id: str,
+    override: bool = False,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
@@ -193,7 +202,7 @@ async def delete_roadmap_task_claim(
         limit=120,
         window_seconds=60,
     )
-    return await delete_task_claim(db, roadmap_id, task_id, participant)
+    return await delete_task_claim(db, roadmap_id, task_id, participant, override=override)
 
 
 @router.delete("/{roadmap_id}", response_model=DeleteRoadmapResponse)
@@ -516,3 +525,108 @@ async def fetch_activity_logs(
         window_seconds=60,
     )
     return await get_activity_logs(db, roadmap_id, limit, offset)
+
+
+# ─── Tag registry ─────────────────────────────────────────────────────────────
+
+
+@router.get("/{roadmap_id}/tags", response_model=list[TagResponse])
+async def fetch_tags(
+    roadmap_id: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> list[TagResponse]:
+    participant = await require_participant(
+        db,
+        roadmap_id,
+        authorization,
+        {"owner", "editor", "viewer"},
+    )
+    await rate_limiter.enforce(
+        "tag.read",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
+    return await list_tags(db, roadmap_id)
+
+
+@router.post(
+    "/{roadmap_id}/tags",
+    response_model=RoadmapResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={409: {"model": RoadmapConflictResponse}},
+)
+async def post_tag(
+    roadmap_id: str,
+    payload: CreateTagRequest,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapResponse | JSONResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
+    await rate_limiter.enforce(
+        "tag.create",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=60,
+        window_seconds=60,
+    )
+    try:
+        return await create_tag(db, roadmap_id, payload, participant)
+    except RoadmapConflictError as exc:
+        return JSONResponse(status_code=409, content=exc.response.model_dump(mode="json"))
+
+
+@router.put(
+    "/{roadmap_id}/tags/{tag_id}",
+    response_model=RoadmapResponse,
+    responses={409: {"model": RoadmapConflictResponse}},
+)
+async def put_tag(
+    roadmap_id: str,
+    tag_id: str,
+    payload: UpdateTagRequest,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapResponse | JSONResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
+    await rate_limiter.enforce(
+        "tag.update",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=60,
+        window_seconds=60,
+    )
+    try:
+        return await update_tag(db, roadmap_id, tag_id, payload, participant)
+    except RoadmapConflictError as exc:
+        return JSONResponse(status_code=409, content=exc.response.model_dump(mode="json"))
+
+
+@router.delete(
+    "/{roadmap_id}/tags/{tag_id}",
+    response_model=RoadmapResponse,
+    responses={409: {"model": RoadmapConflictResponse}},
+)
+async def remove_tag(
+    roadmap_id: str,
+    tag_id: str,
+    last_updated_at: datetime = Query(...),
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapResponse | JSONResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
+    await rate_limiter.enforce(
+        "tag.delete",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=60,
+        window_seconds=60,
+    )
+    try:
+        return await delete_tag(
+            db,
+            roadmap_id,
+            tag_id,
+            last_updated_at,
+            participant,
+        )
+    except RoadmapConflictError as exc:
+        return JSONResponse(status_code=409, content=exc.response.model_dump(mode="json"))

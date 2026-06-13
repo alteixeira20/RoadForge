@@ -15,16 +15,32 @@ from tests.helpers_projection import auth, create_with_phases
 pytestmark = pytest.mark.asyncio
 
 
-async def _claim(client: AsyncClient, roadmap_id: str, token: str, task_id: str):
+async def _claim(
+    client: AsyncClient,
+    roadmap_id: str,
+    token: str,
+    task_id: str,
+    *,
+    override: bool = False,
+):
+    query = "?override=true" if override else ""
     return await client.patch(
-        f"/api/roadmaps/{roadmap_id}/tasks/{task_id}/claim",
+        f"/api/roadmaps/{roadmap_id}/tasks/{task_id}/claim{query}",
         headers=auth(token),
     )
 
 
-async def _unclaim(client: AsyncClient, roadmap_id: str, token: str, task_id: str):
+async def _unclaim(
+    client: AsyncClient,
+    roadmap_id: str,
+    token: str,
+    task_id: str,
+    *,
+    override: bool = False,
+):
+    query = "?override=true" if override else ""
     return await client.delete(
-        f"/api/roadmaps/{roadmap_id}/tasks/{task_id}/claim",
+        f"/api/roadmaps/{roadmap_id}/tasks/{task_id}/claim{query}",
         headers=auth(token),
     )
 
@@ -74,7 +90,7 @@ async def test_owner_can_claim_task(client: AsyncClient):
     assert _task_field(data, "tk_a1", "claimedAt") is not None
 
 
-async def test_editor_can_claim_and_replace_existing_claim(client: AsyncClient):
+async def test_editor_cannot_replace_existing_claim(client: AsyncClient):
     body = await create_with_phases(client)
     editor_url = await _rotate_link(client, body["id"], body["owner_session_token"], "editor")
     editor = await _join(client, editor_url, "Editor")
@@ -84,10 +100,57 @@ async def test_editor_can_claim_and_replace_existing_claim(client: AsyncClient):
     assert resp.status_code == 200
     assert _task_field(resp.json(), "tk_a1", "claimedBy") == "Owner"
 
-    # Editor takes over
+    # Editor cannot silently take over.
     resp = await _claim(client, body["id"], editor["session_token"], "tk_a1")
+    assert resp.status_code == 409, resp.text
+    assert "Owner" in resp.json()["detail"]
+
+
+async def test_owner_can_explicitly_override_existing_claim(client: AsyncClient):
+    body = await create_with_phases(client)
+    editor_url = await _rotate_link(client, body["id"], body["owner_session_token"], "editor")
+    editor = await _join(client, editor_url, "Editor")
+    await _claim(client, body["id"], editor["session_token"], "tk_a1")
+
+    resp = await _claim(
+        client,
+        body["id"],
+        body["owner_session_token"],
+        "tk_a1",
+        override=True,
+    )
+
     assert resp.status_code == 200, resp.text
-    assert _task_field(resp.json(), "tk_a1", "claimedBy") == "Editor"
+    assert _task_field(resp.json(), "tk_a1", "claimedBy") == "Owner"
+
+
+async def test_editor_cannot_clear_another_participants_claim(client: AsyncClient):
+    body = await create_with_phases(client)
+    editor_url = await _rotate_link(client, body["id"], body["owner_session_token"], "editor")
+    editor = await _join(client, editor_url, "Editor")
+    await _claim(client, body["id"], body["owner_session_token"], "tk_a1")
+
+    resp = await _unclaim(client, body["id"], editor["session_token"], "tk_a1")
+
+    assert resp.status_code == 409, resp.text
+
+
+async def test_owner_can_explicitly_clear_another_participants_claim(client: AsyncClient):
+    body = await create_with_phases(client)
+    editor_url = await _rotate_link(client, body["id"], body["owner_session_token"], "editor")
+    editor = await _join(client, editor_url, "Editor")
+    await _claim(client, body["id"], editor["session_token"], "tk_a1")
+
+    resp = await _unclaim(
+        client,
+        body["id"],
+        body["owner_session_token"],
+        "tk_a1",
+        override=True,
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert _task_field(resp.json(), "tk_a1", "claimedBy") is None
 
 
 async def test_viewer_cannot_claim(client: AsyncClient):

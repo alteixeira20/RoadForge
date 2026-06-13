@@ -20,6 +20,7 @@ PHASES_WITH_TASKS = [
         "num": "1",
         "name": "Alpha",
         "color": "blue",
+        "colorMode": "auto",
         "status": "active",
         "progress": 50,
         "tasks": [

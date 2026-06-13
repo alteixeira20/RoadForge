@@ -36,6 +36,7 @@ class Roadmap(Base):
         onupdate=sa.func.now(),
     )
     deleted_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    tag_registry_json: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
 
     share_links: Mapped[list[ShareLink]] = relationship(
         "ShareLink", back_populates="roadmap", cascade="all, delete-orphan"

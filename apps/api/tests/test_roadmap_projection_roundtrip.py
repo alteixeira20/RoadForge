@@ -51,6 +51,7 @@ async def test_round_trip_preserves_phase_ordering_and_scalars(client, db_sessio
     assert phases[0]["num"] == "1"
     assert phases[0]["name"] == "Alpha"
     assert phases[0]["color"] == "blue"
+    assert phases[0]["colorMode"] == "auto"
     assert phases[0]["status"] == "active"
     assert phases[0]["progress"] == 50
 
@@ -289,4 +290,3 @@ async def test_round_trip_task_without_claim_fields_has_no_claim_keys(db_session
     assert "claimedBy" not in task
     assert "claimedById" not in task
     assert "claimedAt" not in task
-
