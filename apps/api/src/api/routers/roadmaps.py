@@ -44,13 +44,13 @@ from api.services.roadmap_service import (
     delete_task_claim,
     get_activity_logs,
     get_roadmap,
-    join_roadmap,
     list_tags,
     patch_task_claim,
     patch_task_done,
     update_roadmap,
     update_tag,
 )
+from api.services.roadmap_join_service import join_roadmap
 from api.services.sharing_service import (
     get_participants,
     get_share_links,

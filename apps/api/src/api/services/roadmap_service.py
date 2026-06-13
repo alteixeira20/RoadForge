@@ -15,8 +15,6 @@ from api.schemas.roadmap import (
     CreateRoadmapRequest,
     CreateRoadmapResponse,
     CreateTagRequest,
-    JoinRoadmapRequest,
-    JoinRoadmapResponse,
     ParticipantResponse,
     PatchTaskDoneRequest,
     PhaseDTO,
@@ -34,8 +32,7 @@ from api.schemas.roadmap import (
 # PatchTaskClaimRequest is intentionally omitted — the claim endpoint has no body.
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
-from api.services.password_service import hash_password, verify_password
-from api.services.rate_limit_service import rate_limiter
+from api.services.password_service import hash_password
 from api.services.roadmap_projection_service import (
     serialize_projection_to_snapshot,
     sync_roadmap_projection_best_effort,
@@ -68,6 +65,9 @@ from api.services.version_service import (
 
 # Share / participant constants (used by create_roadmap and join_roadmap)
 from api.services.sharing_service import _ROLE_LABELS, _ROLE_ORDER, _SHARE_PREFIXES  # noqa: F401
+
+# Join / session entry-point (re-export for backward compat)
+from api.services.roadmap_join_service import join_roadmap  # noqa: F401
 
 
 def _change_summary_fields(
@@ -656,97 +656,6 @@ async def get_activity_logs(
             for al in return_logs
         ],
         has_more=has_more,
-    )
-
-
-async def join_roadmap(
-    db: AsyncSession,
-    payload: JoinRoadmapRequest,
-    client_ip: str,
-) -> JoinRoadmapResponse:
-    token_hash = hash_token(payload.token)
-
-    # Resolve active share link by the hashed invite token.
-    sl_result = await db.execute(
-        select(ShareLink).where(
-            ShareLink.token_hash == token_hash,
-            ShareLink.is_active.is_(True),
-        )
-    )
-    share_link = sl_result.scalar_one_or_none()
-
-    if share_link is None:
-        raise HTTPException(status_code=401, detail="Invalid or expired invite token")
-
-    await rate_limiter.enforce("join.share_link", share_link.id, limit=30, window_seconds=600)
-
-    # Verify the linked roadmap is not soft-deleted.
-    rm_result = await db.execute(
-        select(Roadmap).where(
-            Roadmap.id == share_link.roadmap_id,
-            Roadmap.deleted_at.is_(None),
-        )
-    )
-    roadmap = rm_result.scalar_one_or_none()
-    if roadmap is None:
-        raise HTTPException(status_code=401, detail="Invalid or expired invite token")
-
-    if roadmap.is_password_enabled:
-        pw = payload.password
-        ph = roadmap.password_hash
-        if not pw or not ph or not verify_password(pw, ph):
-            await rate_limiter.enforce(
-                "join.password_failure.ip_share",
-                f"{client_ip}:{share_link.id}",
-                limit=5,
-                window_seconds=600,
-            )
-            await rate_limiter.enforce(
-                "join.password_failure.share",
-                share_link.id,
-                limit=30,
-                window_seconds=3600,
-            )
-            raise HTTPException(status_code=401, detail="Invalid invite token or password")
-
-    now = datetime.now(timezone.utc)
-    share_link.last_used_at = now
-
-    _role_defaults = {"owner": "Guest Owner", "editor": "Guest Editor", "viewer": "Guest Viewer"}
-    display_name = payload.display_name or _role_defaults.get(share_link.role, "Guest")
-
-    # Raw session token is held only in this local variable and the response body.
-    session_token = generate_token("sess_")
-    participant = Participant(
-        id=generate_id("pt_"),
-        roadmap_id=roadmap.id,
-        display_name=display_name,
-        role=share_link.role,
-        share_link_id=share_link.id,
-        session_token_hash=hash_token(session_token),
-        session_expires_at=session_expires_at(now),
-    )
-    db.add(participant)
-
-    db.add(ActivityLog(
-        id=generate_id("al_"),
-        roadmap_id=roadmap.id,
-        participant_id=participant.id,
-        actor_name=display_name,
-        action="participant.joined",
-        entity_type="participant",
-        entity_id=participant.id,
-        metadata_json={"role": share_link.role},
-    ))
-
-    await db.commit()
-
-    return JoinRoadmapResponse(
-        roadmap_id=roadmap.id,
-        roadmap_name=roadmap.name,
-        role=share_link.role,  # type: ignore[arg-type]
-        session_token=session_token,
-        participant_id=participant.id,
     )
 
 
