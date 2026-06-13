@@ -28,6 +28,9 @@ ROADFORGE_TRUSTED_PROXY_IPS=10.0.0.10,10.0.1.0/24
 
 When the immediate peer is trusted, RoadForge accepts the first `X-Forwarded-For` address or `X-Real-IP`. Malformed forwarded values are ignored. The reverse proxy should overwrite inbound forwarding headers from clients before forwarding to the API.
 
+Wildcard networks such as `0.0.0.0/0` and `::/0` are rejected. Use only the
+specific proxy address or narrow private network range required by the deployment.
+
 ## Security headers
 
 The API sets `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, and a conservative `Permissions-Policy`. Sensitive roadmap API responses keep `Cache-Control: no-store`. `Strict-Transport-Security` is sent only when `ROADFORGE_ENVIRONMENT=production`.

@@ -1,6 +1,6 @@
 # Rate Limiting Policy
 
-Status: proposed policy for RF-826. This document describes intended behavior only; it does not describe implemented rate limiting unless explicitly stated.
+Status: implemented baseline with retained design rationale for RF-826.
 
 Related policy: [Session Expiry And Revocation Policy](./session-expiry-and-revocation-policy.md).
 
@@ -16,7 +16,9 @@ Sensitive public or semi-public endpoints:
 - `POST /api/roadmaps` creates a roadmap, owner participant, three share links, activity log rows, and an owner session token. It is public and can be abused for spam or storage growth.
 - `POST /api/roadmaps/{roadmap_id}/events/ticket` issues short-lived SSE tickets for any valid participant session. Repeated calls can create unnecessary ticket churn and event connection attempts.
 - Owner share management endpoints are authenticated but sensitive: `GET /api/roadmaps/{roadmap_id}/share-links`, `POST /api/roadmaps/{roadmap_id}/share-links/{role}/rotate`, and `DELETE /api/roadmaps/{roadmap_id}/share-links/{role}`. Rotate exposes a new raw invite URL.
-- Participant revocation, roadmap delete, version restore/checkpoint, update, lock, and activity endpoints are Bearer-session protected. They are lower priority for RF-826, but should remain available for future action-specific limits if abuse is observed.
+- Participant revocation, roadmap delete, version restore/checkpoint, update,
+  lock, and activity endpoints are Bearer-session protected and have
+  action-specific participant limits.
 
 Access categories:
 

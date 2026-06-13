@@ -68,7 +68,9 @@ class Settings(BaseSettings):
     @classmethod
     def validate_trusted_proxy_ips(cls, v: list[str]) -> list[str]:
         for item in v:
-            ip_network(item, strict=False)
+            network = ip_network(item, strict=False)
+            if network.prefixlen == 0:
+                raise ValueError("ROADFORGE_TRUSTED_PROXY_IPS cannot trust every address")
         return v
 
     @field_validator("realtime_backend")

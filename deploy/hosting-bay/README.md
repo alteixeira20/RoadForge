@@ -28,8 +28,16 @@ cp deploy/hosting-bay/.env.example /opt/stacks/roadforge/.env
 chmod 600 /opt/stacks/roadforge/.env
 ```
 
-Edit `/opt/stacks/roadforge/.env` and replace `POSTGRES_PASSWORD` with a long
-random value. Do not commit this file.
+Edit `/opt/stacks/roadforge/.env` and replace every placeholder. In particular:
+
+- generate long random values for `POSTGRES_PASSWORD` and `ROADFORGE_SECRET_KEY`;
+- set `ROADFORGE_TRUSTED_PROXY_IPS` to the central nginx container IP or the
+  narrowest Docker `edge` network CIDR that can reach the API;
+- never trust `0.0.0.0/0` or `::/0`.
+
+The trusted-proxy value is required so rate limits use the client address
+forwarded by nginx instead of grouping all visitors under the proxy address.
+Do not commit the environment file.
 
 Install nginx config:
 
@@ -136,11 +144,11 @@ Redis backs realtime coordination only when `ROADFORGE_REALTIME_BACKEND=redis`.
 With `ROADFORGE_REALTIME_BACKEND=memory`, runtime collaboration state remains
 single-worker and process-local.
 
-## Public API Docs
+## API Docs
 
-FastAPI docs are public at `/api/docs`, `/api/redoc`, and `/api/openapi.json` by
-default. The nginx config contains commented blocks to return 404 for those
-paths if you decide to hide them.
+FastAPI docs and OpenAPI are disabled by the production application. The nginx
+configuration also returns 404 for `/api/docs`, `/api/redoc`, and
+`/api/openapi.json`.
 
 ## Do Not Commit
 

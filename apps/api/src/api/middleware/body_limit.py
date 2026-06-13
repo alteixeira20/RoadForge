@@ -21,6 +21,18 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from api.schemas.limits import REQUEST_BODY_MAX_BYTES
 
 _TOO_LARGE = JSONResponse({"detail": "Request body too large"}, status_code=413)
+_INVALID_LENGTH = JSONResponse({"detail": "Invalid Content-Length header"}, status_code=400)
+
+
+def _declared_body_size(scope: Scope) -> int | None:
+    raw = dict(scope.get("headers", [])).get(b"content-length")
+    if raw is None:
+        return None
+    try:
+        size = int(raw)
+    except (TypeError, ValueError):
+        return -1
+    return size if size >= 0 else -1
 
 
 class BodyLimitMiddleware:
@@ -30,9 +42,11 @@ class BodyLimitMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
-            headers = dict(scope.get("headers", []))
-            raw = headers.get(b"content-length")
-            if raw is not None and int(raw) > self.max_bytes:
+            declared_size = _declared_body_size(scope)
+            if declared_size == -1:
+                await _INVALID_LENGTH(scope, receive, send)
+                return
+            if declared_size is not None and declared_size > self.max_bytes:
                 await _TOO_LARGE(scope, receive, send)
                 return
         await self.app(scope, receive, send)

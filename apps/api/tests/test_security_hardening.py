@@ -48,6 +48,12 @@ def test_production_rejects_default_database_url():
         settings.validate_startup_security()
 
 
+@pytest.mark.parametrize("trusted_proxy", ["0.0.0.0/0", "::/0"])
+def test_trusted_proxy_configuration_rejects_wildcard_networks(trusted_proxy):
+    with pytest.raises(ValueError, match="cannot trust every address"):
+        Settings(trusted_proxy_ips=[trusted_proxy])
+
+
 def test_extract_client_ip_trusts_forwarded_header_only_from_trusted_proxy(monkeypatch):
     monkeypatch.setenv("ROADFORGE_TRUSTED_PROXY_IPS", "10.0.0.0/24")
     get_settings.cache_clear()
