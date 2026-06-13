@@ -12,6 +12,7 @@ export function buildBasicPreview(
   return {
     phasesAdded: imported.phases.length,
     tasksAdded,
+    tagsAdded: imported.tagRegistry?.length ?? 0,
     matchedPhases: 0,
     matchedTasks: 0,
     conflictsCount: 0,

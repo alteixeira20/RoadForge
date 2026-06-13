@@ -3,10 +3,11 @@
 // Import / export helpers that run client-side are included here because they
 // map directly to roadmap data structures with no domain-specific concerns.
 
-import type { Roadmap, Phase, Task, ShareRole, ExportFormat, ChangeSummary, RoadmapVersionDetail, RoadmapVersionSummary } from '@/types/roadmap'
+import type { Roadmap, Phase, ShareRole, TagDefinition, ExportFormat, ChangeSummary, RoadmapVersionDetail, RoadmapVersionSummary } from '@/types/roadmap'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
+import { ensureRegistryForTagIds } from '@/lib/tag-registry'
 import { requestJson } from './roadmap-http'
 
 // ─── Backend response shapes (local to this file) ─────────────────────────────
@@ -17,6 +18,7 @@ interface ApiRoadmapResponse {
   owner_display_name: string
   schema_version: string
   phases: Phase[]
+  tag_registry?: TagDefinition[] | null
   is_password_enabled: boolean
   created_at: string
   updated_at: string
@@ -59,6 +61,7 @@ function toRoadmap(r: ApiRoadmapResponse): Roadmap {
     project: { id: r.id, name: r.name },
     roadmap: { id: r.id, name: r.name, isPasswordEnabled: r.is_password_enabled },
     phases: r.phases,
+    tagRegistry: r.tag_registry ?? undefined,
     ownerDisplayName: r.owner_display_name,
     updatedAt: r.updated_at,
   }
@@ -94,10 +97,12 @@ export async function createRoadmap(
   name: string,
   ownerDisplayName: string,
   phases: Phase[] = [],
+  tagRegistry?: TagDefinition[],
   password?: string,
   changeSummary?: ChangeSummary | null,
 ): Promise<{ roadmap: Roadmap; ownerSessionToken: string }> {
   const body: Record<string, unknown> = { name, owner_display_name: ownerDisplayName, phases }
+  if (tagRegistry && tagRegistry.length > 0) body.tag_registry = tagRegistry
   if (password) body.password = password
   if (changeSummary) body.change_summary = changeSummary
   const data = await requestJson<ApiCreateRoadmapResponse>('/api/roadmaps', {
@@ -136,11 +141,13 @@ export async function saveToServer(
   sessionToken: string,
   lastUpdatedAt: string,
   changeSummary?: ChangeSummary | null,
+  tagRegistry?: TagDefinition[],
 ): Promise<ApiRoadmapResponse> {
   const body: Record<string, unknown> = {}
   body.name = name
   body.phases = phases
   body.last_updated_at = lastUpdatedAt
+  if (tagRegistry !== undefined) body.tag_registry = tagRegistry
   if (changeSummary) body.change_summary = changeSummary
   return await requestJson<ApiRoadmapResponse>(`/api/roadmaps/${roadmapId}`, {
     method: 'PUT',
@@ -160,6 +167,7 @@ export interface PatchTaskClaimParams {
   roadmapId: string
   taskId: string
   sessionToken: string
+  override?: boolean
 }
 
 // ─── Roadmap versions ──────────────────────────────────────────────────────────
@@ -244,9 +252,11 @@ export async function patchTaskClaim({
   roadmapId,
   taskId,
   sessionToken,
+  override = false,
 }: PatchTaskClaimParams): Promise<Roadmap> {
+  const query = override ? '?override=true' : ''
   const data = await requestJson<ApiRoadmapResponse>(
-    `/api/roadmaps/${roadmapId}/tasks/${taskId}/claim`,
+    `/api/roadmaps/${roadmapId}/tasks/${taskId}/claim${query}`,
     { method: 'PATCH' },
     sessionToken,
   )
@@ -257,62 +267,15 @@ export async function deleteTaskClaim({
   roadmapId,
   taskId,
   sessionToken,
+  override = false,
 }: PatchTaskClaimParams): Promise<Roadmap> {
+  const query = override ? '?override=true' : ''
   const data = await requestJson<ApiRoadmapResponse>(
-    `/api/roadmaps/${roadmapId}/tasks/${taskId}/claim`,
+    `/api/roadmaps/${roadmapId}/tasks/${taskId}/claim${query}`,
     { method: 'DELETE' },
     sessionToken,
   )
   return toRoadmap(data)
-}
-
-// ─── Phase mutations (future) ──────────────────────────────────────────────────
-
-/**
- * Add a new phase to the roadmap.
- * TODO(backend): POST /api/roadmaps/:id/phases
- */
-export async function addPhase(_roadmapId: string, _name: string): Promise<Phase> {
-  throw new Error('Not implemented — requires backend')
-}
-
-/**
- * Reorder phases.
- * TODO(backend): PATCH /api/roadmaps/:id/phases/order  { phaseIds }
- */
-export async function reorderPhases(
-  _roadmapId: string,
-  _phaseIds: string[],
-): Promise<void> {
-  throw new Error('Not implemented — requires backend')
-}
-
-// ─── Task mutations (future) ───────────────────────────────────────────────────
-
-/**
- * Add a task to a phase.
- * Note: Current UI uses full-snapshot save; granular endpoints are deferred.
- * TODO(backend): POST /api/roadmaps/:id/phases/:phaseId/tasks
- */
-export async function addTask(
-  _roadmapId: string,
-  _phaseId: string,
-  _task: Omit<Task, 'id'>,
-): Promise<Task> {
-  throw new Error('Not implemented — requires backend')
-}
-
-/**
- * Link a dependency between two tasks.
- * Note: Current UI uses full-snapshot save; granular endpoints are deferred.
- * TODO(backend): PATCH /api/roadmaps/:id/tasks/:taskId  { deps }
- */
-export async function linkDependency(
-  _roadmapId: string,
-  _taskId: string,
-  _depId: string,
-): Promise<void> {
-  throw new Error('Not implemented — requires backend')
 }
 
 // ─── Import / Export ───────────────────────────────────────────────────────────
@@ -331,21 +294,12 @@ export async function exportRoadmap(
     saved?: boolean
     serverRoadmapId?: string | null
     role?: ShareRole | null
+    tagRegistry?: TagDefinition[]
   } = {},
 ): Promise<Blob> {
   const upgraded = upgradeRoadmapSnapshot({ roadmapName: metadata.roadmapName, phases })
   const json = JSON.stringify(buildRoadmapExport(normalizePhasesProgress(upgraded.phases), metadata), null, 2)
   return new Blob([json], { type: 'application/json' })
-}
-
-function collectTagRegistry(phases: Phase[]): string[] {
-  const tags = new Set<string>()
-  for (const phase of phases) {
-    for (const task of phase.tasks) {
-      for (const tag of task.tags ?? []) tags.add(tag)
-    }
-  }
-  return Array.from(tags).sort()
 }
 
 function buildRoadmapExport(
@@ -357,8 +311,16 @@ function buildRoadmapExport(
     saved?: boolean
     serverRoadmapId?: string | null
     role?: ShareRole | null
+    tagRegistry?: TagDefinition[]
   },
 ) {
+  const usedTagIds = phases.flatMap((phase) =>
+    phase.tasks.flatMap((task) => task.tags ?? []),
+  )
+  const exportRegistry = ensureRegistryForTagIds(
+    usedTagIds,
+    metadata.tagRegistry ?? [],
+  )
   return {
     schema: 'roadforge.roadmap.export',
     version: 1,
@@ -377,9 +339,67 @@ function buildRoadmapExport(
       phaseCount: phases.length,
       taskCount: phases.reduce((sum, p) => sum + p.tasks.length, 0),
     },
-    tagRegistry: collectTagRegistry(phases),
+    tagRegistry: exportRegistry,
     phases,
   }
+}
+
+
+// ─── Tag CRUD ──────────────────────────────────────────────────────────────────
+
+export async function listServerTags(
+  roadmapId: string,
+  sessionToken: string,
+): Promise<TagDefinition[]> {
+  return requestJson<TagDefinition[]>(`/api/roadmaps/${roadmapId}/tags`, {}, sessionToken)
+}
+
+export async function createServerTag(
+  roadmapId: string,
+  tag: { id?: string; label: string; color?: string },
+  sessionToken: string,
+  lastUpdatedAt: string,
+): Promise<Roadmap> {
+  const data = await requestJson<ApiRoadmapResponse>(`/api/roadmaps/${roadmapId}/tags`, {
+    method: 'POST',
+    body: JSON.stringify({ ...tag, last_updated_at: lastUpdatedAt }),
+  }, sessionToken)
+  return toRoadmap(data)
+}
+
+export async function updateServerTag(
+  roadmapId: string,
+  tagId: string,
+  updates: { label?: string; color?: string | null },
+  sessionToken: string,
+  lastUpdatedAt: string,
+): Promise<Roadmap> {
+  const data = await requestJson<ApiRoadmapResponse>(
+    `/api/roadmaps/${roadmapId}/tags/${encodeURIComponent(tagId)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ ...updates, last_updated_at: lastUpdatedAt }),
+    },
+    sessionToken,
+  )
+  return toRoadmap(data)
+}
+
+export async function deleteServerTag(
+  roadmapId: string,
+  tagId: string,
+  sessionToken: string,
+  lastUpdatedAt: string,
+): Promise<Roadmap> {
+  const query = new URLSearchParams({ last_updated_at: lastUpdatedAt })
+  const data = await requestJson<ApiRoadmapResponse>(
+    `/api/roadmaps/${roadmapId}/tags/${encodeURIComponent(tagId)}?${query}`,
+    {
+      method: 'DELETE',
+    },
+    sessionToken,
+  )
+  return toRoadmap(data)
 }
 
 /**

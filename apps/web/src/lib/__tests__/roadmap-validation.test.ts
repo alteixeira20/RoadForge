@@ -133,5 +133,34 @@ describe('roadmap-validation', () => {
       const warningCodes = result.warnings.map((w) => w.code)
       expect(warningCodes).not.toContain('unknown_fields')
     })
+
+    it('preserves an explicitly empty tag registry', () => {
+      const result = parseImportedRoadmapJson(JSON.stringify({
+        phases: [],
+        tagRegistry: [],
+      }))
+
+      expect(result.tagRegistry).toEqual([])
+    })
+
+    it('repairs invalid and duplicate tag registry definitions', () => {
+      const result = parseImportedRoadmapJson(JSON.stringify({
+        phases: [],
+        tagRegistry: [
+          { id: 'infra', label: 'Infrastructure', color: '#AABBCC' },
+          { id: 'infra-copy', label: ' infrastructure ' },
+          { id: 'Invalid ID', label: 'Invalid' },
+          { id: 'design', label: 'Design', color: 'red' },
+        ],
+      }))
+
+      expect(result.tagRegistry).toEqual([
+        { id: 'infra', label: 'Infrastructure', color: '#aabbcc' },
+        { id: 'design', label: 'Design' },
+      ])
+      expect(result.repairs.map((repair) => repair.code)).toContain(
+        'tag_registry_repaired',
+      )
+    })
   })
 })

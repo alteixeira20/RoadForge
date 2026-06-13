@@ -2,14 +2,34 @@
 // These types describe the core Roadforge data model.
 // The backend should expose a JSON API that conforms to these shapes.
 
+export interface TagDefinition {
+  id: string
+  label: string
+  color?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export type PhaseStatus = 'done' | 'active' | 'next' | 'future'
+export type PhaseColorMode = 'auto' | 'manual'
 export type WorkspaceMode = 'owner' | 'viewer'
 export type WorkspaceView = 'roadmap' | 'team'
 export type ExportFormat = 'json'
 export type ShareRole = 'owner' | 'editor' | 'viewer'
 export type Theme = 'dark' | 'light'
 export type SyncStatus = 'local' | 'live' | 'syncing' | 'offline' | 'conflict'
-export type TaskFilter = 'all' | 'mine' | 'pair' | 'next' | 'open' | 'done' | 'working' | `person:${string}`
+export type TaskStatusFilter = 'all' | 'open' | 'done'
+export type TaskClaimFilter = 'all' | 'mine' | 'claimed' | 'unclaimed'
+
+export interface FilterState {
+  query: string
+  status: TaskStatusFilter
+  assignees: string[]
+  tags: string[]
+  phaseIds: string[]
+  claim: TaskClaimFilter
+  recommended: boolean
+}
 
 export interface Task {
   id: string
@@ -39,6 +59,7 @@ export interface Phase {
   name: string
   /** CSS color string used as the phase accent */
   color: string
+  colorMode?: PhaseColorMode
   status: PhaseStatus
   /** 0–100 */
   progress: number
@@ -60,6 +81,7 @@ export interface Roadmap {
   project: Project
   roadmap: RoadmapMeta
   phases: Phase[]
+  tagRegistry?: TagDefinition[]
   ownerDisplayName: string
   updatedAt: string
 }

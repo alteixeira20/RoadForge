@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect, type Dispatch, type SetStateAction } from 'react'
-import type { Phase, ShareRole } from '@/types/roadmap'
+import type { Phase, ShareRole, TagDefinition } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage, type RoadmapCache } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
+import { buildRegistryFromPhases } from '@/lib/tag-registry'
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
 
@@ -20,6 +21,7 @@ interface HydrationRoadmapStateSetters {
   setPhasesState: Dispatch<SetStateAction<Phase[]>>
   setSavedState: Dispatch<SetStateAction<boolean>>
   setActiveRoadmapIdState: Dispatch<SetStateAction<string | null>>
+  setTagRegistryState: Dispatch<SetStateAction<TagDefinition[]>>
 }
 
 interface HydrationSessionStateSetters {
@@ -56,7 +58,11 @@ export interface UseRoadmapHydrationReturn {
   showUpgradeNoticeOnce: (targetId: string, result: { changed: boolean; notices: RoadmapUpgradeNotice[] }) => void
   loadRoadmapIntoState: (targetId: string, cancelled: { value: boolean }) => void
   activateRoadmap: (id: string) => void
-  createLocalRoadmap: (name: string, phases: Phase[]) => string
+  createLocalRoadmap: (
+    name: string,
+    phases: Phase[],
+    tagRegistry?: TagDefinition[],
+  ) => string
   resetToSample: () => void
   removeRoadmapFromBrowser: (id: string) => void
   setBackendUnavailableRoadmapId: Dispatch<SetStateAction<string | null>>
@@ -109,6 +115,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     setPhasesState,
     setSavedState,
     setActiveRoadmapIdState,
+    setTagRegistryState,
   } = roadmapState
   const {
     setServerRoadmapIdState,
@@ -154,6 +161,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     setRoadmapNameState(cache.roadmapName)
     setPhasesState(cache.phases)
     setSavedState(cache.saved)
+    setTagRegistryState(cache.tagRegistry ?? [])
     setServerRoadmapIdState(null)
     setSessionTokenState(null)
     setParticipantIdState(null)
@@ -167,6 +175,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     setRoadmapNameState,
     setPhasesState,
     setSavedState,
+    setTagRegistryState,
     setServerRoadmapIdState,
     setSessionTokenState,
     setParticipantIdState,
@@ -213,6 +222,11 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
       setOwnerDisplayNameState(cacheToLoad.ownerDisplayName)
       setUpdatedAtState(cacheToLoad.updatedAt)
       setIsPasswordEnabledState(cacheToLoad.isPasswordEnabled)
+      const cachedRegistry = cacheToLoad.tagRegistry ?? []
+      const registryToLoad = cachedRegistry.length > 0
+        ? cachedRegistry
+        : buildRegistryFromPhases(cacheToLoad.phases)
+      setTagRegistryState(registryToLoad)
     }
 
     if (ac) {
@@ -249,6 +263,11 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
           setUpdatedAtState(loaded.updatedAt)
           setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
           setSavedState(nextSaved)
+          const serverRegistry = loaded.tagRegistry ?? []
+          const nextRegistry = serverRegistry.length > 0
+            ? serverRegistry
+            : buildRegistryFromPhases(normalizedLoadedPhases)
+          setTagRegistryState(nextRegistry)
 
           storage.setRoadmapCache(targetId, {
             roadmapName: nextRoadmapName,
@@ -257,6 +276,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
             ownerDisplayName: loaded.ownerDisplayName,
             updatedAt: loaded.updatedAt,
             isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
+            tagRegistry: nextRegistry,
           })
         })
         .catch((err: unknown) => {
@@ -302,6 +322,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     setRoadmapNameState,
     setPhasesState,
     setSavedState,
+    setTagRegistryState,
     setOwnerDisplayNameState,
     setUpdatedAtState,
     setIsPasswordEnabledState,
@@ -354,11 +375,16 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     loadRoadmapIntoState(id, { value: false })
   }, [loadRoadmapIntoState, setActiveRoadmapIdState])
 
-  const createLocalRoadmap = useCallback((name: string, nextPhases: Phase[]) => {
+  const createLocalRoadmap = useCallback((
+    name: string,
+    nextPhases: Phase[],
+    tagRegistry?: TagDefinition[],
+  ) => {
     const newId = storage.createLocalDraftId()
     const upgraded = upgradeRoadmapSnapshot({ roadmapName: name, phases: nextPhases })
     const normalizedPhases = normalizePhasesProgress(upgraded.phases)
     const nextName = upgraded.roadmapName || name
+    const nextRegistry = tagRegistry ?? buildRegistryFromPhases(normalizedPhases)
     const cache: RoadmapCache = {
       roadmapName: nextName,
       phases: normalizedPhases,
@@ -366,6 +392,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
       ownerDisplayName: null,
       updatedAt: null,
       isPasswordEnabled: false,
+      tagRegistry: nextRegistry,
     }
 
     storage.setActiveRoadmapId(newId)

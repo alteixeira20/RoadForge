@@ -406,6 +406,59 @@
 .tag-chip-input:focus { border-color: var(--ember); }
 .tag-chip-input::placeholder { color: var(--ink-4); }
 
+.tag-input-wrap {
+  position: relative;
+}
+
+.tag-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  z-index: 100;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.tag-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.tag-suggestion-item:hover { background: var(--bg-2); }
+
+.tag-suggestion-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tag-suggestion-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-4);
+  margin-left: auto;
+}
+
 /* ─── Display numbering ─────────────────────────────────────────────────────── */
 .task-num {
   font-family: var(--font-mono);

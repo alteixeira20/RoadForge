@@ -1,5 +1,9 @@
-import type { Phase, Task } from '@/types/roadmap'
+import type { Phase, Task, TagDefinition } from '@/types/roadmap'
 import type { ImportConflict, ImportPreviewSummary, TaskFieldDiff } from './types'
+import {
+  ensureRegistryForTagIds,
+  mergeTagRegistriesWithConflicts,
+} from '@/lib/tag-registry'
 import { indexRoadmap, type TaskEntry } from './indexRoadmap'
 import { matchPhase, matchTask } from './matchRoadmaps'
 
@@ -9,6 +13,19 @@ function fmtBool(v: boolean, trueLabel: string, falseLabel: string): string {
 
 function fmtList(items: string[]): string {
   return items.length > 0 ? items.join(', ') : '—'
+}
+
+function fmtClaim(task: Task): string {
+  if (!task.claimedBy) return '—'
+  return task.claimedAt ? `${task.claimedBy} since ${task.claimedAt}` : task.claimedBy
+}
+
+function claimFieldsMatch(a: Task, b: Task): boolean {
+  return (
+    (a.claimedBy ?? '') === (b.claimedBy ?? '') &&
+    (a.claimedById ?? '') === (b.claimedById ?? '') &&
+    (a.claimedAt ?? '') === (b.claimedAt ?? '')
+  )
 }
 
 function computeTaskFieldDiffs(a: Task, b: Task): TaskFieldDiff[] {
@@ -34,6 +51,9 @@ function computeTaskFieldDiffs(a: Task, b: Task): TaskFieldDiff[] {
   if (JSON.stringify(a.assignees ?? []) !== JSON.stringify(b.assignees ?? [])) {
     diffs.push({ field: 'assignees', current: fmtList(a.assignees ?? []), imported: fmtList(b.assignees ?? []) })
   }
+  if (!claimFieldsMatch(a, b)) {
+    diffs.push({ field: 'claim', current: fmtClaim(a), imported: fmtClaim(b) })
+  }
   return diffs
 }
 
@@ -45,7 +65,8 @@ function taskFieldsMatch(a: Task, b: Task): boolean {
     (a.est ?? '') === (b.est ?? '') &&
     (a.desc ?? '') === (b.desc ?? '') &&
     JSON.stringify(a.tags ?? []) === JSON.stringify(b.tags ?? []) &&
-    JSON.stringify(a.assignees ?? []) === JSON.stringify(b.assignees ?? [])
+    JSON.stringify(a.assignees ?? []) === JSON.stringify(b.assignees ?? []) &&
+    claimFieldsMatch(a, b)
   )
 }
 
@@ -81,6 +102,7 @@ function buildIdCollisionConflict(
 
 export interface SafeMergeResult {
   phases: Phase[]
+  tagRegistry: TagDefinition[]
   preview: ImportPreviewSummary
 }
 
@@ -89,9 +111,12 @@ export interface SafeMergeResult {
 // - Matched entities are never overwritten.
 // - Field differences on matched tasks are recorded as conflicts and skipped.
 // - Stale deps/parentId in added tasks are pruned after merge.
+// - Tag registries are merged (safe-additions only — existing tags preserved).
 export function applySafeAdditions(
   current: Phase[],
   imported: Phase[],
+  currentRegistry: TagDefinition[] = [],
+  importedRegistry: TagDefinition[] = [],
 ): SafeMergeResult {
   const index = indexRoadmap(current)
   const result: Phase[] = current.map((p) => ({ ...p, tasks: [...p.tasks] }))
@@ -161,12 +186,24 @@ export function applySafeAdditions(
     ...phase,
     tasks: phase.tasks.map((task) => pruneStaleRefs(task, validIds)),
   }))
+  const tagMerge = mergeTagRegistriesWithConflicts(currentRegistry, importedRegistry)
+  conflicts.push(...tagMerge.conflicts)
+  skippedCount += tagMerge.conflicts.length
+  const tagsAdded = Math.max(
+    0,
+    tagMerge.registry.length - (currentRegistry?.length ?? 0),
+  )
+  const usedTagIds = cleanedResult.flatMap((phase) =>
+    phase.tasks.flatMap((task) => task.tags ?? []),
+  )
 
   return {
     phases: cleanedResult,
+    tagRegistry: ensureRegistryForTagIds(usedTagIds, tagMerge.registry),
     preview: {
       phasesAdded,
       tasksAdded,
+      tagsAdded,
       matchedPhases,
       matchedTasks,
       conflictsCount: conflicts.length,

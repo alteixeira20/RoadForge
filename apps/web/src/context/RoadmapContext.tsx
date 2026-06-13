@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
-import type { Phase, ShareRole } from '@/types/roadmap'
+import type { Phase, ShareRole, TagDefinition } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
@@ -31,10 +31,16 @@ interface RoadmapContextValue {
   setOwnerDisplayName: (value: string | null) => void
   updatedAt: string | null
   setUpdatedAt: (value: string | null) => void
+  tagRegistry: TagDefinition[]
+  setTagRegistry: (registry: TagDefinition[]) => void
   locks: Record<string, { participantId: string; displayName: string }>
   activeRoadmapId: string | null
   activateRoadmap: (id: string) => void
-  createLocalRoadmap: (name: string, phases: Phase[]) => string
+  createLocalRoadmap: (
+    name: string,
+    phases: Phase[],
+    tagRegistry?: TagDefinition[],
+  ) => string
   resetToSample: () => void
   removeRoadmapFromBrowser: (id: string) => void
   accessRevokedEvent: 'revoked' | 'deleted' | 'expired' | null
@@ -61,6 +67,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [isPasswordEnabled, setIsPasswordEnabledState] = useState(false)
   const [ownerDisplayName, setOwnerDisplayNameState] = useState<string | null>(null)
   const [updatedAt, setUpdatedAtState] = useState<string | null>(null)
+  const [tagRegistry, setTagRegistryState] = useState<TagDefinition[]>([])
   const [locks, setLocks] = useState<Record<string, { participantId: string; displayName: string }>>({})
   const [activeRoadmapId, setActiveRoadmapIdState] = useState<string | null>(null)
   const [roadmapUpgradeNotice, setRoadmapUpgradeNotice] = useState<RoadmapUpgradeState | null>(null)
@@ -85,6 +92,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       setPhasesState,
       setSavedState,
       setActiveRoadmapIdState,
+      setTagRegistryState,
     },
     sessionState: {
       setServerRoadmapIdState,
@@ -125,6 +133,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       setRoadmapNameState,
       setPhasesState,
       setSavedState,
+      setTagRegistryState,
     },
     sessionState: {
       setServerRoadmapIdState,
@@ -262,6 +271,15 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const setTagRegistry = useCallback((registry: TagDefinition[]) => {
+    setTagRegistryState(registry)
+    const id = storage.getActiveRoadmapId()
+    if (id) {
+      const rc = storage.getRoadmapCache(id)
+      if (rc) storage.setRoadmapCache(id, { ...rc, tagRegistry: registry })
+    }
+  }, [])
+
   const dismissRoadmapUpgradeNotice = useCallback(() => {
     setRoadmapUpgradeNotice(null)
   }, [])
@@ -272,7 +290,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
   return (
     <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, locks, activeRoadmapId, activateRoadmap, createLocalRoadmap, resetToSample, removeRoadmapFromBrowser, accessRevokedEvent, clearAccessRevokedEvent, sessionExpiredRoadmapId, clearSessionExpiredNotice, roadmapUpgradeNotice, dismissRoadmapUpgradeNotice }}
+      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, tagRegistry, setTagRegistry, locks, activeRoadmapId, activateRoadmap, createLocalRoadmap, resetToSample, removeRoadmapFromBrowser, accessRevokedEvent, clearAccessRevokedEvent, sessionExpiredRoadmapId, clearSessionExpiredNotice, roadmapUpgradeNotice, dismissRoadmapUpgradeNotice }}
     >
       {children}
     </RoadmapContext.Provider>

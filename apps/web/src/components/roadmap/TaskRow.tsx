@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-assignment'
@@ -10,6 +10,11 @@ import { TaskDetailMeta } from './TaskDetailMeta'
 import { TaskSubtaskList } from './TaskSubtaskList'
 import { useEditLock } from '@/hooks/useEditLock'
 import { useTaskClaim } from '@/hooks/useTaskClaim'
+import {
+  ensureRegistryForTagIds,
+  resolveTagColor,
+  resolveTagDisplay,
+} from '@/lib/tag-registry'
 import type { ToastTone } from '@/hooks/useToastState'
 import type { Task } from '@/types/roadmap'
 
@@ -68,6 +73,8 @@ export function TaskRow({
 }: TaskRowProps) {
   const {
     displayName,
+    tagRegistry,
+    setTagRegistry,
     locks,
     serverRoadmapId,
     sessionToken,
@@ -126,10 +133,21 @@ export function TaskRow({
     onAcquireError: handleEditLockError,
   })
 
-  const { isClaiming, isClaimedByMe, claimer, handleClaim, handleUnclaim } = useTaskClaim({
-    task,
-    showToast: onToast,
-  })
+  const {
+    isClaiming,
+    isClaimedByMe,
+    canOverrideClaim,
+    claimer,
+    handleClaim,
+    handleUnclaim,
+  } = useTaskClaim({ task, showToast: onToast })
+
+  const handleClaimOverride = useCallback(() => {
+    const confirmed = window.confirm(
+      `Replace ${claimer ?? 'the current participant'}'s claim with yours?`,
+    )
+    if (confirmed) void handleClaim(true)
+  }, [claimer, handleClaim])
 
   const isLockedByMe = ownsLock || (!!participantId && lock?.participantId === participantId)
 
@@ -244,6 +262,18 @@ export function TaskRow({
           }}
         />
         <span className="title">{task.title}</span>
+        {visibleTags.slice(0, 2).map((tagId) => (
+          <span
+            key={tagId}
+            className="tag-pill task-row-tag"
+            style={{ '--tag-bg': resolveTagColor(tagId, tagRegistry) } as CSSProperties}
+          >
+            {resolveTagDisplay(tagId, tagRegistry).label}
+          </span>
+        ))}
+        {visibleTags.length > 2 && (
+          <span className="meta-pill">+{visibleTags.length - 2}</span>
+        )}
         {isLockedByOther && (
           <span className="meta-pill meta-pill-lock">
             <Icon name="shield" size={11} /> {lockHolderName} is editing
@@ -288,7 +318,14 @@ export function TaskRow({
               task={task}
               isNested={isNested}
               availableAssignees={availableAssignees}
+              registry={tagRegistry}
               onSave={(updates) => {
+                if (updates.tags) {
+                  const nextRegistry = ensureRegistryForTagIds(updates.tags, tagRegistry)
+                  if (nextRegistry.length !== tagRegistry.length) {
+                    setTagRegistry(nextRegistry)
+                  }
+                }
                 onUpdateTask(task.id, updates)
                 setIsEditing(false)
                 setEditDirty(false)
@@ -307,6 +344,7 @@ export function TaskRow({
                 isNested={isNested}
                 assignedNames={assignedNames}
                 visibleTags={visibleTags}
+                registry={tagRegistry}
               />
 
               {depTasks.length > 0 && (
@@ -370,20 +408,25 @@ export function TaskRow({
                         <Icon name="user" size={13} />
                         {isClaimedByMe ? 'Working on this' : `${claimer} is working on this`}
                       </span>
-                      {!readOnly && (
+                      {!readOnly && (isClaimedByMe || canOverrideClaim) && (
                         <button
+                          type="button"
                           className="btn sm ghost claim-btn"
-                          onClick={() => { void (isClaimedByMe ? handleUnclaim() : handleClaim()) }}
+                          onClick={() => {
+                            if (isClaimedByMe) void handleUnclaim()
+                            else handleClaimOverride()
+                          }}
                           disabled={isClaiming}
-                          title={isClaimedByMe ? 'Stop working on this' : 'Take over this task'}
+                          title={isClaimedByMe ? 'Stop working on this' : 'Owner override'}
                         >
-                          {isClaimedByMe ? 'Stop working' : 'Work on this'}
+                          {isClaimedByMe ? 'Stop working' : 'Override claim'}
                         </button>
                       )}
                     </>
                   ) : (
                     !readOnly && (
                       <button
+                        type="button"
                         className="btn sm ghost claim-btn"
                         onClick={() => { void handleClaim() }}
                         disabled={isClaiming}

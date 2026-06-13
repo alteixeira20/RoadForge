@@ -1,4 +1,4 @@
-import type { Phase, ShareRole, Theme } from '@/types/roadmap'
+import type { Phase, ShareRole, TagDefinition, Theme } from '@/types/roadmap'
 
 const KEYS = {
   theme: 'rf:theme',
@@ -27,6 +27,7 @@ export interface RoadmapCache {
   ownerDisplayName: string | null
   updatedAt: string | null
   isPasswordEnabled: boolean
+  tagRegistry?: TagDefinition[]
 }
 
 export interface AuthCache {

@@ -9,12 +9,13 @@ import {
 } from '@/lib/task-assignment'
 import { TagInput, splitAndNormalizeTags } from './TagInput'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import type { Task } from '@/types/roadmap'
+import type { Task, TagDefinition } from '@/types/roadmap'
 
 interface TaskEditFormProps {
   task: Task
   isNested: boolean
   availableAssignees: string[]
+  registry?: TagDefinition[]
   onSave: (updates: Partial<Task>) => void
   onCancel: () => void
   onDirtyChange?: (dirty: boolean) => void
@@ -55,6 +56,7 @@ export function TaskEditForm({
   task,
   isNested,
   availableAssignees,
+  registry = [],
   onSave,
   onCancel,
   onDirtyChange,
@@ -216,6 +218,7 @@ export function TaskEditForm({
         <TagInput
           tags={draft.tags}
           onChange={(tags) => setDraft({ ...draft, tags })}
+          registry={registry}
         />
       </div>
       <div className="edit-actions">

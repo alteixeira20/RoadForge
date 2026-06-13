@@ -1,4 +1,4 @@
-import type { Phase } from '@/types/roadmap'
+import type { Phase, TagDefinition } from '@/types/roadmap'
 import type { ImportedRoadmap } from '@/lib/roadmap-validation'
 import type { RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
 
@@ -9,11 +9,12 @@ export type ReplaceImportScope = 'synced' | 'local'
 
 // ─── Merge entity types ────────────────────────────────────────────────────────
 
-export type EntityKind = 'phase' | 'task'
+export type EntityKind = 'phase' | 'task' | 'tag'
 export type MatchStrategy = 'id' | 'fallback' | 'none'
 
 export type ConflictType =
   | 'task-field-conflict'
+  | 'tag-registry-conflict'
   | 'id-collision'
 
 export interface TaskFieldDiff {
@@ -37,6 +38,7 @@ export interface ImportConflict {
 export interface ImportPreviewSummary {
   phasesAdded: number
   tasksAdded: number
+  tagsAdded: number
   matchedPhases: number
   matchedTasks: number
   conflictsCount: number
@@ -59,6 +61,7 @@ export interface PendingImport {
   upgradeNotices: RoadmapUpgradeNotice[]
   replaceScope: ReplaceImportScope
   mergedPhases?: Phase[]
+  mergedTagRegistry?: TagDefinition[]
   mergePreview?: ImportPreviewSummary
   currentStats?: CurrentRoadmapStats
 }

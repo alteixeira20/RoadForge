@@ -242,6 +242,32 @@ describe('applySafeAdditions', () => {
     expect(preview.conflicts[0].importedId).toBe('t1')
   })
 
+  it('preserves current claim and reports differing imported claim metadata', () => {
+    const currentTask = makeTask({
+      claimedBy: 'Current Editor',
+      claimedById: 'pt_current',
+      claimedAt: '2026-06-01T10:00:00Z',
+    })
+    const importedTask = makeTask({
+      claimedBy: 'Imported Editor',
+      claimedById: 'pt_imported',
+      claimedAt: '2026-06-02T10:00:00Z',
+    })
+
+    const { phases, preview } = applySafeAdditions(
+      [makePhase({ tasks: [currentTask] })],
+      [makePhase({ tasks: [importedTask] })],
+    )
+
+    expect(phases[0].tasks[0].claimedBy).toBe('Current Editor')
+    expect(preview.conflicts).toHaveLength(1)
+    expect(preview.conflicts[0].fieldDiffs).toContainEqual({
+      field: 'claim',
+      current: 'Current Editor since 2026-06-01T10:00:00Z',
+      imported: 'Imported Editor since 2026-06-02T10:00:00Z',
+    })
+  })
+
   it('skips task ID collisions from another current phase', () => {
     const existingTask = makeTask({ id: 'shared-id', title: 'Original' })
     const current = [
@@ -359,6 +385,24 @@ describe('applySafeAdditions', () => {
     expect(preview.matchedPhases).toBe(1)
     expect(preview.matchedTasks).toBe(1)
   })
+
+  it('reports a registry-only addition as importable content', () => {
+    const phases = [makePhase({ id: 'p1' })]
+    const { tagRegistry, preview } = applySafeAdditions(
+      phases,
+      phases,
+      [{ id: 'frontend', label: 'Frontend', color: '#2563eb' }],
+      [
+        { id: 'frontend', label: 'Frontend', color: '#2563eb' },
+        { id: 'backend', label: 'Backend', color: '#16a34a' },
+      ],
+    )
+
+    expect(preview.phasesAdded).toBe(0)
+    expect(preview.tasksAdded).toBe(0)
+    expect(preview.tagsAdded).toBe(1)
+    expect(tagRegistry.map((tag) => tag.id)).toEqual(['frontend', 'backend'])
+  })
 })
 
 describe('buildBasicPreview', () => {
@@ -369,6 +413,7 @@ describe('buildBasicPreview', () => {
         makePhase({ id: 'p1', tasks: [makeTask({ id: 't1' })] }),
         makePhase({ id: 'p2', tasks: [makeTask({ id: 't2' }), makeTask({ id: 't3' })] }),
       ],
+      tagRegistry: [{ id: 'frontend', label: 'Frontend', color: '#2563eb' }],
       repairs: [{ code: 'generated_required', message: 'Repaired' }],
       warnings: [{ code: 'unknown_fields', message: 'Warned' }],
     }
@@ -377,6 +422,7 @@ describe('buildBasicPreview', () => {
 
     expect(preview.phasesAdded).toBe(2)
     expect(preview.tasksAdded).toBe(3)
+    expect(preview.tagsAdded).toBe(1)
     expect(preview.repairsCount).toBe(1)
     expect(preview.warningsCount).toBe(2)
     expect(preview.conflicts).toEqual([])

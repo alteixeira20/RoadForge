@@ -25,9 +25,11 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
   const {
     roadmapName,
     phases,
+    tagRegistry,
     setPhases,
     setRoadmapName,
     setSaved,
+    setTagRegistry,
     createLocalRoadmap,
     resetToSample,
     saved,
@@ -47,11 +49,13 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
   } = useImportFlow({
     roadmapName,
     phases,
+    tagRegistry,
     canReplaceCurrent,
     serverRoadmapId,
     setPhases,
     setRoadmapName,
     setSaved,
+    setTagRegistry,
     createLocalRoadmap,
     onRoadmapImported,
     onClose,
@@ -94,10 +98,12 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     role,
     ownerDisplayName,
     updatedAt,
+    tagRegistry,
   }
 
   const handleJsonExport = async () => {
     try {
+      onToast('Preparing JSON export...')
       const blob = await exportRoadmap(phases, 'json', exportMetadata)
       downloadBlob(blob, jsonExportFilename())
       onToast('JSON file downloaded')
@@ -109,6 +115,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
 
   const handleAITemplateExport = () => {
     try {
+      onToast('Preparing AI roadmap template...')
       const blob = new Blob([AI_ROADMAP_TEMPLATE], { type: 'text/plain;charset=utf-8' })
       downloadBlob(blob, 'roadforge-ai-roadmap-template.txt')
       onToast('AI roadmap template downloaded')

@@ -1,5 +1,13 @@
 import { isAssignmentTag, assignmentNameFromTag } from '@/lib/task-assignment'
-import type { Phase, PhaseStatus, Task } from '@/types/roadmap'
+import {
+  normalizeTagColor,
+  normalizeTagLabel,
+  normalizedTagLabelKey,
+  TAG_ID_MAX,
+  TAG_ID_PATTERN,
+  TAG_REGISTRY_MAX,
+} from '@/lib/tag-registry'
+import type { Phase, PhaseStatus, TagDefinition, Task } from '@/types/roadmap'
 
 // ─── Compatibility warnings ───────────────────────────────────────────────────
 
@@ -26,6 +34,7 @@ export type ImportRepairCode =
   | 'legacy_assignees'
   | 'duplicate_ids'
   | 'stale_parent_removed'
+  | 'tag_registry_repaired'
 
 export interface ImportRepair {
   code: ImportRepairCode
@@ -51,6 +60,8 @@ const REPAIR_MESSAGES: Record<ImportRepairCode, string> = {
     'Duplicate task IDs were renamed to be unique.',
   stale_parent_removed:
     'parentId references to non-existent tasks were removed.',
+  tag_registry_repaired:
+    'Invalid or duplicate tag registry definitions were removed or normalized.',
 }
 
 // ─── Constants (mirrored from apps/api/src/api/schemas/limits.py) ─────────────
@@ -176,6 +187,9 @@ function validatePhase(value: unknown): Phase {
   const num = cleanRequiredText(value.num, 'phase.num', PHASE_NUM_MAX)
   const name = cleanRequiredText(value.name, 'phase.name', PHASE_NAME_MAX)
   const color = cleanRequiredText(value.color, 'phase.color', PHASE_COLOR_MAX)
+  const colorMode = value.colorMode === 'auto' || value.colorMode === 'manual'
+    ? value.colorMode
+    : undefined
   if (!VALID_STATUSES.has(value.status as string)) throw new Error('phase.status is invalid')
   if (typeof value.progress !== 'number' || value.progress < 0 || value.progress > 100) {
     throw new Error('phase.progress must be 0–100')
@@ -185,7 +199,16 @@ function validatePhase(value: unknown): Phase {
     throw new Error(`phase has too many tasks (max ${TASKS_PER_PHASE_MAX})`)
   }
   const tasks = (value.tasks as unknown[]).map((t) => validateTask(t))
-  return { id, num, name, color, status: value.status as PhaseStatus, progress: value.progress as number, tasks }
+  return {
+    id,
+    num,
+    name,
+    color,
+    ...(colorMode ? { colorMode } : {}),
+    status: value.status as PhaseStatus,
+    progress: value.progress as number,
+    tasks,
+  }
 }
 
 // ─── Compatibility detection ──────────────────────────────────────────────────
@@ -200,7 +223,7 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
   'tagRegistry', 'meta',
 ])
 const KNOWN_PHASE_KEYS = new Set([
-  'id', 'num', 'name', 'color', 'status', 'progress', 'tasks',
+  'id', 'num', 'name', 'color', 'colorMode', 'status', 'progress', 'tasks',
 ])
 const KNOWN_TASK_KEYS = new Set([
   'id', 'title', 'done', 'next', 'est', 'tags', 'assignees', 'deps', 'desc', 'parentId',
@@ -509,6 +532,10 @@ function repairPhaseRaw(
     bump(counts, 'inferred_phase_field')
     p.color = '#808080'
   }
+  if (p.colorMode !== undefined && p.colorMode !== 'auto' && p.colorMode !== 'manual') {
+    bump(counts, 'inferred_phase_field')
+    delete p.colorMode
+  }
 
   // status: must be a valid value
   if (typeof p.status !== 'string' || !VALID_STATUSES.has(p.status)) {
@@ -606,6 +633,7 @@ function repairImportedRoadmap(
 export interface ImportedRoadmap {
   phases: Phase[]
   roadmapName?: string
+  tagRegistry?: import('@/types/roadmap').TagDefinition[]
   warnings: CompatibilityWarning[]
   repairs: ImportRepair[]
 }
@@ -615,6 +643,46 @@ function roadmapNameFromPayload(value: unknown): string | undefined {
   const roadmap = value.roadmap
   if (!isPlainObject(roadmap)) return undefined
   return cleanOptionalText(roadmap.name, 'roadmap.name', PHASE_NAME_MAX)
+}
+
+function tagRegistryFromPayload(value: unknown): {
+  registry: TagDefinition[] | undefined
+  repaired: boolean
+} {
+  if (!isPlainObject(value)) return { registry: undefined, repaired: false }
+  const raw = value.tagRegistry
+  if (!Array.isArray(raw)) return { registry: undefined, repaired: false }
+  const result: TagDefinition[] = []
+  const ids = new Set<string>()
+  const labels = new Set<string>()
+  let repaired = raw.length > TAG_REGISTRY_MAX
+
+  for (const item of raw.slice(0, TAG_REGISTRY_MAX)) {
+    if (!isPlainObject(item)) {
+      repaired = true
+      continue
+    }
+    const id = typeof item.id === 'string' ? item.id.trim() : ''
+    if (id.length > TAG_ID_MAX || !TAG_ID_PATTERN.test(id) || ids.has(id)) {
+      repaired = true
+      continue
+    }
+    const rawLabel = typeof item.label === 'string' ? item.label : id
+    const label = normalizeTagLabel(rawLabel)
+    const labelKey = normalizedTagLabelKey(label)
+    if (!label || labels.has(labelKey)) {
+      repaired = true
+      continue
+    }
+    const color = typeof item.color === 'string'
+      ? normalizeTagColor(item.color)
+      : undefined
+    if (item.color !== undefined && color === undefined) repaired = true
+    result.push({ id, label, ...(color ? { color } : {}) })
+    ids.add(id)
+    labels.add(labelKey)
+  }
+  return { registry: result, repaired }
 }
 
 /**
@@ -654,9 +722,17 @@ export function parseImportedRoadmapJson(text: string): ImportedRoadmap {
     const raw = JSON.parse(trimmed)
     const warnings = detectCompatibilityWarnings(raw)
     const { repairedRaw, repairs } = repairImportedRoadmap(raw)
+    const tagRegistry = tagRegistryFromPayload(raw)
+    if (tagRegistry.repaired) {
+      repairs.push({
+        code: 'tag_registry_repaired',
+        message: REPAIR_MESSAGES.tag_registry_repaired,
+      })
+    }
     return {
       phases: validateImportedPhases(repairedRaw),
       roadmapName: roadmapNameFromPayload(repairedRaw),
+      tagRegistry: tagRegistry.registry,
       warnings,
       repairs,
     }

@@ -57,6 +57,9 @@ interface ConflictReviewPanelProps {
 export function ConflictReviewPanel({ conflicts }: ConflictReviewPanelProps) {
   const [listOpen, setListOpen] = useState(false)
   const count = conflicts.length
+  const countLabel = conflicts.every((conflict) => conflict.kind === 'task')
+    ? `task${count !== 1 ? 's' : ''}`
+    : `item${count !== 1 ? 's' : ''}`
   if (count === 0) return null
 
   return (
@@ -67,7 +70,7 @@ export function ConflictReviewPanel({ conflicts }: ConflictReviewPanelProps) {
         onClick={() => setListOpen(!listOpen)}
         aria-expanded={listOpen}
       >
-        <span className="conflict-panel-count">{count} task{count !== 1 ? 's' : ''} skipped</span>
+        <span className="conflict-panel-count">{count} {countLabel} skipped</span>
         <span className="conflict-panel-hint">— existing values kept, imports differ</span>
         <span className="conflict-panel-action">{listOpen ? 'Hide details ▴' : 'Show details ▾'}</span>
       </button>

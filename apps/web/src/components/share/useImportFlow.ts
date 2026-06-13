@@ -4,20 +4,27 @@ import { useCallback, useRef, useState, type ChangeEvent } from 'react'
 import { parseImportedRoadmapJson, IMPORT_MAX_BYTES } from '@/lib/roadmap-validation'
 import type { ImportedRoadmap } from '@/lib/roadmap-validation'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
-import type { Phase } from '@/types/roadmap'
+import type { Phase, TagDefinition } from '@/types/roadmap'
 import type { ImportMode, PendingImport } from '@/lib/import-merge/types'
 import { applySafeAdditions } from '@/lib/import-merge/mergeRoadmaps'
 import { buildBasicPreview } from '@/lib/import-merge/previewImport'
+import { buildRegistryFromPhases } from '@/lib/tag-registry'
 
 interface UseImportFlowOptions {
   roadmapName: string
   phases: Phase[]
+  tagRegistry: TagDefinition[]
   canReplaceCurrent: boolean
   serverRoadmapId: string | null
   setPhases: (phases: Phase[]) => void
   setRoadmapName: (name: string) => void
   setSaved: (saved: boolean) => void
-  createLocalRoadmap: (name: string, phases: Phase[]) => string
+  setTagRegistry?: (registry: TagDefinition[]) => void
+  createLocalRoadmap: (
+    name: string,
+    phases: Phase[],
+    tagRegistry?: TagDefinition[],
+  ) => string
   onRoadmapImported?: (roadmapName: string | undefined, phases: Phase[]) => void
   onClose: () => void
   onToast: (msg: string) => void
@@ -31,11 +38,13 @@ function updateUrlForLocalRoadmap(roadmapId: string): void {
 export function useImportFlow({
   roadmapName,
   phases,
+  tagRegistry,
   canReplaceCurrent,
   serverRoadmapId,
   setPhases,
   setRoadmapName,
   setSaved,
+  setTagRegistry,
   createLocalRoadmap,
   onRoadmapImported,
   onClose,
@@ -47,8 +56,9 @@ export function useImportFlow({
 
   const selectImportFile = useCallback((mode: ImportMode) => {
     importModeRef.current = mode
+    onToast('Choose a RoadForge JSON file to preview.')
     fileInputRef.current?.click()
-  }, [])
+  }, [onToast])
 
   const handleCancelPendingImport = useCallback(() => {
     setPendingImport(null)
@@ -56,6 +66,7 @@ export function useImportFlow({
 
   const executeImport = useCallback((imported: ImportedRoadmap, mode: ImportMode) => {
     const nextName = imported.roadmapName || roadmapName
+    const importedRegistry = imported.tagRegistry ?? buildRegistryFromPhases(imported.phases)
     if (mode === 'replace-current') {
       if (!canReplaceCurrent) {
         onToast('Viewers can import as a new local roadmap only.')
@@ -63,22 +74,26 @@ export function useImportFlow({
       }
       setPhases(imported.phases)
       if (imported.roadmapName) setRoadmapName(imported.roadmapName)
+      if (setTagRegistry) setTagRegistry(importedRegistry)
       setSaved(false)
       onToast(serverRoadmapId ? 'Roadmap replaced — syncing after autosave' : 'Roadmap replaced from JSON')
     } else {
-      const newId = createLocalRoadmap(nextName, imported.phases)
+      const newId = createLocalRoadmap(nextName, imported.phases, importedRegistry)
       updateUrlForLocalRoadmap(newId)
       onToast('Imported as new local roadmap')
     }
     onRoadmapImported?.(imported.roadmapName, imported.phases)
     onClose()
-  }, [roadmapName, canReplaceCurrent, setPhases, setRoadmapName, setSaved, serverRoadmapId,
-      createLocalRoadmap, onRoadmapImported, onClose, onToast])
+  }, [roadmapName, canReplaceCurrent, setPhases, setRoadmapName, setSaved, setTagRegistry,
+      serverRoadmapId, createLocalRoadmap, onRoadmapImported, onClose, onToast])
 
   const applySafeAdditionsImport = useCallback((pending: PendingImport) => {
     const { mergedPhases, mergePreview } = pending
     if (!mergedPhases) return
     setPhases(mergedPhases)
+    if (setTagRegistry && pending.mergedTagRegistry) {
+      setTagRegistry(pending.mergedTagRegistry)
+    }
     setSaved(false)
     const pCount = mergePreview?.phasesAdded ?? 0
     const tCount = mergePreview?.tasksAdded ?? 0
@@ -92,7 +107,7 @@ export function useImportFlow({
     }
     onRoadmapImported?.(undefined, mergedPhases)
     onClose()
-  }, [setPhases, setSaved, onToast, onRoadmapImported, onClose])
+  }, [setPhases, setSaved, setTagRegistry, onToast, onRoadmapImported, onClose])
 
   const handleImportFile = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -123,9 +138,12 @@ export function useImportFlow({
         let mergePreview: PendingImport['mergePreview'] = buildBasicPreview(imported, upgraded.notices)
         let currentStats: PendingImport['currentStats']
 
+        let mergedTagRegistry: TagDefinition[] | undefined
         if (mode === 'safe-additions') {
-          const mergeResult = applySafeAdditions(phases, imported.phases)
+          const importedRegistry = imported.tagRegistry ?? buildRegistryFromPhases(imported.phases)
+          const mergeResult = applySafeAdditions(phases, imported.phases, tagRegistry, importedRegistry)
           mergedPhases = mergeResult.phases
+          mergedTagRegistry = mergeResult.tagRegistry
           mergePreview = {
             ...mergeResult.preview,
             repairsCount: imported.repairs.length,
@@ -147,6 +165,7 @@ export function useImportFlow({
           upgradeNotices: upgraded.notices,
           replaceScope: serverRoadmapId ? 'synced' : 'local',
           mergedPhases,
+          mergedTagRegistry,
           mergePreview,
           currentStats,
         })
@@ -157,7 +176,7 @@ export function useImportFlow({
     reader.readAsText(file)
     // reset so the same file can be re-selected
     e.target.value = ''
-  }, [phases, serverRoadmapId, onToast])
+  }, [phases, tagRegistry, serverRoadmapId, onToast])
 
   const handleConfirm = useCallback(() => {
     if (!pendingImport) return

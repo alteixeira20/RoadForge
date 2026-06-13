@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useCallback, useEffect, type Dispatch, type SetStateAction, type MutableRefObject } from 'react'
-import type { Phase, ShareRole } from '@/types/roadmap'
+import type { Phase, ShareRole, TagDefinition } from '@/types/roadmap'
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
+import { buildRegistryFromPhases } from '@/lib/tag-registry'
 import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import { getEventTicket, subscribeToRoadmapEvents } from '@/services/roadmap-realtime.service'
@@ -34,6 +35,7 @@ interface RealtimeRoadmapStateParams {
   setRoadmapNameState: Dispatch<SetStateAction<string>>
   setPhasesState: Dispatch<SetStateAction<Phase[]>>
   setSavedState: Dispatch<SetStateAction<boolean>>
+  setTagRegistryState: Dispatch<SetStateAction<TagDefinition[]>>
 }
 
 interface RealtimeSessionStateParams {
@@ -85,7 +87,12 @@ export function useRoadmapRealtime({
     showUpgradeNoticeOnce,
     setBackendUnavailableRoadmapId,
   } = lifecycle
-  const { setRoadmapNameState, setPhasesState, setSavedState } = roadmapState
+  const {
+    setRoadmapNameState,
+    setPhasesState,
+    setSavedState,
+    setTagRegistryState,
+  } = roadmapState
   const { setServerRoadmapIdState, setSessionTokenState, setParticipantIdState, setRoleState } = sessionState
   const { setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState } = metadataState
   const { setLocks } = lockState
@@ -164,6 +171,10 @@ export function useRoadmapRealtime({
 
               setRoadmapNameState(nextRoadmapName)
               setPhasesState(normalizedSsePhases)
+              const nextRegistry = loaded.tagRegistry?.length
+                ? loaded.tagRegistry
+                : buildRegistryFromPhases(normalizedSsePhases)
+              setTagRegistryState(nextRegistry)
               setOwnerDisplayNameState(loaded.ownerDisplayName)
               setUpdatedAtState(loaded.updatedAt)
               setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
@@ -177,6 +188,7 @@ export function useRoadmapRealtime({
                     ...rc,
                     roadmapName: nextRoadmapName,
                     phases: normalizedSsePhases,
+                    tagRegistry: nextRegistry,
                     saved: nextSaved,
                     ownerDisplayName: loaded.ownerDisplayName,
                     updatedAt: loaded.updatedAt,
@@ -245,7 +257,7 @@ export function useRoadmapRealtime({
       if (unsubscribe) unsubscribe()
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [serverRoadmapId, sessionToken, participantId, role, activeRoadmapId, isHydratingServer, backendUnavailableRoadmapId, showUpgradeNoticeOnce, setBackendUnavailableRoadmapId, savedRef, setLocks, setRoadmapNameState, setPhasesState, setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState, setSavedState, setServerRoadmapIdState, setSessionTokenState, setParticipantIdState, setRoleState])
+  }, [serverRoadmapId, sessionToken, participantId, role, activeRoadmapId, isHydratingServer, backendUnavailableRoadmapId, showUpgradeNoticeOnce, setBackendUnavailableRoadmapId, savedRef, setLocks, setRoadmapNameState, setPhasesState, setTagRegistryState, setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState, setSavedState, setServerRoadmapIdState, setSessionTokenState, setParticipantIdState, setRoleState])
 
   const clearAccessRevokedEvent = useCallback(() => {
     setAccessRevokedEvent(null)

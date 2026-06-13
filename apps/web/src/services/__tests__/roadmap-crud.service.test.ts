@@ -140,6 +140,30 @@ describe('patchTaskClaim', () => {
       sessionToken: 'viewer-token',
     })).rejects.toBeInstanceOf(ApiError)
   })
+
+  it('adds an explicit override query for owner takeover', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => apiRoadmap,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await patchTaskClaim({
+      roadmapId: 'rm_1',
+      taskId: 'tk_1',
+      sessionToken: 'owner-token',
+      override: true,
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:7878/api/roadmaps/rm_1/tasks/tk_1/claim?override=true',
+      {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer owner-token' },
+      },
+    )
+  })
 })
 
 describe('deleteTaskClaim', () => {
@@ -170,5 +194,29 @@ describe('deleteTaskClaim', () => {
       },
     )
     expect(roadmap.updatedAt).toBe('2026-05-29T10:01:00Z')
+  })
+
+  it('adds an explicit override query for owner clearing', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => apiRoadmap,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await deleteTaskClaim({
+      roadmapId: 'rm_1',
+      taskId: 'tk_1',
+      sessionToken: 'owner-token',
+      override: true,
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:7878/api/roadmaps/rm_1/tasks/tk_1/claim?override=true',
+      {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer owner-token' },
+      },
+    )
   })
 })

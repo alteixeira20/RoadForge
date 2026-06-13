@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Toast } from '@/components/ui/Toast'
+import { ToastViewport } from '@/components/ui/Toast'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { WorkspaceHead } from './WorkspaceHead'
@@ -58,6 +58,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setRoadmapName,
     phases,
     setPhases,
+    tagRegistry,
     saved,
     setSaved,
     serverRoadmapId,
@@ -93,17 +94,20 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   // Prevents writing previous-roadmap expandedTaskId into the new roadmap's UI cache
   // during the render where activeRoadmapId changes but expandedTaskId hasn't updated yet.
   const expandedTaskOwnerRef = useRef(activeRoadmapId)
-  const { toast, showToast } = useToastState()
+  const { toasts, showToast, dismissToast } = useToastState()
   const {
     showSave,
     showShare,
     showIO,
+    showTagRegistry,
     openSave,
     openShare,
     openIO,
+    openTagRegistry,
     closeSave,
     closeShare,
     closeIO,
+    closeTagRegistry,
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
@@ -127,11 +131,13 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     totalDone,
     nextReadyCount,
     canViewTeam,
-    searchQuery,
-    setSearchQuery,
-    taskFilter,
-    setTaskFilter,
-    taskFilterOptions,
+    filterState,
+    setFilterField,
+    clearFilters,
+    assignmentNames,
+    tagIds,
+    tagLabels,
+    phaseOptions,
     workspaceView,
     setWorkspaceView,
     visiblePhases,
@@ -144,6 +150,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     taskEditorAssigneeNames,
   } = useWorkspaceViewModel({
     phases,
+    tagRegistry,
     participants,
     displayName,
     participantId,
@@ -261,7 +268,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     confirmReload,
     activityRefreshKey,
     addPendingActivityChange,
-    setPendingActivityChanges,
+    replacePendingActivityChanges,
     refreshActivity,
     markServerStateHealthy,
     handleSessionExpired,
@@ -279,6 +286,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setRoadmapName,
     phases,
     setPhases,
+    tagRegistry,
     saved,
     setSaved,
     serverRoadmapId,
@@ -363,11 +371,23 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     if (readOnly) return
 
     const phase = phases.find((p) => p.id === phaseId)
-    if (!phase || phase.color === color) return
+    if (!phase || (phase.color === color && phase.colorMode === 'manual')) return
 
     setPhases(
-      phases.map((p) => (p.id === phaseId ? { ...p, color } : p)),
+      phases.map((p) => (
+        p.id === phaseId ? { ...p, color, colorMode: 'manual' as const } : p
+      )),
     )
+    setSaved(false)
+  }
+
+  const handleUpdatePhaseColorMode = (phaseId: string, colorMode: 'auto' | 'manual') => {
+    if (readOnly) return
+    const phase = phases.find((item) => item.id === phaseId)
+    if (!phase || phase.colorMode === colorMode) return
+    setPhases(phases.map((item) => (
+      item.id === phaseId ? { ...item, colorMode } : item
+    )))
     setSaved(false)
   }
 
@@ -407,7 +427,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   }
 
   const handleRoadmapImported = (importedName: string | undefined, importedPhases: PhaseType[]) => {
-    setPendingActivityChanges([{
+    replacePendingActivityChanges([{
       action: 'roadmap.imported',
       entity_type: 'roadmap',
       roadmapName: importedName,
@@ -508,11 +528,13 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onRename={handleRenameRoadmap}
         />
         <WorkspaceToolbar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          taskFilter={taskFilter}
-          taskFilterOptions={taskFilterOptions}
-          onTaskFilterChange={setTaskFilter}
+          filterState={filterState}
+          onFilterChange={setFilterField}
+          onClearFilters={clearFilters}
+          assignmentNames={assignmentNames}
+          tagIds={tagIds}
+          tagLabels={tagLabels}
+          phaseOptions={phaseOptions}
           workspaceView={workspaceView}
           onWorkspaceViewChange={setWorkspaceView}
           allOpen={allOpen}
@@ -520,6 +542,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onExpandAll={expandAll}
           onOpenActivity={() => setShowActivity(true)}
           onOpenVersions={() => setShowVersions(true)}
+          onOpenTagRegistry={openTagRegistry}
           hasServerActivity={!!serverRoadmapId && !!sessionToken}
           canViewTeam={canViewTeam}
           canViewVersions={role === 'owner' && !!serverRoadmapId && !!sessionToken}
@@ -533,8 +556,10 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             onInvite={openShare}
             onRevokeParticipant={handleRevokeTeamParticipant}
             onBack={() => setWorkspaceView('roadmap')}
-            claimedCountByName={allTasks.reduce<Record<string, number>>((acc, t) => {
-              if (t.claimedBy && !t.done) acc[t.claimedBy] = (acc[t.claimedBy] ?? 0) + 1
+            claimedCountByParticipantId={allTasks.reduce<Record<string, number>>((acc, t) => {
+              if (t.claimedById && !t.done) {
+                acc[t.claimedById] = (acc[t.claimedById] ?? 0) + 1
+              }
               return acc
             }, {})}
           />
@@ -546,12 +571,19 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             allTasks={allTasks}
             readOnly={readOnly}
             isFiltering={isFiltering}
+            emptyStateMessage={
+              filterState.query.trim()
+                ? `No tasks match "${filterState.query.trim()}".`
+                : 'No tasks match the selected filters.'
+            }
+            onClearFilters={clearFilters}
             onTogglePhase={togglePhase}
             onToggleTask={onToggleTask}
             onCheckTask={onCheckTask}
             pendingTaskDoneIds={pendingTaskDoneIds}
             onUpdateTask={handleUpdateTask}
             onUpdatePhaseColor={handleUpdatePhaseColor}
+            onUpdatePhaseColorMode={handleUpdatePhaseColorMode}
             onUpdatePhaseName={handleUpdatePhaseName}
             onDeletePhase={handleDeletePhase}
             onAddTask={handleAddTask}
@@ -573,15 +605,18 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         showSave={showSave}
         showShare={showShare}
         showIO={showIO}
+        showTagRegistry={showTagRegistry}
         onCloseSave={closeSave}
         onCloseShare={closeShare}
         onCloseIO={closeIO}
+        onCloseTagRegistry={closeTagRegistry}
         onConfirmSave={handleConfirmSave}
         onToast={showToast}
         onRoadmapImported={handleRoadmapImported}
+        readOnly={readOnly}
       />
 
-      {toast && <Toast message={toast.message} tone={toast.tone} />}
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
 
       <ConflictReviewPanel
         open={showConflictReview}
