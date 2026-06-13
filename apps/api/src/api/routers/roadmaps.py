@@ -43,18 +43,20 @@ from api.services.roadmap_service import (
     delete_tag,
     delete_task_claim,
     get_activity_logs,
-    get_participants,
     get_roadmap,
-    get_share_links,
     join_roadmap,
     list_tags,
     patch_task_claim,
     patch_task_done,
+    update_roadmap,
+    update_tag,
+)
+from api.services.sharing_service import (
+    get_participants,
+    get_share_links,
     revoke_participant,
     revoke_share_link,
     rotate_share_link,
-    update_roadmap,
-    update_tag,
 )
 from api.services.version_service import (
     create_roadmap_checkpoint,
