@@ -2,9 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { saveToServer } from '@/services/roadmap-crud.service'
-import { getConflictMetadata, isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
+import {
+  getConflictMetadata,
+  isApiConnectionError,
+  isAuthError,
+  isSessionExpiredError,
+} from '@/services/roadmap-http'
 import { buildChangeSummary } from '@/lib/activity-changes'
-import type { Phase, ActivityChange, RoadmapConflictMetadata, SyncStatus } from '@/types/roadmap'
+import type { Phase, ActivityChange, RoadmapConflictMetadata, SyncStatus, TagDefinition } from '@/types/roadmap'
 
 interface AutoSyncParams {
   serverRoadmapId: string | null
@@ -13,6 +18,7 @@ interface AutoSyncParams {
   saved: boolean
   phases: Phase[]
   roadmapName: string
+  tagRegistry: TagDefinition[]
   updatedAt: string | null
   pendingActivityChanges: ActivityChange[]
   partialWriteInFlight: boolean
@@ -42,6 +48,7 @@ export function useAutoSync({
   saved,
   phases,
   roadmapName,
+  tagRegistry,
   updatedAt,
   pendingActivityChanges,
   partialWriteInFlight,
@@ -64,6 +71,7 @@ export function useAutoSync({
   const syncParamsRef = useRef({
     phases,
     roadmapName,
+    tagRegistry,
     updatedAt,
     pendingActivityChanges: [] as ActivityChange[],
     serverRoadmapId,
@@ -82,6 +90,7 @@ export function useAutoSync({
   syncParamsRef.current = {
     phases,
     roadmapName,
+    tagRegistry,
     updatedAt,
     pendingActivityChanges,
     serverRoadmapId,
@@ -109,6 +118,7 @@ export function useAutoSync({
       const {
         phases: p,
         roadmapName: n,
+        tagRegistry: tr,
         updatedAt: ua,
         pendingActivityChanges: pac,
         serverRoadmapId: rid,
@@ -138,7 +148,7 @@ export function useAutoSync({
 
       const changeSummary = buildChangeSummary(pac, rid)
       try {
-        const data = await saveToServer(rid, n, p, tok, ua, changeSummary)
+        const data = await saveToServer(rid, n, p, tok, ua, changeSummary, tr)
         syncSuccess(data.updated_at)
         setIsOffline(false)
         setIsConflict(false)
@@ -156,8 +166,8 @@ export function useAutoSync({
           sessionExpired()
         } else if (isApiConnectionError(err)) {
           setIsOffline(true)
-        } else if (err instanceof Error && (err.message.includes('401') || err.message.includes('403'))) {
-          setIsOffline(true)
+        } else if (isAuthError(err)) {
+          sessionExpired()
         } else {
           setIsOffline(true)
         }

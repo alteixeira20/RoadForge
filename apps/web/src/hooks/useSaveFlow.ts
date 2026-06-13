@@ -8,7 +8,7 @@ import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-c
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { storage } from '@/lib/storage'
-import type { ActivityChange, Phase, RoadmapConflictMetadata, ShareRole } from '@/types/roadmap'
+import type { ActivityChange, Phase, RoadmapConflictMetadata, ShareRole, TagDefinition } from '@/types/roadmap'
 
 interface UseSaveFlowParams {
   displayName: string
@@ -16,6 +16,7 @@ interface UseSaveFlowParams {
   setRoadmapName: (name: string) => void
   phases: Phase[]
   setPhases: (phases: Phase[]) => void
+  tagRegistry: TagDefinition[]
   saved: boolean
   setSaved: (saved: boolean) => void
   serverRoadmapId: string | null
@@ -41,6 +42,7 @@ export function useSaveFlow({
   setRoadmapName,
   phases,
   setPhases,
+  tagRegistry,
   saved,
   setSaved,
   serverRoadmapId,
@@ -70,6 +72,9 @@ export function useSaveFlow({
   }
 
   const clearPendingActivityChanges = () => setPendingActivityChanges([])
+  const replacePendingActivityChanges = (changes: ActivityChange[]) => {
+    setPendingActivityChanges(changes)
+  }
   const refreshActivity = () => setActivityRefreshKey((k) => k + 1)
 
   function handleSessionExpired() {
@@ -101,6 +106,7 @@ export function useSaveFlow({
     saved,
     phases,
     roadmapName,
+    tagRegistry,
     updatedAt,
     pendingActivityChanges,
     partialWriteInFlight,
@@ -145,6 +151,7 @@ export function useSaveFlow({
           roadmapName,
           displayName || 'Owner',
           phases,
+          tagRegistry,
           password,
           changeSummary,
         )
@@ -165,7 +172,7 @@ export function useSaveFlow({
           showToast('Reload the server roadmap before saving again')
           return
         }
-        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt, changeSummary)
+        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt, changeSummary, tagRegistry)
         setUpdatedAt(data.updated_at)
         setPendingActivityChanges([])
       }
@@ -224,6 +231,7 @@ export function useSaveFlow({
         sessionToken,
         conflictMetadata.server_updated_at,
         changeSummary,
+        tagRegistry,
       )
       setUpdatedAt(data.updated_at)
       setPendingActivityChanges([])
@@ -304,7 +312,7 @@ export function useSaveFlow({
     pendingActivityChanges,
 
     addPendingActivityChange,
-    setPendingActivityChanges,
+    replacePendingActivityChanges,
     clearPendingActivityChanges,
     refreshActivity,
     markServerStateHealthy,
