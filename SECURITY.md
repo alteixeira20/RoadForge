@@ -2,16 +2,16 @@
 
 ## Supported versions
 
-RoadForge is currently pre-release (v0.1). Only the `main` branch receives security fixes. There are no LTS releases, patch branches, or backport commitments.
+RoadForge is currently public beta/WIP software. Only the `main` branch receives security fixes. There are no LTS releases, patch branches, or backport commitments.
 
 ## Reporting a vulnerability
 
 **Do not open a public GitHub issue for security vulnerabilities.** Public issues expose exploit details before a fix is available.
 
-Use one of the following channels:
-
-- **GitHub Security Advisories** — if private vulnerability reporting is enabled on this repository, open a draft advisory at `Security → Report a vulnerability`. This keeps all details private until a fix is published.
-- **Email** — if the advisory flow is unavailable, contact the maintainer privately at: <!-- TODO: add maintainer contact address -->
+Use **GitHub Security Advisories/private vulnerability reporting** at
+`Security → Report a vulnerability`. If that control is unavailable, do not publish
+exploit details; open a minimal public issue asking the maintainer to enable a private
+reporting channel.
 
 Include in your report:
 

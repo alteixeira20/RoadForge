@@ -20,9 +20,9 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'RoadForge',
+  title: 'RoadForge · Public Beta',
   description:
-    'Plan in phases. Forge your roadmap locally — no account, no sign-up. Self-hostable, AI-friendly.',
+    'RoadForge is a work-in-progress roadmap planner. Start locally, export portable JSON, and optionally collaborate without creating an account.',
   manifest: '/site.webmanifest',
   icons: {
     icon: [

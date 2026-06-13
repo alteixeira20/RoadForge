@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose a focused product improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the workflow problem before proposing implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Accountless beta
+        - Self-hosting
+        - Future accounts/workspaces
+        - Future assistant integration
+    validations:
+      required: true

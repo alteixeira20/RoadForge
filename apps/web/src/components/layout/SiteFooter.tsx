@@ -8,13 +8,37 @@ export function SiteFooter() {
       <div className="row">
         <Brand />
         <span style={{ color: 'var(--ink-4)' }}>·</span>
-        <span>MIT licensed · v0.1</span>
+        <span>Public Beta · WIP · PolyForm Noncommercial 1.0.0</span>
         <span className="flex-1" />
         <div className="links">
-          <span className="footer-link-muted">GitHub</span>
-          <span className="footer-link-muted">Docs</span>
-          <span className="footer-link-muted">Self-host guide</span>
-          <span className="footer-link-muted">Changelog</span>
+          <a
+            href="https://github.com/alteixeira20/RoadForge"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+          <a
+            href="https://github.com/alteixeira20/RoadForge/tree/main/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Docs
+          </a>
+          <a
+            href="https://github.com/alteixeira20/RoadForge/blob/main/deploy/hosting-bay/README.md"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Self-host guide
+          </a>
+          <a
+            href="https://github.com/alteixeira20/RoadForge/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            License
+          </a>
         </div>
       </div>
       <div className="row sub" style={{ marginTop: 16, color: 'var(--ink-4)', fontSize: 13 }}>

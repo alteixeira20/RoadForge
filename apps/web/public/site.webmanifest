@@ -1,6 +1,7 @@
 {
-  "name": "RoadForge",
-  "short_name": "RoadForge",
+  "name": "RoadForge Public Beta",
+  "short_name": "RoadForge Beta",
+  "description": "A work-in-progress local-first roadmap planner.",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",

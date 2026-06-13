@@ -55,19 +55,24 @@ export function FeaturesSection() {
           <div className="ic"><Icon name="shield" size={20} /></div>
           <h3>Self-hostable</h3>
           <p>
-            Run the backend on your own infrastructure. MIT licensed.
-            No third-party hosted service required.
+            Run the backend on your own infrastructure for permitted
+            non-commercial use. No third-party hosted service required.
           </p>
         </div>
       </div>
       <div className="gh-cta">
         <div className="gh-cta-text">
-          <strong>Private by default. Portable JSON. MIT licensed.</strong>
-          <span>Local hosting · Exportable · Optional self-hosting</span>
+          <strong>Private by default. Portable JSON. Source-available.</strong>
+          <span>Public beta · Non-commercial license · Optional self-hosting</span>
         </div>
-        <span className="btn lg muted" aria-disabled="true">
-          <Icon name="github" size={16} /> Source coming soon
-        </span>
+        <a
+          className="btn lg secondary"
+          href="https://github.com/alteixeira20/RoadForge"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Icon name="github" size={16} /> View source
+        </a>
       </div>
     </LandingSectionFrame>
   )

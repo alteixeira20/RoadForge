@@ -11,6 +11,7 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
   return (
     <>
       <section className="hero container">
+        <p className="eyebrow">Public Beta · Work in Progress</p>
         <h1>
           A roadmap tool that{' '}
           <span className="accent">starts local, stays portable.</span>
@@ -24,15 +25,20 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           <button className="btn primary lg" onClick={onCreate}>
             Create roadmap <Icon name="arrow-right" size={16} stroke="#fff" />
           </button>
-          <span className="btn lg muted" aria-disabled="true">
-            <Icon name="github" size={16} /> Source coming soon
-          </span>
+          <a
+            className="btn lg secondary"
+            href="https://github.com/alteixeira20/RoadForge"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Icon name="github" size={16} /> View source
+          </a>
         </div>
         <div className="meta-row">
           <span><Icon name="lock" size={14} /> No account required</span>
           <span><Icon name="device" size={14} /> Runs locally</span>
           <span><Icon name="export" size={14} /> Exportable JSON</span>
-          <span><Icon name="shield" size={14} /> MIT licensed</span>
+          <span><Icon name="shield" size={14} /> Non-commercial source license</span>
         </div>
       </section>
 

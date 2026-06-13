@@ -2,7 +2,22 @@
 
 A structured roadmap planning tool for indie hackers and small teams. Break a release into phases, track task dependencies, and share access through private owner/editor invite links or a stable public read-only viewer link. No accounts required.
 
-**Current status:** v0.1 manual-testing candidate. Core create/save/share/join flow is wired, and realtime collaboration (SSE) is active. Security and UX hardening are still in progress.
+> **Public Beta · Work in Progress**
+>
+> RoadForge is pre-release software. Core create/save/share/join and realtime
+> collaboration are implemented, but behavior, data formats, and deployment
+> requirements may change. Export important roadmaps regularly and do not treat
+> the hosted beta as the only copy of critical data.
+
+**Current status:** v0.1 beta foundation. Security, collaboration, accessibility,
+and UX hardening are still in progress. Known launch work is tracked in
+[`docs/project-audit-2026-06-13.md`](docs/project-audit-2026-06-13.md).
+
+**License:** Source-available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use is not permitted
+under that license. RoadForge is therefore not described as open-source under
+the Open Source Definition. Copies obtained from earlier MIT-licensed releases
+retain the rights granted with those copies.
 
 ---
 
@@ -26,14 +41,14 @@ Assignees and collaborators are separate concepts:
 
 ---
 
-## Security audit note
+## Security note
 
-RoadForge is built with a security-first mindset, but is currently in a pre-production state.
+RoadForge is built with a security-first mindset, but remains beta/WIP software.
 
-- **High/Critical Gate:** `pnpm audit --audit-level high` passes with zero vulnerabilities.
-- **PostCSS Advisory:** A moderate vulnerability (`GHSA-qx2v-qp2m-jg93`) is reported in plain `pnpm audit` due to an internal dependency of Next.js 15.
-- **Mitigation:** Direct `postcss` used by the web app is pinned to `8.5.14` (patched). RoadForge does not generate user-controlled CSS in style tags.
-- **Status:** Overrides, `pnpm patch`, and Next.js 16 were evaluated and did not safely resolve this upstream dependency issue. We are tracking this and will update Next.js once a clean patch is available.
+CI defines dependency, lint, test, migration, and build gates. Those checks are
+point-in-time evidence and must be rerun for each release candidate. See
+[`SECURITY.md`](SECURITY.md) and the
+[`dependency audit policy`](docs/security/dependency-audit-policy.md).
 
 ---
 
@@ -84,7 +99,9 @@ Before self-hosting or releasing RoadForge publicly:
 - **Enable HSTS** — configure HTTP Strict Transport Security at the proxy level.
 - **Configure proxy logs** — invite tokens appear in URLs; ensure your proxy is configured not to log full query strings if possible, or restrict log access.
 - **Run security audits** — regularly run `make audit` and address high-severity vulnerabilities.
-- **CSP required** — a strict Content Security Policy is deferred in the current MVP but should be implemented before any multi-user public deployment.
+- **Review CSP reports** — the current application emits a report-only Content
+  Security Policy. Review violations and move to enforcement only after the release
+  candidate works without required exceptions.
 - **API worker mode** — the API defaults to one Uvicorn worker. Set `ROADFORGE_API_WORKERS` above `1` only with `ROADFORGE_REALTIME_BACKEND=redis`; container startup refuses unsafe memory-backed multi-worker mode.
 - **Run `make check` before deploying** — this runs `pnpm lint`, `pnpm typecheck`, and `pnpm build`. All three must pass with zero errors and zero warnings.
 - **Database migrations before rollback** — Alembic migrations are not reversible by default. Take a Postgres snapshot before any release that includes new files under `apps/api/alembic/versions/`.
@@ -181,6 +198,9 @@ See [docs/manual-qa.md](docs/manual-qa.md) for the full pre-release QA checklist
 
 For security policies and responsible disclosure, see [SECURITY.md](SECURITY.md) and [docs/security/README.md](docs/security/README.md).
 For public deployment security assumptions, see [docs/public-deployment-security.md](docs/public-deployment-security.md).
+For non-commercial self-hosting, see [docs/self-hosting.md](docs/self-hosting.md).
+For contribution and support expectations, see [CONTRIBUTING.md](CONTRIBUTING.md)
+and [SUPPORT.md](SUPPORT.md).
 
 ---
 
