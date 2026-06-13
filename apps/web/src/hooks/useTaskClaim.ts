@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { patchTaskClaim, deleteTaskClaim } from '@/services/roadmap-crud.service'
-import { isAuthError, isApiConnectionError } from '@/services/roadmap-http'
+import { isAuthError, isApiConnectionError, isConflictError } from '@/services/roadmap-http'
 import type { Task } from '@/types/roadmap'
 
 interface UseTaskClaimParams {
@@ -14,15 +14,17 @@ interface UseTaskClaimParams {
 export interface UseTaskClaimResult {
   isClaiming: boolean
   isClaimedByMe: boolean
+  canOverrideClaim: boolean
   claimer: string | null
-  handleClaim: () => Promise<void>
-  handleUnclaim: () => Promise<void>
+  handleClaim: (override?: boolean) => Promise<void>
+  handleUnclaim: (override?: boolean) => Promise<void>
 }
 
 export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskClaimResult {
   const {
     displayName,
     participantId,
+    role,
     serverRoadmapId,
     sessionToken,
     phases,
@@ -39,6 +41,9 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
       (participantId && task.claimedById === participantId) ||
       (!participantId && claimer === displayName)
     ),
+  )
+  const canOverrideClaim = Boolean(
+    claimer && !isClaimedByMe && (role === 'owner' || !serverRoadmapId),
   )
 
   const applyLocalClaim = useCallback((claimedBy: string | null) => {
@@ -66,17 +71,24 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
     setSaved(false)
   }, [phases, setPhases, setSaved, task.id, participantId])
 
-  const handleClaim = useCallback(async () => {
+  const handleClaim = useCallback(async (override = false) => {
     if (isClaiming || task.done) return
 
     if (serverRoadmapId && sessionToken) {
       setIsClaiming(true)
       try {
-        const roadmap = await patchTaskClaim({ roadmapId: serverRoadmapId, taskId: task.id, sessionToken })
+        const roadmap = await patchTaskClaim({
+          roadmapId: serverRoadmapId,
+          taskId: task.id,
+          sessionToken,
+          override,
+        })
         setPhases(roadmap.phases)
         setUpdatedAt(roadmap.updatedAt)
       } catch (err) {
-        if (isAuthError(err)) {
+        if (isConflictError(err)) {
+          showToast(`${task.claimedBy ?? 'Another participant'} is already working on this task.`)
+        } else if (isAuthError(err)) {
           showToast('You do not have permission to claim this task.')
         } else if (isApiConnectionError(err)) {
           showToast('Could not reach the server.')
@@ -89,19 +101,26 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
     } else {
       applyLocalClaim(displayName)
     }
-  }, [isClaiming, task.done, task.id, serverRoadmapId, sessionToken, applyLocalClaim, displayName, setPhases, setUpdatedAt, showToast])
+  }, [isClaiming, task.done, task.id, task.claimedBy, serverRoadmapId, sessionToken, applyLocalClaim, displayName, setPhases, setUpdatedAt, showToast])
 
-  const handleUnclaim = useCallback(async () => {
+  const handleUnclaim = useCallback(async (override = false) => {
     if (isClaiming) return
 
     if (serverRoadmapId && sessionToken) {
       setIsClaiming(true)
       try {
-        const roadmap = await deleteTaskClaim({ roadmapId: serverRoadmapId, taskId: task.id, sessionToken })
+        const roadmap = await deleteTaskClaim({
+          roadmapId: serverRoadmapId,
+          taskId: task.id,
+          sessionToken,
+          override,
+        })
         setPhases(roadmap.phases)
         setUpdatedAt(roadmap.updatedAt)
       } catch (err) {
-        if (isAuthError(err)) {
+        if (isConflictError(err)) {
+          showToast(`${task.claimedBy ?? 'Another participant'} still owns this claim.`)
+        } else if (isAuthError(err)) {
           showToast('You do not have permission to unclaim this task.')
         } else if (isApiConnectionError(err)) {
           showToast('Could not reach the server.')
@@ -114,11 +133,12 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
     } else {
       applyLocalClaim(null)
     }
-  }, [isClaiming, task.id, serverRoadmapId, sessionToken, applyLocalClaim, setPhases, setUpdatedAt, showToast])
+  }, [isClaiming, task.id, task.claimedBy, serverRoadmapId, sessionToken, applyLocalClaim, setPhases, setUpdatedAt, showToast])
 
   return {
     isClaiming,
     isClaimedByMe,
+    canOverrideClaim,
     claimer,
     handleClaim,
     handleUnclaim,

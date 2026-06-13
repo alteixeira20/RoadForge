@@ -1,27 +1,71 @@
-/* ─── Toast ────────────────────────────────────────────────────────────────── */
-.toast {
+/* ─── Toast viewport ───────────────────────────────────────────────────────── */
+.toast-viewport {
   position: fixed;
-  top: 72px; right: 24px;
-  left: auto;
-  transform: none;
-  background: var(--bg-3);
-  border: 1px solid var(--border-strong);
-  color: var(--ink);
-  padding: 12px 18px;
-  border-radius: 10px;
-  font-size: 14.5px;
-  display: flex; align-items: center; gap: 10px;
-  box-shadow: var(--shadow-md);
+  top: 72px;
+  right: max(16px, calc((100vw - 1180px) / 2));
   z-index: var(--z-toast);
-  animation: toastIn 280ms cubic-bezier(.2,.8,.2,1);
+  width: min(380px, calc(100vw - 24px));
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
 }
-.toast .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 8px var(--ember); }
+.toast {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 13px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  animation: toastIn 220ms cubic-bezier(.2,.8,.2,1);
+}
+.toast .dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 8px var(--ember);
+}
+.toast-message {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.toast-dismiss {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+}
+.toast-dismiss:hover,
+.toast-dismiss:focus-visible {
+  color: var(--ink);
+  background: var(--bg-2);
+}
 .toast-success .dot { background: var(--sage); box-shadow: 0 0 8px var(--sage); }
+.toast-warning .dot { background: #eab308; box-shadow: 0 0 8px #eab308; }
 .toast-error .dot { background: #e05252; box-shadow: 0 0 8px #e05252; }
 @keyframes toastIn {
-  from { opacity: 0; transform: translateX(12px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translate3d(12px, -4px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
 }
 @media (max-width: 640px) {
-  .toast { right: 12px; left: 12px; max-width: none; }
+  .toast-viewport {
+    top: 64px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
 }

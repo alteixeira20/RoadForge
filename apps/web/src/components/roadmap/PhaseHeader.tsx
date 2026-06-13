@@ -24,6 +24,9 @@ interface PhaseHeaderProps {
   onMenuRename: () => void
   onColorTriggerClick: () => void
   onColorSelect: (color: string) => void
+  onColorModeSelect: (mode: 'auto' | 'manual') => void
+  colorReason: string
+  displayColor: string
   onDeletePhase: (phaseId: string) => void
   onSettingsMenuChange?: (open: boolean) => void
 }
@@ -46,6 +49,9 @@ export function PhaseHeader({
   onMenuRename,
   onColorTriggerClick,
   onColorSelect,
+  onColorModeSelect,
+  colorReason,
+  displayColor,
   onDeletePhase,
   onSettingsMenuChange,
 }: PhaseHeaderProps) {
@@ -87,6 +93,9 @@ export function PhaseHeader({
           onRenameClick={onMenuRename}
           onColorTriggerClick={onColorTriggerClick}
           onColorSelect={onColorSelect}
+          onColorModeSelect={onColorModeSelect}
+          colorReason={colorReason}
+          displayColor={displayColor}
           onDeletePhase={onDeletePhase}
           onMenuOpenChange={onSettingsMenuChange}
         />

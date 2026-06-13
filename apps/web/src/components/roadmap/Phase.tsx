@@ -30,6 +30,7 @@ import { TaskRow } from './TaskRow'
 import { DraftTaskRow } from './DraftTaskRow'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { computeTaskDisplayNumbers } from '@/lib/task-display'
+import { getPhaseDisplayColor } from '@/lib/phase-color'
 import type { ToastTone } from '@/hooks/useToastState'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 import type { ForgeStyle } from '@/types/ui'
@@ -44,6 +45,7 @@ interface PhaseProps {
   pendingTaskDoneIds: ReadonlySet<string>
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onUpdatePhaseColor: (phaseId: string, color: string) => void
+  onUpdatePhaseColorMode: (phaseId: string, mode: 'auto' | 'manual') => void
   onUpdatePhaseName: (phaseId: string, name: string) => void
   onDeletePhase: (phaseId: string) => void
   onAddTask: (phaseId: string, title?: string) => string
@@ -71,6 +73,7 @@ export function Phase({
   pendingTaskDoneIds,
   onUpdateTask,
   onUpdatePhaseColor,
+  onUpdatePhaseColorMode,
   onUpdatePhaseName,
   onDeletePhase,
   onAddTask,
@@ -245,8 +248,8 @@ export function Phase({
   }, [draftCreatedTaskId])
 
   const displayStatus: PhaseType['status'] = allDone ? 'done' : (phase.status === 'done' ? 'active' : phase.status)
-
-  const headStyle: ForgeStyle = { '--phase-color': phase.color }
+  const phaseDisplayColor = getPhaseDisplayColor(phase)
+  const headStyle: ForgeStyle = { '--phase-color': phaseDisplayColor.color }
 
   const topLevelTasks = phase.tasks.filter((t) => !t.parentId)
   const taskIds = topLevelTasks.map((t) => t.id)
@@ -322,6 +325,9 @@ export function Phase({
         onMenuRename={handleMenuRename}
         onColorTriggerClick={handleColorTriggerClick}
         onColorSelect={handleColorSelect}
+        onColorModeSelect={(mode) => onUpdatePhaseColorMode(phase.id, mode)}
+        colorReason={phaseDisplayColor.reason}
+        displayColor={phaseDisplayColor.color}
         onDeletePhase={onDeletePhase}
         onSettingsMenuChange={setShowSettingsMenu}
       />

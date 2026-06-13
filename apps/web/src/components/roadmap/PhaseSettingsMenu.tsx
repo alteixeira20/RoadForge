@@ -26,6 +26,9 @@ interface PhaseSettingsMenuProps {
   onRenameClick: () => void
   onColorTriggerClick: () => void
   onColorSelect: (color: string) => void
+  onColorModeSelect: (mode: 'auto' | 'manual') => void
+  colorReason: string
+  displayColor: string
   onDeletePhase: (phaseId: string) => void
   onMenuOpenChange?: (open: boolean) => void
 }
@@ -39,11 +42,16 @@ export function PhaseSettingsMenu({
   onRenameClick,
   onColorTriggerClick,
   onColorSelect,
+  onColorModeSelect,
+  colorReason,
+  displayColor,
   onDeletePhase,
   onMenuOpenChange,
 }: PhaseSettingsMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [customColor, setCustomColor] = useState(phase.color)
+  const customColorValid = /^#[0-9a-f]{6}$/i.test(customColor)
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false)
@@ -118,7 +126,7 @@ export function PhaseSettingsMenu({
             <Icon name="pencil" size={13} /> Rename
           </button>
           <button role="menuitem" onClick={handleColorClick}>
-            <span className="phase-settings-color-swatch" style={{ backgroundColor: phase.color }} />
+            <span className="phase-settings-color-swatch" style={{ backgroundColor: displayColor }} />
             Change color
           </button>
           <div className="phase-settings-sep" role="separator" />
@@ -129,19 +137,61 @@ export function PhaseSettingsMenu({
       )}
 
       {showColorPicker && (
-        <div className="phase-color-popover" role="menu" aria-label="Phase colors">
-          {PHASE_COLOR_PRESETS.map((preset) => (
+        <div className="phase-color-popover" aria-label="Phase color settings">
+          <div className="phase-color-modes">
             <button
-              key={preset.value}
               type="button"
-              className={preset.value.toLowerCase() === phase.color.toLowerCase() ? 'selected' : ''}
-              title={preset.label}
-              aria-label={preset.label}
-              onClick={() => onColorSelect(preset.value)}
+              className={phase.colorMode === 'auto' ? 'selected' : ''}
+              onClick={() => onColorModeSelect('auto')}
             >
-              <span style={{ backgroundColor: preset.value }} />
+              Auto
             </button>
-          ))}
+            <button
+              type="button"
+              className={phase.colorMode !== 'auto' ? 'selected' : ''}
+              onClick={() => onColorModeSelect('manual')}
+            >
+              Manual
+            </button>
+          </div>
+          {phase.colorMode === 'auto' ? (
+            <p className="phase-color-reason">
+              <span style={{ backgroundColor: displayColor }} />
+              {colorReason}
+            </p>
+          ) : (
+            <>
+              <div className="phase-color-presets">
+                {PHASE_COLOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    className={preset.value.toLowerCase() === phase.color.toLowerCase() ? 'selected' : ''}
+                    title={preset.label}
+                    aria-label={preset.label}
+                    onClick={() => onColorSelect(preset.value)}
+                  >
+                    <span style={{ backgroundColor: preset.value }} />
+                  </button>
+                ))}
+              </div>
+              <div className="phase-custom-color">
+                <input
+                  value={customColor}
+                  aria-label="Custom phase hex color"
+                  onChange={(event) => setCustomColor(event.target.value)}
+                  placeholder="#a855f7"
+                />
+                <button
+                  type="button"
+                  disabled={!customColorValid}
+                  onClick={() => onColorSelect(customColor.toLowerCase())}
+                >
+                  Apply
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 

@@ -31,12 +31,15 @@ interface PhaseListProps {
   allTasks: Task[]
   readOnly: boolean
   isFiltering: boolean
+  emptyStateMessage: string
+  onClearFilters: () => void
   onTogglePhase: (id: string) => void
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
   pendingTaskDoneIds: ReadonlySet<string>
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onUpdatePhaseColor: (phaseId: string, color: string) => void
+  onUpdatePhaseColorMode: (phaseId: string, mode: 'auto' | 'manual') => void
   onUpdatePhaseName: (phaseId: string, name: string) => void
   onDeletePhase: (phaseId: string) => void
   onAddTask: (phaseId: string, title?: string) => string
@@ -59,12 +62,15 @@ export function PhaseList({
   allTasks,
   readOnly,
   isFiltering,
+  emptyStateMessage,
+  onClearFilters,
   onTogglePhase,
   onToggleTask,
   onCheckTask,
   pendingTaskDoneIds,
   onUpdateTask,
   onUpdatePhaseColor,
+  onUpdatePhaseColorMode,
   onUpdatePhaseName,
   onDeletePhase,
   onAddTask,
@@ -118,7 +124,10 @@ export function PhaseList({
       <div className="phases">
         <div className="filtered-empty-state" role="status">
           <strong>No matching tasks</strong>
-          <p>No tasks match the current search or filter.</p>
+          <p>{emptyStateMessage}</p>
+          <button type="button" className="btn secondary" onClick={onClearFilters}>
+            Clear search and filters
+          </button>
         </div>
       </div>
     )
@@ -149,6 +158,7 @@ export function PhaseList({
                 pendingTaskDoneIds={pendingTaskDoneIds}
                 onUpdateTask={onUpdateTask}
                 onUpdatePhaseColor={onUpdatePhaseColor}
+                onUpdatePhaseColorMode={onUpdatePhaseColorMode}
                 onUpdatePhaseName={onUpdatePhaseName}
                 onDeletePhase={onDeletePhase}
                 onAddTask={onAddTask}

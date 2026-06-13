@@ -167,7 +167,8 @@
 }
 
 /* ─── Phase color picker ───────────────────────────────────────────────────── */
-.phase-color-popover button > span {
+.phase-color-presets button > span,
+.phase-color-reason > span {
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -179,17 +180,21 @@
   right: 0;
   top: calc(100% + 8px);
   z-index: var(--z-popover);
-  width: 132px;
+  width: 232px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  padding: 8px;
+  gap: 10px;
+  padding: 10px;
   background: var(--bg-2);
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   box-shadow: var(--shadow-md);
 }
-.phase-color-popover button {
+.phase-color-presets {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+.phase-color-presets button {
   width: 34px;
   height: 30px;
   display: grid;
@@ -198,10 +203,62 @@
   border-radius: 7px;
   background: transparent;
 }
-.phase-color-popover button:hover,
-.phase-color-popover button.selected {
+.phase-color-presets button:hover,
+.phase-color-presets button.selected {
   background: var(--bg-3);
   border-color: var(--border);
+}
+.phase-color-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.phase-color-modes button {
+  min-height: 30px;
+  color: var(--ink-3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.phase-color-modes button.selected {
+  color: var(--ember);
+  background: var(--lava-glow);
+  border-color: rgba(217,116,66,0.28);
+}
+.phase-color-reason {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.phase-custom-color {
+  display: flex;
+  gap: 6px;
+}
+.phase-custom-color input {
+  min-width: 0;
+  flex: 1;
+  height: 32px;
+  padding: 0 8px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-family: var(--font-mono);
+}
+.phase-custom-color button {
+  padding: 0 10px;
+  color: var(--ink);
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.phase-custom-color button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 /* ─── Phase body / foot ────────────────────────────────────────────────────── */

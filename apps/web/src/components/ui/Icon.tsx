@@ -4,6 +4,7 @@ export type IconName =
   | 'anvil'
   | 'flame'
   | 'search'
+  | 'filter'
   | 'plus'
   | 'x'
   | 'check'
@@ -76,6 +77,12 @@ export function Icon({ name, size = 16, stroke = 'currentColor', strokeWidth = 1
         <svg {...s}>
           <circle cx="11" cy="11" r="7" />
           <path d="m20 20-3.5-3.5" />
+        </svg>
+      )
+    case 'filter':
+      return (
+        <svg {...s}>
+          <path d="M4 6h16M7 12h10M10 18h4" />
         </svg>
       )
     case 'plus':

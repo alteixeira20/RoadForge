@@ -172,6 +172,9 @@
   margin: 0;
   font-size: 13.5px;
 }
+.filtered-empty-state .btn {
+  margin-top: 14px;
+}
 
 /* ─── Animations ───────────────────────────────────────────────────────────── */
 @keyframes highlightFlash {

@@ -80,8 +80,7 @@
   height: 36px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 6px 0 10px;
+  padding: 0 4px;
   background: var(--bg);
   border: 1px solid transparent;
   border-radius: 8px;
@@ -93,19 +92,12 @@
   border-color: var(--ember);
   box-shadow: 0 0 0 3px var(--lava-glow);
 }
-.task-filter-label {
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 10px;
-}
 .task-filter-trigger {
-  min-width: 112px;
-  max-width: 160px;
+  min-width: 118px;
   height: 28px;
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
   border: none;
   background: transparent;
@@ -121,51 +113,84 @@
   background: var(--bg-2);
   color: var(--ember);
 }
-.task-filter-current {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.task-filter-menu {
+.filter-panel {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
   z-index: var(--z-popover);
-  width: max(180px, 100%);
-  max-height: 280px;
-  overflow: auto;
-  padding: 6px;
+  width: 290px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
   background: var(--panel);
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   box-shadow: var(--shadow-lg);
 }
-.task-filter-menu button {
+.filter-field {
+  display: grid;
+  gap: 5px;
+}
+.filter-field > span {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.filter-field select {
   width: 100%;
-  min-height: 32px;
+  height: 34px;
+  padding: 0 9px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font: inherit;
+}
+.filter-field select:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
+.filter-checkbox {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 7px 9px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
+  gap: 8px;
   color: var(--ink-2);
-  font-size: 13.5px;
-  text-align: left;
+  font-size: 13px;
 }
-.task-filter-menu button:hover,
-.task-filter-menu button:focus-visible {
+.filter-checkbox input {
+  accent-color: var(--ember);
+}
+.filter-clear {
+  min-height: 32px;
+  color: var(--ink-2);
   background: var(--bg-2);
-  color: var(--ink);
-  outline: none;
+  border: 1px solid var(--border);
+  border-radius: 7px;
 }
-.task-filter-menu button.selected {
+.filter-clear:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.active-filter-chips {
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -8px 0 16px;
+}
+.active-filter-chips:empty {
+  display: none;
+}
+.active-filter-chips button {
+  min-height: 26px;
+  padding: 3px 9px;
   color: var(--ember);
   background: var(--lava-glow);
-  border-color: rgba(217,116,66,0.28);
+  border: 1px solid rgba(217,116,66,0.28);
+  border-radius: 999px;
+  font-size: 12px;
 }
 
 .toolbar-action {
@@ -214,11 +239,11 @@
   /* Filter grows to fill remaining space on its row */
   .task-filter { flex: 1; min-width: 0; }
   /* Open menu left-anchored to avoid right-edge overflow */
-  .task-filter-menu {
+  .filter-panel {
     left: 0;
     right: auto;
     max-width: calc(100vw - 32px);
-    width: max(200px, 100%);
+    width: 280px;
   }
   .toolbar-end { margin-left: 0; flex-basis: 100%; justify-content: flex-end; }
   .toolbar-action { padding: 0 8px; font-size: 13px; height: 34px; }

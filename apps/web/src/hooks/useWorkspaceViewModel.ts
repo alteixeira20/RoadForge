@@ -1,11 +1,29 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
-import { usePhaseSearch } from '@/hooks/usePhaseSearch'
-import { dedupeNames, getTaskAssignees, getVisibleTaskTags, taskMatchesAssignee } from '@/lib/task-assignment'
-import type { Participant, Phase, ShareRole, Task, TaskFilter, WorkspaceView } from '@/types/roadmap'
+import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-assignment'
+import {
+  DEFAULT_FILTER_STATE,
+  filterTasks,
+  isFilterStateActive,
+} from '@/lib/task-filters'
+import type {
+  FilterState,
+  Participant,
+  Phase,
+  ShareRole,
+  TagDefinition,
+  WorkspaceView,
+} from '@/types/roadmap'
 
 interface UseWorkspaceViewModelParams {
   phases: Phase[]
+  tagRegistry: TagDefinition[]
   participants: Participant[]
   displayName: string
   participantId: string | null
@@ -15,31 +33,34 @@ interface UseWorkspaceViewModelParams {
   activeRoadmapId: string | null
 }
 
-const normalizeFilterValue = (value: string) => value.trim().toLowerCase()
+const FILTER_STORAGE_PREFIX = 'roadforge:filters:'
 
-const taskMatchesFilter = (
-  task: Task,
-  filter: TaskFilter,
-  displayName: string,
-  participantId: string | null,
-) => {
-  if (filter === 'all') return true
-  if (filter === 'mine') return taskMatchesAssignee(task, displayName)
-  if (filter === 'pair') return getVisibleTaskTags(task).map(normalizeFilterValue).includes('pair')
-  if (filter === 'next') return task.next === true
-  if (filter === 'open') return task.done === false
-  if (filter === 'done') return task.done === true
-  if (filter === 'working') {
-    if (!task.claimedBy) return false
-    if (participantId && task.claimedById) return task.claimedById === participantId
-    return task.claimedBy === displayName
+function filterStorageKey(roadmapId: string | null): string {
+  return `${FILTER_STORAGE_PREFIX}${roadmapId ?? 'local'}`
+}
+
+function readStoredFilters(roadmapId: string | null): FilterState {
+  if (typeof window === 'undefined') return DEFAULT_FILTER_STATE
+  try {
+    const value = JSON.parse(
+      window.sessionStorage.getItem(filterStorageKey(roadmapId)) ?? '{}',
+    ) as Partial<FilterState>
+    return {
+      ...DEFAULT_FILTER_STATE,
+      ...value,
+      query: '',
+      assignees: Array.isArray(value.assignees) ? value.assignees : [],
+      tags: Array.isArray(value.tags) ? value.tags : [],
+      phaseIds: Array.isArray(value.phaseIds) ? value.phaseIds : [],
+    }
+  } catch {
+    return DEFAULT_FILTER_STATE
   }
-  if (filter.startsWith('person:')) return taskMatchesAssignee(task, filter.slice('person:'.length))
-  return true
 }
 
 export function useWorkspaceViewModel({
   phases,
+  tagRegistry,
   participants,
   displayName,
   participantId,
@@ -48,15 +69,32 @@ export function useWorkspaceViewModel({
   sessionToken,
   activeRoadmapId,
 }: UseWorkspaceViewModelParams) {
-  const { openPhases, togglePhase, allOpen, collapseAll, expandAll } = usePhaseCollapse(phases, activeRoadmapId)
-  const { searchQuery, setSearchQuery, filteredPhases } = usePhaseSearch(phases)
-  const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
+  const collapse = usePhaseCollapse(phases, activeRoadmapId)
+  const [filterState, setFilterState] = useState<FilterState>(() =>
+    readStoredFilters(activeRoadmapId),
+  )
+  const [filterRoadmapId, setFilterRoadmapId] = useState(activeRoadmapId)
   const [workspaceView, setWorkspaceViewState] = useState<WorkspaceView>('roadmap')
+  const deferredQuery = useDeferredValue(filterState.query)
 
-  const allTasks = useMemo(() => phases.flatMap((p) => p.tasks), [phases])
-  const totalDone = allTasks.filter((t) => t.done).length
-  const nextReadyCount = allTasks.filter((t) => t.next && !t.done).length
-  const canViewTeam = role === 'owner' && !!serverRoadmapId && !!sessionToken
+  const allTasks = useMemo(() => phases.flatMap((phase) => phase.tasks), [phases])
+  const totalDone = allTasks.filter((task) => task.done).length
+  const nextReadyCount = allTasks.filter((task) => task.next && !task.done).length
+  const canViewTeam = role === 'owner' && Boolean(serverRoadmapId && sessionToken)
+
+  useEffect(() => {
+    setFilterState(readStoredFilters(activeRoadmapId))
+    setFilterRoadmapId(activeRoadmapId)
+  }, [activeRoadmapId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || filterRoadmapId !== activeRoadmapId) return
+    const persisted = { ...filterState, query: '' }
+    window.sessionStorage.setItem(
+      filterStorageKey(activeRoadmapId),
+      JSON.stringify(persisted),
+    )
+  }, [activeRoadmapId, filterRoadmapId, filterState])
 
   useEffect(() => {
     if (!canViewTeam && workspaceView === 'team') setWorkspaceViewState('roadmap')
@@ -71,72 +109,71 @@ export function useWorkspaceViewModel({
       .sort((a, b) => a.localeCompare(b))
   ), [allTasks])
 
+  const tagIds = useMemo(() => (
+    [...new Set([
+      ...tagRegistry.map((tag) => tag.id),
+      ...allTasks.flatMap((task) => getVisibleTaskTags(task)),
+    ])]
+  ), [allTasks, tagRegistry])
+
+  const tagLabels = useMemo(() => new Map(
+    tagRegistry.map((tag) => [tag.id, tag.label]),
+  ), [tagRegistry])
+
+  const phaseOptions = useMemo(() => phases.map((phase) => ({
+    id: phase.id,
+    label: `${phase.num} ${phase.name}`,
+  })), [phases])
+
+  const visiblePhases = useMemo(() => filterTasks(
+    phases,
+    { ...filterState, query: deferredQuery },
+    { displayName, participantId, tagLabels },
+  ), [deferredQuery, displayName, filterState, participantId, phases, tagLabels])
+
+  const isFiltering = isFilterStateActive(filterState)
+  const effectiveOpenPhases = isFiltering
+    ? visiblePhases.map((phase) => phase.id)
+    : collapse.openPhases
+
+  const setFilterField = useCallback(<K extends keyof FilterState>(
+    field: K,
+    value: FilterState[K],
+  ) => {
+    setFilterState((current) => ({ ...current, [field]: value }))
+  }, [])
+
+  const clearFilters = useCallback(() => {
+    setFilterState(DEFAULT_FILTER_STATE)
+  }, [])
+
   const taskEditorAssigneeNames = useMemo(() => (
     dedupeNames([
-      ...participants.filter((p) => !p.revokedAt).map((p) => p.displayName),
+      ...participants.filter((participant) => !participant.revokedAt)
+        .map((participant) => participant.displayName),
       ...assignmentNames,
       displayName,
     ]).sort((a, b) => a.localeCompare(b))
-  ), [participants, assignmentNames, displayName])
-
-  const peopleFilterOptions = useMemo(() => {
-    return assignmentNames.map((person) => ({
-      value: `person:${person}` as TaskFilter,
-      label: person,
-    }))
-  }, [assignmentNames])
-
-  useEffect(() => {
-    if (!taskFilter.startsWith('person:')) return
-    const selectedName = taskFilter.slice('person:'.length).toLowerCase()
-    const stillExists = assignmentNames.some((name) => name.toLowerCase() === selectedName)
-    if (!stillExists) setTaskFilter('all')
-  }, [assignmentNames, taskFilter])
-
-  const taskFilterOptions = useMemo(() => ([
-    { value: 'all' as TaskFilter, label: 'All' },
-    { value: 'mine' as TaskFilter, label: 'My tasks' },
-    { value: 'working' as TaskFilter, label: 'Working on this' },
-    ...peopleFilterOptions,
-    { value: 'pair' as TaskFilter, label: 'Pair' },
-    { value: 'next' as TaskFilter, label: 'Recommended' },
-    { value: 'open' as TaskFilter, label: 'Open' },
-    { value: 'done' as TaskFilter, label: 'Done' },
-  ]), [peopleFilterOptions])
-
-  const visiblePhases = useMemo(() => {
-    if (taskFilter === 'all') return filteredPhases
-    return filteredPhases
-      .map((phase) => ({
-        ...phase,
-        tasks: phase.tasks.filter((task) => taskMatchesFilter(task, taskFilter, displayName, participantId)),
-      }))
-      .filter((phase) => phase.tasks.length > 0)
-  }, [filteredPhases, taskFilter, displayName, participantId])
-
-  const isFiltering = searchQuery.trim().length > 0 || taskFilter !== 'all'
-  const effectiveOpenPhases = isFiltering ? visiblePhases.map((phase) => phase.id) : openPhases
+  ), [assignmentNames, displayName, participants])
 
   return {
     allTasks,
     totalDone,
     nextReadyCount,
     canViewTeam,
-    searchQuery,
-    setSearchQuery,
-    taskFilter,
-    setTaskFilter,
-    taskFilterOptions,
+    filterState,
+    setFilterField,
+    clearFilters,
+    assignmentNames,
+    tagIds,
+    tagLabels,
+    phaseOptions,
     workspaceView,
     setWorkspaceView,
     visiblePhases,
     isFiltering,
     effectiveOpenPhases,
-    openPhases,
-    togglePhase,
-    allOpen,
-    collapseAll,
-    expandAll,
+    ...collapse,
     taskEditorAssigneeNames,
   }
 }

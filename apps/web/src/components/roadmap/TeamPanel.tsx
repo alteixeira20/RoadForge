@@ -11,7 +11,7 @@ interface TeamPanelProps {
   onInvite: () => void
   onRevokeParticipant: (participant: Participant) => Promise<void>
   onBack: () => void
-  claimedCountByName?: Record<string, number>
+  claimedCountByParticipantId?: Record<string, number>
 }
 
 export function TeamPanel({
@@ -22,7 +22,7 @@ export function TeamPanel({
   onInvite,
   onRevokeParticipant,
   onBack,
-  claimedCountByName = {},
+  claimedCountByParticipantId = {},
 }: TeamPanelProps) {
   const activeParticipants = participants.filter((participant) => !participant.revokedAt)
   const accessLabelFor = (participant: Participant) => (
@@ -107,9 +107,9 @@ export function TeamPanel({
               </div>
               <div className="team-meta">
                 Joined {formatDate(participant.createdAt)} · Last seen {formatDate(participant.lastSeenAt)} · Session expires: {formatSessionExpiry(participant.sessionExpiresAt)}
-                {(claimedCountByName[participant.displayName] ?? 0) > 0 && (
+                {(claimedCountByParticipantId[participant.id] ?? 0) > 0 && (
                   <span className="team-claim-badge">
-                    Working on {claimedCountByName[participant.displayName]} task{claimedCountByName[participant.displayName] === 1 ? '' : 's'}
+                    Working on {claimedCountByParticipantId[participant.id]} task{claimedCountByParticipantId[participant.id] === 1 ? '' : 's'}
                   </span>
                 )}
               </div>
