@@ -38,7 +38,6 @@ from api.services.rate_limit_service import rate_limiter
 from api.services.roadmap_service import (
     RoadmapConflictError,
     create_roadmap,
-    create_roadmap_checkpoint,
     create_tag,
     delete_roadmap,
     delete_tag,
@@ -46,19 +45,22 @@ from api.services.roadmap_service import (
     get_activity_logs,
     get_participants,
     get_roadmap,
-    get_roadmap_version,
-    get_roadmap_versions,
     get_share_links,
     join_roadmap,
     list_tags,
     patch_task_claim,
     patch_task_done,
-    restore_roadmap_version,
     revoke_participant,
     revoke_share_link,
     rotate_share_link,
     update_roadmap,
     update_tag,
+)
+from api.services.version_service import (
+    create_roadmap_checkpoint,
+    get_roadmap_version,
+    get_roadmap_versions,
+    restore_roadmap_version,
 )
 from api.services.ticket_service import ticket_service
 
