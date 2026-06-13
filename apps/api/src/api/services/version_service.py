@@ -124,7 +124,7 @@ async def get_roadmap_versions(
     db: AsyncSession,
     roadmap_id: str,
 ) -> list[RoadmapVersionSummaryResponse]:
-    from api.services.roadmap_service import _fetch_active_roadmap
+    from api.services.roadmap_helpers import _fetch_active_roadmap
 
     await _fetch_active_roadmap(db, roadmap_id)
 
@@ -154,7 +154,7 @@ async def get_roadmap_version(
     roadmap_id: str,
     version_id: str,
 ) -> RoadmapVersionDetailResponse:
-    from api.services.roadmap_service import _fetch_active_roadmap
+    from api.services.roadmap_helpers import _fetch_active_roadmap
 
     await _fetch_active_roadmap(db, roadmap_id)
     result = await db.execute(
@@ -188,7 +188,7 @@ async def restore_roadmap_version(
     version_id: str,
     participant: Participant,
 ) -> RoadmapResponse:
-    from api.services.roadmap_service import _fetch_active_roadmap_for_update
+    from api.services.roadmap_helpers import _fetch_active_roadmap_for_update
 
     roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
     result = await db.execute(
@@ -261,7 +261,7 @@ async def create_roadmap_checkpoint(
     (created=False, latest) when the current snapshot already matches the
     latest version and no new version is needed.
     """
-    from api.services.roadmap_service import _fetch_active_roadmap_for_update
+    from api.services.roadmap_helpers import _fetch_active_roadmap_for_update
 
     roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
 

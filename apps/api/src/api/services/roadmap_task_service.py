@@ -20,7 +20,7 @@ from api.services.id_service import generate_id
 from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
 from api.services.session_policy import ensure_aware_utc
 
-from api.services.roadmap_service import (
+from api.services.roadmap_helpers import (
     RoadmapConflictError,
     _fetch_active_roadmap_for_update,
     _patch_task_claim_snapshot,

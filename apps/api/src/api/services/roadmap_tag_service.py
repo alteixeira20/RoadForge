@@ -27,7 +27,7 @@ from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.session_policy import ensure_aware_utc
 
-from api.services.roadmap_service import (
+from api.services.roadmap_helpers import (
     RoadmapConflictError,
     _fetch_active_roadmap,
     _fetch_active_roadmap_for_update,
