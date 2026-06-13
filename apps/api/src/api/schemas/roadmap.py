@@ -1,575 +1,96 @@
-from __future__ import annotations
+"""Schema barrel — re-exports all domain schemas for backward compatibility.
 
-from datetime import datetime
-from typing import Any, Literal
+All schema classes live in their domain modules. This module provides a
+single import surface so existing code continues to work unchanged.
+"""
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-
-from api.schemas.limits import (
-    ASSIGNEE_MAX,
-    DISPLAY_NAME_MAX,
-    ID_MAX,
-    PASSWORD_MAX,
-    PASSWORD_MIN,
-    PHASE_COLOR_MAX,
-    PHASE_NAME_MAX,
-    PHASE_NUM_MAX,
-    PHASES_MAX,
-    ROADMAP_NAME_MAX,
-    TAG_COLOR_MAX,
-    TAG_LABEL_MAX,
-    TAG_MAX,
-    TAG_REGISTRY_MAX,
-    TASK_ASSIGNEES_MAX,
-    TASK_DEPS_MAX,
-    TASK_DESC_MAX,
-    TASK_EST_MAX,
-    TASK_TAGS_MAX,
-    TASK_TITLE_MAX,
-    TASKS_PER_PHASE_MAX,
-    TOKEN_MAX,
+from api.schemas.activity import ActivityLogListResponse, ActivityLogResponse
+from api.schemas.conflicts import (
+    RoadmapConflictMetadata,
+    RoadmapConflictResponse,
+    RoadmapConflictServerSnapshot,
+    RoadmapConflictSummary,
 )
-from api.schemas.validators import clean_optional_text, clean_required_text
-
-ALLOWED_CHANGE_SUMMARY_ACTIONS: frozenset[str] = frozenset({
-    "roadmap.created",
-    "roadmap.imported",
-    "roadmap.updated",
-    "roadmap.renamed",
-    "roadmap.restored",
-    "roadmap.checkpoint",
-    "roadmap.batch_changed",
-    "roadmap.phases_reordered",
-    "phase.created",
-    "phase.updated",
-    "phase.deleted",
-    "phase.reordered",
-    "phase.completed",
-    "phase.reopened",
-    "task.created",
-    "task.updated",
-    "task.deleted",
-    "task.completed",
-    "task.reopened",
-    "task.reordered",
-    "task.dependency.linked",
-    "task.dependency.unlinked",
-})
-
-
-def validate_change_summary(v: object) -> object:
-    if v is None:
-        return None
-    if not isinstance(v, dict):
-        return v
-    action = v.get("action")
-    if not isinstance(action, str) or not action:
-        raise ValueError("change_summary.action is required")
-    if action not in ALLOWED_CHANGE_SUMMARY_ACTIONS:
-        raise ValueError("change_summary.action is not allowed")
-    return v
-
-# ─── Shared enums ─────────────────────────────────────────────────────────────
-
-ShareRole = Literal["owner", "editor", "viewer"]
-PhaseStatus = Literal["done", "active", "next", "future"]
-
-# ─── Tag registry ──────────────────────────────────────────────────────────────
-
-
-class TagDefinitionDTO(BaseModel):
-    id: str = Field(max_length=TAG_MAX, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-    label: str = Field(max_length=TAG_LABEL_MAX)
-    color: str | None = Field(
-        default=None,
-        max_length=TAG_COLOR_MAX,
-        pattern=r"^#[0-9a-fA-F]{6}$",
-    )
-    createdAt: str | None = None
-    updatedAt: str | None = None
-
-    @field_validator("id", "label", mode="before")
-    @classmethod
-    def _validate_required(cls, v: object, info) -> object:
-        if not isinstance(v, str):
-            return v
-        limits = {"id": TAG_MAX, "label": TAG_LABEL_MAX}
-        cleaned = clean_required_text(v, info.field_name, limits[info.field_name])
-        return " ".join(cleaned.split()) if info.field_name == "label" else cleaned
-
-    @field_validator("color", mode="before")
-    @classmethod
-    def _validate_color(cls, v: object) -> object:
-        if not isinstance(v, (str, type(None))):
-            return v
-        cleaned = clean_optional_text(v, "color", TAG_COLOR_MAX)
-        return cleaned.lower() if cleaned else cleaned
-
-
-class CreateTagRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id: str | None = Field(
-        default=None,
-        max_length=TAG_MAX,
-        pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
-    )
-    label: str = Field(min_length=1, max_length=TAG_LABEL_MAX)
-    color: str | None = Field(
-        default=None,
-        max_length=TAG_COLOR_MAX,
-        pattern=r"^#[0-9a-fA-F]{6}$",
-    )
-    last_updated_at: datetime
-
-    @field_validator("id", "label", mode="before")
-    @classmethod
-    def _validate_text(cls, v: object, info) -> object:
-        if not isinstance(v, str):
-            return v
-        limit = TAG_MAX if info.field_name == "id" else TAG_LABEL_MAX
-        cleaned = clean_required_text(v, info.field_name, limit)
-        return " ".join(cleaned.split()) if info.field_name == "label" else cleaned
-
-    @field_validator("color", mode="before")
-    @classmethod
-    def _validate_color(cls, v: object) -> object:
-        if not isinstance(v, (str, type(None))):
-            return v
-        cleaned = clean_optional_text(v, "color", TAG_COLOR_MAX)
-        return cleaned.lower() if cleaned else cleaned
-
-
-class UpdateTagRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    label: str | None = Field(default=None, min_length=1, max_length=TAG_LABEL_MAX)
-    color: str | None = Field(
-        default=None,
-        max_length=TAG_COLOR_MAX,
-        pattern=r"^#[0-9a-fA-F]{6}$",
-    )
-    last_updated_at: datetime
-
-    @field_validator("label", mode="before")
-    @classmethod
-    def _validate_label(cls, v: object) -> object:
-        if not isinstance(v, str):
-            return v
-        return " ".join(clean_required_text(v, "label", TAG_LABEL_MAX).split())
-
-    @field_validator("color", mode="before")
-    @classmethod
-    def _validate_color(cls, v: object) -> object:
-        if not isinstance(v, (str, type(None))):
-            return v
-        cleaned = clean_optional_text(v, "color", TAG_COLOR_MAX)
-        return cleaned.lower() if cleaned else cleaned
-
-
-class TagResponse(BaseModel):
-    id: str
-    label: str
-    color: str | None = None
-    createdAt: str | None = None
-    updatedAt: str | None = None
-
-
-def validate_tag_registry_uniqueness(
-    registry: list[TagDefinitionDTO] | None,
-) -> list[TagDefinitionDTO] | None:
-    if registry is None:
-        return None
-    ids: set[str] = set()
-    labels: set[str] = set()
-    for tag in registry:
-        label_key = " ".join(tag.label.split()).casefold()
-        if tag.id in ids:
-            raise ValueError(f"duplicate tag id: {tag.id}")
-        if label_key in labels:
-            raise ValueError(f"duplicate tag label: {tag.label}")
-        ids.add(tag.id)
-        labels.add(label_key)
-    return registry
-
-
-# ─── Task / Phase / Snapshot — mirrors apps/web/src/types/roadmap.ts ──────────
-
-
-class TaskDTO(BaseModel):
-    id: str = Field(max_length=ID_MAX)
-    title: str = Field(max_length=TASK_TITLE_MAX)
-    done: bool
-    next: bool | None = None
-    est: str | None = Field(default=None, max_length=TASK_EST_MAX)
-    assignees: list[str] | None = Field(default=None, max_length=TASK_ASSIGNEES_MAX)
-    tags: list[str] | None = Field(default=None, max_length=TASK_TAGS_MAX)
-    deps: list[str] | None = Field(default=None, max_length=TASK_DEPS_MAX)
-    desc: str | None = Field(default=None, max_length=TASK_DESC_MAX)
-    parentId: str | None = Field(default=None, max_length=ID_MAX)
-    claimedBy: str | None = Field(default=None, max_length=DISPLAY_NAME_MAX)
-    claimedById: str | None = Field(default=None, max_length=ID_MAX)
-    claimedAt: str | None = Field(default=None, max_length=32)
-
-    @field_validator("id", "title", mode="before")
-    @classmethod
-    def _validate_required(cls, v: object, info) -> object:
-        if not isinstance(v, str):
-            return v
-        limits = {"id": ID_MAX, "title": TASK_TITLE_MAX}
-        return clean_required_text(v, info.field_name, limits[info.field_name])
-
-    @field_validator("est", "desc", mode="before")
-    @classmethod
-    def _validate_optional(cls, v: object, info) -> object:
-        if not isinstance(v, (str, type(None))):
-            return v
-        limits = {"est": TASK_EST_MAX, "desc": TASK_DESC_MAX}
-        return clean_optional_text(v, info.field_name, limits[info.field_name])
-
-    @field_validator("tags", mode="before")
-    @classmethod
-    def _validate_tags(cls, v: object) -> object:
-        if not isinstance(v, list):
-            return v
-        return [clean_required_text(s, "tag", TAG_MAX) if isinstance(s, str) else s for s in v]
-
-    @field_validator("assignees", mode="before")
-    @classmethod
-    def _validate_assignees(cls, v: object) -> object:
-        if not isinstance(v, list):
-            return v
-        return [
-            clean_required_text(s, "assignee", ASSIGNEE_MAX) if isinstance(s, str) else s
-            for s in v
-        ]
-
-    @field_validator("deps", mode="before")
-    @classmethod
-    def _validate_deps(cls, v: object) -> object:
-        if not isinstance(v, list):
-            return v
-        return [clean_required_text(s, "dep", ID_MAX) if isinstance(s, str) else s for s in v]
-
-
-class PhaseDTO(BaseModel):
-    id: str = Field(max_length=ID_MAX)
-    num: str = Field(max_length=PHASE_NUM_MAX)
-    name: str = Field(max_length=PHASE_NAME_MAX)
-    color: str = Field(max_length=PHASE_COLOR_MAX)
-    colorMode: Literal["auto", "manual"] | None = None
-    status: PhaseStatus
-    progress: int = Field(ge=0, le=100)
-    tasks: list[TaskDTO] = Field(default=[], max_length=TASKS_PER_PHASE_MAX)
-
-    @field_validator("id", "num", "name", "color", mode="before")
-    @classmethod
-    def _validate_required(cls, v: object, info) -> object:
-        if not isinstance(v, str):
-            return v
-        limits = {
-            "id": ID_MAX,
-            "num": PHASE_NUM_MAX,
-            "name": PHASE_NAME_MAX,
-            "color": PHASE_COLOR_MAX,
-        }
-        return clean_required_text(v, info.field_name, limits[info.field_name])
-
-
-class RoadmapSnapshotDTO(BaseModel):
-    """The phases payload stored in snapshot_json and exchanged on create/update."""
-    phases: list[PhaseDTO] = []
-
-
-# ─── Roadmap requests ─────────────────────────────────────────────────────────
-
-
-class CreateRoadmapRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str = Field(min_length=1, max_length=ROADMAP_NAME_MAX)
-    owner_display_name: str = Field(min_length=1, max_length=DISPLAY_NAME_MAX)
-    phases: list[PhaseDTO] = Field(default=[], max_length=PHASES_MAX)
-    tag_registry: list[TagDefinitionDTO] | None = Field(default=None, max_length=TAG_REGISTRY_MAX)
-    password: str | None = Field(default=None, min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)
-    change_summary: dict[str, Any] | None = None
-
-    @field_validator("name", "owner_display_name", mode="before")
-    @classmethod
-    def _validate_required(cls, v: object, info) -> object:
-        if not isinstance(v, str):
-            return v
-        limits = {"name": ROADMAP_NAME_MAX, "owner_display_name": DISPLAY_NAME_MAX}
-        return clean_required_text(v, info.field_name, limits[info.field_name])
-
-    @field_validator("password", mode="before")
-    @classmethod
-    def _normalize_password(cls, v: object) -> object:
-        # Passwords are hashed; skip suspicious-text check to avoid rejecting
-        # passwords that happen to contain fragment strings.
-        if not isinstance(v, str):
-            return v
-        stripped = v.strip()
-        if not stripped:
-            return None
-        if len(stripped) > PASSWORD_MAX:
-            raise ValueError(f"password exceeds {PASSWORD_MAX} characters")
-        return stripped
-
-    @field_validator("change_summary", mode="before")
-    @classmethod
-    def _validate_change_summary(cls, v: object) -> object:
-        return validate_change_summary(v)
-
-    @field_validator("tag_registry")
-    @classmethod
-    def _validate_tag_registry(
-        cls,
-        v: list[TagDefinitionDTO] | None,
-    ) -> list[TagDefinitionDTO] | None:
-        return validate_tag_registry_uniqueness(v)
-
-
-class UpdateRoadmapRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str | None = Field(default=None, min_length=1, max_length=ROADMAP_NAME_MAX)
-    phases: list[PhaseDTO] | None = Field(default=None, max_length=PHASES_MAX)
-    tag_registry: list[TagDefinitionDTO] | None = Field(default=None, max_length=TAG_REGISTRY_MAX)
-    last_updated_at: datetime
-    change_summary: dict[str, Any] | None = None
-
-    @field_validator("name", mode="before")
-    @classmethod
-    def _validate_name(cls, v: object) -> object:
-        if not isinstance(v, str):
-            return v
-        return clean_required_text(v, "name", ROADMAP_NAME_MAX)
-
-    @field_validator("change_summary", mode="before")
-    @classmethod
-    def _validate_change_summary(cls, v: object) -> object:
-        return validate_change_summary(v)
-
-    @field_validator("tag_registry")
-    @classmethod
-    def _validate_tag_registry(
-        cls,
-        v: list[TagDefinitionDTO] | None,
-    ) -> list[TagDefinitionDTO] | None:
-        return validate_tag_registry_uniqueness(v)
-
-
-class PatchTaskDoneRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    done: bool
-    last_updated_at: datetime
-
-
-# ─── Roadmap responses ────────────────────────────────────────────────────────
-
-
-class RoadmapResponse(BaseModel):
-    id: str
-    name: str
-    owner_display_name: str
-    schema_version: str
-    phases: list[PhaseDTO]
-    tag_registry: list[TagDefinitionDTO] | None = None
-    is_password_enabled: bool
-    created_at: datetime
-    updated_at: datetime
-
-
-class RoadmapConflictServerSnapshot(BaseModel):
-    name: str
-    phases: list[PhaseDTO]
-
-
-class RoadmapConflictSummary(BaseModel):
-    phase_count: int
-    task_count: int
-    phase_ids: list[str] = Field(default_factory=list)
-    task_ids: list[str] = Field(default_factory=list)
-
-
-class RoadmapConflictMetadata(BaseModel):
-    roadmap_id: str
-    server_updated_at: datetime
-    client_last_updated_at: datetime
-    server: RoadmapConflictServerSnapshot
-    summary: RoadmapConflictSummary | None = None
-
-
-class RoadmapConflictResponse(BaseModel):
-    detail: str
-    code: Literal["roadmap_conflict"] = "roadmap_conflict"
-    conflict: RoadmapConflictMetadata
-
-
-class DeleteRoadmapResponse(BaseModel):
-    ok: bool
-
-
-# ─── Roadmap versions ────────────────────────────────────────────────────────
-
-
-class RoadmapVersionSummaryResponse(BaseModel):
-    id: str
-    version_number: int
-    created_at: datetime
-    actor_name: str | None = None
-    action: str | None = None
-    phase_count: int
-    task_count: int
-
-
-class RoadmapVersionDetailResponse(BaseModel):
-    id: str
-    version_number: int
-    roadmap_name: str
-    phases: list[PhaseDTO]
-    created_at: datetime
-    actor_name: str | None = None
-    action: str | None = None
-    phase_count: int
-    task_count: int
-    metadata_json: dict[str, Any] | None = None
-
-
-class CheckpointResponse(BaseModel):
-    created: bool
-    version: RoadmapVersionSummaryResponse
-
-
-# ─── Share link ───────────────────────────────────────────────────────────────
-
-
-class ShareLinkResponse(BaseModel):
-    id: str | None
-    role: ShareRole
-    # Readable prefix shown in UI; not the secret token.
-    token_prefix: str | None = None
-    # Full join URL with the raw token embedded.
-    # Owner/editor URLs are returned only on create/rotate.
-    # Active viewer URLs may also be returned by owner-only share-link listing.
-    url: str | None = None
-    is_active: bool
-    created_at: datetime | None = None
-    rotated_at: datetime | None = None
-
-
-# ─── Participants ─────────────────────────────────────────────────────────────
-
-
-class ParticipantResponse(BaseModel):
-    id: str
-    display_name: str
-    role: ShareRole
-    created_at: datetime
-    last_seen_at: datetime | None = None
-    session_expires_at: datetime | None = None
-    revoked_at: datetime | None = None
-    is_current_participant: bool = False
-    share_link_id: str | None = None
-    joined_via_role: ShareRole | None = None
-    access_source_label: str = "Legacy / unknown link"
-
-
-# ─── Join flow ────────────────────────────────────────────────────────────────
-
-
-class JoinRoadmapRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    token: str = Field(min_length=8, max_length=TOKEN_MAX)
-    display_name: str | None = Field(default=None, max_length=DISPLAY_NAME_MAX)
-    password: str | None = Field(default=None, max_length=PASSWORD_MAX)
-
-    @field_validator("display_name", mode="before")
-    @classmethod
-    def _validate_display_name(cls, v: object) -> object:
-        if not isinstance(v, str):
-            return v
-        return clean_optional_text(v, "display_name", DISPLAY_NAME_MAX)
-
-    @field_validator("password", mode="before")
-    @classmethod
-    def _normalize_password(cls, v: object) -> object:
-        # Passwords are hashed; skip suspicious-text check.
-        if not isinstance(v, str):
-            return v
-        stripped = v.strip()
-        if not stripped:
-            return None
-        if len(stripped) > PASSWORD_MAX:
-            raise ValueError(f"password exceeds {PASSWORD_MAX} characters")
-        return stripped
-
-
-class JoinRoadmapResponse(BaseModel):
-    roadmap_id: str
-    roadmap_name: str
-    role: ShareRole
-    # Opaque session token the client stores locally to re-authenticate.
-    session_token: str
-    participant_id: str
-
-
-# ─── Create roadmap response ──────────────────────────────────────────────────
-
-
-class CreateRoadmapResponse(BaseModel):
-    id: str
-    name: str
-    owner_display_name: str
-    schema_version: str
-    phases: list[PhaseDTO]
-    tag_registry: list[TagDefinitionDTO] | None = None
-    is_password_enabled: bool
-    created_at: datetime
-    updated_at: datetime
-    share_links: list[ShareLinkResponse]
-    # Opaque session token for the owner participant; shown once, never stored raw.
-    owner_session_token: str
-
-
-class EventTicketResponse(BaseModel):
-    ticket: str
-    expires_in: int
-
-
-class LockRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    target: str = Field(min_length=1, max_length=160, pattern=r"^[a-zA-Z0-9:\-_.]+$")
-
-
-class LockResponse(BaseModel):
-    roadmap_id: str
-    target: str
-    participant_id: str
-    display_name: str
-    expires_at: datetime
-
-
-# ─── Activity log ─────────────────────────────────────────────────────────────
-
-
-class ActivityLogResponse(BaseModel):
-    id: str
-    roadmap_id: str
-    participant_id: str | None
-    actor_name: str | None
-    action: str
-    entity_type: str | None
-    entity_id: str | None
-    before_json: dict[str, Any] | None = None
-    after_json: dict[str, Any] | None = None
-    metadata_json: dict[str, Any] | None = None
-    created_at: datetime
-
-
-class ActivityLogListResponse(BaseModel):
-    logs: list[ActivityLogResponse]
-    has_more: bool
+from api.schemas.events import EventTicketResponse
+from api.schemas.join import JoinRoadmapRequest, JoinRoadmapResponse
+from api.schemas.locks import LockRequest, LockResponse
+from api.schemas.roadmap_core import (
+    CreateRoadmapRequest,
+    CreateRoadmapResponse,
+    DeleteRoadmapResponse,
+    RoadmapResponse,
+    UpdateRoadmapRequest,
+)
+from api.schemas.shared import (
+    ALLOWED_CHANGE_SUMMARY_ACTIONS,
+    PhaseStatus,
+    ShareRole,
+    validate_change_summary,
+)
+from api.schemas.sharing import ParticipantResponse, ShareLinkResponse
+from api.schemas.tags import (
+    CreateTagRequest,
+    TagDefinitionDTO,
+    TagResponse,
+    UpdateTagRequest,
+    validate_tag_registry_uniqueness,
+)
+from api.schemas.tasks import (
+    PatchTaskDoneRequest,
+    PhaseDTO,
+    RoadmapSnapshotDTO,
+    TaskDTO,
+)
+from api.schemas.versions import (
+    CheckpointResponse,
+    RoadmapVersionDetailResponse,
+    RoadmapVersionSummaryResponse,
+)
+
+__all__ = [
+    # Activity
+    "ActivityLogListResponse",
+    "ActivityLogResponse",
+    # Conflicts
+    "RoadmapConflictMetadata",
+    "RoadmapConflictResponse",
+    "RoadmapConflictServerSnapshot",
+    "RoadmapConflictSummary",
+    # Events
+    "EventTicketResponse",
+    # Join
+    "JoinRoadmapRequest",
+    "JoinRoadmapResponse",
+    # Locks
+    "LockRequest",
+    "LockResponse",
+    # Core
+    "CreateRoadmapRequest",
+    "CreateRoadmapResponse",
+    "DeleteRoadmapResponse",
+    "RoadmapResponse",
+    "UpdateRoadmapRequest",
+    # Shared
+    "ALLOWED_CHANGE_SUMMARY_ACTIONS",
+    "PhaseStatus",
+    "ShareRole",
+    "validate_change_summary",
+    # Sharing
+    "ParticipantResponse",
+    "ShareLinkResponse",
+    # Tags
+    "CreateTagRequest",
+    "TagDefinitionDTO",
+    "TagResponse",
+    "UpdateTagRequest",
+    "validate_tag_registry_uniqueness",
+    # Tasks
+    "PatchTaskDoneRequest",
+    "PhaseDTO",
+    "RoadmapSnapshotDTO",
+    "TaskDTO",
+    # Versions
+    "CheckpointResponse",
+    "RoadmapVersionDetailResponse",
+    "RoadmapVersionSummaryResponse",
+]
