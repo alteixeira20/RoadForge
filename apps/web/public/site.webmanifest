@@ -1,7 +1,6 @@
 {
-  "name": "RoadForge Public Beta",
-  "short_name": "RoadForge Beta",
-  "description": "A work-in-progress local-first roadmap planner.",
+  "name": "Anvilary",
+  "short_name": "Anvilary",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -14,7 +13,7 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#0b0f14",
-  "background_color": "#0b0f14",
+  "theme_color": "#e85b1f",
+  "background_color": "#090a0d",
   "display": "standalone"
 }

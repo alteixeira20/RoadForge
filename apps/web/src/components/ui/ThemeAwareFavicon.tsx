@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 
-const VERSION = 'roadforge-theme'
+const VERSION = 'anvilary-theme'
 
 const LIGHT_ICONS = {
   shortcut: `/favicon.ico?v=${VERSION}`,
@@ -12,10 +12,10 @@ const LIGHT_ICONS = {
 }
 
 const DARK_ICONS = {
-  shortcut: `/brand/forge-apps-logo-mark-square-32-white.png?v=${VERSION}`,
-  16: `/brand/forge-apps-logo-mark-square-32-white.png?v=${VERSION}`,
-  32: `/brand/forge-apps-logo-mark-square-32-white.png?v=${VERSION}`,
-  48: `/brand/forge-apps-logo-mark-square-48-white.png?v=${VERSION}`,
+  shortcut: `/brand/anvilary-logo-mark-square-32-white.png?v=${VERSION}`,
+  16: `/brand/anvilary-logo-mark-square-32-white.png?v=${VERSION}`,
+  32: `/brand/anvilary-logo-mark-square-32-white.png?v=${VERSION}`,
+  48: `/brand/anvilary-logo-mark-square-48-white.png?v=${VERSION}`,
 }
 
 function upsertIconLink(rel: string, href: string, sizes?: string) {
