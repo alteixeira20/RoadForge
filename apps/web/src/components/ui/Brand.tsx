@@ -14,20 +14,20 @@ export function Brand({ href, className = 'brand' }: BrandProps) {
       <span className="brand-logo" aria-hidden="true">
         <Image
           className="brand-logo-default"
-          src="/brand/forge-apps-logo-mark-tight.png"
+          src="/brand/anvilary-logo-mark-tight.png"
           alt=""
           width={24}
           height={28}
         />
         <Image
           className="brand-logo-white"
-          src="/brand/forge-apps-logo-mark-tight-white.png"
+          src="/brand/anvilary-logo-mark-tight-white.png"
           alt=""
           width={24}
           height={28}
         />
       </span>
-      <span>RoadForge</span>
+      <span>Anvilary</span>
       <style jsx>{`
         .brand-logo {
           width: 24px;

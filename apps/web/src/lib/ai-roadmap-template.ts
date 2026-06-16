@@ -1,8 +1,8 @@
-export const AI_ROADMAP_TEMPLATE = `# RoadForge AI Roadmap Template
+export const AI_ROADMAP_TEMPLATE = `# Anvilary AI Roadmap Template
 
-Create a RoadForge roadmap JSON file that can be imported into RoadForge.
+Create an Anvilary roadmap JSON file that can be imported into Anvilary.
 
-Use this template to gather context, then produce a final .json file for RoadForge.
+Use this template to gather context, then produce a final .json file for Anvilary.
 
 ## Fill in
 
@@ -26,7 +26,7 @@ Priority rules:
 
 \`\`\`json
 {
-  "schema": "roadforge.roadmap.import",
+  "schema": "anvilary.roadmap.import",
   "version": 1,
   "roadmap": {
     "name": "Example Roadmap"
@@ -67,7 +67,7 @@ Priority rules:
 }
 \`\`\`
 
-## RoadForge constraints
+## Anvilary constraints
 
 - Status values: done, active, next, future.
 - Progress must be a number from 0 to 100.

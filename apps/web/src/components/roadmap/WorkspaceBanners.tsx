@@ -98,7 +98,7 @@ export function WorkspaceUpgradeNotice({
       </div>
       <div className="upgrade-notice-copy">
         <strong>Roadmap updated</strong>
-        <span>RoadForge updated this roadmap so it works with the latest version. No action is required.</span>
+        <span>Anvilary updated this roadmap so it works with the latest version. No action is required.</span>
       </div>
       <div className="upgrade-notice-actions">
         <button type="button" className="iconbtn" aria-label="Dismiss schema upgrade notice" onClick={onDismissUpgradeNotice}>

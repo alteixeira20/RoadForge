@@ -27,7 +27,7 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           </button>
           <a
             className="btn lg secondary"
-            href="https://github.com/alteixeira20/RoadForge"
+            href="https://github.com/alteixeira20/anvilary"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -46,7 +46,7 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
         <div className="preview">
           <div className="preview-bar">
             <span className="dots"><i /><i /><i /></span>
-            <span className="url">roadforge.local · API Integration Sprint</span>
+            <span className="url">anvilary.local · API Integration Sprint</span>
           </div>
           <MiniPreview />
         </div>

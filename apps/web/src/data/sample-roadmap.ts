@@ -177,7 +177,7 @@ export const SAMPLE_ROADMAP: Roadmap = {
       tasks: [
         {
           id: 'RF-14',
-          title: 'Import and export RoadForge JSON',
+          title: 'Import and export Anvilary JSON',
           done: false,
           est: '2 days',
           tags: ['import'],
@@ -207,7 +207,7 @@ export const MOCK_SHARE_LINKS: ShareLink[] = [
     role: 'owner',
     icon: 'shield',
     desc: 'Full control — manage settings, links, and members.',
-    url: 'https://roadforge.local/r/v1-launch?k=ow_8hQ2…N3a',
+    url: 'https://anvilary.local/r/v1-launch?k=ow_8hQ2…N3a',
     isActive: true,
     recommended: false,
   },
@@ -216,7 +216,7 @@ export const MOCK_SHARE_LINKS: ShareLink[] = [
     role: 'editor',
     icon: 'users',
     desc: 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.',
-    url: 'https://roadforge.local/r/v1-launch?k=ed_2bD7…XqL',
+    url: 'https://anvilary.local/r/v1-launch?k=ed_2bD7…XqL',
     isActive: true,
     recommended: true,
   },
@@ -225,7 +225,7 @@ export const MOCK_SHARE_LINKS: ShareLink[] = [
     role: 'viewer',
     icon: 'circle',
     desc: 'Can read everything but not change anything. Good for stakeholders.',
-    url: 'https://roadforge.local/r/v1-launch?k=vi_91Hp…W4z',
+    url: 'https://anvilary.local/r/v1-launch?k=vi_91Hp…W4z',
     isActive: true,
     recommended: false,
   },
@@ -234,5 +234,5 @@ export const MOCK_SHARE_LINKS: ShareLink[] = [
 // ─── Export format options ─────────────────────────────────────────────────────
 
 export const EXPORT_OPTIONS: ExportOption[] = [
-  { id: 'json', icon: 'export', name: 'Export JSON', badge: 'Source of truth', desc: 'The portable RoadForge format. Re-import anywhere with no loss.' },
+  { id: 'json', icon: 'export', name: 'Export JSON', badge: 'Source of truth', desc: 'The portable Anvilary format. Re-import anywhere with no loss.' },
 ]

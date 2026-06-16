@@ -192,7 +192,7 @@ export function ConflictReviewPanel({
         <div className="conflict-review">
           <div className="note-line warning">
             <Icon name="shield" size={15} />
-            <span>Your local edits are still in this browser. Choose an explicit resolution before RoadForge overwrites anything.</span>
+            <span>Your local edits are still in this browser. Choose an explicit resolution before Anvilary overwrites anything.</span>
           </div>
           {errorMessage && (
             <div className="note-line warning" role="alert">

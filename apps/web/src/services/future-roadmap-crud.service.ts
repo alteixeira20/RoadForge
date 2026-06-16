@@ -1,7 +1,7 @@
 import type { Phase, Task } from '@/types/roadmap'
 
 function deferredEndpoint(name: string): never {
-  throw new Error(`${name} is not implemented; RoadForge currently uses aggregate saves.`)
+  throw new Error(`${name} is not implemented; Anvilary currently uses aggregate saves.`)
 }
 
 export async function addPhase(

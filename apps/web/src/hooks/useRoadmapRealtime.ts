@@ -226,7 +226,7 @@ export function useRoadmapRealtime({
       } catch (err) {
         if (isApiConnectionError(err)) {
           setBackendUnavailableRoadmapId(serverRoadmapId)
-          console.warn('Realtime sync paused; RoadForge API is unavailable.')
+          console.warn('Realtime sync paused; Anvilary API is unavailable.')
           return
         }
         if (isSessionExpiredError(err)) {

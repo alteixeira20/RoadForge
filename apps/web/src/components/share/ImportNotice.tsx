@@ -40,7 +40,7 @@ function RepairsAndWarnings({ pendingImport }: { pendingImport: PendingImport })
       {repairs.length > 0 && (
         <>
           <span className="import-compat-note">
-            RoadForge repaired minor compatibility issues so this file can be imported safely.
+            Anvilary repaired minor compatibility issues so this file can be imported safely.
           </span>
           <ul className="import-summary-list">
             {repairs.map((r, i) => <li key={i}>{r.message}</li>)}

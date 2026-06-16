@@ -21,7 +21,7 @@ describe('roadmap-validation', () => {
   describe('parseImportedRoadmapJson', () => {
     it('accepts a minimal valid fixture with one phase and no tasks', () => {
       const input = JSON.stringify({
-        schema: 'roadforge.roadmap.export',
+        schema: 'anvilary.roadmap.export',
         version: 1,
         phases: [MINIMAL_PHASE],
       })
@@ -125,7 +125,7 @@ describe('roadmap-validation', () => {
         claimedAt: '2026-06-01T10:00:00Z',
       }
       const input = JSON.stringify({
-        schema: 'roadforge.roadmap.export',
+        schema: 'anvilary.roadmap.export',
         version: 1,
         phases: [{ ...MINIMAL_PHASE, tasks: [task] }],
       })

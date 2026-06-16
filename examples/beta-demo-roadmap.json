@@ -1,0 +1,58 @@
+{
+  "schema": "roadforge.roadmap.export",
+  "version": 1,
+  "roadmap": {
+    "name": "RoadForge Public Beta Demo"
+  },
+  "tagRegistry": [
+    { "id": "beta", "label": "Beta", "color": "#f97316" },
+    { "id": "security", "label": "Security", "color": "#ef4444" },
+    { "id": "docs", "label": "Docs", "color": "#38bdf8" }
+  ],
+  "phases": [
+    {
+      "id": "demo-foundation",
+      "num": "01",
+      "name": "Foundation",
+      "color": "#22c55e",
+      "colorMode": "auto",
+      "status": "done",
+      "progress": 100,
+      "tasks": [
+        {
+          "id": "DEMO-1",
+          "title": "Publish beta safety and backup expectations",
+          "done": true,
+          "tags": ["beta", "docs"],
+          "assignees": ["Demo Maintainer"]
+        }
+      ]
+    },
+    {
+      "id": "demo-launch",
+      "num": "02",
+      "name": "Beta Launch",
+      "color": "#f97316",
+      "colorMode": "auto",
+      "status": "active",
+      "progress": 50,
+      "tasks": [
+        {
+          "id": "DEMO-2",
+          "title": "Run staging security review",
+          "done": false,
+          "next": true,
+          "tags": ["security", "beta"],
+          "assignees": ["Demo Maintainer"],
+          "desc": "Synthetic public demo data. No real credentials or private project details."
+        },
+        {
+          "id": "DEMO-3",
+          "title": "Publish release notes",
+          "done": true,
+          "tags": ["docs"]
+        }
+      ]
+    }
+  ]
+}

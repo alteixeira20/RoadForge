@@ -67,7 +67,7 @@ export function FeaturesSection() {
         </div>
         <a
           className="btn lg secondary"
-          href="https://github.com/alteixeira20/RoadForge"
+          href="https://github.com/alteixeira20/anvilary"
           target="_blank"
           rel="noopener noreferrer"
         >

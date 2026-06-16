@@ -33,7 +33,7 @@ interface UseWorkspaceViewModelParams {
   activeRoadmapId: string | null
 }
 
-const FILTER_STORAGE_PREFIX = 'roadforge:filters:'
+const FILTER_STORAGE_PREFIX = 'anvilary:filters:'
 
 function filterStorageKey(roadmapId: string | null): string {
   return `${FILTER_STORAGE_PREFIX}${roadmapId ?? 'local'}`

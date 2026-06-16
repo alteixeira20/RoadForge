@@ -89,7 +89,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
   }
 
   const jsonExportFilename = () =>
-    `${slug(roadmapName)}.${formatExportTimestamp()}.roadforge.json`
+    `${slug(roadmapName)}.${formatExportTimestamp()}.anvilary.json`
 
   const exportMetadata = {
     roadmapName,
@@ -117,7 +117,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     try {
       onToast('Preparing AI roadmap template...')
       const blob = new Blob([AI_ROADMAP_TEMPLATE], { type: 'text/plain;charset=utf-8' })
-      downloadBlob(blob, 'roadforge-ai-roadmap-template.txt')
+      downloadBlob(blob, 'anvilary-ai-roadmap-template.txt')
       onToast('AI roadmap template downloaded')
     } catch {
       onToast('Export failed. Could not create template file.')
@@ -182,7 +182,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
             <span className="io-action-copy">
               <span className="io-action-title">Export JSON</span>
               <span className="io-action-desc">
-                Portable RoadForge backup. Includes phases, tasks, dependencies,
+                Portable Anvilary backup. Includes phases, tasks, dependencies,
                 tags, and status.
               </span>
               <span className="io-action-note">
@@ -207,7 +207,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
               <span className="io-action-title">Export AI roadmap template</span>
               <span className="io-action-desc">
                 Download a prompt template for an AI assistant to generate a valid
-                RoadForge JSON roadmap.
+                Anvilary JSON roadmap.
               </span>
             </span>
             <span className="io-action-go" aria-hidden>

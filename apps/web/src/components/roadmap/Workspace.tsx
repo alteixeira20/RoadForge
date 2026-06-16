@@ -216,9 +216,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   useEffect(() => {
     const title = getShortRoadmapTitle(roadmapName)
-    document.title = title ? `${title} · RoadForge` : 'RoadForge'
+    document.title = title ? `${title} · Anvilary` : 'Anvilary'
     return () => {
-      document.title = 'RoadForge'
+      document.title = 'Anvilary'
     }
   }, [roadmapName])
 
