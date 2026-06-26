@@ -10,6 +10,7 @@ import { TaskDetailMeta } from './TaskDetailMeta'
 import { TaskSubtaskList } from './TaskSubtaskList'
 import { useEditLock } from '@/hooks/useEditLock'
 import { useTaskClaim } from '@/hooks/useTaskClaim'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
   ensureRegistryForTagIds,
   resolveTagColor,
@@ -85,6 +86,7 @@ export function TaskRow({
   const [showDepPicker, setShowDepPicker] = useState(false)
   const [isEditing, setIsEditing] = useState(startEditing)
   const [editDirty, setEditDirty] = useState(false)
+  const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
 
   const target = `task:${task.id}`
   const lock = locks[target]
@@ -143,11 +145,13 @@ export function TaskRow({
   } = useTaskClaim({ task, showToast: onToast })
 
   const handleClaimOverride = useCallback(() => {
-    const confirmed = window.confirm(
-      `Replace ${claimer ?? 'the current participant'}'s claim with yours?`,
-    )
-    if (confirmed) void handleClaim(true)
-  }, [claimer, handleClaim])
+    setShowOverrideConfirm(true)
+  }, [])
+
+  const confirmClaimOverride = useCallback(() => {
+    setShowOverrideConfirm(false)
+    void handleClaim(true)
+  }, [handleClaim])
 
   const isLockedByMe = ownsLock || (!!participantId && lock?.participantId === participantId)
 
@@ -497,6 +501,17 @@ export function TaskRow({
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={showOverrideConfirm}
+        title="Override claim?"
+        message={`Replace ${claimer ?? 'the current participant'}'s claim with yours?`}
+        confirmLabel="Override claim"
+        tone="danger"
+        loading={isClaiming}
+        onConfirm={confirmClaimOverride}
+        onClose={() => setShowOverrideConfirm(false)}
+      />
     </div>
   )
 }

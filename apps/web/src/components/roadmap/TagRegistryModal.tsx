@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import {
@@ -33,6 +34,7 @@ export function TagRegistryModal({ open, onClose, readOnly = false }: TagRegistr
   const [addingNew, setAddingNew] = useState(false)
   const [form, setForm] = useState<TagFormState>({ label: '', color: DEFAULT_COLOR })
   const [formError, setFormError] = useState<string | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const tagUsage = useMemo<Record<string, number>>(() => {
     const counts: Record<string, number> = {}
@@ -124,12 +126,22 @@ export function TagRegistryModal({ open, onClose, readOnly = false }: TagRegistr
     resetForm()
   }
 
+  const pendingDeleteTag = pendingDeleteId
+    ? tagRegistry.find((item) => item.id === pendingDeleteId) ?? null
+    : null
+
   const handleDelete = (id: string) => {
     const tag = tagRegistry.find((item) => item.id === id)
-    if (!tag || !window.confirm(`Delete the unused tag "${tag.label}"?`)) return
-    setTagRegistry(tagRegistry.filter((t) => t.id !== id))
+    if (!tag) return
+    setPendingDeleteId(id)
+  }
+
+  const confirmDelete = () => {
+    if (!pendingDeleteId) return
+    setTagRegistry(tagRegistry.filter((t) => t.id !== pendingDeleteId))
     setSaved(false)
-    if (editingId === id) resetForm()
+    if (editingId === pendingDeleteId) resetForm()
+    setPendingDeleteId(null)
   }
 
   const moveTag = (id: string, direction: -1 | 1) => {
@@ -275,6 +287,16 @@ export function TagRegistryModal({ open, onClose, readOnly = false }: TagRegistr
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDeleteTag !== null}
+        title="Delete tag?"
+        message={`Delete the unused tag "${pendingDeleteTag?.label ?? ''}"?`}
+        confirmLabel="Delete tag"
+        tone="danger"
+        onConfirm={confirmDelete}
+        onClose={() => setPendingDeleteId(null)}
+      />
     </Modal>
   )
 }
