@@ -16,9 +16,8 @@ function normalizeSingle(raw: string): string {
 }
 
 export function splitAndNormalizeTags(raw: string[]): string[] {
-  return removeAssignmentTags(
-    raw.flatMap((t) => t.split(',')).map(normalizeSingle).filter(Boolean),
-  )
+  const split = raw.flatMap((t) => t.split(',')).map((t) => t.trim()).filter(Boolean)
+  return removeAssignmentTags(split).map(normalizeSingle).filter(Boolean)
 }
 
 function dedupeTagList(tags: string[]): string[] {
