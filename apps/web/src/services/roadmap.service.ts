@@ -36,14 +36,6 @@ export {
   importRoadmap,
 } from './roadmap-crud.service'
 
-// Deferred granular endpoints are isolated from the active service surface.
-export {
-  addPhase,
-  reorderPhases,
-  addTask,
-  linkDependency,
-} from './future-roadmap-crud.service'
-
 export type {
   RealtimeHandlers,
 } from './roadmap-realtime.service'
