@@ -25,17 +25,20 @@ from api.config import get_settings  # noqa: E402
 get_settings.cache_clear()
 
 # ── 3. Now safe to import api modules ─────────────────────────────────────────
-import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy.ext.asyncio import (  # noqa: E402
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.pool import NullPool  # noqa: E402
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
 
+import api.routers.roadmaps as _roadmaps_module  # noqa: E402
 from api.database import get_db  # noqa: E402
 from api.main import create_app  # noqa: E402
 from api.models.base import Base  # noqa: E402
 from api.services.rate_limit_service import MemoryRateLimiter  # noqa: E402
-import api.routers.roadmaps as _roadmaps_module  # noqa: E402
 
 # ── 4. Engine for the test database ───────────────────────────────────────────
 # NullPool disables connection pooling so asyncpg never holds loop-bound

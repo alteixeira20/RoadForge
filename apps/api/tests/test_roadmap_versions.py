@@ -330,7 +330,7 @@ async def test_restore_persists_state_on_subsequent_get(client: AsyncClient):
     versions = await _list_versions(client, roadmap_id, owner_token)
     v1_id = versions[0]["id"]
 
-    updated = await _update_name(
+    await _update_name(
         client, roadmap_id, owner_token, "Before Restore", body["updated_at"]
     )
 

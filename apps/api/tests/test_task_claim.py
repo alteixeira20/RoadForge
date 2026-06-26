@@ -240,7 +240,7 @@ async def test_claim_creates_activity_log(client: AsyncClient):
     )
     assert resp.status_code == 200
     logs = resp.json()["logs"]
-    claimed = [l for l in logs if l["action"] == "task.claimed"]
+    claimed = [log for log in logs if log["action"] == "task.claimed"]
     assert len(claimed) == 1
     assert claimed[0]["entity_id"] == "tk_a1"
     assert claimed[0]["metadata_json"]["claimed_by"] == "Owner"
@@ -257,7 +257,7 @@ async def test_unclaim_creates_activity_log(client: AsyncClient):
     )
     assert resp.status_code == 200
     logs = resp.json()["logs"]
-    unclaimed = [l for l in logs if l["action"] == "task.unclaimed"]
+    unclaimed = [log for log in logs if log["action"] == "task.unclaimed"]
     assert len(unclaimed) == 1
     assert unclaimed[0]["metadata_json"]["was_claimed_by"] == "Owner"
 

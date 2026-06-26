@@ -20,9 +20,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.conftest import create_roadmap
-
 from api.models.roadmap import Participant
+from tests.conftest import create_roadmap
 
 pytestmark = pytest.mark.asyncio
 

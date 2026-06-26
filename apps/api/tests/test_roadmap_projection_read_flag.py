@@ -14,7 +14,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
-from api.services import roadmap_service
+from api.services import roadmap_helpers
 from api.services.roadmap_projection_service import clear_roadmap_projection
 from tests.helpers_projection import auth, create_with_phases
 
@@ -78,7 +78,7 @@ async def test_get_roadmap_falls_back_to_snapshot_when_projection_serialization_
 
     monkeypatch.setattr(get_settings(), "roadmap_projection_read_enabled", True)
     monkeypatch.setattr(
-        roadmap_service,
+        roadmap_helpers,
         "serialize_projection_to_snapshot",
         _raise_projection_error,
     )

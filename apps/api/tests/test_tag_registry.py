@@ -16,8 +16,8 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-from tests.helpers_projection import auth
 from tests.conftest import create_roadmap
+from tests.helpers_projection import auth
 
 pytestmark = pytest.mark.asyncio
 
@@ -376,6 +376,7 @@ async def test_viewer_cannot_update_tag(client: AsyncClient):
         client,
         body["id"],
         viewer["session_token"],
+        "infra",
         body["updated_at"],
         {"label": "Hacked"},
     )
