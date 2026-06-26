@@ -1,82 +1,54 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any
 
-from fastapi import HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.config import get_settings
-from api.models.roadmap import ActivityLog, Participant, Roadmap, RoadmapVersion, ShareLink
-from api.schemas.limits import TAG_REGISTRY_MAX
+from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
 from api.schemas.roadmap import (
     ActivityLogListResponse,
     ActivityLogResponse,
     CreateRoadmapRequest,
     CreateRoadmapResponse,
-    CreateTagRequest,
-    ParticipantResponse,
-    PatchTaskDoneRequest,
-    PhaseDTO,
-    RoadmapConflictMetadata,
-    RoadmapConflictResponse,
-    RoadmapConflictServerSnapshot,
-    RoadmapConflictSummary,
     RoadmapResponse,
     ShareLinkResponse,
-    ShareRole,
-    TagResponse,
     UpdateRoadmapRequest,
-    UpdateTagRequest,
 )
+
 # PatchTaskClaimRequest is intentionally omitted — the claim endpoint has no body.
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.password_service import hash_password
-from api.services.roadmap_projection_service import (
-    serialize_projection_to_snapshot,
-    sync_roadmap_projection_best_effort,
-    validate_projection_parity,
-)
 from api.services.roadmap_helpers import (
     RoadmapConflictError,
     _change_summary_fields,
-    _conflict_summary,
     _fetch_active_roadmap,
     _fetch_active_roadmap_for_update,
-    _patch_task_claim_snapshot,
-    _patch_task_done_snapshot,
-    _phase_task_ids,
     _phases_for_read,
     _phases_from_snapshot,
     _roadmap_conflict_response,
     _roadmap_response,
     _snapshot_from_phases,
 )
+from api.services.roadmap_join_service import join_roadmap  # noqa: F401
+from api.services.roadmap_projection_service import (
+    sync_roadmap_projection_best_effort,
+)
 from api.services.session_policy import ensure_aware_utc, session_expires_at
+from api.services.sharing_service import _ROLE_LABELS, _ROLE_ORDER, _SHARE_PREFIXES  # noqa: F401
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
 
-logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Re-exports from extracted service modules (backward compat)
-# ---------------------------------------------------------------------------
-
-# Version constants and helpers
-from api.services.version_service import (
-    _create_roadmap_version,
+# Re-exports from extracted service modules (backward compat). _MAX_ROADMAP_VERSIONS
+# and _trim_old_versions are unused here but imported by tests via this module.
+from api.services.version_service import (  # noqa: F401
     _MAX_ROADMAP_VERSIONS,
+    _create_roadmap_version,
     _should_create_version,
     _trim_old_versions,
 )
 
-# Share / participant constants (used by create_roadmap and join_roadmap)
-from api.services.sharing_service import _ROLE_LABELS, _ROLE_ORDER, _SHARE_PREFIXES  # noqa: F401
-
-# Join / session entry-point (re-export for backward compat)
-from api.services.roadmap_join_service import join_roadmap  # noqa: F401
+logger = logging.getLogger(__name__)
 
 
 async def create_roadmap(

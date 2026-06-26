@@ -10,7 +10,6 @@ This module handles:
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,8 +24,6 @@ from api.schemas.roadmap import (
 )
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
-from api.services.session_policy import ensure_aware_utc
-
 from api.services.roadmap_helpers import (
     RoadmapConflictError,
     _fetch_active_roadmap,
@@ -35,6 +32,7 @@ from api.services.roadmap_helpers import (
     _roadmap_conflict_response,
     _roadmap_response,
 )
+from api.services.session_policy import ensure_aware_utc
 
 logger = logging.getLogger(__name__)
 

@@ -35,6 +35,7 @@ from api.services.client_ip_service import extract_client_ip
 from api.services.event_bus import event_bus
 from api.services.lock_service import lock_service
 from api.services.rate_limit_service import rate_limiter
+from api.services.roadmap_join_service import join_roadmap
 from api.services.roadmap_service import (
     RoadmapConflictError,
     create_roadmap,
@@ -43,7 +44,6 @@ from api.services.roadmap_service import (
     get_roadmap,
     update_roadmap,
 )
-from api.services.roadmap_join_service import join_roadmap
 from api.services.roadmap_tag_service import (
     create_tag,
     delete_tag,
@@ -62,13 +62,13 @@ from api.services.sharing_service import (
     revoke_share_link,
     rotate_share_link,
 )
+from api.services.ticket_service import ticket_service
 from api.services.version_service import (
     create_roadmap_checkpoint,
     get_roadmap_version,
     get_roadmap_versions,
     restore_roadmap_version,
 )
-from api.services.ticket_service import ticket_service
 
 router = APIRouter(tags=["roadmaps"])
 

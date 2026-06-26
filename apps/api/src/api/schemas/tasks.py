@@ -14,15 +14,14 @@ from api.schemas.limits import (
     PHASE_COLOR_MAX,
     PHASE_NAME_MAX,
     PHASE_NUM_MAX,
-    PHASES_MAX,
     TAG_MAX,
-    TASKS_PER_PHASE_MAX,
     TASK_ASSIGNEES_MAX,
     TASK_DEPS_MAX,
     TASK_DESC_MAX,
     TASK_EST_MAX,
     TASK_TAGS_MAX,
     TASK_TITLE_MAX,
+    TASKS_PER_PHASE_MAX,
 )
 from api.schemas.shared import PhaseStatus
 from api.schemas.validators import clean_optional_text, clean_required_text

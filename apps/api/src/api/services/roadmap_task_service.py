@@ -17,9 +17,6 @@ from api.models.roadmap import ActivityLog, Participant
 from api.schemas.roadmap import PatchTaskDoneRequest, RoadmapResponse
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
-from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
-from api.services.session_policy import ensure_aware_utc
-
 from api.services.roadmap_helpers import (
     RoadmapConflictError,
     _fetch_active_roadmap_for_update,
@@ -29,6 +26,8 @@ from api.services.roadmap_helpers import (
     _roadmap_conflict_response,
     _roadmap_response,
 )
+from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
+from api.services.session_policy import ensure_aware_utc
 
 logger = logging.getLogger(__name__)
 
