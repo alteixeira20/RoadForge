@@ -21,6 +21,45 @@ interface ModalProps {
   width?: number
 }
 
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'textarea:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
+function trapTabFocus(e: KeyboardEvent, dialog: HTMLDivElement | null) {
+  if (!dialog) return
+  const focusable = Array.from(
+    dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+  ).filter((el) => el.offsetParent !== null || el === document.activeElement)
+  if (focusable.length === 0) {
+    e.preventDefault()
+    dialog.focus()
+    return
+  }
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  const active = document.activeElement
+  const insideDialog = active instanceof Node && dialog.contains(active)
+  if (!insideDialog) {
+    e.preventDefault()
+    ;(e.shiftKey ? last : first).focus()
+    return
+  }
+  if (e.shiftKey) {
+    if (active === first || active === dialog) {
+      e.preventDefault()
+      last.focus()
+    }
+  } else if (active === last) {
+    e.preventDefault()
+    first.focus()
+  }
+}
+
 export function Modal({ open, onClose, icon, title, sub, describedBy, children, footer, width }: ModalProps) {
   const titleId = useId()
   const descriptionId = useId()
@@ -39,7 +78,11 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
       dialogRef.current?.focus()
     })
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key === 'Tab') trapTabFocus(e, dialogRef.current)
     }
     window.addEventListener('keydown', onKey)
     return () => {
