@@ -6,7 +6,7 @@ Related policy: [Session Expiry And Revocation Policy](./session-expiry-and-revo
 
 ## 1. Current exposure
 
-RoadForge uses accountless collaboration. There are no accounts, OAuth identities, email addresses, or global user identities to rate-limit against. The current backend accepts role-scoped invite tokens, optional roadmap passwords, and participant session tokens.
+Anvilary Roadmaps uses accountless collaboration. There are no accounts, OAuth identities, email addresses, or global user identities to rate-limit against. The current backend accepts role-scoped invite tokens, optional roadmap passwords, and participant session tokens.
 
 Sensitive public or semi-public endpoints:
 

@@ -315,14 +315,14 @@ Redis Pub/Sub:
 Redis Streams:
 
 - Can retain events for replay after reconnect if the app stores and tracks event IDs.
-- Can support auditing-like event history, but RoadForge already stores durable roadmap/activity state in Postgres.
+- Can support auditing-like event history, but Anvilary Roadmaps already stores durable roadmap/activity state in Postgres.
 - Requires retention policy and cleanup to prevent memory growth.
 - Requires careful consumer design. SSE fan-out usually needs each connected client to see every event, which is not the default goal of a single consumer group.
 - Adds frontend or server reconnection semantics if replay is used.
 
 Recommendation for RF-882: use Redis Pub/Sub first.
 
-Reasons specific to current RoadForge behavior:
+Reasons specific to current Anvilary Roadmaps behavior:
 
 - `roadmap.updated` is a notification to re-fetch roadmap state from the API, not the source of truth.
 - The frontend currently does not send or consume SSE event IDs for replay.

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-RoadForge is currently public beta/WIP software. Only the `main` branch receives security fixes. There are no LTS releases, patch branches, or backport commitments.
+Anvilary Roadmaps is currently public beta/WIP software. Only the `main` branch receives security fixes. There are no LTS releases, patch branches, or backport commitments.
 
 ## Reporting a vulnerability
 
@@ -26,11 +26,11 @@ Reports will be acknowledged after review. The maintainer will assess severity, 
 
 ## No bug bounty
 
-RoadForge does not currently operate a bug bounty program.
+Anvilary Roadmaps does not currently operate a bug bounty program.
 
 ## Design context — accountless and local-first
 
-RoadForge has no user account database. There are no passwords stored against user identities, no email addresses, and no OAuth credentials. The threat model is narrower than a typical web application as a result:
+Anvilary Roadmaps has no user account database. There are no passwords stored against user identities, no email addresses, and no OAuth credentials. The threat model is narrower than a typical web application as a result:
 
 - Access is controlled by role-scoped invite tokens and optional roadmap passwords.
 - Session tokens are stored in browser `localStorage` scoped to each roadmap.

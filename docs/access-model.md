@@ -1,6 +1,6 @@
-# RoadForge — Access Model
+# Anvilary Roadmaps — Access Model
 
-RoadForge is accountless. There are no user records, no login flow, and no email-based identity. Access to a roadmap is controlled entirely by invite links and, optionally, a roadmap password.
+Anvilary Roadmaps is accountless. There are no user records, no login flow, and no email-based identity. Access to a roadmap is controlled entirely by invite links and, optionally, a roadmap password.
 
 ---
 
@@ -30,7 +30,7 @@ The invite link is the durable access handle. Losing a private owner/editor link
 
 ## Assignees vs participants
 
-RoadForge keeps task assignment and collaboration access separate.
+Anvilary Roadmaps keeps task assignment and collaboration access separate.
 
 | Concept | Source | Scope | Used for |
 |---|---|---|---|
@@ -84,11 +84,11 @@ The backend verifies the token hash and validates the participant's role before 
 
 ## Realtime sync and locks
 
-RoadForge uses Server-Sent Events (SSE) for real-time collaboration.
+Anvilary Roadmaps uses Server-Sent Events (SSE) for real-time collaboration.
 
 - **Sync:** When a participant saves a roadmap, all other connected participants receive a `roadmap.updated` event and automatically re-fetch the latest state.
 - **Tickets:** SSE connections do not send long-lived session tokens in the URL. Instead, they use 30-second single-use tickets obtained via a Bearer-authenticated POST request.
-- **Soft Locks:** To prevent edit collisions, RoadForge uses in-memory "soft locks" (30s TTL). When a user expands a task, the frontend acquires a lock. Other users see the task as "Editing by X" and have their inputs disabled. Locks are stored in-memory on a single backend instance and are not shared across distributed nodes.
+- **Soft Locks:** To prevent edit collisions, Anvilary Roadmaps uses in-memory "soft locks" (30s TTL). When a user expands a task, the frontend acquires a lock. Other users see the task as "Editing by X" and have their inputs disabled. Locks are stored in-memory on a single backend instance and are not shared across distributed nodes.
 - **Concurrency:** `PUT` requests use optimistic concurrency control. If the roadmap has been updated on the server since the client last fetched it, the save is rejected with a `409 Conflict`.
 
 ---
@@ -101,7 +101,7 @@ RoadForge uses Server-Sent Events (SSE) for real-time collaboration.
 | Login / password reset | No accounts means no login. |
 | Email collection | No emails are collected or stored. |
 | User dashboard | No concept of "your roadmaps" — users navigate via saved links. |
-| No accounts / OAuth | RoadForge has no user-account login or OAuth provider. Protected write endpoints still require a bearer session token. |
+| No accounts / OAuth | Anvilary Roadmaps has no user-account login or OAuth provider. Protected write endpoints still require a bearer session token. |
 | Email verification codes | Deferred future security layer (see below). |
 
 ---
@@ -128,6 +128,6 @@ This adds a second factor without requiring accounts. It is purely opt-in per ro
 - **Tokens in URLs** — invite tokens appear in the URL query string and will be logged by proxies or browsers. Self-hosters should configure reverse proxy logs to exclude query strings or strictly control log access.
 - **Soft deletes only** — `Roadmap.deleted_at` is set on delete; no hard purge yet.
 - **No development server exposure** — `next dev` (or `make dev`) should never be exposed publicly. Use a production build for hosting.
-- **Content Security Policy** — RoadForge currently reports CSP violations without
+- **Content Security Policy** — Anvilary Roadmaps currently reports CSP violations without
   enforcing the policy. Enforcement is required before moving beyond the public
   source-available beta because script injection can expose `localStorage` tokens.

@@ -1,6 +1,6 @@
-# Self-Hosting RoadForge
+# Self-Hosting Anvilary Roadmaps
 
-RoadForge is source-available, non-commercial beta software. Review `LICENSE` before
+Anvilary Roadmaps is source-available, non-commercial beta software. Review `LICENSE` before
 deploying. Commercial hosting and monetized use are not permitted by that license.
 
 ## Topology

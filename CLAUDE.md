@@ -1,10 +1,10 @@
-# RoadForge — Claude Code guidance
+# Anvilary Roadmaps — Claude Code guidance
 
-## What RoadForge is
+## What Anvilary Roadmaps is
 
 An accountless, self-hostable, local-first roadmap planning tool. Users create roadmaps without registering. Access is controlled by private owner/editor invite links and a public read-only viewer link. Session tokens stored in `localStorage` identify participants. No accounts. No login. No user dashboard.
 
-RoadForge has a Next.js frontend and a FastAPI/PostgreSQL backend. The v0.1 flow
+Anvilary Roadmaps has a Next.js frontend and a FastAPI/PostgreSQL backend. The v0.1 flow
 is being hardened for a clearly labeled public beta/WIP release.
 
 ## Stack

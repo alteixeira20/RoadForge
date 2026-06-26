@@ -1,8 +1,8 @@
-# RoadForge — Session Expiry and Revocation Policy
+# Anvilary Roadmaps — Session Expiry and Revocation Policy
 
 Status: proposed design for RF-825. This document describes intended behavior; it does not claim expiry enforcement is implemented.
 
-RoadForge / Anvilary Roadmaps is accountless. Access is controlled by role-scoped invite links, optional roadmap passwords, and participant session tokens stored by the browser. The policy below keeps that model while reducing the risk of long-lived stolen sessions.
+Anvilary Roadmaps is accountless. Access is controlled by role-scoped invite links, optional roadmap passwords, and participant session tokens stored by the browser. The policy below keeps that model while reducing the risk of long-lived stolen sessions.
 
 ---
 
@@ -187,7 +187,7 @@ Recommended first version:
 - Treat the existing `sess_` token as the single bearer credential for a participant session.
 
 Justification:
-- RoadForge is accountless; refresh tokens add complexity without a user account boundary.
+- Anvilary Roadmaps is accountless; refresh tokens add complexity without a user account boundary.
 - The current client already stores one token per roadmap in local storage.
 - Sliding 30-day expiry meaningfully limits stolen-token lifetime.
 - Revocation remains immediate because `revoked_at` is checked before renewal.
@@ -370,4 +370,4 @@ Implement a simple first version:
 - Expired and revoked sessions must preserve the local unsynced roadmap copy and ask the user to rejoin or recover/export from local data.
 - Do not add refresh tokens or token rotation in the first implementation.
 
-This policy reduces long-lived stolen-session risk while preserving RoadForge's accountless, local-first collaboration model.
+This policy reduces long-lived stolen-session risk while preserving Anvilary Roadmaps's accountless, local-first collaboration model.

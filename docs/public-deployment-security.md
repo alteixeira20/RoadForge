@@ -2,7 +2,9 @@
 
 Status: implemented baseline for Phase 18 public-deploy hardening.
 
-This page records the assumptions a public RoadForge API deployment must satisfy. Local development keeps the default permissive behavior where noted.
+This page records the assumptions a public Anvilary Roadmaps API deployment must satisfy. Local development keeps the default permissive behavior where noted.
+
+The legacy `ROADFORGE_*` environment variable prefix, the `roadforge`/`roadforge_dev` database defaults, and the `roadforge-*` Docker service names are retained for compatibility and are unchanged by the rebrand.
 
 ## Runtime mode
 
@@ -20,13 +22,13 @@ Only set `ROADFORGE_ALLOW_LOCAL_DATABASE_IN_PRODUCTION=true` for a documented to
 
 ## Trusted proxies
 
-By default, RoadForge ignores `X-Forwarded-For` and `X-Real-IP` and rate limits by the immediate peer address. Configure `ROADFORGE_TRUSTED_PROXY_IPS` with comma-separated proxy IPs or CIDR ranges, for example:
+By default, Anvilary Roadmaps ignores `X-Forwarded-For` and `X-Real-IP` and rate limits by the immediate peer address. Configure `ROADFORGE_TRUSTED_PROXY_IPS` with comma-separated proxy IPs or CIDR ranges, for example:
 
 ```sh
 ROADFORGE_TRUSTED_PROXY_IPS=10.0.0.10,10.0.1.0/24
 ```
 
-When the immediate peer is trusted, RoadForge accepts the first `X-Forwarded-For` address or `X-Real-IP`. Malformed forwarded values are ignored. The reverse proxy should overwrite inbound forwarding headers from clients before forwarding to the API.
+When the immediate peer is trusted, Anvilary Roadmaps accepts the first `X-Forwarded-For` address or `X-Real-IP`. Malformed forwarded values are ignored. The reverse proxy should overwrite inbound forwarding headers from clients before forwarding to the API.
 
 Wildcard networks such as `0.0.0.0/0` and `::/0` are rejected. Use only the
 specific proxy address or narrow private network range required by the deployment.

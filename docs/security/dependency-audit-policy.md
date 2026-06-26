@@ -4,7 +4,7 @@ See also: [Security documentation index](./README.md) | [SECURITY.md](../../SECU
 
 ## Overview
 
-RoadForge audits both JS (pnpm workspace) and Python (FastAPI API) runtime dependencies for known vulnerabilities. Audit gates run locally via `make` targets and run in CI as the `js-audit` and `api-audit` jobs.
+Anvilary Roadmaps audits both JS (pnpm workspace) and Python (FastAPI API) runtime dependencies for known vulnerabilities. Audit gates run locally via `make` targets and run in CI as the `js-audit` and `api-audit` jobs.
 
 ---
 
@@ -36,7 +36,7 @@ make audit-prod
 
 **Threshold:** Any CVE reported by pip-audit against runtime dependencies unless explicitly suppressed (see Suppression Process below).
 
-**Note:** pip-audit audits the installed environment by default, which includes `pip` itself and other installer tooling. The CI job and `make api-audit` use `-r` mode (requirements list) to scope the audit to RoadForge runtime packages only, avoiding noise from installer tool CVEs that do not affect the application.
+**Note:** pip-audit audits the installed environment by default, which includes `pip` itself and other installer tooling. The CI job and `make api-audit` use `-r` mode (requirements list) to scope the audit to Anvilary Roadmaps runtime packages only, avoiding noise from installer tool CVEs that do not affect the application.
 
 **Local command:**
 ```bash

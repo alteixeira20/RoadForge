@@ -1,6 +1,6 @@
 # Support
 
-RoadForge is beta/WIP software maintained on a best-effort basis.
+Anvilary Roadmaps is beta/WIP software maintained on a best-effort basis.
 
 - Usage questions and reproducible bugs: open a GitHub issue using the templates.
 - Feature proposals: open a feature request and explain the user problem.
