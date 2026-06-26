@@ -2,7 +2,7 @@
   "schema": "roadforge.roadmap.export",
   "version": 1,
   "roadmap": {
-    "name": "RoadForge Public Beta Demo"
+    "name": "Anvilary Roadmaps Public Beta Demo"
   },
   "tagRegistry": [
     { "id": "beta", "label": "Beta", "color": "#f97316" },

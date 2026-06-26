@@ -1,5 +1,5 @@
 // ─── Domain models ────────────────────────────────────────────────────────────
-// These types describe the core Roadforge data model.
+// These types describe the core Anvilary Roadmaps data model.
 // The backend should expose a JSON API that conforms to these shapes.
 
 export interface TagDefinition {

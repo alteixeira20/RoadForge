@@ -4,8 +4,8 @@ import type { Roadmap, ShareLink, ExportOption } from '@/types/roadmap'
 // Fallback used when no server roadmap is available (no serverRoadmapId in storage).
 
 export const SAMPLE_ROADMAP: Roadmap = {
-  project: { id: 'rfg', name: 'Roadforge' },
-  roadmap: { id: 'rm-v1', name: 'Roadforge — v1.0 Public Launch' },
+  project: { id: 'rfg', name: 'Anvilary Roadmaps' },
+  roadmap: { id: 'rm-v1', name: 'Anvilary Roadmaps — v1.0 Public Launch' },
   ownerDisplayName: '',
   updatedAt: new Date().toISOString(),
   phases: [
@@ -80,7 +80,7 @@ export const SAMPLE_ROADMAP: Roadmap = {
           est: '1 day',
           tags: ['planning'],
           deps: ['RF-05'],
-          desc: 'Roadforge picks one task to focus on, based on which dependencies are clear. Shown as a single highlight, not a busy queue.',
+          desc: 'Anvilary Roadmaps picks one task to focus on, based on which dependencies are clear. Shown as a single highlight, not a busy queue.',
         },
         {
           id: 'RF-07',
