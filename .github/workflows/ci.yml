@@ -1,9 +1,8 @@
 name: CI
 
+# Automatic CI is paused during private polish. Restore push/pull_request before public release.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
