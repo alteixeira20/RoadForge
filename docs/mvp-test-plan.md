@@ -211,7 +211,7 @@ curl http://localhost:7878/api/health
 2. Confirm the moved phase now displays `00`, the next displays `01`, and phase IDs/tasks stayed with their phase.
 3. Save, reload, and export JSON. Confirm `phase.num` values persist in visible order.
 4. Load/import an old roadmap with missing/null task defaults.
-5. Confirm **Roadmap updated for this version** appears with **Download backup**.
+5. Confirm a **Roadmap updated** notice appears. It states Anvilary updated the roadmap for the latest version, shows no technical repair details, and has **no** backup/download button. Click **Dismiss** to clear it.
 6. Confirm automatic upgrade does not create an Activity entry or version checkpoint.
 
 ---
@@ -232,4 +232,4 @@ curl http://localhost:7878/api/health
 - [ ] JSON export/import works without the backend running
 - [ ] Public viewer link remains copyable after reopening Share
 - [ ] Team view shows participants only, not task assignees
-- [ ] Schema auto-upgrade notice and backup download work
+- [ ] Schema auto-upgrade notice appears (dismissable; no backup/download button)

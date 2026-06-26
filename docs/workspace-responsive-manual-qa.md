@@ -49,9 +49,13 @@ This matrix covers the manual checks introduced or affected by Phase 25 (WR-2501
 | Check | Fullscreen | Half-screen | Tablet | Mobile | Notes |
 |---|:---:|:---:|:---:|:---:|---|
 | Phase collapses and expands on header click | — | — | — | — | Click target is `.phase-toggle-btn` button inside `.phase-head` |
-| Clicking color swatch opens color picker without collapsing phase | — | — | — | — | Color picker is no longer inside the clickable header area |
-| Selecting a color updates phase and closes picker | — | — | — | — | |
-| Color picker closes on outside click | — | — | — | — | |
+| Phase settings (···) menu opens with Rename / Change color / Delete phase | — | — | — | — | Color picker is no longer a bare header swatch; it opens from the settings menu |
+| Opening the settings menu / color popover does not instantly close (no self-lock flash) | — | — | — | — | Current user's own phase lock must not unmount the menu mid-edit |
+| Current user is not shown "… is editing" for their own phase lock | — | — | — | — | Self-lock bridge; lock pill is for other participants only |
+| Change color popover offers Auto / Manual modes (Manual shows presets + custom hex) | — | — | — | — | |
+| Selecting a color updates phase and closes popover | — | — | — | — | |
+| Color popover closes on outside click and Escape | — | — | — | — | |
+| Delete phase opens styled ConfirmDialog (not native confirm) | — | — | — | — | Destructive confirm + Keep phase cancel |
 | Drag handle visible on hover (or always on touch) | — | — | — | — | |
 | Phase drag-reorder works | — | — | — | — | |
 

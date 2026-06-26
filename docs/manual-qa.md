@@ -110,7 +110,7 @@ Open four browser contexts and keep them active throughout:
 ## 7 — Participant revoke
 
 - [ ] Owner clicks **Revoke** next to Jordan (Editor participant).
-- [ ] Confirm dialog. Confirm.
+- [ ] A styled in-app confirm dialog appears (shared `ConfirmDialog`, not a native browser `confirm()` popup). It has a Cancel and a destructive confirm button. Press Escape or Cancel once to verify it dismisses without revoking, then reopen and confirm.
 - [ ] Jordan's row disappears from the participant list.
 - [ ] **In Editor window:** toast "Your access was revoked." appears. Workspace goes read-only or prompts to leave.
 - [ ] Editor attempts to save → 401/403 error; save fails.
@@ -165,6 +165,30 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ---
 
+## 11b — Task claim and override (styled confirmation)
+
+- [ ] Expand an incomplete task. The detail shows a **Work on this** claim button.
+- [ ] Click **Work on this** → task shows a "Working on this" / "On it" claim pill; the button becomes **Stop working**.
+- [ ] Click **Stop working** → claim clears.
+- [ ] **In Editor window:** claim the same task as Jordan. Owner now sees "Jordan is working on this".
+- [ ] As Owner (claim-override permitted role), an **Override claim** button appears next to Jordan's claim.
+- [ ] Click **Override claim** → a styled in-app confirm dialog opens (shared `ConfirmDialog`, not a native `confirm()`), titled "Override claim?" with a destructive **Override claim** confirm button and a Cancel.
+- [ ] Press Cancel or Escape → no change; Jordan keeps the claim.
+- [ ] Reopen and confirm **Override claim** → claim transfers to the current user; the dialog shows "Please wait…" while the claim request is in flight.
+- [ ] Viewer cannot claim or override (no claim controls in read-only mode).
+
+---
+
+## 11c — Tag Registry: delete unused tag (styled confirmation)
+
+- [ ] Open the **Tag Registry** modal.
+- [ ] A tag that is used by at least one task shows a usage count; its delete (✕) control is disabled with a "Cannot delete: used by N task(s)" tooltip. No confirm appears.
+- [ ] For an **unused** tag, click its delete (✕) control → a styled in-app confirm dialog opens (shared `ConfirmDialog`, not a native `confirm()`), titled "Delete tag?" naming the tag, with a destructive **Delete tag** confirm button.
+- [ ] Press Cancel or Escape → the tag remains.
+- [ ] Reopen and confirm **Delete tag** → the unused tag is removed and the roadmap is marked unsaved (autosync/Save persists it).
+
+---
+
 ## 12 — Task edit locks
 
 - [ ] Owner expands a task → lock acquired. (Check Network tab: POST `.../locks/acquire`.)
@@ -175,14 +199,22 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ---
 
-## 13 — Phase color picker and color lock
+## 13 — Phase settings menu: color, modes, and lock
 
-- [ ] Click phase color swatch (Owner) → color picker opens.
-- [ ] **In Editor window:** same phase shows "X is editing" color lock badge. Color swatch is disabled.
-- [ ] Owner closes picker → lock releases → Editor's badge clears.
-- [ ] Owner picks a new color → phase header updates immediately.
+Color is no longer a bare swatch in the header. It opens from the phase **settings (···)** menu.
+
+- [ ] Click the phase **settings (···)** button (Owner) → menu opens with **Rename**, **Change color**, and **Delete phase**.
+- [ ] Click **Change color** → the color popover opens with **Auto** / **Manual** mode toggle.
+- [ ] **Auto** mode: shows a derived color with its reason text and no preset grid.
+- [ ] Switch to **Manual** mode: a preset swatch grid appears plus a custom hex input with an **Apply** button.
+- [ ] Pick a preset → phase header color updates immediately and the popover closes.
+- [ ] Reopen, switch to Manual, type a valid `#rrggbb` hex → **Apply** enables → click it → color applies. Invalid hex keeps Apply disabled.
+- [ ] **Self-lock does not flash the menu closed:** opening the settings menu / color popover acquires the current user's own phase lock, but the menu/popover stays open and is **not** replaced by a lock badge. The current user is never shown "… is editing" for their own lock.
+- [ ] **In Editor window:** while Owner has the color popover open, the same phase shows a "<Owner> is editing" lock pill and the settings (···) menu is hidden for the editor.
+- [ ] Owner closes the popover (outside click, selecting a color, or Escape) → lock releases → Editor's lock pill clears and the settings menu returns.
 - [ ] Save → color persists after reload.
-- [ ] Viewer cannot open color picker (read-only).
+- [ ] **Delete phase confirmation:** open settings (···) → **Delete phase** → a styled in-app confirm dialog opens (shared `ConfirmDialog`, not a native `confirm()`), titled "Delete phase?", describing how many tasks/subtasks will be removed, with a destructive **Delete phase** confirm and a **Keep phase** cancel. Cancel/Escape keeps the phase; confirm removes it.
+- [ ] Viewer sees no settings (···) menu and cannot change color (read-only).
 
 ---
 
@@ -338,7 +370,7 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 ## 24 — Restore version
 
 - [ ] Owner opens Versions panel → click **Restore** on a previous version.
-- [ ] Confirm dialog: "Restore this version? Current roadmap will be replaced for all collaborators."
+- [ ] A styled in-app confirm dialog appears (shared `ConfirmDialog`, not a native `confirm()`): "Restore this version? Current roadmap will be replaced for all collaborators."
 - [ ] Toast: "Restored roadmap". Workspace reflects restored state.
 - [ ] **In Editor/Viewer windows:** SSE `roadmap.updated` fires → both auto-reload to restored state.
 - [ ] Activity panel shows "Restored" entry.
@@ -355,7 +387,7 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 - [ ] Click **Review conflict**. Panel shows server updated time, local unsynced state, server state, and name/phase/task differences.
 - [ ] Click **Keep editing locally**. Panel closes, badge remains **CONFLICT**, and local unsynced edits remain visible.
 - [ ] Reopen review and click **Keep my local version**. Save retries against the latest server timestamp, clears conflict on success, and Activity refreshes if open.
-- [ ] Repeat conflict, then click **Reload server version**. Confirm dialog appears before discarding local unsynced edits.
+- [ ] Repeat conflict, then click **Reload server version**. A styled in-app confirm dialog (shared `ConfirmDialog`, not a native `confirm()`) appears before discarding local unsynced edits.
 - [ ] Confirm reload. Tab 1 loads the server version. Local unsynced edits from tab 1 are discarded only after confirmation.
 - [ ] If a 409 response has no structured metadata, the reload-only fallback still works.
 
@@ -494,6 +526,19 @@ or staging stack are available. Do not mark these as complete until you run them
 - [ ] Realtime SSE still works after the header changes.
 - [ ] Sensitive roadmap API JSON responses include `Cache-Control: no-store`.
 - [ ] API responses include `X-Content-Type-Options: nosniff`.
+
+---
+
+## 32 — Modal keyboard accessibility (focus trap)
+
+All overlays built on the shared `Modal` (Save, Share, Import/Export, Tag Registry, and every `ConfirmDialog`) trap keyboard focus. Verify on at least the Share modal and one `ConfirmDialog`.
+
+- [ ] Open the modal. Focus moves into the dialog (the dialog or its first control), not left behind on the page underneath.
+- [ ] Press **Tab** repeatedly → focus cycles only through controls inside the modal and wraps from the last focusable control back to the first. It never lands on page content behind the scrim.
+- [ ] Press **Shift+Tab** from the first control → focus wraps backward to the last control inside the modal.
+- [ ] Press **Escape** → the modal closes.
+- [ ] After the modal closes (via Escape, the ✕ button, or completing the action), focus returns to the element that opened it (e.g. the Share/Save trigger button).
+- [ ] Repeat the Tab/Shift+Tab/Escape checks on a `ConfirmDialog` (e.g. delete unused tag from §11c or override claim from §11b): Tab cycles between Cancel and the confirm button, and focus returns to the triggering control after close.
 
 ---
 
