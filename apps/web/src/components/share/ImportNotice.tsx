@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import { ConflictReviewPanel } from '@/components/share/ConflictReviewPanel'
+import { ImportConflictReviewPanel } from '@/components/share/ImportConflictReviewPanel'
 import type { PendingImport } from '@/lib/import-merge/types'
 
 interface ImportNoticeProps {
@@ -195,7 +195,7 @@ export function ImportNotice({ pendingImport, onConfirm, onCancel }: ImportNotic
       </div>
 
       {isMerge && conflicts.length > 0 && (
-        <ConflictReviewPanel conflicts={conflicts} />
+        <ImportConflictReviewPanel conflicts={conflicts} />
       )}
 
       {isReplace && (

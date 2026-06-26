@@ -10,7 +10,7 @@ import { WorkspaceToolbar } from './WorkspaceToolbar'
 import { PhaseList } from './PhaseList'
 import { WorkspaceBanners, WorkspaceUpgradeNotice } from './WorkspaceBanners'
 import { WorkspaceModals } from './WorkspaceModals'
-import { ConflictReviewPanel } from './ConflictReviewPanel'
+import { SyncConflictReviewPanel } from './SyncConflictReviewPanel'
 import { ActivityPanel } from './ActivityPanel'
 import { TeamPanel } from './TeamPanel'
 import { VersionsPanel } from './VersionsPanel'
@@ -618,7 +618,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
 
-      <ConflictReviewPanel
+      <SyncConflictReviewPanel
         open={showConflictReview}
         conflict={conflictMetadata}
         localName={roadmapName}

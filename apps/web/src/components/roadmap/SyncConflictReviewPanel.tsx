@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
 import type { Phase, RoadmapConflictMetadata, Task } from '@/types/roadmap'
 
-interface ConflictReviewPanelProps {
+interface SyncConflictReviewPanelProps {
   open: boolean
   conflict: RoadmapConflictMetadata | null
   localName: string
@@ -132,7 +132,7 @@ function formatTimestamp(value: string): string {
   return date.toLocaleString()
 }
 
-export function ConflictReviewPanel({
+export function SyncConflictReviewPanel({
   open,
   conflict,
   localName,
@@ -141,7 +141,7 @@ export function ConflictReviewPanel({
   onClose,
   onUseServerVersion,
   onKeepLocalVersion,
-}: ConflictReviewPanelProps) {
+}: SyncConflictReviewPanelProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const serverName = conflict?.server.name ?? ''
   const serverPhases = conflict?.server.phases ?? []

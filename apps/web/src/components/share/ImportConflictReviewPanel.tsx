@@ -50,11 +50,11 @@ function ConflictItem({ conflict, index }: ConflictItemProps) {
   )
 }
 
-interface ConflictReviewPanelProps {
+interface ImportConflictReviewPanelProps {
   conflicts: ImportConflict[]
 }
 
-export function ConflictReviewPanel({ conflicts }: ConflictReviewPanelProps) {
+export function ImportConflictReviewPanel({ conflicts }: ImportConflictReviewPanelProps) {
   const [listOpen, setListOpen] = useState(false)
   const count = conflicts.length
   const countLabel = conflicts.every((conflict) => conflict.kind === 'task')
