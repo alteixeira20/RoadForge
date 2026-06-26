@@ -122,6 +122,8 @@ export function Phase({
 
   const {
     ownsLock: ownsColorLock,
+    isAcquiring: isAcquiringColorLock,
+    isReleasing: isReleasingColorLock,
     tryAcquire: tryAcquireColorLock,
     release: releaseColorLock,
   } = useEditLock({
@@ -133,7 +135,23 @@ export function Phase({
   })
 
   const isColorLockedByMe = ownsColorLock || (!!participantId && colorLock?.participantId === participantId)
-  const isColorLockedByOther = !!colorLock && !isColorLockedByMe
+
+  // Track whether this component instance has ever controlled the lock.
+  // Set while acquiring/owning/releasing; cleared only once the server lock
+  // entry disappears from context. This bridges the gap between ownsColorLock
+  // dropping to false and the SSE lock-released event arriving, so a self-owned
+  // lock never briefly renders as locked-by-other (which would unmount the
+  // settings menu / color popover mid-edit). Mirrors TaskRow's bridge.
+  const hadColorLockControlRef = useRef(false)
+  if (ownsColorLock || isReleasingColorLock) {
+    hadColorLockControlRef.current = true
+  } else if (!colorLock && !isAcquiringColorLock) {
+    hadColorLockControlRef.current = false
+  }
+
+  const hasLocalColorLockControl =
+    isAcquiringColorLock || ownsColorLock || isReleasingColorLock || hadColorLockControlRef.current
+  const isColorLockedByOther = Boolean(colorLock && !isColorLockedByMe && !hasLocalColorLockControl)
 
   const closeColorPicker = useCallback(() => {
     setShowColorPicker(false)
