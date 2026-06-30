@@ -1,6 +1,6 @@
 # Changelog
 
-Anvilary Roadmaps follows a pre-1.0, beta-oriented changelog. Dates use ISO format.
+RoadForge follows a pre-1.0, beta-oriented changelog. Dates use ISO format.
 
 ## Unreleased
 

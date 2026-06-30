@@ -1,10 +1,10 @@
-# Anvilary Roadmaps
+# RoadForge
 
 A structured roadmap planning tool for indie hackers and small teams. Break a release into phases, track task dependencies, and share access through private owner/editor invite links or a stable public read-only viewer link. No accounts required.
 
 > **Public Beta · Work in Progress**
 >
-> Anvilary Roadmaps is pre-release software. Core create/save/share/join and realtime
+> RoadForge is pre-release software. Core create/save/share/join and realtime
 > collaboration are implemented, but behavior, data formats, and deployment
 > requirements may change. Export important roadmaps regularly and do not treat
 > the hosted beta as the only copy of critical data.
@@ -15,7 +15,7 @@ and UX hardening are still in progress. Known launch work is tracked in
 
 **License:** Source-available under the
 [PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use is not permitted
-under that license. Anvilary Roadmaps is therefore not described as open-source under
+under that license. RoadForge is therefore not described as open-source under
 the Open Source Definition. Copies obtained from earlier MIT-licensed releases
 retain the rights granted with those copies.
 
@@ -23,7 +23,7 @@ retain the rights granted with those copies.
 
 ## Access model
 
-Anvilary Roadmaps is accountless. There are no logins, user records, or dashboards.
+RoadForge is accountless. There are no logins, user records, or dashboards.
 
 - **Create** — owner saves a roadmap, receives a session token and three role-specific share links.
 - **Share** — send private owner/editor invite links to collaborators, or copy a stable public viewer/demo link for read-only sharing. Links are role-scoped and revocable.
@@ -43,7 +43,7 @@ Assignees and collaborators are separate concepts:
 
 ## Security note
 
-Anvilary Roadmaps is built with a security-first mindset, but remains beta/WIP software.
+RoadForge is built with a security-first mindset, but remains beta/WIP software.
 
 CI defines dependency, lint, test, migration, and build gates. Those checks are
 point-in-time evidence and must be rerun for each release candidate. See
@@ -92,7 +92,7 @@ make stop           # Stop everything
 
 ## Production hardening
 
-Before self-hosting or releasing Anvilary Roadmaps publicly:
+Before self-hosting or releasing RoadForge publicly:
 
 - **Do not expose `make dev`** — always run a production build (`pnpm build`) and start the production server (`pnpm --filter web start`).
 - **Use a reverse proxy** — terminate TLS (HTTPS) at a proxy like Caddy or Nginx.
@@ -296,6 +296,6 @@ roadforge/
 
 ## Development disclosure
 
-Anvilary Roadmaps is a human-directed project developed with assistance from coding tools.
+RoadForge is a human-directed project developed with assistance from coding tools.
 
 These tools were used for implementation planning, code drafting, refactoring support, and documentation drafts. Final product direction, code review, testing, and acceptance remain human-controlled.
