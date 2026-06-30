@@ -189,7 +189,7 @@ export function RoadmapSwitcher({
       } else if (msg.includes('403')) {
         setError('Only the owner can delete this roadmap.')
       } else if (isApiConnectionError(err)) {
-        setError('Anvilary API is not reachable. Start the backend with make start.')
+        setError('RoadForge API is not reachable. Start the backend with make start.')
       } else {
         setError('Could not delete roadmap.')
       }
@@ -300,10 +300,10 @@ export function RoadmapSwitcher({
           deleteTarget === null
             ? undefined
             : deleteTarget.mode === 'server'
-              ? 'This will delete the Anvilary server copy and disable access for collaborators. This cannot be undone.'
+              ? 'This will delete the RoadForge server copy and disable access for collaborators. This cannot be undone.'
               : deleteTarget.cache.saved
-                ? 'This removes the cached roadmap and session from this browser only. The Anvilary server copy is not deleted.'
-                : 'This removes the draft from this browser only. It has not been saved to Anvilary.'
+                ? 'This removes the cached roadmap and session from this browser only. The RoadForge server copy is not deleted.'
+                : 'This removes the draft from this browser only. It has not been saved to RoadForge.'
         }
         footer={
           <>

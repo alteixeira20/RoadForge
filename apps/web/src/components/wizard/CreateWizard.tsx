@@ -170,7 +170,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
                   </div>
                   <div className="meta">
                     <div className="h">Use template</div>
-                    <div className="d">Explore Anvilary with example phases, tasks, and dependencies.</div>
+                    <div className="d">Explore RoadForge with example phases, tasks, and dependencies.</div>
                   </div>
                   {startingPoint === 'template' && <div className="check-mark"><Icon name="check" size={14} /></div>}
                 </button>
@@ -251,7 +251,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
                   </div>
                   <div className="d">
                     Your roadmap is ready. Take a breath — you can move slowly.
-                    Anvilary waits.
+                    RoadForge waits.
                   </div>
                 </div>
               </div>

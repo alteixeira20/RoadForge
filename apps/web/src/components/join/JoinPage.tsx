@@ -184,7 +184,7 @@ export function JoinPage() {
             <Icon name="lock" size={14} />
           </span>
           <span>
-            This invite is signed and revocable. Anvilary does not collect
+            This invite is signed and revocable. RoadForge does not collect
             emails, telemetry, or account data.
           </span>
         </div>

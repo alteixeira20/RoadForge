@@ -182,7 +182,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
             <span className="io-action-copy">
               <span className="io-action-title">Export JSON</span>
               <span className="io-action-desc">
-                Portable Anvilary backup. Includes phases, tasks, dependencies,
+                Portable RoadForge backup. Includes phases, tasks, dependencies,
                 tags, and status.
               </span>
               <span className="io-action-note">
@@ -207,7 +207,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
               <span className="io-action-title">Export AI roadmap template</span>
               <span className="io-action-desc">
                 Download a prompt template for an AI assistant to generate a valid
-                Anvilary JSON roadmap.
+                RoadForge JSON roadmap.
               </span>
             </span>
             <span className="io-action-go" aria-hidden>

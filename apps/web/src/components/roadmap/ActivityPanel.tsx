@@ -211,13 +211,13 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
         ) : state === 'local' ? (
           <div className="state-msg">
             <Icon name="activity" size={24} />
-            <p>Activity logs become available after saving this roadmap to Anvilary.</p>
+            <p>Activity logs become available after saving this roadmap to RoadForge.</p>
             <small>Local changes are still stored in this browser.</small>
           </div>
         ) : state === 'offline' ? (
           <div className="state-msg offline">
             <Icon name="activity" size={24} />
-            <p>Activity is unavailable while the Anvilary API is offline. Your cached roadmap is still usable.</p>
+            <p>Activity is unavailable while the RoadForge API is offline. Your cached roadmap is still usable.</p>
           </div>
         ) : state === 'auth' ? (
           <div className="state-msg offline">

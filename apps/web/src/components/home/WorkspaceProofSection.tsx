@@ -30,7 +30,7 @@ export function WorkspaceProofSection() {
             <div>
               <h3>Dependencies show what&apos;s next</h3>
               <p>
-                Mark what depends on what. Anvilary highlights the recommended
+                Mark what depends on what. RoadForge highlights the recommended
                 next task based on what is already complete.
               </p>
             </div>
