@@ -48,3 +48,6 @@ __pycache__/
 *.py[cod]
 
 apps/api/.venv/
+
+# Claude Code local settings
+.claude/
