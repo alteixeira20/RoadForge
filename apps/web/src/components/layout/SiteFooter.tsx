@@ -12,28 +12,28 @@ export function SiteFooter() {
         <span className="flex-1" />
         <div className="links">
           <a
-            href="https://github.com/alteixeira20/anvilary"
+            href="https://github.com/alteixeira20/roadforge"
             target="_blank"
             rel="noopener noreferrer"
           >
             GitHub
           </a>
           <a
-            href="https://github.com/alteixeira20/anvilary/tree/main/docs"
+            href="https://github.com/alteixeira20/roadforge/tree/main/docs"
             target="_blank"
             rel="noopener noreferrer"
           >
             Docs
           </a>
           <a
-            href="https://github.com/alteixeira20/anvilary/blob/main/deploy/hosting-bay/README.md"
+            href="https://github.com/alteixeira20/roadforge/blob/main/deploy/hosting-bay/README.md"
             target="_blank"
             rel="noopener noreferrer"
           >
             Self-host guide
           </a>
           <a
-            href="https://github.com/alteixeira20/anvilary/blob/main/LICENSE"
+            href="https://github.com/alteixeira20/roadforge/blob/main/LICENSE"
             target="_blank"
             rel="noopener noreferrer"
           >

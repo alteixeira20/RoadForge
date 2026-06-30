@@ -18,7 +18,7 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
-    app_name: str = "Anvilary API"
+    app_name: str = "RoadForge API"
     app_version: str = "0.1.0"
     environment: str = Field(default="development", alias="ROADFORGE_ENVIRONMENT")
     database_url: str = Field(

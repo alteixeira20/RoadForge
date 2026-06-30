@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "roadforge-api"
 version = "0.1.0"
-description = "Anvilary Roadmaps backend API — FastAPI + PostgreSQL"
+description = "RoadForge API — by Anvilary"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
