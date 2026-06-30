@@ -4,8 +4,8 @@ import type { Roadmap, ShareLink, ExportOption } from '@/types/roadmap'
 // Fallback used when no server roadmap is available (no serverRoadmapId in storage).
 
 export const SAMPLE_ROADMAP: Roadmap = {
-  project: { id: 'rfg', name: 'Anvilary Roadmaps' },
-  roadmap: { id: 'rm-v1', name: 'Anvilary Roadmaps — v1.0 Public Launch' },
+  project: { id: 'rfg', name: 'RoadForge' },
+  roadmap: { id: 'rm-v1', name: 'RoadForge — v1.0 Public Launch' },
   ownerDisplayName: '',
   updatedAt: new Date().toISOString(),
   phases: [
@@ -80,7 +80,7 @@ export const SAMPLE_ROADMAP: Roadmap = {
           est: '1 day',
           tags: ['planning'],
           deps: ['RF-05'],
-          desc: 'Anvilary Roadmaps picks one task to focus on, based on which dependencies are clear. Shown as a single highlight, not a busy queue.',
+          desc: 'RoadForge picks one task to focus on, based on which dependencies are clear. Shown as a single highlight, not a busy queue.',
         },
         {
           id: 'RF-07',
@@ -177,7 +177,7 @@ export const SAMPLE_ROADMAP: Roadmap = {
       tasks: [
         {
           id: 'RF-14',
-          title: 'Import and export Anvilary JSON',
+          title: 'Import and export RoadForge JSON',
           done: false,
           est: '2 days',
           tags: ['import'],
@@ -234,5 +234,5 @@ export const MOCK_SHARE_LINKS: ShareLink[] = [
 // ─── Export format options ─────────────────────────────────────────────────────
 
 export const EXPORT_OPTIONS: ExportOption[] = [
-  { id: 'json', icon: 'export', name: 'Export JSON', badge: 'Source of truth', desc: 'The portable Anvilary format. Re-import anywhere with no loss.' },
+  { id: 'json', icon: 'export', name: 'Export JSON', badge: 'Source of truth', desc: 'The portable RoadForge format. Re-import anywhere with no loss.' },
 ]

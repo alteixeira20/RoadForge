@@ -14,7 +14,7 @@ export const API_BASE_URL = (
 
 export class ApiConnectionError extends Error {
   constructor() {
-    super('Could not reach the Anvilary API.')
+    super('Could not reach the RoadForge API.')
     this.name = 'ApiConnectionError'
   }
 }

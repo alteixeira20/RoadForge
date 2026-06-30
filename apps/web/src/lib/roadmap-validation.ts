@@ -244,12 +244,12 @@ function detectCompatibilityWarnings(raw: unknown): CompatibilityWarning[] {
   if (versionIsNumber && version > CURRENT_SCHEMA_VERSION) {
     warnings.push({
       code: 'version_future',
-      message: `This file was created with a newer version of Anvilary (v${version}). Some data may not be recognized.`,
+      message: `This file was created with a newer version of RoadForge (v${version}). Some data may not be recognized.`,
     })
   } else if (!schemaKnown || !versionIsCurrent) {
     warnings.push({
       code: 'schema_unknown',
-      message: 'This file was created with an older or different Anvilary format. Some newer metadata may be missing.',
+      message: 'This file was created with an older or different RoadForge format. Some newer metadata may be missing.',
     })
   }
 

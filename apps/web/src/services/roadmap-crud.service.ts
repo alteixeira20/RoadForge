@@ -403,7 +403,7 @@ export async function deleteServerTag(
 }
 
 /**
- * Import phases from Anvilary JSON. Runs client-side.
+ * Import phases from RoadForge JSON. Runs client-side.
  */
 export async function importRoadmap(
   data: string,
