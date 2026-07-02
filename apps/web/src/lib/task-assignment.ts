@@ -45,6 +45,13 @@ export function dedupeNames(names: string[]): string[] {
   return result
 }
 
+export function addTaskAssignee(task: Task, name: string): Task {
+  return {
+    ...task,
+    assignees: dedupeNames([...getTaskAssignees(task), name]),
+  }
+}
+
 export function taskMatchesAssignee(task: Task, name: string): boolean {
   const target = cleanAssigneeName(name).toLowerCase()
   if (!target) return false

@@ -75,6 +75,25 @@ def _change_summary_fields(
 # ---------------------------------------------------------------------------
 
 
+def _add_task_assignee(task: dict[str, Any], display_name: str) -> None:
+    assignees = task.get("assignees")
+    names = assignees if isinstance(assignees, list) else []
+    result: list[str] = []
+    seen: set[str] = set()
+
+    for value in [*names, display_name]:
+        if not isinstance(value, str):
+            continue
+        clean = " ".join(value.split())
+        key = clean.casefold()
+        if not clean or key in seen:
+            continue
+        seen.add(key)
+        result.append(clean)
+
+    task["assignees"] = result
+
+
 def _patch_task_done_snapshot(
     snapshot_json: dict[str, Any],
     task_id: str,
@@ -156,6 +175,7 @@ def _patch_task_claim_snapshot(
             found = (phase, task)
             next_task = dict(task)
             if claimed_by is not None:
+                _add_task_assignee(next_task, claimed_by)
                 next_task["claimedBy"] = claimed_by
                 next_task["claimedById"] = claimed_by_id
                 next_task["claimedAt"] = claimed_at

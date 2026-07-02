@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   isAssignmentTag,
   assignmentNameFromTag,
+  addTaskAssignee,
   getTaskAssignees,
   dedupeNames,
   getVisibleTaskTags,
@@ -92,6 +93,24 @@ describe('task-assignment', () => {
 
     it('filters out empty strings', () => {
       expect(dedupeNames(['Alice', '', '  '])).toEqual(['Alice'])
+    })
+  })
+
+  describe('addTaskAssignee', () => {
+    it('preserves assignees and appends a new participant', () => {
+      const task = makeTask({ assignees: ['Alice', 'Bob'] })
+      expect(addTaskAssignee(task, 'Carol').assignees).toEqual(['Alice', 'Bob', 'Carol'])
+    })
+
+    it('deduplicates names case-insensitively', () => {
+      const task = makeTask({ assignees: ['Alice'] })
+      expect(addTaskAssignee(task, ' alice ').assignees).toEqual(['Alice'])
+    })
+
+    it('preserves legacy assignment-tag names when creating assignees', () => {
+      const task = makeTask({ tags: ['owner:Alice', 'backend'] })
+      expect(addTaskAssignee(task, 'Bob').assignees).toEqual(['Alice', 'Bob'])
+      expect(task.tags).toEqual(['owner:Alice', 'backend'])
     })
   })
 

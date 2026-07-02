@@ -88,6 +88,11 @@ async def test_owner_can_claim_task(client: AsyncClient):
     data = resp.json()
     assert _task_field(data, "tk_a1", "claimedBy") == "Owner"
     assert _task_field(data, "tk_a1", "claimedAt") is not None
+    assert _task_field(data, "tk_a1", "assignees") == ["Alice", "Bob", "Owner"]
+
+    refreshed = await _claim(client, body["id"], body["owner_session_token"], "tk_a1")
+    assert refreshed.status_code == 200, refreshed.text
+    assert _task_field(refreshed.json(), "tk_a1", "assignees").count("Owner") == 1
 
 
 async def test_editor_cannot_replace_existing_claim(client: AsyncClient):
@@ -204,6 +209,7 @@ async def test_unclaim_clears_claim_fields(client: AsyncClient):
     data = resp.json()
     assert _task_field(data, "tk_a1", "claimedBy") is None
     assert _task_field(data, "tk_a1", "claimedAt") is None
+    assert "Owner" in _task_field(data, "tk_a1", "assignees")
 
 
 async def test_unclaim_noop_when_not_claimed(client: AsyncClient):

@@ -16,6 +16,11 @@ import {
   resolveTagColor,
   resolveTagDisplay,
 } from '@/lib/tag-registry'
+import {
+  deriveTaskStatus,
+  getBlockingTasks,
+  TASK_STATUS_LABELS,
+} from '@/lib/task-display'
 import type { ToastTone } from '@/hooks/useToastState'
 import type { Task } from '@/types/roadmap'
 
@@ -225,11 +230,16 @@ export function TaskRow({
     displayName,
   ]).sort((a, b) => a.localeCompare(b))
 
+  const taskStatus = deriveTaskStatus(task, allTasks)
+  const blockedBy = getBlockingTasks(task, allTasks)
   const depTasks = (task.deps ?? [])
-    .map((id) => allTasks.find((t) => t.id === id))
-    .filter((t): t is Task => t !== undefined)
-
-  const blockedBy = depTasks.filter((d) => !d.done)
+    .map((id) => allTasks.find((candidate) => candidate.id === id))
+    .filter((candidate): candidate is Task => candidate !== undefined)
+  const statusTitle = taskStatus === 'blocked'
+    ? `Blocked by ${blockedBy.length} incomplete ${blockedBy.length === 1 ? 'dependency' : 'dependencies'}`
+    : taskStatus === 'in-progress' && claimer
+      ? `In progress — ${claimer}`
+      : TASK_STATUS_LABELS[taskStatus]
 
   const subtasks = allTasks.filter((t) => t.parentId === task.id)
 
@@ -266,6 +276,12 @@ export function TaskRow({
           }}
         />
         <span className="title">{task.title}</span>
+        <span
+          className={`task-status-badge is-${taskStatus}`}
+          title={statusTitle}
+        >
+          {TASK_STATUS_LABELS[taskStatus]}
+        </span>
         {visibleTags.slice(0, 2).map((tagId) => (
           <span
             key={tagId}
@@ -282,15 +298,6 @@ export function TaskRow({
           <span className="meta-pill meta-pill-lock">
             <Icon name="shield" size={11} /> {lockHolderName} is editing
           </span>
-        )}
-        {claimer && !task.done && (
-          <span className="meta-pill meta-pill-claim">
-            <Icon name="user" size={11} /> {isClaimedByMe ? 'On it' : claimer}
-          </span>
-        )}
-        {task.next && !task.done && <span className="next-pip">Recommended</span>}
-        {blockedBy.length > 0 && (
-          <span className="meta-pill blocked">⊘ Blocked</span>
         )}
         {task.est && blockedBy.length === 0 && !isNested && (
           <span className="meta-pill">{task.est}</span>

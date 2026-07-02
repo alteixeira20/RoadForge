@@ -170,9 +170,11 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ## 11b — Task claim and override (styled confirmation)
 
+- [ ] Every task row shows exactly one status badge: **Done**, **In progress**, **Blocked**, **Ready to start**, or **Planned**. The badge remains visible when the task is expanded and at 375px width.
+- [ ] A claimed task with incomplete dependencies shows **In progress**; an unclaimed recommended task with incomplete dependencies shows **Blocked**.
 - [ ] Expand an incomplete task. The detail shows a **Work on this** claim button.
-- [ ] Click **Work on this** → task shows a "Working on this" / "On it" claim pill; the button becomes **Stop working**.
-- [ ] Click **Stop working** → claim clears.
+- [ ] Click **Work on this** → task shows **In progress**, the button becomes **Stop working**, and the current participant is added once to Assigned without removing existing assignees.
+- [ ] Click **Stop working** → claim clears, the participant remains assigned, and the task returns to its derived non-claim status.
 - [ ] **In Editor window:** claim the same task as Jordan. Owner now sees "Jordan is working on this".
 - [ ] As Owner (claim-override permitted role), an **Override claim** button appears next to Jordan's claim.
 - [ ] Click **Override claim** → a styled in-app confirm dialog opens (shared `ConfirmDialog`, not a native `confirm()`), titled "Override claim?" with a destructive **Override claim** confirm button and a Cancel.
