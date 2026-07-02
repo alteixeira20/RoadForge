@@ -24,25 +24,27 @@ describe('phase color modes', () => {
     })).color).toBe('#22c55e')
   })
 
-  it('uses the active color when an open task is claimed', () => {
+  it('uses orange when some but not all tasks are complete', () => {
     expect(derivePhaseColor(phase({
-      tasks: [{ id: 't1', title: 'Work', done: false, claimedBy: 'Ada' }],
+      tasks: [
+        { id: 't1', title: 'Done', done: true },
+        { id: 't2', title: 'Open', done: false },
+      ],
     })).color).toBe('#f97316')
   })
 
-  it('uses a neutral blocked color when every open task is blocked', () => {
+  it('uses grey for empty phases and phases with no completed tasks', () => {
+    expect(derivePhaseColor(phase()).color).toBe('#64748b')
     expect(derivePhaseColor(phase({
-      tasks: [
-        { id: 't1', title: 'Dependency', done: false },
-        { id: 't2', title: 'Blocked', done: false, deps: ['t1'] },
-      ],
-    })).color).not.toBe('#6b7280')
+      status: 'active',
+      tasks: [{ id: 't1', title: 'Claimed', done: false, claimedBy: 'Ada' }],
+    })).color).toBe('#64748b')
+  })
 
-    expect(derivePhaseColor(phase({
-      tasks: [
-        { id: 't1', title: 'Blocked A', done: false, deps: ['t2'] },
-        { id: 't2', title: 'Blocked B', done: false, deps: ['t1'] },
-      ],
-    })).color).toBe('#6b7280')
+  it('defaults a missing color mode to auto', () => {
+    expect(getPhaseDisplayColor(phase({
+      color: '#a855f7',
+      tasks: [{ id: 't1', title: 'Open', done: false }],
+    })).color).toBe('#64748b')
   })
 })

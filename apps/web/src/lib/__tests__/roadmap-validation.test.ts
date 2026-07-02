@@ -28,6 +28,15 @@ describe('roadmap-validation', () => {
       const result = parseImportedRoadmapJson(input)
       expect(result.phases).toHaveLength(1)
       expect(result.phases[0].id).toBe('p1')
+      expect(result.phases[0].colorMode).toBe('auto')
+    })
+
+    it('preserves Markdown descriptions as strings', () => {
+      const desc = 'Intro with **bold**.\\n\\n- [ ] Follow up'
+      const phase = { ...MINIMAL_PHASE, tasks: [{ ...MINIMAL_TASK, desc }] }
+      const result = parseImportedRoadmapJson(JSON.stringify({ phases: [phase] }))
+
+      expect(result.phases[0].tasks[0].desc).toBe(desc)
     })
 
     it('accepts an empty phases array', () => {

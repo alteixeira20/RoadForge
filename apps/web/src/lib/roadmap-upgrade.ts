@@ -138,6 +138,7 @@ function canonicalizePhases(
     return {
       ...phase,
       color,
+      colorMode: phase.colorMode === 'manual' ? 'manual' as const : 'auto' as const,
       status,
       tasks,
     }

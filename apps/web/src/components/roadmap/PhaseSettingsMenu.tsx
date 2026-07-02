@@ -141,20 +141,20 @@ export function PhaseSettingsMenu({
           <div className="phase-color-modes">
             <button
               type="button"
-              className={phase.colorMode === 'auto' ? 'selected' : ''}
+              className={phase.colorMode !== 'manual' ? 'selected' : ''}
               onClick={() => onColorModeSelect('auto')}
             >
               Auto
             </button>
             <button
               type="button"
-              className={phase.colorMode !== 'auto' ? 'selected' : ''}
+              className={phase.colorMode === 'manual' ? 'selected' : ''}
               onClick={() => onColorModeSelect('manual')}
             >
               Manual
             </button>
           </div>
-          {phase.colorMode === 'auto' ? (
+          {phase.colorMode !== 'manual' ? (
             <p className="phase-color-reason">
               <span style={{ backgroundColor: displayColor }} />
               {colorReason}

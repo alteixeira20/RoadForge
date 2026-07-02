@@ -8,7 +8,9 @@
 }
 .phase:hover { border-color: var(--border-strong); }
 .phase.expanded { box-shadow: var(--shadow-sm); }
-.phase.active-phase { border-color: rgba(217,116,66,0.40); }
+.phase.active-phase {
+  border-color: color-mix(in srgb, var(--phase-color), transparent 60%);
+}
 .phase.phase-color-open { overflow: visible; }
 
 /* ─── Phase header ─────────────────────────────────────────────────────────── */

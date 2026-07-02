@@ -11,6 +11,7 @@ export function createBlankPhases(): Phase[] {
       num: '01',
       name: 'Planning',
       color: '#76746e',
+      colorMode: 'auto',
       status: 'active',
       progress: 0,
       tasks: [],

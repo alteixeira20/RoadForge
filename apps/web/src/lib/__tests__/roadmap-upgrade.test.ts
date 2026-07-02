@@ -23,6 +23,16 @@ describe('roadmap-upgrade', () => {
       expect(result.phases).toHaveLength(1)
       expect(result.phases[0].id).toBe('p1')
       expect(result.phases[0].num).toBe('01')
+      expect(result.phases[0].colorMode).toBe('auto')
+    })
+
+    it('preserves an explicit manual phase color mode', () => {
+      const result = upgradeRoadmapSnapshot({
+        phases: [makePhase({ colorMode: 'manual', color: '#a855f7' })],
+      })
+
+      expect(result.phases[0].colorMode).toBe('manual')
+      expect(result.phases[0].color).toBe('#a855f7')
     })
 
     it('fills in missing boolean defaults on tasks', () => {

@@ -28,7 +28,7 @@ import { PhaseHeader } from './PhaseHeader'
 import { SortableTaskItem } from './SortableTaskItem'
 import { TaskRow } from './TaskRow'
 import { DraftTaskRow } from './DraftTaskRow'
-import { useRoadmap } from '@/context/RoadmapContext'
+import { useRoadmapSession } from '@/context/RoadmapContext'
 import { computeTaskDisplayNumbers } from '@/lib/task-display'
 import { getPhaseDisplayColor } from '@/lib/phase-color'
 import type { ToastTone } from '@/hooks/useToastState'
@@ -103,7 +103,7 @@ export function Phase({
   const [isNameEditing, setIsNameEditing] = useState(false)
   const colorControlRef = useRef<HTMLDivElement | null>(null)
 
-  const { locks, serverRoadmapId, sessionToken, participantId } = useRoadmap()
+  const { locks, serverRoadmapId, sessionToken, participantId } = useRoadmapSession()
 
   const colorLockTarget = `phase:${phase.id}`
   const colorLock = locks[colorLockTarget]
@@ -201,14 +201,17 @@ export function Phase({
       if (target instanceof Node && colorControlRef.current?.contains(target)) return
       closeColorPicker()
     }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeColorPicker()
+    }
 
     document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [showColorPicker, closeColorPicker])
-
-  useEffect(() => {
-    if (!isOpen && showColorPicker) closeColorPicker()
-  }, [isOpen, showColorPicker, closeColorPicker])
 
   useEffect(() => {
     if (!isOpen && hasDraft) {

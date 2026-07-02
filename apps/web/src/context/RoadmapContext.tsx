@@ -8,7 +8,11 @@ import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { useRoadmapHydration, type RoadmapUpgradeState } from '@/hooks/useRoadmapHydration'
 import { useRoadmapRealtime } from '@/hooks/useRoadmapRealtime'
 
-interface RoadmapContextValue {
+// ─── Domain-sliced context types ──────────────────────────────────────────────
+// Split into 3 contexts so components subscribe only to the slice they need.
+// Phase.tsx only needs session data → avoids re-renders on every task toggle.
+
+interface RoadmapDataContextValue {
   displayName: string
   setDisplayName: (name: string) => void
   roadmapName: string
@@ -17,14 +21,6 @@ interface RoadmapContextValue {
   setPhases: (phases: Phase[]) => void
   saved: boolean
   setSaved: (saved: boolean) => void
-  serverRoadmapId: string | null
-  setServerRoadmapId: (id: string | null) => void
-  sessionToken: string | null
-  setSessionToken: (value: string | null) => void
-  participantId: string | null
-  setParticipantId: (value: string | null) => void
-  role: ShareRole | null
-  setRole: (value: ShareRole | null) => void
   isPasswordEnabled: boolean
   setIsPasswordEnabled: (value: boolean) => void
   ownerDisplayName: string | null
@@ -33,7 +29,21 @@ interface RoadmapContextValue {
   setUpdatedAt: (value: string | null) => void
   tagRegistry: TagDefinition[]
   setTagRegistry: (registry: TagDefinition[]) => void
+}
+
+interface RoadmapSessionContextValue {
+  serverRoadmapId: string | null
+  setServerRoadmapId: (id: string | null) => void
+  sessionToken: string | null
+  setSessionToken: (value: string | null) => void
+  participantId: string | null
+  setParticipantId: (value: string | null) => void
+  role: ShareRole | null
+  setRole: (value: ShareRole | null) => void
   locks: Record<string, { participantId: string; displayName: string }>
+}
+
+interface RoadmapLifecycleContextValue {
   activeRoadmapId: string | null
   activateRoadmap: (id: string) => void
   createLocalRoadmap: (
@@ -51,6 +61,15 @@ interface RoadmapContextValue {
   dismissRoadmapUpgradeNotice: () => void
 }
 
+// Legacy combined interface — kept for backward compatibility
+interface RoadmapContextValue extends
+  RoadmapDataContextValue,
+  RoadmapSessionContextValue,
+  RoadmapLifecycleContextValue {}
+
+const RoadmapDataContext = createContext<RoadmapDataContextValue | null>(null)
+const RoadmapSessionContext = createContext<RoadmapSessionContextValue | null>(null)
+const RoadmapLifecycleContext = createContext<RoadmapLifecycleContextValue | null>(null)
 const RoadmapContext = createContext<RoadmapContextValue | null>(null)
 
 export function RoadmapProvider({ children }: { children: ReactNode }) {
@@ -288,14 +307,81 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setSessionExpiredRoadmapId(null)
   }, [setSessionExpiredRoadmapId])
 
+  // ─── Slice values ──────────────────────────────────────────────────────────
+
+  const dataValue: RoadmapDataContextValue = {
+    displayName, setDisplayName,
+    roadmapName, setRoadmapName,
+    phases, setPhases,
+    saved, setSaved,
+    isPasswordEnabled, setIsPasswordEnabled,
+    ownerDisplayName, setOwnerDisplayName,
+    updatedAt, setUpdatedAt,
+    tagRegistry, setTagRegistry,
+  }
+
+  const sessionValue: RoadmapSessionContextValue = {
+    serverRoadmapId, setServerRoadmapId,
+    sessionToken, setSessionToken,
+    participantId, setParticipantId,
+    role, setRole,
+    locks,
+  }
+
+  const lifecycleValue: RoadmapLifecycleContextValue = {
+    activeRoadmapId,
+    activateRoadmap,
+    createLocalRoadmap,
+    resetToSample,
+    removeRoadmapFromBrowser,
+    accessRevokedEvent,
+    clearAccessRevokedEvent,
+    sessionExpiredRoadmapId,
+    clearSessionExpiredNotice,
+    roadmapUpgradeNotice,
+    dismissRoadmapUpgradeNotice,
+  }
+
+  const combinedValue: RoadmapContextValue = {
+    ...dataValue,
+    ...sessionValue,
+    ...lifecycleValue,
+  }
+
   return (
-    <RoadmapContext.Provider
-      value={{ displayName, setDisplayName, roadmapName, setRoadmapName, phases, setPhases, saved, setSaved, serverRoadmapId, setServerRoadmapId, sessionToken, setSessionToken, participantId, setParticipantId, role, setRole, isPasswordEnabled, setIsPasswordEnabled, ownerDisplayName, setOwnerDisplayName, updatedAt, setUpdatedAt, tagRegistry, setTagRegistry, locks, activeRoadmapId, activateRoadmap, createLocalRoadmap, resetToSample, removeRoadmapFromBrowser, accessRevokedEvent, clearAccessRevokedEvent, sessionExpiredRoadmapId, clearSessionExpiredNotice, roadmapUpgradeNotice, dismissRoadmapUpgradeNotice }}
-    >
-      {children}
-    </RoadmapContext.Provider>
+    <RoadmapDataContext.Provider value={dataValue}>
+      <RoadmapSessionContext.Provider value={sessionValue}>
+        <RoadmapLifecycleContext.Provider value={lifecycleValue}>
+          <RoadmapContext.Provider value={combinedValue}>
+            {children}
+          </RoadmapContext.Provider>
+        </RoadmapLifecycleContext.Provider>
+      </RoadmapSessionContext.Provider>
+    </RoadmapDataContext.Provider>
   )
 }
+
+// ─── Focused hooks (use these for precise subscriptions) ─────────────────────
+
+export function useRoadmapData(): RoadmapDataContextValue {
+  const ctx = useContext(RoadmapDataContext)
+  if (!ctx) throw new Error('useRoadmapData must be used inside <RoadmapProvider>')
+  return ctx
+}
+
+export function useRoadmapSession(): RoadmapSessionContextValue {
+  const ctx = useContext(RoadmapSessionContext)
+  if (!ctx) throw new Error('useRoadmapSession must be used inside <RoadmapProvider>')
+  return ctx
+}
+
+export function useRoadmapLifecycle(): RoadmapLifecycleContextValue {
+  const ctx = useContext(RoadmapLifecycleContext)
+  if (!ctx) throw new Error('useRoadmapLifecycle must be used inside <RoadmapProvider>')
+  return ctx
+}
+
+// ─── Legacy combined hook (backward compatible) ──────────────────────────────
 
 export function useRoadmap(): RoadmapContextValue {
   const ctx = useContext(RoadmapContext)

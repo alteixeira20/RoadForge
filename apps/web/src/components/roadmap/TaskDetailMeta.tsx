@@ -3,6 +3,7 @@
 import { type CSSProperties } from 'react'
 import type { Task, TagDefinition } from '@/types/roadmap'
 import { resolveTagColor, resolveTagDisplay } from '@/lib/tag-registry'
+import { MarkdownDescription } from './MarkdownDescription'
 
 interface TaskDetailMetaProps {
   task: Task
@@ -15,7 +16,7 @@ interface TaskDetailMetaProps {
 export function TaskDetailMeta({ task, isNested, assignedNames, visibleTags, registry = [] }: TaskDetailMetaProps) {
   return (
     <>
-      {task.desc && <div className="desc">{task.desc}</div>}
+      {task.desc && <MarkdownDescription value={task.desc} />}
 
       <div className="grid">
         {!isNested && (

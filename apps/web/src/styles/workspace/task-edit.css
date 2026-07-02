@@ -13,6 +13,38 @@
   font-size: 13.5px; color: var(--ink); outline: none;
 }
 .edit-form input:focus, .edit-form textarea:focus { border-color: var(--ember); background: var(--bg); }
+.edit-form textarea {
+  min-height: 112px;
+  resize: vertical;
+  line-height: 1.45;
+}
+.markdown-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.markdown-toolbar button {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--border-faint);
+  border-radius: 5px;
+  background: var(--bg-2);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+.markdown-toolbar button:hover,
+.markdown-toolbar button:focus-visible {
+  color: var(--ember);
+  border-color: var(--border);
+}
+.markdown-toolbar > span {
+  margin-left: 4px;
+  color: var(--ink-4);
+  font-size: 11px;
+}
 .edit-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
 
 /* ─── Assignee editor ──────────────────────────────────────────────────────── */

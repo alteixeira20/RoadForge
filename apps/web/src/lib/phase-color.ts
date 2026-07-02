@@ -1,4 +1,4 @@
-import type { Phase, Task } from '@/types/roadmap'
+import type { Phase } from '@/types/roadmap'
 
 export interface DerivedPhaseColor {
   color: string
@@ -7,42 +7,25 @@ export interface DerivedPhaseColor {
 
 const COLORS = {
   complete: '#22c55e',
-  active: '#f97316',
-  next: '#38bdf8',
-  future: '#64748b',
-  blocked: '#6b7280',
-}
-
-function taskIsBlocked(task: Task, tasksById: ReadonlyMap<string, Task>): boolean {
-  if (task.done || !task.deps?.length) return false
-  return task.deps.some((depId) => tasksById.get(depId)?.done === false)
+  inProgress: '#f97316',
+  notStarted: '#64748b',
 }
 
 export function derivePhaseColor(phase: Phase): DerivedPhaseColor {
-  if (phase.tasks.length > 0 && phase.tasks.every((task) => task.done)) {
+  const total = phase.tasks.length
+  const done = phase.tasks.filter((task) => task.done).length
+
+  if (total > 0 && done === total) {
     return { color: COLORS.complete, reason: 'All tasks are complete.' }
   }
-
-  const openTasks = phase.tasks.filter((task) => !task.done)
-  const tasksById = new Map(phase.tasks.map((task) => [task.id, task]))
-  if (
-    openTasks.length > 0 &&
-    openTasks.every((task) => taskIsBlocked(task, tasksById))
-  ) {
-    return { color: COLORS.blocked, reason: 'Every open task is blocked.' }
+  if (done > 0) {
+    return { color: COLORS.inProgress, reason: 'Some tasks are complete.' }
   }
-
-  if (openTasks.some((task) => task.claimedBy) || phase.status === 'active') {
-    return { color: COLORS.active, reason: 'Work is active in this phase.' }
-  }
-  if (phase.status === 'next') {
-    return { color: COLORS.next, reason: 'This phase is next.' }
-  }
-  return { color: COLORS.future, reason: 'This phase has not started.' }
+  return { color: COLORS.notStarted, reason: 'No tasks are complete yet.' }
 }
 
 export function getPhaseDisplayColor(phase: Phase): DerivedPhaseColor {
-  if (phase.colorMode !== 'auto') {
+  if (phase.colorMode === 'manual') {
     return { color: phase.color, reason: 'Manual color.' }
   }
   return derivePhaseColor(phase)

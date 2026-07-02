@@ -157,6 +157,9 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 - [ ] **Create:** Add task → task appears with unique ID.
 - [ ] **Edit:** Expand task → change title, description, estimate, tags, assignees, deps → save → values persist after reload.
+- [ ] **Markdown description:** use the toolbar or type paragraphs, bold, italic, inline code, links, bullet/numbered lists, and `- [ ]` / `- [x]` items → save → compact formatted content renders in the task detail.
+- [ ] **Markdown safety:** enter `<b>raw HTML</b>` and a `vbscript:` link → raw HTML displays as text and the unsafe link is not clickable.
+- [ ] **Legacy description:** load a plain-text description with line breaks → it remains readable without conversion.
 - [ ] **Done:** Tick checkbox → phase progress bar updates → save → state persists.
 - [ ] **Undone:** Untick → progress bar decrements → save → state persists.
 - [ ] **Subtask:** Set `parentId` on a task (via edit form if wired) → renders indented under parent.
@@ -205,7 +208,9 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 
 - [ ] Click the phase **settings (···)** button (Owner) → menu opens with **Rename**, **Change color**, and **Delete phase**.
 - [ ] Click **Change color** → the color popover opens with **Auto** / **Manual** mode toggle.
-- [ ] **Auto** mode: shows a derived color with its reason text and no preset grid.
+- [ ] Repeat **Change color** with the phase expanded and collapsed → the popover stays open in both states.
+- [ ] **Auto** mode: empty or zero-done phases are grey, partially complete phases are orange, and non-empty fully complete phases are green.
+- [ ] A phase with no `colorMode` in legacy local/server/imported data upgrades to **Auto**; an explicit **Manual** mode and its color remain unchanged.
 - [ ] Switch to **Manual** mode: a preset swatch grid appears plus a custom hex input with an **Apply** button.
 - [ ] Pick a preset → phase header color updates immediately and the popover closes.
 - [ ] Reopen, switch to Manual, type a valid `#rrggbb` hex → **Apply** enables → click it → color applies. Invalid hex keeps Apply disabled.
@@ -285,6 +290,7 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 - [ ] Open **Import / Export** → Export tab.
 - [ ] Click **Export JSON** → `.roadforge.json` file downloads.
 - [ ] Inspect file: contains `"schema": "roadforge.roadmap.export"`, `"version": 1`, phases, tasks.
+- [ ] Markdown descriptions remain plain JSON strings, and each phase includes its `colorMode`.
 - [ ] **No session tokens, invite tokens, or auth data** in the exported file.
 - [ ] Re-import that same file (§19) → no compatibility warning (known schema/version).
 
@@ -300,6 +306,7 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 - [ ] **Viewer cannot** use "Replace current roadmap" (button disabled).
 - [ ] Import a file with an old/unknown schema → **Import notice** appears listing the compatibility warning → click "Replace current roadmap" → import proceeds.
 - [ ] Import a file with auto-repaired issues (see §21) → **Import notice** appears listing what was repaired → confirm → roadmap loads.
+- [ ] Import an older file with plain-text descriptions and no phase `colorMode` → descriptions render readably and phases use Auto colors.
 
 ---
 

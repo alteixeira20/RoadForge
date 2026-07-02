@@ -53,7 +53,7 @@ const REPAIR_MESSAGES: Record<ImportRepairCode, string> = {
   progress_recalculated:
     'Phase progress percentages were recalculated from task completion.',
   inferred_phase_field:
-    'Missing or invalid phase fields (num, status, color, or name) were inferred automatically.',
+    'Missing or invalid phase fields (num, status, color, color mode, or name) were inferred automatically.',
   legacy_assignees:
     'Assignment tags (owner:, review:) were migrated to the assignees field.',
   duplicate_ids:
@@ -501,6 +501,7 @@ function repairPhaseRaw(
       num,
       name: `Phase ${num}`,
       color: '#808080',
+      colorMode: 'auto',
       status: 'future',
       progress: 0,
       tasks: [],
@@ -532,9 +533,9 @@ function repairPhaseRaw(
     bump(counts, 'inferred_phase_field')
     p.color = '#808080'
   }
-  if (p.colorMode !== undefined && p.colorMode !== 'auto' && p.colorMode !== 'manual') {
+  if (p.colorMode !== 'auto' && p.colorMode !== 'manual') {
     bump(counts, 'inferred_phase_field')
-    delete p.colorMode
+    p.colorMode = 'auto'
   }
 
   // status: must be a valid value

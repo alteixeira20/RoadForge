@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
 import { MOCK_SHARE_LINKS } from '@/data/sample-roadmap'
 import { getParticipants, getShareLinks, regenerateShareLink, revokeParticipant, revokeShareLink } from '@/services/roadmap-sharing.service'
-import { useRoadmap } from '@/context/RoadmapContext'
+import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
 import { ShareRoleSection } from '@/components/share/ShareRoleSection'
 import { isApiError, isAuthError } from '@/services/roadmap-http'
 import type { Participant, ShareLink, ShareRole } from '@/types/roadmap'
@@ -25,7 +25,8 @@ interface ShareModalProps {
 }
 
 export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
-  const { serverRoadmapId, sessionToken, role, isPasswordEnabled } = useRoadmap()
+  const { serverRoadmapId, sessionToken, role } = useRoadmapSession()
+  const { isPasswordEnabled } = useRoadmapData()
   const [links, setLinks] = useState<ShareLink[]>([])
   const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState(false)

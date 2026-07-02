@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   cleanAssigneeName,
   dedupeNames,
@@ -9,6 +9,7 @@ import {
 } from '@/lib/task-assignment'
 import { TagInput, splitAndNormalizeTags } from './TagInput'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { MarkdownToolbar } from './MarkdownToolbar'
 import type { Task, TagDefinition } from '@/types/roadmap'
 
 interface TaskEditFormProps {
@@ -64,6 +65,7 @@ export function TaskEditForm({
   const [draft, setDraft] = useState<EditDraft>(() => initialDraft(task))
   const [assigneeDraft, setAssigneeDraft] = useState('')
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false)
+  const descriptionRef = useRef<HTMLTextAreaElement>(null)
 
   const isDirty = isDraftDirty(draft, task)
 
@@ -167,12 +169,18 @@ export function TaskEditForm({
       )}
       <div className="field full">
         <label>Description</label>
+        <MarkdownToolbar
+          textareaRef={descriptionRef}
+          value={draft.desc}
+          onChange={(desc) => setDraft({ ...draft, desc })}
+        />
         <textarea
+          ref={descriptionRef}
           value={draft.desc}
           onChange={(e) => setDraft({ ...draft, desc: e.target.value })}
           onKeyDown={handleTextareaKeyDown}
-          placeholder="Task details…"
-          rows={3}
+          placeholder="Task details… Markdown supported"
+          rows={6}
         />
       </div>
       <div className="field full">
