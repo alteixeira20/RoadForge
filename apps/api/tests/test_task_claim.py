@@ -4,13 +4,15 @@ RF-2504 — PATCH/DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim tests.
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import Roadmap
 from api.services.roadmap_projection_service import validate_projection_parity
-from tests.helpers_projection import auth, create_with_phases
+from tests.helpers_projection import PHASES_WITH_TASKS, auth, create_with_phases
 
 pytestmark = pytest.mark.asyncio
 
@@ -93,6 +95,28 @@ async def test_owner_can_claim_task(client: AsyncClient):
     refreshed = await _claim(client, body["id"], body["owner_session_token"], "tk_a1")
     assert refreshed.status_code == 200, refreshed.text
     assert _task_field(refreshed.json(), "tk_a1", "assignees").count("Owner") == 1
+
+
+async def test_claim_preserves_legacy_assignment_tag_names(client: AsyncClient):
+    phases = deepcopy(PHASES_WITH_TASKS)
+    task = phases[0]["tasks"][0]
+    task.pop("assignees")
+    task["tags"] = ["owner:Legacy Assignee", "tag-a"]
+    create_resp = await client.post(
+        "/api/roadmaps",
+        json={
+            "name": "Legacy Assignment Test",
+            "owner_display_name": "Owner",
+            "phases": phases,
+        },
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    body = create_resp.json()
+
+    resp = await _claim(client, body["id"], body["owner_session_token"], "tk_a1")
+
+    assert resp.status_code == 200, resp.text
+    assert _task_field(resp.json(), "tk_a1", "assignees") == ["Legacy Assignee", "Owner"]
 
 
 async def test_editor_cannot_replace_existing_claim(client: AsyncClient):

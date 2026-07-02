@@ -75,9 +75,24 @@ def _change_summary_fields(
 # ---------------------------------------------------------------------------
 
 
+def _legacy_task_assignees(task: dict[str, Any]) -> list[str]:
+    tags = task.get("tags")
+    result: list[str] = []
+    for value in tags if isinstance(tags, list) else []:
+        if not isinstance(value, str):
+            continue
+        prefix, separator, name = value.strip().partition(":")
+        if separator and prefix.casefold() in {"owner", "review"}:
+            result.append(name)
+    return result
+
+
 def _add_task_assignee(task: dict[str, Any], display_name: str) -> None:
     assignees = task.get("assignees")
-    names = assignees if isinstance(assignees, list) else []
+    names = list(assignees) if isinstance(assignees, list) else []
+    if not names:
+        names = _legacy_task_assignees(task)
+
     result: list[str] = []
     seen: set[str] = set()
 
