@@ -2,7 +2,7 @@
 
 Status: post-beta plan
 
-Anvilary Roadmaps may expose a future MCP server or equivalent assistant API, but it is not a
+RoadForge may expose a future MCP server or equivalent assistant API, but it is not a
 beta launch dependency.
 
 ## Initial tools

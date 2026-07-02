@@ -6,7 +6,7 @@ current product behavior first.
 
 ## 1. Current state
 
-Anvilary Roadmaps currently stores the editable roadmap body as a full JSONB snapshot on
+RoadForge currently stores the editable roadmap body as a full JSONB snapshot on
 `roadmaps.snapshot_json`. The shape is `{"phases": [...]}` and mirrors the API
 DTOs in `apps/api/src/api/schemas/roadmap.py`: phases contain task arrays, and
 tasks contain fields such as `id`, `title`, `done`, `next`, `est`, `assignees`,

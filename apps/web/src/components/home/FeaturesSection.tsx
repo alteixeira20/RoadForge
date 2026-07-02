@@ -53,26 +53,21 @@ export function FeaturesSection() {
         </div>
         <div className="feature">
           <div className="ic"><Icon name="shield" size={20} /></div>
-          <h3>Self-hostable</h3>
+          <h3>Self-hosting at beta</h3>
           <p>
-            Run the backend on your own infrastructure for permitted
-            non-commercial use. No third-party hosted service required.
+            A non-commercial source-available release is planned for
+            self-hosting when RoadForge is beta-ready.
           </p>
         </div>
       </div>
       <div className="gh-cta">
         <div className="gh-cta-text">
-          <strong>Private by default. Portable JSON. Source-available.</strong>
-          <span>Public beta · Non-commercial license · Optional self-hosting</span>
+          <strong>Private alpha. Portable JSON. Public source release planned.</strong>
+          <span>Public Alpha · Future non-commercial source-available release</span>
         </div>
-        <a
-          className="btn lg secondary"
-          href="https://github.com/alteixeira20/anvilary"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Icon name="github" size={16} /> View source
-        </a>
+        <span className="btn lg secondary">
+          <Icon name="github" size={16} /> Source at beta
+        </span>
       </div>
     </LandingSectionFrame>
   )

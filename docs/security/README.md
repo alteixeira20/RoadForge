@@ -2,7 +2,7 @@
 
 See also: [SECURITY.md](../../SECURITY.md) — public-facing responsible disclosure policy.
 
-Anvilary Roadmaps is accountless and local-first. There is no user credential database, no OAuth, and no email verification. Access is controlled by role-scoped invite tokens, optional roadmap passwords, and participant session tokens stored in browser `localStorage`. Security work in this project focuses on protecting those tokens, limiting abuse of public-facing endpoints, controlling browser-side attack surface, and keeping dependencies free of known high-severity vulnerabilities.
+RoadForge is accountless and local-first. There is no user credential database, no OAuth, and no email verification. Access is controlled by role-scoped invite tokens, optional roadmap passwords, and participant session tokens stored in browser `localStorage`. Security work in this project focuses on protecting those tokens, limiting abuse of public-facing endpoints, controlling browser-side attack surface, and keeping dependencies free of known high-severity vulnerabilities.
 
 The documents below are a mix of policy (intended behavior) and implementation notes (current behavior). Each document's status line indicates which it is.
 

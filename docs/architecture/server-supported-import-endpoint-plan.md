@@ -7,7 +7,7 @@ and merge flow remains canonical for now.
 
 A server import endpoint may be needed once imports affect shared roadmaps with
 multiple active collaborators, richer audit requirements, larger files, or
-account/workspace ownership. Server support would let Anvilary Roadmaps validate and
+account/workspace ownership. Server support would let RoadForge validate and
 apply imports transactionally, enforce authorization in one place, reject stale
 writes before mutation, and create consistent activity/version records.
 
@@ -22,7 +22,7 @@ save path.
 - `POST /api/roadmaps/{id}/imports/apply`: revalidate the previewed import and
   apply the selected import mode in one transaction.
 
-`new-local` remains client-only unless Anvilary Roadmaps later adds accounts,
+`new-local` remains client-only unless RoadForge later adds accounts,
 workspaces, or server-owned personal drafts. The server endpoints should only
 cover mutations to an existing server roadmap.
 

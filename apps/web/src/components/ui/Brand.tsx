@@ -27,7 +27,7 @@ export function Brand({ href, className = 'brand' }: BrandProps) {
           height={28}
         />
       </span>
-      <span>Anvilary</span>
+      <span>RoadForge</span>
       <style jsx>{`
         .brand-logo {
           width: 24px;

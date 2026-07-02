@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Anvilary Roadmaps is a local-first, accountless roadmap application.
+RoadForge is a local-first, accountless roadmap application from Anvilary.
 
 ## Browser
 

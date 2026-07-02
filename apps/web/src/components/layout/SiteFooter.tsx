@@ -8,38 +8,9 @@ export function SiteFooter() {
       <div className="row">
         <Brand />
         <span style={{ color: 'var(--ink-4)' }}>·</span>
-        <span>Public Beta · WIP · PolyForm Noncommercial 1.0.0</span>
+        <span>Public Alpha · WIP · RoadForge from Anvilary</span>
         <span className="flex-1" />
-        <div className="links">
-          <a
-            href="https://github.com/alteixeira20/roadforge"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub
-          </a>
-          <a
-            href="https://github.com/alteixeira20/roadforge/tree/main/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Docs
-          </a>
-          <a
-            href="https://github.com/alteixeira20/roadforge/blob/main/deploy/hosting-bay/README.md"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Self-host guide
-          </a>
-          <a
-            href="https://github.com/alteixeira20/roadforge/blob/main/LICENSE"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            License
-          </a>
-        </div>
+        <span>Private during alpha · Source release planned for beta</span>
       </div>
       <div className="row sub" style={{ marginTop: 16, color: 'var(--ink-4)', fontSize: 13 }}>
         <span>

@@ -1,6 +1,6 @@
-# Anvilary Roadmaps — Frontend Foundation Reference
+# RoadForge — Frontend Foundation Reference
 
-This document is the architecture reference for the Anvilary Roadmaps frontend. It covers component boundaries, context responsibilities, persistence, and where backend integration should happen.
+This document is the architecture reference for the RoadForge frontend. It covers component boundaries, context responsibilities, persistence, and where backend integration should happen.
 
 ---
 
@@ -52,7 +52,7 @@ This document is the architecture reference for the Anvilary Roadmaps frontend. 
 
 - `Modal` — generic modal with scrim, head, body, footer slots; Escape key handler
 - `Icon` — 31 named SVG icons via TypeScript union `IconName`
-- `Brand` — Anvilary Roadmaps logotype with flame mark
+- `Brand` — RoadForge logotype with the Anvilary flame mark
 - `Toast` — fixed-position ephemeral message
 - `ThemeToggle` — dark/light segmented control
 

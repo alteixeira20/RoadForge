@@ -1,23 +1,23 @@
 # RoadForge
 
-A structured roadmap planning tool for indie hackers and small teams. Break a release into phases, track task dependencies, and share access through private owner/editor invite links or a stable public read-only viewer link. No accounts required.
+RoadForge by Anvilary is a structured roadmap planning tool for indie hackers and small teams. Break a release into phases, track task dependencies, and share access through private owner/editor invite links or a stable public read-only viewer link. No accounts required.
 
-> **Public Beta · Work in Progress**
+> **Public Alpha · Work in Progress**
 >
 > RoadForge is pre-release software. Core create/save/share/join and realtime
 > collaboration are implemented, but behavior, data formats, and deployment
 > requirements may change. Export important roadmaps regularly and do not treat
-> the hosted beta as the only copy of critical data.
+> the hosted alpha as the only copy of critical data.
 
-**Current status:** v0.1 beta foundation. Security, collaboration, accessibility,
+**Current status:** v0.1 alpha. Security, collaboration, accessibility,
 and UX hardening are still in progress. Known launch work is tracked in
 [`docs/project-audit-2026-06-13.md`](docs/project-audit-2026-06-13.md).
 
-**License:** Source-available under the
-[PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use is not permitted
-under that license. RoadForge is therefore not described as open-source under
-the Open Source Definition. Copies obtained from earlier MIT-licensed releases
-retain the rights granted with those copies.
+**Repository and source release:** The repository and codebase are private during
+Public Alpha. A public source release is planned when RoadForge is beta-ready.
+That release is intended to be non-commercial source-available software, not
+permissive open source; commercial use will remain restricted. The planned terms
+are represented by the [PolyForm Noncommercial License 1.0.0](LICENSE).
 
 ---
 
@@ -43,7 +43,7 @@ Assignees and collaborators are separate concepts:
 
 ## Security note
 
-RoadForge is built with a security-first mindset, but remains beta/WIP software.
+RoadForge is built with a security-first mindset, but remains alpha/WIP software.
 
 CI defines dependency, lint, test, migration, and build gates. Those checks are
 point-in-time evidence and must be rerun for each release candidate. See

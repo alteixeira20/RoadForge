@@ -1,4 +1,4 @@
-# Anvilary Roadmaps — MVP Manual Test Plan
+# RoadForge — MVP Manual Test Plan
 
 This is a manual step-by-step test of the full create → save → share → join → revoke flow. Run after any change to the service layer, join page, or share modal.
 
@@ -66,7 +66,7 @@ curl http://localhost:7878/api/health
 
 **Expected behavior:** On refresh, the app hydrates immediately from scoped `localStorage` via the active ID in `sessionStorage`. `RoadmapContext` also calls `GET /api/roadmaps/{id}` in the background and replaces roadmap name, phases, and `ownerDisplayName` with the server snapshot.
 
-**Schema upgrade check:** If the cached or server snapshot is from an older Anvilary Roadmaps shape, the client upgrades it before rendering. Local caches are written back, owner/editor synced roadmaps autosync the upgraded shape, and viewers upgrade in memory only.
+**Schema upgrade check:** If the cached or server snapshot is from an older RoadForge shape, the client upgrades it before rendering. Local caches are written back, owner/editor synced roadmaps autosync the upgraded shape, and viewers upgrade in memory only.
 
 ---
 

@@ -7,7 +7,7 @@ Related policies:
 - [Session Expiry and Revocation Policy](./session-expiry-and-revocation-policy.md)
 - [Rate Limiting Policy](./rate-limiting-policy.md)
 
-Anvilary Roadmaps is accountless. Access is controlled by role-scoped invite links, optional roadmap passwords, and participant session tokens stored in browser storage. A strict security headers policy should reduce browser-side attack surface without changing that collaboration model.
+RoadForge is accountless. Access is controlled by role-scoped invite links, optional roadmap passwords, and participant session tokens stored in browser storage. A strict security headers policy should reduce browser-side attack surface without changing that collaboration model.
 
 ## 1. Current exposure
 
@@ -51,9 +51,9 @@ SSE is part of the current runtime model. The frontend obtains a short-lived tic
 | `frame-ancestors` | Prefer `frame-ancestors 'none'`; use `'self'` only if same-origin embedding becomes a product requirement. | CSP on frontend HTML responses and proxy-managed HTML responses. | `frame-ancestors` does not use `default-src`. It replaces the need for `X-Frame-Options` in modern browsers, but keeping both during rollout is acceptable if values agree. |
 | `X-Content-Type-Options` | `nosniff` | Frontend, API, and proxy. | Low risk. Already set by Next.js and Nginx. API should add it if the API can be reached without the proxy. |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Frontend and proxy; API optional. | Current value is a good default. It avoids leaking full invite-token URLs cross-origin while preserving useful same-origin referrers. `no-referrer` is stricter but can make diagnostics harder. |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()` | Frontend and proxy. | Current value matches Anvilary Roadmaps's needs. Add features only when a product feature requires them. |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()` | Frontend and proxy. | Current value matches RoadForge's needs. Add features only when a product feature requires them. |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` after HTTPS is stable. Add `preload` only after deliberate preload review. | TLS-terminating reverse proxy or Cloudflare edge, not local dev. | Do not send HSTS on localhost or plain HTTP. HSTS belongs where HTTPS is guaranteed. Misconfiguration can break subdomains. |
-| `Cross-Origin-Opener-Policy` | Start with `same-origin-allow-popups`; consider `same-origin` later if no workflow needs cross-origin popups. | Frontend HTML responses. | Anvilary Roadmaps does not currently appear to need OAuth popups. `same-origin` is stricter but can affect integrations and popup flows if added later. |
+| `Cross-Origin-Opener-Policy` | Start with `same-origin-allow-popups`; consider `same-origin` later if no workflow needs cross-origin popups. | Frontend HTML responses. | RoadForge does not currently appear to need OAuth popups. `same-origin` is stricter but can affect integrations and popup flows if added later. |
 | `Cross-Origin-Resource-Policy` | `same-origin` for HTML and API JSON where practical; `cross-origin` or omit for static assets that must be embeddable elsewhere. | Frontend/proxy for HTML and API; be careful with static assets. | `same-origin` can break cross-origin loading of shared assets or public images if those become product requirements. It should not block same-origin Next.js assets. |
 | `Cache-Control` | Auth-sensitive API responses: `no-store`. Static Next.js assets: keep framework defaults. SSE: `no-cache`/stream-friendly behavior. | API for JSON/SSE; proxy may reinforce. | Do not mark the whole site `no-store`; it hurts static asset caching. API responses that include session tokens, invite URLs, participants, roadmap data, or activity logs should not be cached by shared proxies. |
 
@@ -119,7 +119,7 @@ Directive notes:
 - `object-src 'none'` blocks legacy plugin content and should be enforced.
 - `base-uri 'self'` reduces base-tag injection risk.
 - `form-action 'self'` is compatible with the app because forms are handled by the frontend and API calls use fetch.
-- `frame-ancestors 'none'` should be the first choice because Anvilary Roadmaps does not currently require embedding. Use `'self'` only if same-origin embedding becomes an explicit product requirement.
+- `frame-ancestors 'none'` should be the first choice because RoadForge does not currently require embedding. Use `'self'` only if same-origin embedding becomes an explicit product requirement.
 - `upgrade-insecure-requests` is production-only. Do not use it for localhost HTTP development.
 
 Report collection can start without a custom endpoint by watching browser console violations during QA. A later implementation can add a dedicated report endpoint or use proxy/edge logging, but it must avoid logging raw invite tokens, session tokens, Authorization headers, full join URLs, and passwords.

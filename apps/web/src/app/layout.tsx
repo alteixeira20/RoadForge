@@ -20,9 +20,9 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Anvilary · Public Beta',
+  title: 'RoadForge · Public Alpha',
   description:
-    'Anvilary is a work-in-progress roadmap planner. Start locally, export portable JSON, and optionally collaborate without creating an account.',
+    'RoadForge by Anvilary is a work-in-progress roadmap planner. Start locally, export portable JSON, and optionally collaborate without creating an account.',
   manifest: '/site.webmanifest',
   icons: {
     icon: [

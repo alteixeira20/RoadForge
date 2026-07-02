@@ -1,11 +1,14 @@
-# Self-Hosting Anvilary Roadmaps
+# Self-Hosting RoadForge
 
-Anvilary Roadmaps is source-available, non-commercial beta software. Review `LICENSE` before
-deploying. Commercial hosting and monetized use are not permitted by that license.
+RoadForge is a Public Alpha product from Anvilary. Its repository and codebase
+remain private during alpha. A public source release is planned when RoadForge is
+beta-ready under non-commercial source-available terms, not a permissive
+open-source license. Commercial hosting and monetized use will not be permitted
+under the intended license.
 
 ## Topology
 
-The supported beta topology is:
+The supported alpha topology is:
 
 - Next.js web app;
 - FastAPI API;
@@ -32,7 +35,7 @@ Exact commands and environment variables are documented in
 
 ## Authentication modes
 
-The beta has no accounts or OAuth. Access uses role-scoped invite links, optional
+The alpha has no accounts or OAuth. Access uses role-scoped invite links, optional
 roadmap passwords, and participant session tokens. Do not expose owner/editor invite
 URLs in logs, screenshots, analytics, or support messages.
 
@@ -47,5 +50,5 @@ URLs in logs, screenshots, analytics, or support messages.
 ## Operations
 
 Use HTTPS, narrow trusted proxy CIDRs, non-default secrets, private database/Redis
-networks, log retention controls, and dependency monitoring. The beta has no uptime,
+networks, log retention controls, and dependency monitoring. The alpha has no uptime,
 support, or hosted-data recovery guarantee.

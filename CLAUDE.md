@@ -5,7 +5,11 @@
 An accountless, self-hostable, local-first roadmap planning tool. Users create roadmaps without registering. Access is controlled by private owner/editor invite links and a public read-only viewer link. Session tokens stored in `localStorage` identify participants. No accounts. No login. No user dashboard.
 
 RoadForge has a Next.js frontend and a FastAPI/PostgreSQL backend. The v0.1 flow
-is being hardened for a clearly labeled public beta/WIP release.
+is currently a clearly labeled Public Alpha/WIP release.
+
+The repository and codebase remain private during alpha. A public source release
+is planned when RoadForge is beta-ready, under non-commercial source-available
+terms rather than a permissive open-source license.
 
 ## Stack
 
