@@ -275,16 +275,6 @@ export function TaskRow({
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
-  const handleStartEdit = async () => {
-    if (inlineEdit.isEditing) {
-      onToast('Save or cancel the inline edit first.')
-      return
-    }
-    const success = await tryAcquireEditLock()
-    if (!success) return
-    setIsEditing(true)
-  }
-
   const handleBeginInlineEdit = async (field: 'title' | 'est' | 'desc') => {
     if (activeForm || effectivelyReadOnly || inlineEdit.isEditing) return
     if (field === 'title') {
@@ -737,14 +727,6 @@ export function TaskRow({
                           <Icon name="link" size={13} /> Link dependency
                         </button>
                       )}
-                      <button
-                        className="btn sm"
-                        onClick={handleStartEdit}
-                        title={inlineEdit.isEditing ? 'Finish inline edit first' : 'Edit task'}
-                        disabled={inlineEdit.isEditing}
-                      >
-                        <Icon name="pencil" size={13} /> Edit task
-                      </button>
                     </div>
                   )}
                 </div>
