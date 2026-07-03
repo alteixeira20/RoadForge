@@ -217,6 +217,8 @@ const CURRENT_SCHEMA_VERSION = 1
 const KNOWN_SCHEMAS = new Set([
   'anvilary.roadmap.import',
   'anvilary.roadmap.export',
+  'roadforge.roadmap.import',
+  'roadforge.roadmap.export',
 ])
 const KNOWN_TOP_LEVEL_KEYS = new Set([
   'schema', 'version', 'exportedAt', 'roadmap', 'collaborator', 'phases',

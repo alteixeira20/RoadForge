@@ -138,7 +138,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     try {
       onToast('Preparing AI roadmap template...')
       const blob = new Blob([AI_ROADMAP_TEMPLATE], { type: 'text/plain;charset=utf-8' })
-      downloadBlob(blob, 'anvilary-ai-roadmap-template.txt')
+      downloadBlob(blob, 'roadforge-ai-roadmap-template.txt')
       onToast('AI roadmap template downloaded')
     } catch {
       onToast('Export failed. Could not create template file.')

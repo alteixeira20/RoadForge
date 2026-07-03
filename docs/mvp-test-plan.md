@@ -197,11 +197,13 @@ curl http://localhost:7878/api/health
 2. Open a local unsaved roadmap.
 3. Open **Import / Export**.
 4. Export JSON and confirm a `.roadforge.json` file downloads.
-5. Import that JSON — no notice appears (own clean export). Roadmap name and phases load.
-6. Import a raw JSON phase array and confirm it loads.
-7. Import invalid JSON and confirm the error toast says `Import failed: invalid JSON.`
-8. Import a JSON with `"done": 1` on a task (integer instead of boolean) → **Import notice** appears: "Boolean task fields (done, next) were coerced from non-boolean values." Confirm → import proceeds.
-9. Import a JSON with `"schema": "roadforge.roadmap.v0"` → Import notice appears with a compatibility warning. Confirm → import proceeds.
+5. Confirm the export uses `"schema": "anvilary.roadmap.export"` for compatibility with older RoadForge deployments.
+6. Import that JSON — no notice appears (own clean export). Roadmap name and phases load.
+7. Import version-1 files using `roadforge.roadmap.import`, `roadforge.roadmap.export`, `anvilary.roadmap.import`, and `anvilary.roadmap.export` → no schema warning.
+8. Import a raw JSON phase array and confirm it loads.
+9. Import invalid JSON and confirm the error toast says `Import failed: invalid JSON.`
+10. Import a JSON with `"done": 1` on a task (integer instead of boolean) → **Import notice** appears: "Boolean task fields (done, next) were coerced from non-boolean values." Confirm → import proceeds.
+11. Import a JSON with `"schema": "roadforge.roadmap.v0"` → Import notice appears with a compatibility warning. Confirm → import proceeds.
 
 **Expected:** Import auto-repair handles minor structural issues (null/wrong-type fields, duplicate IDs, legacy assignment tags) before validation. Users see an Import notice listing what was fixed. Truly malformed or unrelated JSON still fails with a toast error.
 
@@ -211,7 +213,7 @@ curl http://localhost:7878/api/health
 2. Confirm the moved phase now displays `00`, the next displays `01`, and phase IDs/tasks stayed with their phase.
 3. Save, reload, and export JSON. Confirm `phase.num` values persist in visible order.
 4. Load/import an old roadmap with missing/null task defaults.
-5. Confirm a **Roadmap updated** notice appears. It states Anvilary updated the roadmap for the latest version, shows no technical repair details, and has **no** backup/download button. Click **Dismiss** to clear it.
+5. Confirm a **Roadmap updated** notice appears. It states RoadForge updated the roadmap for the latest version, shows no technical repair details, and has **no** backup/download button. Click **Dismiss** to clear it.
 6. Confirm automatic upgrade does not create an Activity entry or version checkpoint.
 
 ---

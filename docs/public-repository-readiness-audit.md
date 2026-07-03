@@ -7,7 +7,7 @@ Status: static package ready; release validation and media pending
 ## Present
 
 - PolyForm Noncommercial 1.0.0 license and source-available terminology;
-- beta/WIP stability and backup expectations;
+- Public Alpha/WIP stability and backup expectations;
 - contribution, conduct, support, security, and changelog files;
 - issue, pull-request, and release templates;
 - self-hosting, deployment security, and public architecture documentation;

@@ -157,7 +157,12 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 ## 11 — Task creation / editing / done state
 
 - [ ] **Create:** Add task → task appears with unique ID.
-- [ ] **Edit:** Expand task → change title, description, estimate, tags, assignees, deps → save → values persist after reload.
+- [ ] **Inline title:** click the task title, edit it, and press Enter or blur → the new title persists. Press Escape on a second edit → the draft is discarded.
+- [ ] **Inline estimate:** click the estimate chip, edit it, and press Enter or blur → the new estimate persists.
+- [ ] **Inline description:** expand the task, click its description, edit Markdown, then save → formatted content updates without opening the full edit form.
+- [ ] **Inline tags:** add and remove tags from the expanded task → task chips and tag registry-backed labels update and persist.
+- [ ] **Inline assignees:** add, select, and remove assignees from the expanded task → names update and persist.
+- [ ] **Full edit form:** change title, description, estimate, tags, assignees, and dependencies → save → values persist after reload.
 - [ ] **Markdown description:** use the toolbar or type paragraphs, bold, italic, inline code, links, bullet/numbered lists, and `- [ ]` / `- [x]` items → save → compact formatted content renders in the task detail.
 - [ ] **Markdown safety:** enter `<b>raw HTML</b>` and a `vbscript:` link → raw HTML displays as text and the unsafe link is not clickable.
 - [ ] **Legacy description:** load a plain-text description with line breaks → it remains readable without conversion.
@@ -272,8 +277,11 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 - [ ] Team shows actual server participants only: display name, role, access source, last seen, current-session marker.
 - [ ] Owner can click Invite/Add team member and the existing Share modal opens.
 - [ ] Owner can revoke a non-current participant from Team.
+- [ ] Editor opens Team and sees active participant names and roles only; session expiry, last-seen, and invite-link metadata are absent.
+- [ ] In the Editor window, open inline assignee editing → active participant names appear as suggestions.
+- [ ] Revoke a participant as Owner, refresh the Editor participant list, and confirm the revoked name is no longer suggested.
 - [ ] Task assignees who have not joined through a share link do **not** appear as Team collaborators.
-- [ ] Editor/viewer do not see owner-only Team management controls.
+- [ ] Editor does not see invite/revoke controls; Viewer cannot open Team.
 
 ---
 
@@ -298,7 +306,7 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 
 - [ ] Open **Import / Export** → Export tab.
 - [ ] Click **Export JSON** → `.roadforge.json` file downloads.
-- [ ] Inspect file: contains `"schema": "roadforge.roadmap.export"`, `"version": 1`, phases, tasks.
+- [ ] Inspect file: contains `"schema": "anvilary.roadmap.export"`, `"version": 1`, phases, tasks. The legacy schema ID is intentionally retained so older RoadForge deployments can import new exports.
 - [ ] Markdown descriptions remain plain JSON strings, and each phase includes its `colorMode`.
 - [ ] **No session tokens, invite tokens, or auth data** in the exported file.
 - [ ] Re-import that same file (§19) → no compatibility warning (known schema/version).
@@ -334,6 +342,7 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 ## 21 — Import compatibility warnings and auto-repair
 
 **Compatibility warnings** (schema/version issues — shown when valid but non-canonical format):
+- [ ] Import version-1 files using each accepted schema ID: `anvilary.roadmap.import`, `anvilary.roadmap.export`, `roadforge.roadmap.import`, and `roadforge.roadmap.export` → no schema compatibility warning.
 - [ ] Create a JSON file with `"schema": "roadforge.roadmap.v0"` (unknown schema) and valid phases.
 - [ ] Import it → **Import notice** appears with the compatibility warning. "This file will still import successfully." shown. Confirm → roadmap loads.
 - [ ] Create a JSON file with `"version": 99` (future version) → warning: "This file was created with a newer version..."
@@ -356,7 +365,7 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 
 - [ ] Seed/load an old local roadmap cache with `task.next: null` or missing `task.assignees`, `task.tags`, or `task.deps`.
 - [ ] Open the roadmap. It loads without error and shows **Roadmap updated** near the workspace top.
-- [ ] Notice copy says Anvilary updated the roadmap for the latest version. It does not show technical repair details or a backup/download button.
+- [ ] Notice copy says RoadForge updated the roadmap for the latest version. It does not show technical repair details or a backup/download button.
 - [ ] Click **Dismiss**. The notice does not reappear for that active roadmap/session.
 - [ ] Reload the local roadmap and confirm the cache has the repaired current shape.
 - [ ] Load an old synced roadmap as owner/editor. It repairs, marks local state unsaved, and autosync persists the upgraded snapshot.

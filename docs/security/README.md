@@ -12,7 +12,11 @@ The documents below are a mix of policy (intended behavior) and implementation n
 
 **[Session Expiry and Revocation Policy](./session-expiry-and-revocation-policy.md)**
 
-Covers the participant session model, proposed 30-day sliding expiry, session revocation via the owner Team panel, share-link revocation vs. participant revocation, and how the local roadmap cache is preserved across session expiry. Status: implemented — backend expiry enforcement and frontend session handling are in place; deployment and manual QA may be separate steps.
+Covers the participant session model, implemented 30-day sliding expiry, session
+revocation via the owner Team panel, share-link revocation vs. participant revocation,
+and preservation of the local roadmap cache across session expiry. Status: implemented
+— backend expiry enforcement and frontend session handling are in place; deployment
+and manual QA may be separate steps.
 
 ---
 

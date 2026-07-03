@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-RoadForge is currently public beta/WIP software. Only the `main` branch receives security fixes. There are no LTS releases, patch branches, or backport commitments.
+RoadForge is currently Public Alpha/WIP software. Only the `main` branch receives security fixes. There are no LTS releases, patch branches, or backport commitments.
 
 ## Reporting a vulnerability
 

@@ -25,9 +25,9 @@ Sessions expire after 30 days of inactivity. Successful authenticated requests v
 
 **Roles:** `owner`, `editor`, `viewer`
 
-- `owner` — full control: update, delete, share link management, participant revocation, version history, checkpoints, restore, and locks.
-- `editor` — can read and update the roadmap and phases, read version history, create replacement-safety checkpoints, and acquire/release locks.
-- `viewer` — read-only access to roadmap data, activity, locks, and SSE streams.
+- `owner` — full control: update, delete, task state, tags, share link management, participant revocation, version history, checkpoints, restore, and locks.
+- `editor` — can update roadmap content and task state, manage tags, read participant summaries and version history, create replacement-safety checkpoints, and acquire/release locks.
+- `viewer` — read-only access to roadmap data, tags, activity, locks, and SSE streams.
 
 **Invite token join flow:**
 1. Owner creates a roadmap (`POST /api/roadmaps`) and receives three share link URLs, one per role.
@@ -72,11 +72,14 @@ All errors use FastAPI's default shape:
 |---|---|
 | `GET /api/roadmaps/{id}` | owner, editor, or viewer |
 | `PUT /api/roadmaps/{id}` | owner or editor |
+| `PATCH /api/roadmaps/{id}/tasks/{task_id}/done` | owner or editor |
+| `PATCH /api/roadmaps/{id}/tasks/{task_id}/claim` | owner or editor |
+| `DELETE /api/roadmaps/{id}/tasks/{task_id}/claim` | owner or editor |
 | `DELETE /api/roadmaps/{id}` | owner |
 | `GET /api/roadmaps/{id}/share-links` | owner |
 | `POST /api/roadmaps/{id}/share-links/{role}/rotate` | owner |
 | `DELETE /api/roadmaps/{id}/share-links/{role}` | owner |
-| `GET /api/roadmaps/{id}/participants` | owner |
+| `GET /api/roadmaps/{id}/participants` | owner or editor |
 | `POST /api/roadmaps/{id}/participants/{pid}/revoke` | owner |
 | `GET /api/roadmaps/{id}/versions` | owner or editor |
 | `POST /api/roadmaps/{id}/versions/checkpoint` | owner or editor |
@@ -88,6 +91,10 @@ All errors use FastAPI's default shape:
 | `POST /api/roadmaps/{id}/locks` | owner or editor |
 | `DELETE /api/roadmaps/{id}/locks/{target}` | owner or editor (lock owner only) |
 | `GET /api/roadmaps/{id}/locks` | owner, editor, or viewer |
+| `GET /api/roadmaps/{id}/tags` | owner, editor, or viewer |
+| `POST /api/roadmaps/{id}/tags` | owner or editor |
+| `PUT /api/roadmaps/{id}/tags/{tag_id}` | owner or editor |
+| `DELETE /api/roadmaps/{id}/tags/{tag_id}` | owner or editor |
 
 Public endpoints (no token required): `GET /api/health`, `POST /api/roadmaps`, `POST /api/roadmaps/join`.
 
@@ -118,6 +125,7 @@ Rate-limited: 10 creates per IP per hour.
   "name": "v1.0 Public Launch",
   "owner_display_name": "Ada",
   "phases": [],
+  "tag_registry": [],
   "password": null,
   "change_summary": null
 }
@@ -128,6 +136,7 @@ Rate-limited: 10 creates per IP per hour.
 | `name` | string | yes | 1–120 chars |
 | `owner_display_name` | string | yes | 1–128 chars |
 | `phases` | array | no | max 50 phases (see Phase shape) |
+| `tag_registry` | array or null | no | max 200 unique tag definitions |
 | `password` | string or null | no | 6–128 chars; enables password gate on join |
 | `change_summary` | object or null | no | overrides the first activity log entry; useful for import-on-create flows |
 
@@ -149,6 +158,7 @@ Rate-limited: 10 creates per IP per hour.
   "owner_display_name": "Ada",
   "schema_version": "1.0",
   "phases": [],
+  "tag_registry": [],
   "is_password_enabled": false,
   "created_at": "2026-05-08T10:00:00Z",
   "updated_at": "2026-05-08T10:00:00Z",
@@ -243,6 +253,7 @@ Fetch a roadmap with its current phase snapshot.
   "owner_display_name": "Ada",
   "schema_version": "1.0",
   "phases": [ ... ],
+  "tag_registry": [ ... ],
   "is_password_enabled": false,
   "created_at": "2026-05-08T10:00:00Z",
   "updated_at": "2026-05-08T10:15:00Z"
@@ -257,15 +268,17 @@ Fetch a roadmap with its current phase snapshot.
 
 ### PUT /api/roadmaps/{roadmap_id}
 
-Update the roadmap name and/or phases. Both fields are optional; omit to leave unchanged. Phase update is a full snapshot replacement — the entire `phases` array is stored as-is.
+Update the roadmap name, phases, and/or tag registry. These fields are optional; omit
+one to leave it unchanged. Phase and tag-registry updates replace their full arrays.
 
 **Auth:** owner or editor.
 
 **Request:**
 ```json
 {
-  "name": "v1.1 Beta",
+  "name": "v1.1 Preview",
   "phases": [ ... ],
+  "tag_registry": [ ... ],
   "last_updated_at": "2026-05-08T10:00:00Z",
   "change_summary": {
     "action": "task.completed",
@@ -281,6 +294,7 @@ Update the roadmap name and/or phases. Both fields are optional; omit to leave u
 |---|---|---|---|
 | `name` | string or null | no | 1–120 chars |
 | `phases` | array or null | no | full snapshot replacement |
+| `tag_registry` | array or null | no | full tag-registry replacement |
 | `last_updated_at` | ISO datetime | yes | optimistic concurrency timestamp; returns 409 if server is strictly newer |
 | `change_summary` | object or null | no | customizes the activity log entry; if provided, `action` must be in the backend allowlist |
 
@@ -334,6 +348,70 @@ Batch `change_summary` example:
 `summary.phase_ids` and `summary.task_ids` list IDs present in one version but not the other (symmetric difference).
 
 **Response 404:** Roadmap not found.
+
+---
+
+### PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}/done
+
+Set one task's completion state without replacing the full roadmap snapshot. Completing
+a task clears its active claim. The response includes the updated roadmap and a
+`roadmap.updated` event is published.
+
+**Auth:** owner or editor.
+
+**Request:**
+```json
+{
+  "done": true,
+  "last_updated_at": "2026-05-08T10:00:00Z"
+}
+```
+
+`last_updated_at` is required. A server roadmap newer than this timestamp returns the
+same structured 409 conflict shape as `PUT /api/roadmaps/{roadmap_id}`.
+
+**Response 200:** Same shape as `GET /api/roadmaps/{roadmap_id}`.
+
+**Response 404:** Task not found.
+
+---
+
+### PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim
+
+Claim an incomplete task for the current participant. The task records the
+participant display name, participant ID, and claim timestamp.
+
+**Auth:** owner or editor.
+
+**Query parameter:** `override=true` allows an owner to replace another
+participant's existing claim. Editors cannot override claims.
+
+**Response 200:** Same shape as `GET /api/roadmaps/{roadmap_id}`.
+
+**Response 400:** Task is complete.
+
+**Response 409:** Task is already claimed by another participant.
+
+**Response 404:** Task not found.
+
+---
+
+### DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim
+
+Release the current participant's task claim.
+
+**Auth:** owner or editor.
+
+**Query parameter:** `override=true` allows an owner to clear another participant's
+claim. Editors can clear only their own claims.
+
+**Response 200:** Same shape as `GET /api/roadmaps/{roadmap_id}`. Releasing an
+already-unclaimed task is idempotent.
+
+**Response 409:** The task is claimed by another participant and no valid owner
+override was supplied.
+
+**Response 404:** Task not found.
 
 ---
 
@@ -442,9 +520,12 @@ Rate-limited: 10 revocations per participant per roadmap per role per minute.
 
 ### GET /api/roadmaps/{roadmap_id}/participants
 
-List all participants for a roadmap, ordered by join date. Includes revoked participants.
+List participants for a roadmap. Owners receive the full participant/session
+projection, including revoked participants. Editors receive active participants only,
+with the reduced fields needed for collaborator and assignee suggestions. Viewers are
+forbidden.
 
-**Auth:** owner only.
+**Auth:** owner or editor.
 
 **Response 200:**
 ```json
@@ -466,6 +547,21 @@ List all participants for a roadmap, ordered by join date. Includes revoked part
 ```
 
 `is_current_participant` is `true` for the participant matching the caller's session token. `access_source_label` is `"Legacy / unknown link"` if the share link was rotated or revoked after the participant joined.
+
+**Editor response 200:**
+```json
+[
+  {
+    "id": "pt_def456",
+    "display_name": "Jordan",
+    "role": "editor",
+    "is_current_participant": true
+  }
+]
+```
+
+Editor responses omit timestamps, expiry/revocation state, and share-link metadata.
+Revoked participants are excluded.
 
 **Response 404:** Roadmap not found.
 
@@ -709,6 +805,89 @@ List all active locks for a roadmap.
 
 ---
 
+### GET /api/roadmaps/{roadmap_id}/tags
+
+List the roadmap's tag registry.
+
+**Auth:** owner, editor, or viewer.
+
+**Response 200:**
+```json
+[
+  {
+    "id": "planning",
+    "label": "Planning",
+    "color": "#f97316",
+    "createdAt": "2026-05-08T10:00:00Z",
+    "updatedAt": "2026-05-08T10:00:00Z"
+  }
+]
+```
+
+---
+
+### POST /api/roadmaps/{roadmap_id}/tags
+
+Create a tag. `id` is optional; when omitted, the server generates a unique ID from
+the label.
+
+**Auth:** owner or editor.
+
+**Request:**
+```json
+{
+  "id": "planning",
+  "label": "Planning",
+  "color": "#f97316",
+  "last_updated_at": "2026-05-08T10:00:00Z"
+}
+```
+
+**Response 201:** Updated roadmap response.
+
+**Response 409:** Stale roadmap, duplicate ID, or duplicate label.
+
+---
+
+### PUT /api/roadmaps/{roadmap_id}/tags/{tag_id}
+
+Update a tag label and/or color. Send `color: null` to remove the color.
+
+**Auth:** owner or editor.
+
+**Request:**
+```json
+{
+  "label": "Product planning",
+  "color": null,
+  "last_updated_at": "2026-05-08T10:00:00Z"
+}
+```
+
+**Response 200:** Updated roadmap response.
+
+**Response 404:** Tag not found.
+
+**Response 409:** Stale roadmap or duplicate label.
+
+---
+
+### DELETE /api/roadmaps/{roadmap_id}/tags/{tag_id}
+
+Delete an unused tag.
+
+**Auth:** owner or editor.
+
+**Query parameter:** required ISO datetime `last_updated_at`.
+
+**Response 200:** Updated roadmap response.
+
+**Response 404:** Tag not found.
+
+**Response 409:** Stale roadmap or tag is still used by a task.
+
+---
+
 ## Phase and Task shape
 
 Phases and tasks are stored as a JSON snapshot. The shape mirrors `apps/web/src/types/roadmap.ts`.
@@ -734,6 +913,9 @@ Task
   deps      string[] | null     task IDs this task depends on, max 50 items
   desc      string | null       max 2000 chars
   parentId  string | null       ID of parent task, max 80 chars
+  claimedBy string | null       claim owner display name
+  claimedById string | null     claim owner participant ID
+  claimedAt string | null       ISO timestamp for the claim
 ```
 
 Max 50 phases per roadmap. All text fields are server-sanitized (control characters stripped; suspiciously long values rejected).
@@ -758,6 +940,12 @@ Client compatibility: the browser auto-upgrades older local or server snapshots 
 ## Import/export note
 
 RoadForge's JSON import and export run entirely in the browser. There are no backend import or export endpoints for JSON, Markdown, or PDF.
+
+Import accepts the current `roadforge.roadmap.import` and
+`roadforge.roadmap.export` schema IDs plus the legacy
+`anvilary.roadmap.import` and `anvilary.roadmap.export` IDs. Legacy IDs remain
+supported for existing roadmap files. New exports currently retain
+`anvilary.roadmap.export` for compatibility with older RoadForge deployments.
 
 ---
 

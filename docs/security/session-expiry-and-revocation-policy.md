@@ -1,6 +1,9 @@
 # RoadForge — Session Expiry and Revocation Policy
 
-Status: proposed design for RF-825. This document describes intended behavior; it does not claim expiry enforcement is implemented.
+Status: implemented policy. See
+[`security-hardening-implementation-notes.md`](./security-hardening-implementation-notes.md)
+for the shipped code paths and validation scope. Optional token rotation and hard
+session caps described below remain future work.
 
 RoadForge is accountless. Access is controlled by role-scoped invite links, optional roadmap passwords, and participant session tokens stored by the browser. The policy below keeps that model while reducing the risk of long-lived stolen sessions.
 
@@ -16,7 +19,7 @@ When a roadmap is saved to the backend, the API creates:
 
 When someone opens `/join?token=...`, `POST /api/roadmaps/join` resolves the active share link, checks the optional roadmap password, creates a new `Participant`, and returns a one-time `session_token`. The frontend stores that token in scoped local storage under `rf:auth:{roadmapId}` with the server roadmap ID, participant ID, and role. Roadmap content is stored separately under `rf:roadmap:{roadmapId}` so the browser can hydrate from the local cache before or without a server refresh.
 
-Session tokens are bearer credentials. Protected API calls send `Authorization: Bearer <session_token>`. The backend hashes the raw token and looks up a non-revoked participant for the requested roadmap. Current code updates `Participant.last_seen_at` on successful protected requests.
+Session tokens are bearer credentials. Protected API calls send `Authorization: Bearer <session_token>`. The backend hashes the raw token and looks up a non-revoked, non-expired participant for the requested roadmap. Successful authenticated requests renew the 30-day sliding expiry and update `Participant.last_seen_at` when the presence timestamp is stale.
 
 Share-link revocation and participant revocation are different controls:
 - Share-link revocation or rotation stops future joins with that invite token. It does not currently revoke already-created participant sessions.
@@ -26,7 +29,8 @@ Roadmap deletion is broader than participant revocation. `DELETE /api/roadmaps/{
 
 Participant display names are not accounts. They are labels stored on `Participant` rows for collaboration UI, activity logs, locks, and owner Team views. They are not identity proof, are not globally unique, and should not be used as an authorization primitive.
 
-There is currently no modeled participant session expiry. A participant session appears valid until the roadmap is deleted, the participant is revoked, or the local token is lost or cleared.
+Participant sessions have a modeled 30-day sliding expiry. Expired sessions fail
+authentication and may rejoin through an active invite link.
 
 ---
 
@@ -43,9 +47,9 @@ There is currently no modeled participant session expiry. A participant session 
 
 ---
 
-## 3. Proposed policy
+## 3. Current policy
 
-Recommended first-version defaults:
+Implemented first-version defaults:
 
 | Policy area | Recommendation |
 |---|---|
@@ -66,11 +70,11 @@ Expired sessions should preserve local cached roadmap content and ask the user t
 
 ---
 
-## 4. Database/model impact
+## 4. Database/model design
 
-Likely backend fields for a future implementation:
+Current and optional backend fields:
 
-- `Participant.session_expires_at datetime timestamptz null`: expiry timestamp for the participant's current session. New sessions should set this to `now + 30 days`. Existing rows can be backfilled to a conservative grace date during migration.
+- `Participant.session_expires_at datetime timestamptz null`: implemented expiry timestamp for the participant's current session. New sessions set this to `now + 30 days`; the migration backfilled existing rows.
 - `Participant.last_seen_at datetime timestamptz null`: already exists. Continue using it for visibility and renewal decisions, but do not treat it as the source of truth for expiry.
 - `Participant.revoked_at datetime timestamptz null`: already exists. It remains the source of truth for owner-initiated participant revocation.
 - `Participant.revoked_reason text null` or enum-like string, optional: useful later to distinguish `owner_revoked`, `roadmap_deleted`, `password_policy`, or administrative actions. Do not block the first version on it.
@@ -83,14 +87,17 @@ Do not model global users, accounts, email addresses, OAuth subjects, or device 
 
 ## 5. API behavior
 
-Keep current endpoint shapes stable where possible. Expiry should be enforced in the same central auth path that currently verifies bearer session tokens and `revoked_at`.
+Endpoint shapes remain stable. Expiry is enforced in the central auth path that
+verifies bearer session tokens and `revoked_at`.
 
 Expected behavior:
 
 - Authenticated roadmap fetch: `GET /api/roadmaps/{id}` should require a valid, non-revoked, non-expired session. On success, update `last_seen_at` and renew `session_expires_at` when the participant presence timestamp is stale.
 - Update/save: `PUT /api/roadmaps/{id}` should reject expired and revoked sessions before concurrency checks or writes. Expiry must not create activity logs.
 - Share management: owner-only share-link list, rotate, and revoke endpoints should reject expired owner sessions as expired auth, not as insufficient role.
-- Participant list: owner-only participant listing should include `last_seen_at`, `revoked_at`, and eventually `session_expires_at` so owners can understand stale sessions.
+- Participant list: owners receive `last_seen_at`, `revoked_at`, and
+  `session_expires_at`; editors receive only active participant IDs, names, roles, and
+  current-participant state.
 - Join/rejoin: `POST /api/roadmaps/join` should create a new participant session when the invite link is active and password checks pass. Rejoining after expiry can create a new `Participant` row initially; merging with an old expired participant can be deferred.
 - Expired session response: return `401 Unauthorized` with a stable detail such as `"Session expired"`.
 - Revoked session response: return `401 Unauthorized` with a stable detail such as `"Session revoked"` when the token maps to a revoked participant.

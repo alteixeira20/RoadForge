@@ -11,7 +11,8 @@ run except where explicitly recorded by the implementer.
 - Valid authenticated requests renew participant sessions by 30 days and update `last_seen_at` when the participant presence timestamp is stale.
 - Frontend expired-session handling clears only scoped auth cache, preserves the roadmap cache, marks the local copy unsynced, and asks the user to rejoin through an active invite link.
 - Owner-facing participant views include compact session expiry metadata.
-- App-level in-memory rate limiting covers roadmap creation, join attempts, password failures, event tickets, and owner share-link rotate/revoke.
+- App-level rate limiting covers public and authenticated sensitive routes. Memory mode
+  is process-local; Redis mode shares limits across workers.
 - Next.js sends a `Content-Security-Policy-Report-Only` header and preserves existing baseline frontend headers.
 - FastAPI sends `X-Content-Type-Options: nosniff` and `Cache-Control: no-store` on sensitive roadmap JSON routes while preserving SSE stream behavior.
 - Security header inspection commands and a manual security smoke checklist are documented.
@@ -23,16 +24,8 @@ run except where explicitly recorded by the implementer.
 - Run frontend lint, type checks, and production build checks.
 - Run the manual security hardening smoke checklist in `docs/manual-qa.md`.
 - Review CSP report-only output before considering enforced CSP.
-- Revisit limiter storage if the API is moved beyond the current single-worker deployment shape.
-
-## Rebrand Gate
-
-Rebrand work should wait until:
-
-- Migrations are checked locally.
-- Backend syntax/tests are checked.
-- Frontend lint/type/build checks are complete.
-- The manual security hardening smoke checklist has been run.
+- Exercise Redis-backed rate limits, tickets, locks, and event delivery in multi-worker
+  staging before deployment.
 
 ## Suggested Validation Commands
 

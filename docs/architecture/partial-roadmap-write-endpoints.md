@@ -1,14 +1,14 @@
 # Partial Roadmap Write Endpoints
 
-This document defines the contract for partial roadmap writes after the
-relational projection is proven. The first implemented slice is task done
-toggling only; broader partial task editing remains deferred. The current
-full-save API remains available, and `roadmaps.snapshot_json` remains canonical.
+This document records focused roadmap writes implemented after the relational
+projection foundation. Task completion, task claims, and tag registry operations have
+dedicated routes; broader task/phase editing remains on the aggregate save path.
+`roadmaps.snapshot_json` remains canonical for phases and tasks.
 
 ## Scope
 
 Partial writes use owner/editor authorization and keep viewer access read-only.
-For the first slice, partial writes update `roadmaps.snapshot_json` first and
+Task partial writes update `roadmaps.snapshot_json` first and
 then rebuild/sync derivative projection rows. Existing GET, import/export,
 version, and restore flows keep their shape.
 
@@ -41,6 +41,30 @@ Behavior:
 - Same-value no-op returns 200 with the current roadmap and does not create an
   activity log or SSE event.
 
+## Implemented endpoints: task claims
+
+```text
+PATCH  /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim
+DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim
+```
+
+Claims are owner/editor coordination metadata. A participant can release their own
+claim; another editor receives 409. The owner can explicitly take over or clear another
+claim with `override=true`. Completing a task clears the claim.
+
+## Implemented endpoints: tag registry
+
+```text
+GET    /api/roadmaps/{roadmap_id}/tags
+POST   /api/roadmaps/{roadmap_id}/tags
+PUT    /api/roadmaps/{roadmap_id}/tags/{tag_id}
+DELETE /api/roadmaps/{roadmap_id}/tags/{tag_id}
+```
+
+All roles can list tags. Owner/editor can create, update, and delete unused tags with
+roadmap-level optimistic concurrency. The registry remains canonical on
+`roadmaps.tag_registry_json`; these routes do not create a relational task-tag model.
+
 ## Frontend behavior
 
 The workspace keeps local-only roadmaps on the existing local mutation path.
@@ -55,7 +79,7 @@ checkbox change is reverted. A 409 conflict leaves the server state untouched,
 shows the stale-write message, and reuses the roadmap conflict review path when
 the API returns conflict metadata.
 
-## Proposed endpoints
+## Deferred endpoints
 
 - `POST /api/roadmaps/{roadmap_id}/phases`: create a phase after an optional `after_phase_id`, or at the end when omitted.
 - `PATCH /api/roadmaps/{roadmap_id}/phases/{phase_id}`: update `num`, `name`, `color`, `status`, or `progress`.
@@ -69,7 +93,7 @@ the API returns conflict metadata.
 - `POST /api/roadmaps/{roadmap_id}/tasks/{task_id}/dependencies`: link a dependency by `depends_on_task_id`.
 - `DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}/dependencies/{depends_on_task_id}`: unlink a dependency.
 - `PUT /api/roadmaps/{roadmap_id}/tasks/{task_id}/assignees`: replace ordered task-local display names.
-- `PUT /api/roadmaps/{roadmap_id}/tasks/{task_id}/tags`: replace ordered task-local tags.
+- `PUT /api/roadmaps/{roadmap_id}/tasks/{task_id}/tags`: replace ordered task-local tag IDs.
 
 ## Optimistic concurrency
 

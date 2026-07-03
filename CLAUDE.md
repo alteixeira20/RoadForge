@@ -52,7 +52,7 @@ apps/web/src/
 ├── data/           # sample-roadmap.ts, EXPORT_OPTIONS
 ├── hooks/          # useWorkspaceModals, usePhaseCollapse, usePhaseSearch, useToastState
 ├── lib/            # storage.ts, roadmap-validation.ts, roadmap-upgrade.ts, assignment helpers
-├── services/       # roadmap.service.ts (all HTTP calls live here)
+├── services/       # domain services; roadmap.service.ts is a compatibility barrel
 ├── styles/         # CSS split: tokens, base, ui, site, workspace, modals, join
 └── types/          # roadmap.ts, ui.ts
 ```
@@ -65,7 +65,7 @@ apps/web/src/
 - Do not redesign the UI or rename CSS classes
 - Do not install packages without explicit instruction
 - Do not commit or create branches without explicit instruction
-- Do not call `fetch()` anywhere except `apps/web/src/services/roadmap.service.ts`
+- Do not call `fetch()` outside `apps/web/src/services/roadmap-http.ts`
 - Do not call `localStorage` directly in components — use `apps/web/src/lib/storage.ts`
 - Do not add email verification or email-based flows (deferred feature)
 
@@ -86,6 +86,9 @@ POST   /api/roadmaps                                          create roadmap
 POST   /api/roadmaps/join                                     accept invite token
 GET    /api/roadmaps/{roadmap_id}                             fetch roadmap + phases
 PUT    /api/roadmaps/{roadmap_id}                             update name and/or phases
+PATCH  /api/roadmaps/{roadmap_id}/tasks/{task_id}/done        set task completion
+PATCH  /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim       claim task
+DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim       release task claim
 DELETE /api/roadmaps/{roadmap_id}                             soft-delete roadmap
 GET    /api/roadmaps/{roadmap_id}/share-links                 list active share links
 POST   /api/roadmaps/{roadmap_id}/share-links/{role}/rotate   rotate link token
@@ -102,9 +105,15 @@ GET    /api/roadmaps/{roadmap_id}/events                      SSE stream (ticket
 POST   /api/roadmaps/{roadmap_id}/locks                       acquire/refresh lock
 DELETE /api/roadmaps/{roadmap_id}/locks/{target}              release a lock
 GET    /api/roadmaps/{roadmap_id}/locks                       list active locks
+GET    /api/roadmaps/{roadmap_id}/tags                        list tags
+POST   /api/roadmaps/{roadmap_id}/tags                        create tag
+PUT    /api/roadmaps/{roadmap_id}/tags/{tag_id}               update tag
+DELETE /api/roadmaps/{roadmap_id}/tags/{tag_id}               delete unused tag
 ```
 
-All business logic lives in `apps/api/src/api/services/roadmap_service.py`. Route handlers in `routers/roadmaps.py` are thin wrappers. Note: `/join` must be registered before `/{roadmap_id}` in the router to avoid path capture.
+Business logic is split by domain under `apps/api/src/api/services/`; route handlers
+in `routers/roadmaps.py` remain thin wrappers. Note: `/join` must be registered before
+`/{roadmap_id}` in the router to avoid path capture.
 
 ## Frontend wiring state (as of current MVP)
 
@@ -125,7 +134,11 @@ All business logic lives in `apps/api/src/api/services/roadmap_service.py`. Rout
 | Import auto-repair pipeline (roadmap-validation.ts) | Wired |
 | Roadmap schema auto-upgrade (roadmap-upgrade.ts) | Wired |
 | Public read-only viewer/demo link | Wired |
-| Team main workspace view for participants | Wired for synced owner roadmaps |
+| Team main workspace view for participants | Wired for synced owner/editor roadmaps |
+| Editor participant summaries for assignee suggestions | Wired |
+| Editor read-only version history | Wired |
+| Task done/claim partial writes | Wired |
+| Tag registry partial writes | Wired |
 | Inline roadmap title rename | Wired |
 | Phase reorder renumbering | Wired |
 | Responsive header — More menu collapses secondary actions ≤640px | Wired |
@@ -133,7 +146,11 @@ All business logic lives in `apps/api/src/api/services/roadmap_service.py`. Rout
 
 ## Service layer conventions
 
-`apps/web/src/services/roadmap.service.ts` is the only file that calls `fetch()`. Every exported function maps to one backend endpoint. The `requestJson<T>` helper handles `Content-Type`, status codes, and error detail extraction. 204 responses return `undefined`. Non-2xx responses throw `Error("API {status}: {detail}")`.
+`apps/web/src/services/roadmap-http.ts` is the only file that calls `fetch()`.
+Domain service modules map exported functions to backend endpoints.
+`roadmap.service.ts` re-exports the legacy combined surface for import compatibility.
+The `requestJson<T>` helper handles `Content-Type`, status codes, conflict metadata,
+and error details. 204 responses return `undefined`.
 
 ## Context and storage conventions
 

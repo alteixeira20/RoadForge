@@ -385,7 +385,9 @@ Likely files touched:
 Validation:
 
 - Old snapshots and versions can still restore.
-- Exports still produce the documented `.roadforge.json` shape. The `.roadforge.json` extension and the `roadforge.roadmap.*` schema tokens are retained for import compatibility.
+- Exports still produce the documented `.roadforge.json` shape. Import accepts both
+  `roadforge.roadmap.*` and legacy `anvilary.roadmap.*` schema tokens; export retains
+  `anvilary.roadmap.export` during the compatibility transition.
 - No code path relies on stale projection rebuild behavior.
 
 Rollback strategy:

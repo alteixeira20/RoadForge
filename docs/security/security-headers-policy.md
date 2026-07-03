@@ -1,6 +1,7 @@
 # Security Headers Policy
 
-Status: proposed policy for RF-827. This document describes intended behavior only; it does not implement headers unless explicitly noted as current behavior.
+Status: baseline implemented. Next.js emits report-only CSP and baseline browser
+headers; FastAPI emits API security/cache headers. CSP enforcement remains deferred.
 
 Related policies:
 
@@ -20,9 +21,13 @@ Security headers may be applied in four places:
 
 Current repository evidence:
 
-- `apps/web/next.config.ts` currently sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and a restrictive `Permissions-Policy` for all frontend routes. It explicitly defers CSP.
+- `apps/web/next.config.ts` sets `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, a
+  restrictive `Permissions-Policy`, and `Content-Security-Policy-Report-Only`.
 - `deploy/hosting-bay/nginx/roadforge.conf` sets the same baseline headers at the Nginx layer and proxies `/api/` to FastAPI and everything else to Next.js.
-- `apps/api/src/api/main.py` wires CORS and body-size middleware only. There is no dedicated API security-header middleware today.
+- `apps/api/src/api/main.py` wires CORS, body-size, and security-header middleware.
+  Sensitive roadmap JSON receives `Cache-Control: no-store`; API responses receive
+  `X-Content-Type-Options: nosniff`, while SSE retains stream-safe headers.
 - `apps/api/src/api/middleware/cors.py` allows configured origins, credentials, all methods, and all headers.
 - The hosted deployment path is documented as Cloudflare Tunnel -> central Nginx -> Docker `edge` network. Cloudflare should be treated as an outer layer, not the only place headers exist, because self-hosted deployments can bypass Cloudflare entirely.
 

@@ -8,8 +8,9 @@
 - Wired projection rebuilds after canonical snapshot writes on create, full update/import-style save, and version restore.
 - Added projection serialization, parity validation, and drift reporting helpers.
 - Added `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED`, disabled by default, to allow GET roadmap reads from projection only when parity passes.
-- Documented the partial write endpoint contract. RF-877 adds the first
-  snapshot-first partial write for task done toggles only.
+- Documented the partial write endpoint contract. Task done and claim operations use
+  snapshot-first focused writes; tag registry writes remain separate from the
+  phase/task projection.
 
 ## RF-821 Completion Criteria
 
@@ -65,9 +66,10 @@ RF-821 is complete when all of the following are true:
 
 ## Remaining
 
-- Broader partial relational write endpoints remain deferred. RF-877 implements
-  only the task done toggle; generic task editing, phase writes, dependency
-  writes, assignees, and tags are still future work.
+- Broader partial relational write endpoints remain deferred. Generic task editing,
+  phase writes, dependencies, assignees, and task-tag replacement still use aggregate
+  saves. Task claims have a focused snapshot-first route; tag registry CRUD writes the
+  separate roadmap registry.
 - RF-821 completion audit (2107) passed with minor follow-ups. The relational
   projection foundation is complete: projection tables remain derivative,
   `snapshot_json` remains canonical, backfill/verification is available, and

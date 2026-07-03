@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { AI_ROADMAP_TEMPLATE } from '@/lib/ai-roadmap-template'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 
 const MINIMAL_TASK = {
@@ -19,6 +21,65 @@ const MINIMAL_PHASE = {
 
 describe('roadmap-validation', () => {
   describe('parseImportedRoadmapJson', () => {
+    it.each([
+      'anvilary.roadmap.import',
+      'anvilary.roadmap.export',
+      'roadforge.roadmap.import',
+      'roadforge.roadmap.export',
+    ])('accepts known schema %s without a schema warning', (schema) => {
+      const result = parseImportedRoadmapJson(JSON.stringify({
+        schema,
+        version: 1,
+        phases: [],
+      }))
+
+      expect(result.warnings.map((warning) => warning.code)).not.toContain(
+        'schema_unknown',
+      )
+    })
+
+    it('continues to warn for an unknown schema', () => {
+      const result = parseImportedRoadmapJson(JSON.stringify({
+        schema: 'roadforge.roadmap.v0',
+        version: 1,
+        phases: [],
+      }))
+
+      expect(result.warnings.map((warning) => warning.code)).toContain(
+        'schema_unknown',
+      )
+    })
+
+    it('accepts the AI template example without warnings or repairs', () => {
+      const example = AI_ROADMAP_TEMPLATE.match(/```json\n([\s\S]*?)\n```/)
+      expect(example?.[1]).toBeDefined()
+
+      const result = parseImportedRoadmapJson(example![1])
+
+      expect(result.warnings).toEqual([])
+      expect(result.repairs).toEqual([])
+    })
+
+    it('keeps the downloadable and documented AI templates identical', () => {
+      const documentedTemplate = readFileSync(
+        new URL('../../../../../docs/roadforge-ai-roadmap-template.txt', import.meta.url),
+        'utf8',
+      )
+
+      expect(AI_ROADMAP_TEMPLATE).toBe(documentedTemplate)
+    })
+
+    it.each([
+      '../../../../../docs/roadforge-roadmap.json',
+      '../../../../../examples/public-alpha-demo-roadmap.json',
+    ])('accepts tracked roadmap example %s', (relativePath) => {
+      const input = readFileSync(new URL(relativePath, import.meta.url), 'utf8')
+      const result = parseImportedRoadmapJson(input)
+
+      expect(result.warnings).toEqual([])
+      expect(result.repairs).toEqual([])
+    })
+
     it('accepts a minimal valid fixture with one phase and no tasks', () => {
       const input = JSON.stringify({
         schema: 'anvilary.roadmap.export',

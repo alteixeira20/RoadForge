@@ -73,12 +73,20 @@ The token is:
 - Returned once in the response and never re-exposed
 - Stored in scoped local storage under `rf:auth:{roadmapId}` alongside the participant role and server roadmap ID
 
-**Enforcement:** Accountless access does not mean unauthenticated writes. The session token is stored in `localStorage` and must be sent in the `Authorization: Bearer <session_token>` header for all protected write operations:
-- `PUT /api/roadmaps/{id}` — requires **owner** or **editor** role.
-- `POST /api/roadmaps/{id}/share-links/{role}/rotate` — requires **owner** role.
-- `DELETE /api/roadmaps/{id}/share-links/{role}` — requires **owner** role.
+**Enforcement:** Accountless access does not mean unauthenticated access. The session
+token is stored in `localStorage` and sent as
+`Authorization: Bearer <session_token>` on protected reads and writes.
 
-The backend verifies the token hash and validates the participant's role before processing the request. **This enforcement is active on all protected write endpoints.**
+- Owner/editor can update roadmap content, task completion/claims, and tags.
+- Owner/editor can read version history; the RoadForge editor UI presents it as
+  read-only. The owner alone can restore a version.
+- Owner/editor can read participant names and roles. Only owners receive session/link
+  details or can revoke participants.
+- Share-link management and roadmap deletion are owner-only.
+- Viewers can read roadmap content, tags, activity, locks, and realtime events.
+
+The backend verifies the token hash, expiry, revocation state, roadmap scope, and role
+before processing a protected request.
 
 ---
 
@@ -88,7 +96,10 @@ RoadForge uses Server-Sent Events (SSE) for real-time collaboration.
 
 - **Sync:** When a participant saves a roadmap, all other connected participants receive a `roadmap.updated` event and automatically re-fetch the latest state.
 - **Tickets:** SSE connections do not send long-lived session tokens in the URL. Instead, they use 30-second single-use tickets obtained via a Bearer-authenticated POST request.
-- **Soft Locks:** To prevent edit collisions, RoadForge uses in-memory "soft locks" (30s TTL). When a user expands a task, the frontend acquires a lock. Other users see the task as "Editing by X" and have their inputs disabled. Locks are stored in-memory on a single backend instance and are not shared across distributed nodes.
+- **Soft Locks:** To prevent edit collisions, RoadForge uses 30-second soft locks. The
+  editor refreshes its lock every 20 seconds while active and pauses refresh after 90
+  seconds without interaction. Memory mode is single-worker; Redis mode shares locks
+  across workers.
 - **Concurrency:** `PUT` requests use optimistic concurrency control. If the roadmap has been updated on the server since the client last fetched it, the save is rejected with a `409 Conflict`.
 
 ---
@@ -123,7 +134,9 @@ This adds a second factor without requiring accounts. It is purely opt-in per ro
 ## Security caveats for MVP
 
 - **Opaque IDs** — Roadmap IDs are opaque (`rm_` prefix + random) but not secret. Access to data requires an active session or a valid invite token.
-- **No rate limiting** — brute-force on invite tokens is not throttled.
+- **Rate limiting** — public join/create, password checks, authenticated reads/writes,
+  share management, events, locks, versions, and tags use action-specific limits.
+  Limits are process-local in memory mode and shared across workers in Redis mode.
 - **No HTTPS enforcement** — the Docker setup serves plain HTTP. Production deployment must terminate TLS at a reverse proxy and configure HSTS.
 - **Tokens in URLs** — invite tokens appear in the URL query string and will be logged by proxies or browsers. Self-hosters should configure reverse proxy logs to exclude query strings or strictly control log access.
 - **Soft deletes only** — `Roadmap.deleted_at` is set on delete; no hard purge yet.

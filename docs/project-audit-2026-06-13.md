@@ -2,6 +2,9 @@
 
 Audit date: 2026-06-13
 
+> Historical audit. RoadForge now uses the **Public Alpha** release label. References
+> to a future beta milestone describe a later release gate, not the current release.
+
 ## Executive conclusion
 
 RoadForge has a credible beta foundation: the local-first roadmap model, accountless
@@ -9,7 +12,7 @@ sharing, role-scoped sessions, relational projection, partial task writes, realt
 events, import safety work, deployment manifests, and CI definitions are already
 substantial.
 
-It is not ready for a public beta deployment yet. The main blockers are:
+At the time of this audit, it was not ready for a public deployment. The main blockers were:
 
 1. The current MIT license permits commercial use, which conflicts with the intended
    non-commercial distribution policy.
@@ -20,9 +23,9 @@ It is not ready for a public beta deployment yet. The main blockers are:
    can collapse client-IP rate limiting behind a reverse proxy.
 5. No validation evidence exists for the current working tree, and the latest committed
    SHA has no GitHub Actions runs associated with it.
-6. The product and repository do not consistently identify the release as beta/WIP.
+6. The product and repository did not consistently identify the release as pre-release/WIP.
 
-The correct launch description is **source-available beta software**, not open-source
+The correct current launch description is **source-available Public Alpha software**, not open-source
 software, if commercial use remains prohibited. The Open Source Definition requires
 licenses to permit use in business and other fields of endeavor. PolyForm
 Noncommercial 1.0.0 is a reasonable candidate for the requested policy, subject to
@@ -190,7 +193,7 @@ placeholders and disabled resource links.
 
 Required work:
 
-- use a consistent label such as `Public Beta · Work in Progress`;
+- use a consistent pre-release label (now `Public Alpha · Work in Progress`);
 - add stability, data-backup, breaking-change, and support expectations;
 - expose real repository, docs, self-hosting, security, and changelog links;
 - label the hosted instance and public roadmap viewer clearly;
@@ -288,7 +291,7 @@ Roadmap hygiene issues:
 
 1. Complete filtering and pre-QA interaction polish.
 2. Apply the chosen RoadForge/Anvilary product identity consistently.
-3. Add explicit `Public Beta · Work in Progress` messaging and user expectations.
+3. Add explicit `Public Alpha · Work in Progress` messaging and user expectations.
 4. Complete public read-only sharing and stable URL behavior.
 5. Add truthful metadata, social assets, sitemap/robots rules, and public docs.
 
@@ -317,7 +320,7 @@ accountless beta unless they are intentionally promoted into the beta definition
 
 ## Beta launch criteria
 
-RoadForge can launch as a public beta when:
+RoadForge can advance from Public Alpha to beta when:
 
 - license and terminology are accurate;
 - no known blocker in this audit remains open;

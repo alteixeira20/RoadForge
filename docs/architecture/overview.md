@@ -33,10 +33,10 @@ other edits use aggregate roadmap saves.
 Imports are validated, repaired deterministically, previewed, and applied as replace,
 new-local, or safe-additions operations. Safe merge never silently overwrites matched
 tasks or tag definitions. Version history, activity, conflict metadata, and browser
-cache provide recovery layers, but beta users should still export backups.
+cache provide recovery layers, but Public Alpha users should still export backups.
 
 ## Future platform scope
 
 Accounts, OAuth, workspaces, public slugs, telemetry, billing, and assistant tools are
-post-beta platform work. They are intentionally absent from the accountless beta
+post-alpha platform work. They are intentionally absent from the accountless Public Alpha
 security boundary.

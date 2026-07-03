@@ -1,31 +1,19 @@
-# Backend Roadmap Service Split Plan
+# Backend Roadmap Service Split
 
-Status: staged post-validation refactor plan
+Status: implemented; retained as an architecture record.
 
-`roadmap_service.py` remains behaviorally stable through the beta release. Split it
-only after the current API and migration suite passes, one domain at a time.
+Roadmap route handlers remain in `routers/roadmaps.py`. Business logic is split under
+`apps/api/src/api/services/`:
 
-## Target modules
+- `roadmap_service.py` — create, read, update, delete, conflicts, and activity;
+- `roadmap_join_service.py` — invite join and password checks;
+- `sharing_service.py` — share links and participants;
+- `version_service.py` — checkpoints, list/detail, restore, and retention;
+- `roadmap_task_service.py` — task completion and claims;
+- `roadmap_tag_service.py` — tag registry reads and writes;
+- `roadmap_helpers.py` — shared snapshot, conflict, and response helpers;
+- `roadmap_projection_service.py` — derivative projection synchronization.
 
-- `roadmap_core_service.py`: create, read, update, delete, conflict snapshots;
-- `roadmap_join_service.py`: invite lookup, password checks, participant sessions;
-- `roadmap_sharing_service.py`: share-link list, rotate, and revoke;
-- `roadmap_participant_service.py`: participant list and revoke;
-- `roadmap_version_service.py`: checkpoints, list, detail, restore, retention;
-- `roadmap_task_service.py`: task completion and claims;
-- `roadmap_tag_service.py`: tag registry partial writes;
-- `roadmap_activity_service.py`: activity persistence and listing.
-
-Shared helpers for row locking, response conversion, activity creation, projection sync,
-and event publication should move only when at least two extracted modules need them.
-
-## Sequence
-
-1. Freeze route behavior with current tests.
-2. Extract version functions and run focused tests.
-3. Extract share links and participants.
-4. Extract join/session behavior.
-5. Extract task and tag partial writes.
-6. Reduce the remaining core service.
-
-Do not combine extraction with schema, authorization, response-shape, or event changes.
+The split preserved route paths, authorization, schemas, activity, event publication,
+and snapshot/version semantics. Further extraction should be driven by concrete module
+pressure and handled separately from product behavior changes.

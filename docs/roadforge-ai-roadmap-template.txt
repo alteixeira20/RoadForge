@@ -1,4 +1,4 @@
-export const AI_ROADMAP_TEMPLATE = `# RoadForge AI Roadmap Template
+# RoadForge AI Roadmap Template
 
 Create a RoadForge JSON file that can be imported into RoadForge.
 
@@ -24,7 +24,7 @@ Priority rules:
 
 ## Valid schema example
 
-\`\`\`json
+```json
 {
   "schema": "anvilary.roadmap.import",
   "version": 1,
@@ -57,7 +57,7 @@ Priority rules:
           "tags": ["planning"],
           "assignees": ["Alex"],
           "deps": [],
-          "desc": "Write the **scope** that guides the first build.\\n\\n- [x] Capture constraints\\n- [ ] Confirm acceptance criteria"
+          "desc": "Write the **scope** that guides the first build.\n\n- [x] Capture constraints\n- [ ] Confirm acceptance criteria"
         },
         {
           "id": "RF-102",
@@ -75,7 +75,7 @@ Priority rules:
     }
   ]
 }
-\`\`\`
+```
 
 ## RoadForge constraints
 
@@ -94,4 +94,3 @@ Priority rules:
 ## Final AI instruction
 
 Return only the final JSON. Do not wrap it in Markdown. Do not include comments.
-`

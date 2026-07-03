@@ -3,9 +3,12 @@ import { ApiError, isConflictError } from '@/services/roadmap-http'
 import {
   createRoadmapCheckpoint,
   deleteTaskClaim,
+  exportRoadmap,
   patchTaskClaim,
   patchTaskDone,
 } from '@/services/roadmap-crud.service'
+import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
+import type { Phase, TagDefinition } from '@/types/roadmap'
 
 const apiRoadmap = {
   id: 'rm_1',
@@ -27,6 +30,65 @@ const apiRoadmap = {
   created_at: '2026-05-29T10:00:00Z',
   updated_at: '2026-05-29T10:01:00Z',
 }
+
+describe('exportRoadmap', () => {
+  it('round-trips the complete portable roadmap shape without warnings or repairs', async () => {
+    const phases: Phase[] = [{
+      id: 'phase-1',
+      num: '01',
+      name: 'Implementation',
+      color: '#f97316',
+      colorMode: 'manual',
+      status: 'active',
+      progress: 50,
+      tasks: [
+        {
+          id: 'RF-1',
+          title: 'Parent task',
+          done: true,
+          next: false,
+          est: '2d',
+          tags: ['planning'],
+          assignees: ['Alex'],
+          deps: [],
+          desc: 'Intro with **bold**.\\n\\n- [x] Complete\\n- [ ] Follow up',
+          claimedBy: 'Alex',
+          claimedById: 'pt_alex',
+          claimedAt: '2026-07-03T09:00:00.000Z',
+        },
+        {
+          id: 'RF-2',
+          title: 'Nested task',
+          done: false,
+          next: true,
+          est: '1d',
+          tags: ['delivery'],
+          assignees: ['Sam'],
+          deps: ['RF-1'],
+          desc: 'See [context](https://example.com) and use `pnpm test`.',
+          parentId: 'RF-1',
+        },
+      ],
+    }]
+    const tagRegistry: TagDefinition[] = [
+      { id: 'planning', label: 'Planning', color: '#f97316' },
+      { id: 'delivery', label: 'Delivery', color: '#38bdf8' },
+    ]
+
+    const blob = await exportRoadmap(phases, 'json', {
+      roadmapName: 'Round-trip',
+      tagRegistry,
+    })
+    const exported = JSON.parse(await blob.text()) as { schema: string }
+    const imported = parseImportedRoadmapJson(JSON.stringify(exported))
+
+    expect(exported.schema).toBe('anvilary.roadmap.export')
+    expect(imported.phases).toEqual(phases)
+    expect(imported.tagRegistry).toEqual(tagRegistry)
+    expect(imported.warnings).toEqual([])
+    expect(imported.repairs).toEqual([])
+  })
+})
 
 describe('createRoadmapCheckpoint', () => {
   afterEach(() => {

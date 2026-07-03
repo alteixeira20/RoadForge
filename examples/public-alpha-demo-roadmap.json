@@ -2,10 +2,10 @@
   "schema": "roadforge.roadmap.export",
   "version": 1,
   "roadmap": {
-    "name": "RoadForge Public Beta Demo"
+    "name": "RoadForge Public Alpha Demo"
   },
   "tagRegistry": [
-    { "id": "beta", "label": "Beta", "color": "#f97316" },
+    { "id": "alpha", "label": "Alpha", "color": "#f97316" },
     { "id": "security", "label": "Security", "color": "#ef4444" },
     { "id": "docs", "label": "Docs", "color": "#38bdf8" }
   ],
@@ -21,9 +21,9 @@
       "tasks": [
         {
           "id": "DEMO-1",
-          "title": "Publish beta safety and backup expectations",
+          "title": "Publish alpha safety and backup expectations",
           "done": true,
-          "tags": ["beta", "docs"],
+          "tags": ["alpha", "docs"],
           "assignees": ["Demo Maintainer"]
         }
       ]
@@ -31,7 +31,7 @@
     {
       "id": "demo-launch",
       "num": "02",
-      "name": "Beta Launch",
+      "name": "Alpha Launch",
       "color": "#f97316",
       "colorMode": "auto",
       "status": "active",
@@ -42,7 +42,7 @@
           "title": "Run staging security review",
           "done": false,
           "next": true,
-          "tags": ["security", "beta"],
+          "tags": ["security", "alpha"],
           "assignees": ["Demo Maintainer"],
           "desc": "Synthetic public demo data. No real credentials or private project details."
         },

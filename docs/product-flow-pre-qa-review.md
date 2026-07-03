@@ -4,28 +4,28 @@ Review date: 2026-06-13
 
 Status: static acceptance complete; executable QA pending
 
-## Beta boundary
+## Public Alpha boundary
 
-The beta remains an accountless, local-first roadmap collaboration product.
+Public Alpha remains an accountless, local-first roadmap collaboration product.
 
-Fix before beta QA:
+Fix before Public Alpha QA:
 
 - persistent claims with explicit owner override;
 - coherent tag registry and combined filtering;
-- visible beta/WIP and non-commercial source-available language;
+- visible Public Alpha/WIP and non-commercial source-available language;
 - stacked accessible notifications and consistent import/export feedback;
 - Auto/Manual phase color behavior;
 - production proxy, body-limit, and API-doc hardening;
 - source-release community, security, and self-hosting documents.
 
-Deferred after beta:
+Deferred until after Public Alpha:
 
 - OAuth, accounts, workspaces, account claims, billing, telemetry, and admin UI;
 - custom public slugs and community discovery;
 - PDF/Markdown exports, saved views, duplication, and advanced conflict resolution;
 - executable MCP or assistant write integrations.
 
-Discarded for the beta:
+Discarded for Public Alpha:
 
 - claims that silently expire;
 - editor takeover of another participant's claim;

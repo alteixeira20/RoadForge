@@ -1,9 +1,9 @@
 # Assistant Integration Backlog
 
-Status: post-beta plan
+Status: post-alpha plan
 
 RoadForge may expose a future MCP server or equivalent assistant API, but it is not a
-beta launch dependency.
+Public Alpha launch dependency.
 
 ## Initial tools
 

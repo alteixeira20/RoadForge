@@ -1,20 +1,20 @@
 # Changelog
 
-RoadForge follows a pre-1.0, beta-oriented changelog. Dates use ISO format.
+RoadForge follows a pre-1.0 changelog. Dates use ISO format.
 
 ## Unreleased
 
 ### Added
 
-- Public Beta/WIP release labeling.
+- Public Alpha/WIP release labeling.
 - Source-available non-commercial licensing.
 - Repository contribution, support, issue, pull request, and release checklist files.
 
 ### Changed
 
 - Project positioning now uses “source-available,” not “open source.”
-- Public release copy consistently identifies the product as beta/WIP.
+- Public release copy consistently identifies the product as Public Alpha/WIP.
 
-## 0.1.0-beta
+## 0.1.0-alpha
 
-Initial public beta candidate. No production-readiness or data-durability guarantee.
+Initial Public Alpha candidate. No production-readiness or data-durability guarantee.

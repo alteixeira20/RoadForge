@@ -194,7 +194,10 @@ Defined in `.env.example`. Copy to `.env.local` for local overrides.
 
 ## Manual QA
 
-See [docs/manual-qa.md](docs/manual-qa.md) for the full pre-release QA checklist (30 sections, covers all features, blocker criteria, known limitations, and deployment verification). For a focused backend API smoke test with curl commands, see [docs/backend-smoke-tests.md](docs/backend-smoke-tests.md).
+See [docs/manual-qa.md](docs/manual-qa.md) for the full pre-release QA checklist
+(functional, collaboration, import/export, security, and deployment verification).
+For a focused backend API smoke test with curl commands, see
+[docs/backend-smoke-tests.md](docs/backend-smoke-tests.md).
 
 For security policies and responsible disclosure, see [SECURITY.md](SECURITY.md) and [docs/security/README.md](docs/security/README.md).
 For public deployment security assumptions, see [docs/public-deployment-security.md](docs/public-deployment-security.md).
@@ -226,11 +229,14 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 | `POST` | `/api/roadmaps/join` | Accept invite token, create participant, return session token |
 | `GET` | `/api/roadmaps/{id}` | Fetch roadmap and phases |
 | `PUT` | `/api/roadmaps/{id}` | Update name and/or phases (full snapshot replace) |
+| `PATCH` | `/api/roadmaps/{id}/tasks/{task_id}/done` | Set task completion with optimistic concurrency |
+| `PATCH` | `/api/roadmaps/{id}/tasks/{task_id}/claim` | Claim a task; owner may explicitly override |
+| `DELETE` | `/api/roadmaps/{id}/tasks/{task_id}/claim` | Release a task claim; owner may explicitly override |
 | `DELETE` | `/api/roadmaps/{id}` | Soft-delete roadmap; broadcasts `roadmap.deleted` SSE event |
 | `GET` | `/api/roadmaps/{id}/share-links` | Owner-only share-link list; owner/editor URLs stay hidden, active viewer URL is copyable |
 | `POST` | `/api/roadmaps/{id}/share-links/{role}/rotate` | Generate new token for role, returns join URL |
 | `DELETE` | `/api/roadmaps/{id}/share-links/{role}` | Revoke share link (soft-deactivate) |
-| `GET` | `/api/roadmaps/{id}/participants` | List participants (owner only) |
+| `GET` | `/api/roadmaps/{id}/participants` | Owner full list; editor active-participant summaries |
 | `POST` | `/api/roadmaps/{id}/participants/{pid}/revoke` | Revoke participant session; broadcasts `participant.revoked` |
 | `GET` | `/api/roadmaps/{id}/versions` | List version history summaries |
 | `POST` | `/api/roadmaps/{id}/versions/checkpoint` | Create a manual checkpoint snapshot |
@@ -239,9 +245,13 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 | `GET` | `/api/roadmaps/{id}/activity` | Paginated activity log (newest first) |
 | `POST` | `/api/roadmaps/{id}/events/ticket` | Request a short-lived SSE ticket |
 | `GET` | `/api/roadmaps/{id}/events` | SSE stream (ticket auth via query param) |
-| `POST` | `/api/roadmaps/{id}/locks` | Acquire or refresh an in-memory edit lock |
+| `POST` | `/api/roadmaps/{id}/locks` | Acquire or refresh an edit lock |
 | `DELETE` | `/api/roadmaps/{id}/locks/{target}` | Release a lock |
 | `GET` | `/api/roadmaps/{id}/locks` | List active locks |
+| `GET` | `/api/roadmaps/{id}/tags` | List tag registry |
+| `POST` | `/api/roadmaps/{id}/tags` | Create a tag |
+| `PUT` | `/api/roadmaps/{id}/tags/{tag_id}` | Update a tag |
+| `DELETE` | `/api/roadmaps/{id}/tags/{tag_id}` | Delete an unused tag |
 
 ---
 
@@ -261,7 +271,7 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 - **Markdown/PDF export** — requires backend; currently shows a toast.
 - **Email verification** — not implemented. Planned as an optional future security layer.
 - **Rate limiting** — app-level rate limiting is active. It is shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`.
-- **Content Security Policy** — CSP is deferred. Do not deploy publicly at scale without it.
+- **Content Security Policy** — a report-only policy is active; enforcement remains deferred.
 - **No CRDT merge UI** — conflict recovery reloads the server version; there is no three-way merge.
 - **Memory backend is single-worker only** — `ROADFORGE_API_WORKERS>1` requires `ROADFORGE_REALTIME_BACKEND=redis`.
 
@@ -286,7 +296,7 @@ roadforge/
 │           ├── context/      # RoadmapContext, ThemeContext
 │           ├── hooks/        # Custom hooks
 │           ├── lib/          # storage.ts (localStorage helpers)
-│           ├── services/     # roadmap.service.ts (all HTTP calls)
+│           ├── services/     # domain API clients + legacy compatibility barrel
 │           ├── styles/       # CSS split by concern
 │           └── types/        # TypeScript types
 └── docs/                     # Architecture and API documentation
