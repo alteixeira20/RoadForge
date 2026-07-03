@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, isConflictError } from '@/services/roadmap-http'
-import { patchTaskDone, patchTaskClaim, deleteTaskClaim } from '@/services/roadmap-crud.service'
+import {
+  createRoadmapCheckpoint,
+  deleteTaskClaim,
+  patchTaskClaim,
+  patchTaskDone,
+} from '@/services/roadmap-crud.service'
 
 const apiRoadmap = {
   id: 'rm_1',
@@ -22,6 +27,47 @@ const apiRoadmap = {
   created_at: '2026-05-29T10:00:00Z',
   updated_at: '2026-05-29T10:01:00Z',
 }
+
+describe('createRoadmapCheckpoint', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('POSTs the checkpoint endpoint with auth and maps the version', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        created: true,
+        version: {
+          id: 'rv_1',
+          version_number: 4,
+          created_at: '2026-07-02T10:00:00Z',
+          actor_name: 'Editor',
+          action: 'roadmap.checkpoint',
+          phase_count: 2,
+          task_count: 8,
+        },
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await createRoadmapCheckpoint('rm_1', 'editor-token')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:7878/api/roadmaps/rm_1/versions/checkpoint',
+      {
+        method: 'POST',
+        headers: { Authorization: 'Bearer editor-token' },
+      },
+    )
+    expect(result).toMatchObject({
+      created: true,
+      version: { id: 'rv_1', versionNumber: 4, phaseCount: 2, taskCount: 8 },
+    })
+  })
+})
 
 describe('patchTaskDone', () => {
   afterEach(() => {

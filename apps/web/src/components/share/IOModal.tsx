@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
 import { ImportActions } from '@/components/share/ImportActions'
@@ -9,6 +9,7 @@ import { useImportFlow } from '@/components/share/useImportFlow'
 import { exportRoadmap } from '@/services/roadmap-crud.service'
 import { useRoadmap } from '@/context/RoadmapContext'
 import type { Phase } from '@/types/roadmap'
+import type { ImportMode } from '@/lib/import-merge/types'
 import { AI_ROADMAP_TEMPLATE } from '@/lib/ai-roadmap-template'
 
 interface IOModalProps {
@@ -18,10 +19,17 @@ interface IOModalProps {
   onRoadmapImported?: (roadmapName: string | undefined, phases: Phase[]) => void
 }
 
-type Tab = 'export' | 'import'
+type IOMode = 'export' | ImportMode
+
+const MODE_TABS: Array<{ id: IOMode; label: string }> = [
+  { id: 'export', label: 'Export' },
+  { id: 'new-local', label: 'Import as new copy' },
+  { id: 'safe-additions', label: 'Merge into current' },
+  { id: 'replace-current', label: 'Replace current' },
+]
 
 export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalProps) {
-  const [tab, setTab] = useState<Tab>('export')
+  const [mode, setMode] = useState<IOMode>('new-local')
   const {
     roadmapName,
     phases,
@@ -31,9 +39,9 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     setSaved,
     setTagRegistry,
     createLocalRoadmap,
-    resetToSample,
     saved,
     serverRoadmapId,
+    sessionToken,
     role,
     ownerDisplayName,
     updatedAt,
@@ -42,6 +50,8 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
   const {
     fileInputRef,
     pendingImport,
+    importError,
+    isConfirming,
     selectImportFile,
     handleImportFile,
     handleConfirm,
@@ -52,6 +62,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     tagRegistry,
     canReplaceCurrent,
     serverRoadmapId,
+    sessionToken,
     setPhases,
     setRoadmapName,
     setSaved,
@@ -61,6 +72,12 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     onClose,
     onToast,
   })
+
+  useEffect(() => {
+    if (!open) return
+    setMode('new-local')
+    handleCancelPendingImport()
+  }, [open, handleCancelPendingImport])
 
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob)
@@ -89,7 +106,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
   }
 
   const jsonExportFilename = () =>
-    `${slug(roadmapName)}.${formatExportTimestamp()}.anvilary.json`
+    `${slug(roadmapName)}.${formatExportTimestamp()}.roadforge.json`
 
   const exportMetadata = {
     roadmapName,
@@ -125,126 +142,92 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
   }
 
   const handleClose = useCallback(() => {
+    if (isConfirming) return
     handleCancelPendingImport()
     onClose()
-  }, [handleCancelPendingImport, onClose])
+  }, [handleCancelPendingImport, isConfirming, onClose])
 
-  const handleReset = () => {
-    resetToSample()
-    onToast('Roadmap reset to sample data')
-    onClose()
+  const selectMode = (nextMode: IOMode) => {
+    if (isConfirming) return
+    setMode(nextMode)
+    handleCancelPendingImport()
   }
 
   return (
     <Modal
       open={open}
       onClose={handleClose}
-      width={540}
-      icon={{ name: tab === 'export' ? 'export' : 'import', plain: true }}
-      title={tab === 'export' ? 'Export roadmap' : 'Import roadmap'}
-      sub="JSON is the only supported import/export format for now."
+      width={560}
+      icon={{ name: mode === 'export' ? 'export' : 'import', plain: true }}
+      title="Import / Export roadmap"
+      sub="Choose one action. JSON is the supported roadmap format."
       footer={
         <>
-          <span className="note">No data leaves your device.</span>
+          <span className="note">Exports and file previews stay on this device.</span>
           <span className="spacer" />
-          <button className="back" onClick={handleClose}>
+          <button className="back" onClick={handleClose} disabled={isConfirming}>
             Cancel
           </button>
         </>
       }
     >
-      <div className="io-tab">
-        <button
-          className={tab === 'export' ? 'active' : ''}
-          onClick={() => { setTab('export'); handleCancelPendingImport() }}
-        >
-          Export
-        </button>
-        <button
-          className={tab === 'import' ? 'active' : ''}
-          onClick={() => setTab('import')}
-        >
-          Import
-        </button>
+      <div className="io-tab" role="group" aria-label="Import or export mode">
+        {MODE_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={mode === tab.id ? 'active' : ''}
+            aria-pressed={mode === tab.id}
+            onClick={() => selectMode(tab.id)}
+            disabled={isConfirming}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {tab === 'export' ? (
-        <div className="io-actions">
+      {mode === 'export' ? (
+        <section className="io-mode-panel">
+          <div className="io-mode-copy">
+            <strong>Download a portable roadmap backup</strong>
+            <p>
+              Includes phases, tasks, dependencies, tags, and status. Sessions,
+              invite links, passwords, and browser authentication are excluded.
+            </p>
+          </div>
           <button
             type="button"
-            className="io-action primary"
+            className="btn sm primary io-primary-action"
             onClick={handleJsonExport}
-            aria-label="Export JSON"
           >
-            <span className="io-action-icon">
-              <Icon name="export" size={15} />
-            </span>
-            <span className="io-action-copy">
-              <span className="io-action-title">Export JSON</span>
-              <span className="io-action-desc">
-                Portable RoadForge backup. Includes phases, tasks, dependencies,
-                tags, and status.
-              </span>
-              <span className="io-action-note">
-                Does not include invite links, sessions, passwords, or browser auth.
-              </span>
-            </span>
-            <span className="io-action-go" aria-hidden>
-              <Icon name="arrow-right" size={15} />
-            </span>
+            <Icon name="export" size={14} />
+            Download .roadforge.json
           </button>
 
           <button
             type="button"
-            className="io-action"
+            className="io-secondary-action"
             onClick={handleAITemplateExport}
-            aria-label="Export AI roadmap template"
           >
-            <span className="io-action-icon">
-              <Icon name="robot" size={15} />
-            </span>
-            <span className="io-action-copy">
-              <span className="io-action-title">Export AI roadmap template</span>
-              <span className="io-action-desc">
-                Download a prompt template for an AI assistant to generate a valid
-                RoadForge JSON roadmap.
-              </span>
-            </span>
-            <span className="io-action-go" aria-hidden>
-              <Icon name="arrow-right" size={15} />
-            </span>
+            <Icon name="robot" size={14} />
+            Download AI roadmap template
           </button>
-        </div>
+        </section>
       ) : pendingImport ? (
         <ImportNotice
           pendingImport={pendingImport}
           onConfirm={handleConfirm}
           onCancel={handleCancelPendingImport}
+          error={importError}
+          isConfirming={isConfirming}
         />
       ) : (
-        <>
-          <ImportActions
-            canReplaceCurrent={canReplaceCurrent}
-            serverRoadmapId={serverRoadmapId}
-            onSelectImportFile={selectImportFile}
-          />
-          <div className="note-line compact">
-            <span className="ic">
-              <Icon name="shield" size={14} />
-            </span>
-            <span>
-              JSON imports preserve phases, tasks, tags, assignees, dependencies, and status.
-              Export a backup first if needed.
-            </span>
-          </div>
-          <button
-            type="button"
-            className="back inline-reset"
-            onClick={handleReset}
-          >
-            Restore starter roadmap
-          </button>
-        </>
+        <ImportActions
+          mode={mode}
+          canReplaceCurrent={canReplaceCurrent}
+          serverRoadmapId={serverRoadmapId}
+          onSelectImportFile={selectImportFile}
+        />
       )}
 
       <input

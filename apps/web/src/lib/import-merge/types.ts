@@ -56,6 +56,7 @@ export interface CurrentRoadmapStats {
 }
 
 export interface PendingImport {
+  fileName: string
   result: ImportedRoadmap
   mode: ImportMode
   upgradeNotices: RoadmapUpgradeNotice[]

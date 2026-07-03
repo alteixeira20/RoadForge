@@ -6,7 +6,7 @@ Groups:
   A  Checkpoint creation
   B  Version list
   C  Version detail
-  D  Non-owner access denied (covers both 1904 and 1905)
+  D  Viewer access denied (covers both 1904 and 1905)
   E  Restore
   F  Version trim boundary (PS-008)
   G  Restore design contract — no stale check (PS-010)
@@ -40,12 +40,28 @@ def _viewer_token_from_body(body: dict) -> str:
     return viewer_link["url"].split("token=")[-1]
 
 
+def _editor_token_from_body(body: dict) -> str:
+    """Extract the raw editor invite token from a CreateRoadmapResponse body."""
+    editor_link = next(sl for sl in body["share_links"] if sl["role"] == "editor")
+    return editor_link["url"].split("token=")[-1]
+
+
 async def _join_as_viewer(client: AsyncClient, body: dict) -> str:
     """Join the roadmap as a viewer; return the viewer session token."""
     raw_token = _viewer_token_from_body(body)
     resp = await client.post(
         "/api/roadmaps/join",
         json={"token": raw_token, "display_name": "Viewer"},
+    )
+    assert resp.status_code == 200, resp.text
+    return resp.json()["session_token"]
+
+
+async def _join_as_editor(client: AsyncClient, body: dict) -> str:
+    """Join the roadmap as an editor; return the editor session token."""
+    resp = await client.post(
+        "/api/roadmaps/join",
+        json={"token": _editor_token_from_body(body), "display_name": "Editor"},
     )
     assert resp.status_code == 200, resp.text
     return resp.json()["session_token"]
@@ -107,6 +123,19 @@ async def test_owner_can_create_manual_checkpoint(client: AsyncClient):
     assert "created_at" in version
     assert "phase_count" in version
     assert "task_count" in version
+
+
+async def test_editor_can_create_replacement_checkpoint(client: AsyncClient):
+    body = await create_roadmap(client)
+    editor_token = await _join_as_editor(client, body)
+
+    resp = await client.post(
+        f"/api/roadmaps/{body['id']}/versions/checkpoint",
+        headers=_auth(editor_token),
+    )
+
+    assert resp.status_code == 200
+    assert "version" in resp.json()
 
 
 async def test_checkpoint_is_idempotent_when_state_unchanged(client: AsyncClient):
@@ -236,7 +265,7 @@ async def test_version_detail_returns_404_for_unknown_version(client: AsyncClien
     assert resp.status_code == 404
 
 
-# ─── Group D — Non-owner access denied (RF-1904 + RF-1905) ───────────────────
+# ─── Group D — Viewer access denied (RF-1904 + RF-1905) ──────────────────────
 
 
 async def test_viewer_cannot_checkpoint(client: AsyncClient):

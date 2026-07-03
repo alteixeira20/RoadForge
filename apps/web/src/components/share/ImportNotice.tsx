@@ -9,6 +9,8 @@ interface ImportNoticeProps {
   pendingImport: PendingImport
   onConfirm: () => void
   onCancel: () => void
+  error: string | null
+  isConfirming: boolean
 }
 
 // ─── Sub-sections ──────────────────────────────────────────────────────────────
@@ -106,8 +108,8 @@ function DangerConfirmSection({ pendingImport, acknowledged, onAcknowledge }: Da
         />
         <span>
           {replaceScope === 'synced'
-            ? 'I understand this will permanently overwrite the shared roadmap for all collaborators.'
-            : 'I understand this will permanently overwrite my current roadmap content.'}
+            ? 'I understand this will replace the shared roadmap for all collaborators after saving a recovery version.'
+            : 'I understand this will replace my current local content without creating a recovery version.'}
         </span>
       </label>
     </div>
@@ -138,7 +140,7 @@ function importDescription(pendingImport: PendingImport): string {
   }
   if (mode === 'replace-current') {
     return replaceScope === 'synced'
-      ? `This will overwrite the shared roadmap with ${name} (${counts}).`
+      ? `After saving a recovery version, this will replace the shared roadmap with ${name} (${counts}).`
       : `This will overwrite the current local draft with ${name} (${counts}).`
   }
   return `Importing ${name} as a new local roadmap (${counts}).`
@@ -152,7 +154,13 @@ function confirmLabel(mode: PendingImport['mode']): string {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ImportNotice({ pendingImport, onConfirm, onCancel }: ImportNoticeProps) {
+export function ImportNotice({
+  pendingImport,
+  onConfirm,
+  onCancel,
+  error,
+  isConfirming,
+}: ImportNoticeProps) {
   const [acknowledged, setAcknowledged] = useState(false)
   const { mode } = pendingImport
   const isReplace = mode === 'replace-current'
@@ -171,6 +179,11 @@ export function ImportNotice({ pendingImport, onConfirm, onCancel }: ImportNotic
 
   return (
     <>
+      <div className="import-file-state">
+        <Icon name="import" size={14} />
+        <span>Selected file</span>
+        <strong>{pendingImport.fileName}</strong>
+      </div>
       <div className={`note-line ${isReplace ? 'warning' : ''}`}>
         <span className="ic">
           <Icon name={isMerge ? 'import' : 'shield'} size={14} />
@@ -206,19 +219,26 @@ export function ImportNotice({ pendingImport, onConfirm, onCancel }: ImportNotic
         />
       )}
 
+      {error && (
+        <div className="import-error" role="alert">
+          {error}
+        </div>
+      )}
+
       <div className="import-notice-actions">
         <button
           type="button"
           className={isReplace ? 'btn sm danger' : 'btn sm primary'}
           onClick={onConfirm}
-          disabled={confirmDisabled}
+          disabled={confirmDisabled || isConfirming}
         >
-          {confirmLabel(mode)}
+          {isConfirming ? 'Creating recovery checkpoint…' : confirmLabel(mode)}
         </button>
         <button
           type="button"
           className="btn sm ghost"
           onClick={onCancel}
+          disabled={isConfirming}
         >
           Cancel
         </button>

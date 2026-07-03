@@ -308,7 +308,7 @@ async def post_checkpoint(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CheckpointResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
     await rate_limiter.enforce(
         "versions.checkpoint",
         _participant_rate_key(participant.id, roadmap_id),

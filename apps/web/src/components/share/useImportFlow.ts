@@ -8,6 +8,7 @@ import type { Phase, TagDefinition } from '@/types/roadmap'
 import type { ImportMode, PendingImport } from '@/lib/import-merge/types'
 import { applySafeAdditions } from '@/lib/import-merge/mergeRoadmaps'
 import { buildBasicPreview } from '@/lib/import-merge/previewImport'
+import { replaceRoadmapWithCheckpoint } from '@/lib/import-merge/replaceRoadmap'
 import { buildRegistryFromPhases } from '@/lib/tag-registry'
 
 interface UseImportFlowOptions {
@@ -16,6 +17,7 @@ interface UseImportFlowOptions {
   tagRegistry: TagDefinition[]
   canReplaceCurrent: boolean
   serverRoadmapId: string | null
+  sessionToken: string | null
   setPhases: (phases: Phase[]) => void
   setRoadmapName: (name: string) => void
   setSaved: (saved: boolean) => void
@@ -41,6 +43,7 @@ export function useImportFlow({
   tagRegistry,
   canReplaceCurrent,
   serverRoadmapId,
+  sessionToken,
   setPhases,
   setRoadmapName,
   setSaved,
@@ -51,17 +54,21 @@ export function useImportFlow({
   onToast,
 }: UseImportFlowOptions) {
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [isConfirming, setIsConfirming] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const importModeRef = useRef<ImportMode>('replace-current')
+  const importModeRef = useRef<ImportMode>('new-local')
 
   const selectImportFile = useCallback((mode: ImportMode) => {
     importModeRef.current = mode
-    onToast('Choose an RoadForge JSON file to preview.')
+    setImportError(null)
+    onToast('Choose a RoadForge JSON file to preview.')
     fileInputRef.current?.click()
   }, [onToast])
 
   const handleCancelPendingImport = useCallback(() => {
     setPendingImport(null)
+    setImportError(null)
   }, [])
 
   const executeImport = useCallback((imported: ImportedRoadmap, mode: ImportMode) => {
@@ -160,6 +167,7 @@ export function useImportFlow({
 
         // Always show preview before applying (task 2007)
         setPendingImport({
+          fileName: file.name,
           result: imported,
           mode,
           upgradeNotices: upgraded.notices,
@@ -178,20 +186,49 @@ export function useImportFlow({
     e.target.value = ''
   }, [phases, tagRegistry, serverRoadmapId, onToast])
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
     if (!pendingImport) return
     const p = pendingImport
-    setPendingImport(null)
+    setImportError(null)
     if (p.mode === 'safe-additions') {
+      setPendingImport(null)
       applySafeAdditionsImport(p)
-    } else {
-      executeImport(p.result, p.mode)
+      return
     }
-  }, [pendingImport, applySafeAdditionsImport, executeImport])
+    if (p.mode === 'new-local') {
+      setPendingImport(null)
+      executeImport(p.result, p.mode)
+      return
+    }
+
+    setIsConfirming(true)
+    try {
+      await replaceRoadmapWithCheckpoint({
+        serverRoadmapId,
+        sessionToken,
+        applyReplacement: () => executeImport(p.result, p.mode),
+      })
+      setPendingImport(null)
+    } catch {
+      setImportError(
+        'Could not create a recovery checkpoint. The roadmap was not replaced. Check your connection and try again.',
+      )
+    } finally {
+      setIsConfirming(false)
+    }
+  }, [
+    pendingImport,
+    applySafeAdditionsImport,
+    executeImport,
+    serverRoadmapId,
+    sessionToken,
+  ])
 
   return {
     fileInputRef,
     pendingImport,
+    importError,
+    isConfirming,
     selectImportFile,
     handleImportFile,
     handleConfirm,
