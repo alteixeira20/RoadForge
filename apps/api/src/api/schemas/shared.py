@@ -8,6 +8,7 @@ PhaseStatus = Literal["done", "active", "next", "future"]
 ALLOWED_CHANGE_SUMMARY_ACTIONS: frozenset[str] = frozenset({
     "roadmap.created",
     "roadmap.imported",
+    "import.replaced",
     "roadmap.updated",
     "roadmap.renamed",
     "roadmap.restored",

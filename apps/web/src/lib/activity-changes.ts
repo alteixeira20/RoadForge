@@ -2,6 +2,7 @@ import type { ActivityAction, ActivityChange, ChangeSummary } from '@/types/road
 
 const changePriority: Record<ActivityAction, number> = {
   'roadmap.imported': 1,
+  'import.replaced': 1,
   'roadmap.restored': 1,
   'phase.completed': 2,
   'phase.reopened': 2,
@@ -23,6 +24,7 @@ const changePriority: Record<ActivityAction, number> = {
 export function countKeyForAction(action: ActivityAction): string {
   switch (action) {
     case 'roadmap.imported': return 'imports'
+    case 'import.replaced': return 'imports_replaced'
     case 'roadmap.restored': return 'restores'
     case 'roadmap.renamed': return 'roadmaps_renamed'
     case 'phase.completed': return 'phases_completed'

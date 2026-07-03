@@ -121,6 +121,7 @@ export type ActivityAction =
   | 'roadmap.updated'
   | 'roadmap.renamed'
   | 'roadmap.imported'
+  | 'import.replaced'
   | 'roadmap.restored'
   | 'roadmap.batch_changed'
   | 'roadmap.phases_reordered'

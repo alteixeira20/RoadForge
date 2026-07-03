@@ -26,6 +26,7 @@ import { useTaskDonePatch } from '@/hooks/useTaskDonePatch'
 import { revokeParticipant } from '@/services/roadmap-sharing.service'
 import { renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
+import type { ImportMode } from '@/lib/import-merge/types'
 import { storage } from '@/lib/storage'
 import { resolveWorkspaceSyncStatus } from '@/lib/sync-status'
 import type { WorkspaceMode, Phase as PhaseType, Participant, Roadmap, RoadmapConflictMetadata } from '@/types/roadmap'
@@ -432,9 +433,13 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setSaved(false)
   }
 
-  const handleRoadmapImported = (importedName: string | undefined, importedPhases: PhaseType[]) => {
+  const handleRoadmapImported = (
+    importedName: string | undefined,
+    importedPhases: PhaseType[],
+    importMode: ImportMode,
+  ) => {
     replacePendingActivityChanges([{
-      action: 'roadmap.imported',
+      action: importMode === 'replace-current' ? 'import.replaced' : 'roadmap.imported',
       entity_type: 'roadmap',
       roadmapName: importedName,
       phase_count: importedPhases.length,
@@ -551,7 +556,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onOpenTagRegistry={openTagRegistry}
           hasServerActivity={!!serverRoadmapId && !!sessionToken}
           canViewTeam={canViewTeam}
-          canViewVersions={role === 'owner' && !!serverRoadmapId && !!sessionToken}
+          canViewVersions={
+            (role === 'owner' || role === 'editor') && !!serverRoadmapId && !!sessionToken
+          }
         />
         {workspaceView === 'team' && canViewTeam ? (
           <TeamPanel
@@ -673,6 +680,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onClose={() => setShowVersions(false)}
           onRestored={handleRoadmapRestored}
           onToast={showToast}
+          canManageVersions={role === 'owner'}
         />
       )}
     </div>

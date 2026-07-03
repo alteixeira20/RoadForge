@@ -367,11 +367,11 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 
 ## 22 — Version history
 
-- [ ] Open **Versions** panel (owner only).
+- [ ] Open **Versions** panel as Owner and Editor; Viewer cannot access it.
 - [ ] After saving §11 edits: one "Updated" version entry appears.
 - [ ] After importing §19: one "Imported" or "Updated" entry appears.
 - [ ] Task tick/untick/tick cycle before save → still ONE version created on save (not one per toggle).
-- [ ] Editor/viewer do not see Versions panel (owner-only UI).
+- [ ] Editor sees read-only version history with no checkpoint or restore controls; Viewer does not see Versions.
 
 ---
 
@@ -458,7 +458,8 @@ Set browser devtools to 375×812 (iPhone SE / 13 mini):
 - [ ] **Link revoke does not kick existing participants:** revoking Viewer link (§8) leaves Sam's active session alive.
 - [ ] **Editor cannot see Share management panel:** Share modal either absent from toolbar or omits rotate/revoke controls for editor role.
 - [ ] **Viewer cannot see Share or Save:** both controls absent in `/shared` route.
-- [ ] **Editor cannot access Versions endpoints:** Versions panel absent or restricted; direct API call `POST /api/roadmaps/{id}/versions/checkpoint` with editor Bearer token returns 403.
+- [ ] **Version role matrix:** Owner and Editor can list/read versions; Viewer receives 403. Editor restore receives 403.
+- [ ] **Replacement checkpoint:** Editor replace-current still creates a checkpoint before applying the imported roadmap.
 - [ ] **Old invite token fails after rotate:** rotating editor link invalidates the previous URL immediately.
 - [ ] **Invalid Bearer token on PUT returns 401:** call `PUT /api/roadmaps/{id}` with a garbage Bearer token and a valid `last_updated_at` field → 401.
 

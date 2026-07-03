@@ -25,8 +25,8 @@ Sessions expire after 30 days of inactivity. Successful authenticated requests v
 
 **Roles:** `owner`, `editor`, `viewer`
 
-- `owner` — full control: update, delete, share link management, participant revocation, version history, checkpoints, locks.
-- `editor` — can read and update the roadmap and phases; can acquire/release locks.
+- `owner` — full control: update, delete, share link management, participant revocation, version history, checkpoints, restore, and locks.
+- `editor` — can read and update the roadmap and phases, read version history, create replacement-safety checkpoints, and acquire/release locks.
 - `viewer` — read-only access to roadmap data, activity, locks, and SSE streams.
 
 **Invite token join flow:**
@@ -78,9 +78,9 @@ All errors use FastAPI's default shape:
 | `DELETE /api/roadmaps/{id}/share-links/{role}` | owner |
 | `GET /api/roadmaps/{id}/participants` | owner |
 | `POST /api/roadmaps/{id}/participants/{pid}/revoke` | owner |
-| `GET /api/roadmaps/{id}/versions` | owner |
-| `POST /api/roadmaps/{id}/versions/checkpoint` | owner |
-| `GET /api/roadmaps/{id}/versions/{vid}` | owner |
+| `GET /api/roadmaps/{id}/versions` | owner or editor |
+| `POST /api/roadmaps/{id}/versions/checkpoint` | owner or editor |
+| `GET /api/roadmaps/{id}/versions/{vid}` | owner or editor |
 | `POST /api/roadmaps/{id}/versions/{vid}/restore` | owner |
 | `GET /api/roadmaps/{id}/activity` | owner, editor, or viewer |
 | `POST /api/roadmaps/{id}/events/ticket` | owner, editor, or viewer |
@@ -491,7 +491,7 @@ List version history summaries, newest first. Versions are saved automatically o
 
 Up to 100 versions are retained; the oldest are pruned when the limit is exceeded.
 
-**Auth:** owner only.
+**Auth:** owner or editor.
 
 **Response 200:**
 ```json
@@ -514,7 +514,7 @@ Up to 100 versions are retained; the oldest are pruned when the limit is exceede
 
 Create a manual checkpoint. If the current snapshot already matches the latest version, returns the existing version with `created: false` (idempotent guard against double-click).
 
-**Auth:** owner only.
+**Auth:** owner or editor. The editor UI uses this only as the safety gate before replacing a synced roadmap.
 
 **Response 200:**
 ```json
@@ -540,7 +540,7 @@ When `created` is `false`, `version` contains the existing latest entry unchange
 
 Fetch a specific version's full phase snapshot.
 
-**Auth:** owner only.
+**Auth:** owner or editor.
 
 **Response 200:**
 ```json

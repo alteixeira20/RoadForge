@@ -16,7 +16,11 @@ interface IOModalProps {
   open: boolean
   onClose: () => void
   onToast: (msg: string) => void
-  onRoadmapImported?: (roadmapName: string | undefined, phases: Phase[]) => void
+  onRoadmapImported?: (
+    roadmapName: string | undefined,
+    phases: Phase[],
+    mode: ImportMode,
+  ) => void
 }
 
 type IOMode = 'export' | ImportMode

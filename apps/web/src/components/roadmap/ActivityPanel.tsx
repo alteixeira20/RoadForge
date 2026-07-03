@@ -66,6 +66,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
       case 'roadmap.updated': return 'Saved roadmap'
       case 'roadmap.renamed': return 'Renamed roadmap'
       case 'roadmap.imported': return 'Imported roadmap'
+      case 'import.replaced': return 'Replaced roadmap from import'
       case 'roadmap.restored': return 'Restored roadmap'
       case 'roadmap.batch_changed': {
         const changes = Array.isArray(metadata?.changes) ? metadata.changes.length : 0
@@ -122,7 +123,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
     if (action === 'roadmap.created' && after_json?.name) {
       return <span>&ldquo;{String(after_json.name)}&rdquo;</span>
     }
-    if (action === 'roadmap.imported') {
+    if (action === 'roadmap.imported' || action === 'import.replaced') {
       const phaseCount = typeof metadata_json?.phase_count === 'number'
         ? metadata_json.phase_count
         : typeof metadata_json?.phaseCount === 'number'

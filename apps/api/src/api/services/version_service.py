@@ -27,6 +27,7 @@ _MAX_ROADMAP_VERSIONS = 100
 _VERSION_WORTHY_ACTIONS: frozenset[str] = frozenset({
     "roadmap.created",
     "roadmap.imported",
+    "import.replaced",
     "roadmap.restored",
     "roadmap.checkpoint",
 })

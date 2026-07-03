@@ -14,12 +14,14 @@ Groups:
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.roadmap import Roadmap, RoadmapVersion
+from api.models.roadmap import Participant, Roadmap, RoadmapVersion
 from api.services.id_service import generate_id
 from api.services.roadmap_service import _MAX_ROADMAP_VERSIONS, _trim_old_versions
 from tests.conftest import create_roadmap
@@ -176,6 +178,16 @@ async def test_owner_can_list_versions(client: AsyncClient):
     assert "task_count" in v
 
 
+async def test_editor_can_list_versions(client: AsyncClient):
+    body = await create_roadmap(client)
+    editor_token = await _join_as_editor(client, body)
+
+    versions = await _list_versions(client, body["id"], editor_token)
+
+    assert len(versions) >= 1
+    assert versions[0]["action"] == "roadmap.created"
+
+
 async def test_version_list_includes_manual_checkpoint(client: AsyncClient):
     body = await create_roadmap(client)
     roadmap_id = body["id"]
@@ -229,6 +241,20 @@ async def test_owner_can_fetch_version_detail(client: AsyncClient):
     assert "action" in detail
     assert "phase_count" in detail
     assert "task_count" in detail
+
+
+async def test_editor_can_fetch_version_detail(client: AsyncClient):
+    body = await create_roadmap(client)
+    editor_token = await _join_as_editor(client, body)
+    versions = await _list_versions(client, body["id"], editor_token)
+
+    resp = await client.get(
+        f"/api/roadmaps/{body['id']}/versions/{versions[0]['id']}",
+        headers=_auth(editor_token),
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["roadmap_name"] == body["name"]
 
 
 async def test_version_detail_snapshot_matches_creation_state(client: AsyncClient):
@@ -326,6 +352,73 @@ async def test_viewer_cannot_restore(client: AsyncClient):
     assert resp.status_code == 403
 
 
+async def test_editor_cannot_restore(client: AsyncClient):
+    body = await create_roadmap(client)
+    owner_token = body["owner_session_token"]
+    versions = await _list_versions(client, body["id"], owner_token)
+    editor_token = await _join_as_editor(client, body)
+
+    resp = await client.post(
+        f"/api/roadmaps/{body['id']}/versions/{versions[0]['id']}/restore",
+        headers=_auth(editor_token),
+    )
+
+    assert resp.status_code == 403
+
+
+async def test_revoked_editor_cannot_list_versions(client: AsyncClient):
+    body = await create_roadmap(client)
+    owner_token = body["owner_session_token"]
+    editor_token = await _join_as_editor(client, body)
+    participants_resp = await client.get(
+        f"/api/roadmaps/{body['id']}/participants",
+        headers=_auth(owner_token),
+    )
+    editor = next(
+        participant
+        for participant in participants_resp.json()
+        if participant["display_name"] == "Editor"
+    )
+    revoke_resp = await client.post(
+        f"/api/roadmaps/{body['id']}/participants/{editor['id']}/revoke",
+        headers=_auth(owner_token),
+    )
+    assert revoke_resp.status_code == 204
+
+    resp = await client.get(
+        f"/api/roadmaps/{body['id']}/versions",
+        headers=_auth(editor_token),
+    )
+
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "Session revoked"
+
+
+async def test_expired_editor_cannot_list_versions(
+    client: AsyncClient,
+    db_session: AsyncSession,
+):
+    body = await create_roadmap(client)
+    editor_token = await _join_as_editor(client, body)
+    result = await db_session.execute(
+        select(Participant).where(
+            Participant.roadmap_id == body["id"],
+            Participant.display_name == "Editor",
+        )
+    )
+    editor = result.scalar_one()
+    editor.session_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    await db_session.commit()
+
+    resp = await client.get(
+        f"/api/roadmaps/{body['id']}/versions",
+        headers=_auth(editor_token),
+    )
+
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "Session expired"
+
+
 # ─── Group E — Restore (RF-1905) ─────────────────────────────────────────────
 
 
@@ -407,6 +500,38 @@ async def test_restore_nonexistent_version_returns_404(client: AsyncClient):
         headers=_auth(owner_token),
     )
     assert resp.status_code == 404
+
+
+async def test_import_replace_has_distinct_activity_and_version(client: AsyncClient):
+    body = await create_roadmap(client)
+    owner_token = body["owner_session_token"]
+
+    update_resp = await client.put(
+        f"/api/roadmaps/{body['id']}",
+        headers=_auth(owner_token),
+        json={
+            "name": "Imported Replacement",
+            "last_updated_at": body["updated_at"],
+            "change_summary": {
+                "action": "import.replaced",
+                "entity_type": "roadmap",
+                "phase_count": 0,
+                "task_count": 0,
+            },
+        },
+    )
+    assert update_resp.status_code == 200, update_resp.text
+
+    versions = await _list_versions(client, body["id"], owner_token)
+    assert versions[0]["action"] == "import.replaced"
+
+    activity_resp = await client.get(
+        f"/api/roadmaps/{body['id']}/activity",
+        headers=_auth(owner_token),
+    )
+    assert activity_resp.status_code == 200
+    actions = [log["action"] for log in activity_resp.json()["logs"]]
+    assert "import.replaced" in actions
 
 
 # ─── Group F — Version trim boundary (PS-008) ────────────────────────────────

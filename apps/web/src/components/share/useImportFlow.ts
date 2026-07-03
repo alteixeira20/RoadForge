@@ -27,7 +27,11 @@ interface UseImportFlowOptions {
     phases: Phase[],
     tagRegistry?: TagDefinition[],
   ) => string
-  onRoadmapImported?: (roadmapName: string | undefined, phases: Phase[]) => void
+  onRoadmapImported?: (
+    roadmapName: string | undefined,
+    phases: Phase[],
+    mode: ImportMode,
+  ) => void
   onClose: () => void
   onToast: (msg: string) => void
 }
@@ -89,7 +93,7 @@ export function useImportFlow({
       updateUrlForLocalRoadmap(newId)
       onToast('Imported as new local roadmap')
     }
-    onRoadmapImported?.(imported.roadmapName, imported.phases)
+    onRoadmapImported?.(imported.roadmapName, imported.phases, mode)
     onClose()
   }, [roadmapName, canReplaceCurrent, setPhases, setRoadmapName, setSaved, setTagRegistry,
       serverRoadmapId, createLocalRoadmap, onRoadmapImported, onClose, onToast])
@@ -112,7 +116,7 @@ export function useImportFlow({
       if (tCount > 0) parts.push(`${tCount} task${tCount !== 1 ? 's' : ''}`)
       onToast(`Merged safe additions: ${parts.join(' and ')} added.`)
     }
-    onRoadmapImported?.(undefined, mergedPhases)
+    onRoadmapImported?.(undefined, mergedPhases, pending.mode)
     onClose()
   }, [setPhases, setSaved, setTagRegistry, onToast, onRoadmapImported, onClose])
 

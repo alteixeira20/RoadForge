@@ -294,7 +294,7 @@ async def fetch_roadmap_versions(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> list[RoadmapVersionSummaryResponse]:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
     await rate_limiter.enforce(
         "versions.read",
         _participant_rate_key(participant.id, roadmap_id),
@@ -328,7 +328,7 @@ async def fetch_roadmap_version(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapVersionDetailResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
     await rate_limiter.enforce(
         "version.read",
         _participant_rate_key(participant.id, roadmap_id),

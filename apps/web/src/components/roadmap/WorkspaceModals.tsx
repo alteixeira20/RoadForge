@@ -4,6 +4,7 @@ import { SaveToServerModal } from '@/components/share/SaveToServerModal'
 import { ShareModal } from '@/components/share/ShareModal'
 import { IOModal } from '@/components/share/IOModal'
 import { TagRegistryModal } from './TagRegistryModal'
+import type { ImportMode } from '@/lib/import-merge/types'
 import type { Phase } from '@/types/roadmap'
 
 interface WorkspaceModalsProps {
@@ -17,7 +18,11 @@ interface WorkspaceModalsProps {
   onCloseTagRegistry: () => void
   onConfirmSave: (password?: string) => void
   onToast: (msg: string) => void
-  onRoadmapImported?: (roadmapName: string | undefined, phases: Phase[]) => void
+  onRoadmapImported?: (
+    roadmapName: string | undefined,
+    phases: Phase[],
+    mode: ImportMode,
+  ) => void
   readOnly?: boolean
 }
 

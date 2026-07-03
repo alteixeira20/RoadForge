@@ -12,12 +12,14 @@ interface VersionsPanelProps {
   onClose: () => void
   onRestored: (roadmap: Roadmap) => void
   onToast: (message: string) => void
+  canManageVersions: boolean
 }
 
 function actionLabel(action: string | null): string {
   switch (action) {
     case 'roadmap.created': return 'Created'
     case 'roadmap.imported': return 'Imported'
+    case 'import.replaced': return 'Import replaced'
     case 'roadmap.restored': return 'Restored'
     case 'roadmap.checkpoint': return 'Checkpoint'
     case 'roadmap.updated': return 'Updated'
@@ -52,6 +54,7 @@ export function VersionsPanel({
   onClose,
   onRestored,
   onToast,
+  canManageVersions,
 }: VersionsPanelProps) {
   const [versions, setVersions] = useState<RoadmapVersionSummary[]>([])
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -128,7 +131,7 @@ export function VersionsPanel({
   return (
     <>
     <ConfirmDialog
-      open={pendingRestoreVersion !== null}
+      open={canManageVersions && pendingRestoreVersion !== null}
       title="Restore version"
       message="Restore this version? The current roadmap will be replaced for all collaborators."
       confirmLabel="Restore version"
@@ -140,22 +143,31 @@ export function VersionsPanel({
     <div className="slide-panel versions-panel">
       <div className="panel-head">
         <h3>Versions</h3>
-        <div className="panel-head-actions">
-          <button
-            className="btn sm ghost"
-            onClick={handleCreateCheckpoint}
-            disabled={checkpointLoading}
-            title="Save a restore point with the current roadmap state"
-          >
-            {checkpointLoading ? 'Saving…' : 'Create checkpoint'}
-          </button>
-        </div>
+        {canManageVersions && (
+          <div className="panel-head-actions">
+            <button
+              className="btn sm ghost"
+              onClick={handleCreateCheckpoint}
+              disabled={checkpointLoading}
+              title="Save a restore point with the current roadmap state"
+            >
+              {checkpointLoading ? 'Saving…' : 'Create checkpoint'}
+            </button>
+          </div>
+        )}
         <button className="close-btn" onClick={onClose}>
           <Icon name="x" size={18} />
         </button>
       </div>
 
       <div className="panel-body">
+        {!canManageVersions && (
+          <div className="state-msg">
+            <Icon name="lock" size={18} />
+            <p>Version history is read-only for editors.</p>
+            <small>Only the owner can create checkpoints or restore a version.</small>
+          </div>
+        )}
         {state === 'loading' ? (
           <div className="state-msg">
             <span className="spin">
@@ -189,13 +201,15 @@ export function VersionsPanel({
                     {version.phaseCount} phases · {version.taskCount} tasks
                   </div>
                 </div>
-                <button
-                  className="btn sm ghost"
-                  onClick={() => handleRestoreRequest(version)}
-                  disabled={restoringId === version.id}
-                >
-                  Restore
-                </button>
+                {canManageVersions && (
+                  <button
+                    className="btn sm ghost"
+                    onClick={() => handleRestoreRequest(version)}
+                    disabled={restoringId === version.id}
+                  >
+                    Restore
+                  </button>
+                )}
               </div>
             ))}
           </div>
