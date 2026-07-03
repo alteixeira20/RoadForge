@@ -7,6 +7,7 @@ import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-as
 import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
+import { TaskDescriptionEditor } from './TaskDescriptionEditor'
 import { TaskInlineField } from './TaskInlineField'
 import { TaskSubtaskList } from './TaskSubtaskList'
 import { useEditLock } from '@/hooks/useEditLock'
@@ -97,6 +98,7 @@ export function TaskRow({
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
   const [titleDraft, setTitleDraft] = useState(task.title)
   const [estimateDraft, setEstimateDraft] = useState(task.est ?? '')
+  const [descDraft, setDescDraft] = useState(task.desc ?? '')
   const [titleError, setTitleError] = useState<string | null>(null)
 
   const target = `task:${task.id}`
@@ -281,19 +283,25 @@ export function TaskRow({
     setIsEditing(true)
   }
 
-  const handleBeginInlineEdit = async (field: 'title' | 'est') => {
+  const handleBeginInlineEdit = async (field: 'title' | 'est' | 'desc') => {
     if (activeForm || effectivelyReadOnly || inlineEdit.isEditing) return
     if (field === 'title') {
       setTitleDraft(task.title)
       setTitleError(null)
-    } else {
+    } else if (field === 'est') {
       setEstimateDraft(task.est ?? '')
+    } else {
+      setDescDraft(task.desc ?? '')
     }
     await inlineEdit.beginEdit(field)
   }
 
   const handleCommitInlineEdit = async () => {
-    const value = inlineEdit.activeField === 'title' ? titleDraft : estimateDraft
+    const value = inlineEdit.activeField === 'title'
+      ? titleDraft
+      : inlineEdit.activeField === 'est'
+        ? estimateDraft
+        : descDraft
     const result = await inlineEdit.commitEdit(value)
     if (result?.ok === false && result.reason === 'empty-title') {
       setTitleError('Title cannot be empty.')
@@ -308,6 +316,7 @@ export function TaskRow({
   const handleCancelInlineEdit = async () => {
     setTitleDraft(task.title)
     setEstimateDraft(task.est ?? '')
+    setDescDraft(task.desc ?? '')
     setTitleError(null)
     onDirtyChange?.(task.id, false)
     await inlineEdit.cancelEdit()
@@ -505,12 +514,26 @@ export function TaskRow({
             />
           ) : (
             <>
+              <TaskDescriptionEditor
+                value={task.desc ?? ''}
+                draft={descDraft}
+                active={inlineEdit.activeField === 'desc'}
+                editable={!activeForm && !effectivelyReadOnly && !inlineEdit.isEditing}
+                busy={inlineEdit.isAcquiring || inlineEdit.isReleasing}
+                canCommit={inlineEdit.canCommit}
+                onBegin={() => { void handleBeginInlineEdit('desc') }}
+                onDraftChange={setDescDraft}
+                onCommit={() => { void handleCommitInlineEdit() }}
+                onCancel={() => { void handleCancelInlineEdit() }}
+                onInteraction={handleInlineInteraction}
+              />
               <TaskDetailMeta
                 task={task}
                 isNested={isNested}
                 assignedNames={assignedNames}
                 visibleTags={visibleTags}
                 registry={tagRegistry}
+                showDescription={false}
                 estimateControl={!isNested ? (
                   <TaskInlineField
                     field="est"

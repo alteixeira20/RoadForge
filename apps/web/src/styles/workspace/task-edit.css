@@ -68,6 +68,101 @@
 }
 .edit-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
 
+/* ─── Task description editor ─────────────────────────────────────────────── */
+.desc-add-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 6px 10px;
+  color: var(--ink-4);
+  background: transparent;
+  border: 1px dashed var(--border-faint);
+  border-radius: 7px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 160ms;
+}
+.desc-add-trigger:hover,
+.desc-add-trigger:focus-visible {
+  color: var(--ember);
+  border-color: var(--border);
+  outline: none;
+}
+.desc-preview-wrap { position: relative; }
+.desc-edit-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 3px 8px;
+  color: var(--ink-4);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 550;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 160ms;
+}
+.desc-edit-trigger:hover,
+.desc-edit-trigger:focus-visible {
+  color: var(--ember);
+  background: var(--bg-3);
+  border-color: var(--border-faint);
+  outline: none;
+}
+.desc-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+}
+.desc-editor-tabs { display: flex; gap: 4px; }
+.desc-editor-tabs button {
+  padding: 4px 10px;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.desc-editor-tabs button.active {
+  color: var(--ember);
+  background: var(--lava-glow);
+  border-color: color-mix(in srgb, var(--ember), transparent 72%);
+}
+.desc-editor-preview {
+  min-height: 112px;
+  padding: 8px 2px;
+  font-size: 14.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.desc-editor-preview .muted { color: var(--ink-4); font-size: 13px; }
+.desc-editor-textarea {
+  min-height: 112px;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.45;
+  resize: vertical;
+  outline: none;
+}
+.desc-editor-textarea:focus { border-color: var(--ember); background: var(--bg); }
+.desc-editor-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
 /* ─── Inline task fields ──────────────────────────────────────────────────── */
 .inline-task-field {
   position: relative;

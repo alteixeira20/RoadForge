@@ -12,6 +12,7 @@ interface TaskDetailMetaProps {
   visibleTags: string[]
   registry?: TagDefinition[]
   estimateControl?: ReactNode
+  showDescription?: boolean
 }
 
 export function TaskDetailMeta({
@@ -21,10 +22,11 @@ export function TaskDetailMeta({
   visibleTags,
   registry = [],
   estimateControl,
+  showDescription = true,
 }: TaskDetailMetaProps) {
   return (
     <>
-      {task.desc && <MarkdownDescription value={task.desc} />}
+      {showDescription && task.desc && <MarkdownDescription value={task.desc} />}
 
       <div className="grid">
         {!isNested && (
