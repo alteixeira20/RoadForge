@@ -162,27 +162,25 @@
   margin-top: 3px;
   accent-color: var(--ember);
 }
-.task-detail-meta {
+.task-meta-stack {
   display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
 }
 .task-meta-group {
+  width: 100%;
   min-width: 0;
   min-height: 42px;
-  display: inline-flex;
+  display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 5px 8px;
+  gap: 12px;
+  padding: 7px 10px;
   background: var(--bg-inset);
   border: 1px solid var(--border-faint);
   border-radius: 9px;
 }
-.task-meta-group.is-estimate { flex: 0 0 auto; }
-.task-meta-group.is-assignees,
-.task-meta-group.is-tags { flex: 1 1 260px; }
 .task-meta-label {
+  flex: 0 0 76px;
   padding-top: 6px;
   color: var(--ink-4);
   font-family: var(--font-mono);
@@ -197,10 +195,13 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  flex: 1;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   gap: 6px;
   color: var(--ink-2);
+}
+.task-meta-group.is-estimate .task-meta-value {
+  flex: 0 1 auto;
 }
 .task-meta-empty {
   min-height: 30px;
@@ -225,11 +226,15 @@
   flex-shrink: 0;
 }
 
-.task-actions-footer {
-  margin-top: 12px;
-  display: flex; align-items: center;
-  justify-content: flex-end;
+.task-action-area {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   flex-wrap: wrap;
+  border-top: 1px solid var(--border-faint);
 }
 
 .task-detail .actions {
@@ -237,7 +242,7 @@
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 .task-detail .actions .btn:focus-visible {
   outline: 2px solid var(--ember);
@@ -546,8 +551,22 @@
 }
 
 /* ─── Inline tag editor (expanded task detail) ─────────────────────────────── */
-.task-tag-editor { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.task-tag-editor { min-width: 0; width: 100%; }
 .task-tag-editor.is-busy { opacity: 0.6; pointer-events: none; }
+.task-tag-editor .tag-input-field-pill {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.task-tag-editor .tag-chip-list {
+  min-width: 0;
+}
+.task-tag-editor .tag-input-wrap {
+  flex: 0 1 180px;
+  min-width: 130px;
+}
 .tag-pill-editable { padding-right: 4px; gap: 4px; }
 .tag-pill-remove {
   display: inline-flex; align-items: center; justify-content: center;
@@ -573,9 +592,22 @@
 }
 
 /* ─── Inline assignee editor (expanded task detail) ────────────────────────── */
-.assignee-editor-inline { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.assignee-editor-inline {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
 .assignee-editor-inline.is-busy { opacity: 0.6; pointer-events: none; }
-.assignee-chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.assignee-chip-list {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .assignee-chip { padding-right: 4px; gap: 4px; }
 .assignee-chip-remove {
   display: inline-flex; align-items: center; justify-content: center;
@@ -598,9 +630,15 @@
 @media (hover: none) {
   .assignee-chip-remove { opacity: 1; }
 }
-.assignee-input-row { display: flex; gap: 8px; }
+.assignee-input-row {
+  flex: 0 1 230px;
+  min-width: 180px;
+  display: flex;
+  gap: 6px;
+}
 .assignee-chip-input {
-  flex: 1;
+  min-width: 0;
+  flex: 1 1 140px;
   padding: 5px 8px;
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -612,7 +650,12 @@
 }
 .assignee-chip-input:focus { border-color: var(--ember); background: var(--bg); }
 .assignee-chip-input::placeholder { color: var(--ink-4); }
-.assignee-suggestions { display: flex; flex-wrap: wrap; gap: 6px; }
+.assignee-suggestions {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .assignee-suggestion-item {
   padding: 3px 9px;
   border-radius: 999px;
@@ -638,13 +681,18 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
+/* ── 900px — compact metadata controls without changing row order ──────── */
+@media (max-width: 900px) {
+  .task-meta-label { flex-basis: 72px; }
+  .assignee-input-row { flex-basis: 210px; }
+  .task-tag-editor .tag-input-wrap { flex-basis: 165px; }
+}
+
 /* ── 760px — tablet: tighten task row and detail layout ─────────────────── */
 @media (max-width: 760px) {
   .task-row { padding: 14px 16px; gap: 10px; flex-wrap: wrap; }
   .task-row .meta-pill { display: none; }
   .task-detail { padding-left: 16px; padding-right: 16px; }
-  .task-meta-group.is-assignees,
-  .task-meta-group.is-tags { flex-basis: 100%; }
 }
 
 /* ── 600px — mobile: compact task density ───────────────────────────────── */
@@ -652,18 +700,23 @@
   .task-row { padding: 12px 14px; gap: 10px; }
   .draft-task-row { padding: 10px 14px; }
   .task-detail { gap: 14px; }
-  .task-detail-meta { flex-direction: column; }
-  .task-meta-group,
-  .task-meta-group.is-estimate,
-  .task-meta-group.is-assignees,
-  .task-meta-group.is-tags {
-    width: 100%;
-    flex-basis: auto;
+  .task-meta-group {
+    flex-direction: column;
+    gap: 6px;
   }
-  .task-actions-footer,
+  .task-meta-label {
+    flex-basis: auto;
+    padding-top: 0;
+  }
+  .assignee-input-row,
+  .task-tag-editor .tag-input-wrap {
+    flex: 1 1 180px;
+    max-width: 100%;
+  }
+  .task-action-area,
   .task-detail .actions { width: 100%; }
   .task-detail .actions .btn {
-    flex: 1 1 auto;
+    flex: 1 1 160px;
     justify-content: center;
   }
 }

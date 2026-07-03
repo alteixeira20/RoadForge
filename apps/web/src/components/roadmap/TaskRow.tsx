@@ -678,7 +678,7 @@ export function TaskRow({
               )}
 
               {!isEditing && (
-                <div className="task-actions-footer">
+                <div className="task-action-area">
                   {unavailableActionsMessage ? (
                     <div className="task-action-note">
                       <Icon name="shield" size={14} />
