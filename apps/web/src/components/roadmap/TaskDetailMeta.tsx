@@ -1,6 +1,6 @@
 'use client'
 
-import { type CSSProperties } from 'react'
+import { type CSSProperties, type ReactNode } from 'react'
 import type { Task, TagDefinition } from '@/types/roadmap'
 import { resolveTagColor, resolveTagDisplay } from '@/lib/tag-registry'
 import { MarkdownDescription } from './MarkdownDescription'
@@ -11,9 +11,17 @@ interface TaskDetailMetaProps {
   assignedNames: string[]
   visibleTags: string[]
   registry?: TagDefinition[]
+  estimateControl?: ReactNode
 }
 
-export function TaskDetailMeta({ task, isNested, assignedNames, visibleTags, registry = [] }: TaskDetailMetaProps) {
+export function TaskDetailMeta({
+  task,
+  isNested,
+  assignedNames,
+  visibleTags,
+  registry = [],
+  estimateControl,
+}: TaskDetailMetaProps) {
   return (
     <>
       {task.desc && <MarkdownDescription value={task.desc} />}
@@ -22,7 +30,7 @@ export function TaskDetailMeta({ task, isNested, assignedNames, visibleTags, reg
         {!isNested && (
           <>
             <div className="label">Estimate</div>
-            <div className="value">{task.est ?? '—'}</div>
+            <div className="value">{estimateControl ?? task.est ?? '—'}</div>
           </>
         )}
         <div className="label">Assigned</div>
