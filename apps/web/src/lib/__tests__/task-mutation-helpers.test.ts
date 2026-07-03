@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { buildTaskDonePhases } from '@/hooks/taskMutationHelpers'
-import type { Phase } from '@/types/roadmap'
+import { buildTaskDonePhases, commitTaskField } from '@/hooks/taskMutationHelpers'
+import type { Phase, Task } from '@/types/roadmap'
 
 const CLAIMED_PHASE: Phase = {
   id: 'ph_1',
@@ -59,5 +59,65 @@ describe('buildTaskDonePhases', () => {
     const task = result[0]!.tasks[1]!
     expect(task.done).toBe(true)
     expect(task.claimedBy).toBeUndefined()
+  })
+})
+
+const EDITABLE_TASK: Task = {
+  id: 'tk_edit',
+  title: 'Original title',
+  done: false,
+  est: '2d',
+  desc: 'Original **Markdown**',
+  tags: ['frontend'],
+  assignees: ['Alice'],
+}
+
+describe('commitTaskField', () => {
+  it('trims a valid title without changing unrelated fields', () => {
+    const result = commitTaskField(EDITABLE_TASK, 'title', '  Updated title  ')
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.changed).toBe(true)
+    expect(result.updates).toEqual({ title: 'Updated title' })
+    expect(result.task).toEqual({ ...EDITABLE_TASK, title: 'Updated title' })
+    expect(EDITABLE_TASK.title).toBe('Original title')
+  })
+
+  it('rejects an empty trimmed title and returns the unchanged task', () => {
+    const result = commitTaskField(EDITABLE_TASK, 'title', ' \n\t ')
+
+    expect(result).toEqual({
+      ok: false,
+      reason: 'empty-title',
+      task: EDITABLE_TASK,
+    })
+    expect(result.task).toBe(EDITABLE_TASK)
+  })
+
+  it('trims estimates and clears an estimate with empty input', () => {
+    const trimmed = commitTaskField(EDITABLE_TASK, 'est', '  5h ')
+    const cleared = commitTaskField(EDITABLE_TASK, 'est', '   ')
+
+    expect(trimmed.ok && trimmed.updates).toEqual({ est: '5h' })
+    expect(cleared.ok && cleared.updates).toEqual({ est: '' })
+  })
+
+  it('preserves description Markdown source exactly', () => {
+    const markdown = '  ## Heading\n\n- item  \n'
+    const result = commitTaskField(EDITABLE_TASK, 'desc', markdown)
+
+    expect(result.ok && result.updates).toEqual({ desc: markdown })
+    expect(result.ok && result.task.desc).toBe(markdown)
+  })
+
+  it('returns the original task when the normalized value is unchanged', () => {
+    const result = commitTaskField(EDITABLE_TASK, 'title', ' Original title ')
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.changed).toBe(false)
+    expect(result.task).toBe(EDITABLE_TASK)
+    expect(result.updates).toEqual({ title: 'Original title' })
   })
 })

@@ -1,5 +1,43 @@
 import type { ActivityChange, Phase, Task } from '@/types/roadmap'
 
+export type InlineTaskField = 'title' | 'est' | 'desc'
+
+export type CommitTaskFieldResult =
+  | {
+      ok: true
+      changed: boolean
+      task: Task
+      updates: Partial<Task>
+    }
+  | {
+      ok: false
+      reason: 'empty-title'
+      task: Task
+    }
+
+export function commitTaskField(
+  task: Task,
+  field: InlineTaskField,
+  value: string,
+): CommitTaskFieldResult {
+  const normalizedValue = field === 'desc' ? value : value.trim()
+  if (field === 'title' && !normalizedValue) {
+    return { ok: false, reason: 'empty-title', task }
+  }
+
+  const updates: Partial<Task> = { [field]: normalizedValue }
+  if ((task[field] ?? '') === normalizedValue) {
+    return { ok: true, changed: false, task, updates }
+  }
+
+  return {
+    ok: true,
+    changed: true,
+    task: { ...task, ...updates },
+    updates,
+  }
+}
+
 export function findPhaseForTask(phases: Phase[], taskId: string): Phase | undefined {
   return phases.find((phase) => phase.tasks.some((task) => task.id === taskId))
 }
