@@ -27,10 +27,10 @@ export function TeamPanel({
   const activeParticipants = participants.filter((participant) => !participant.revokedAt)
   const accessLabelFor = (participant: Participant) => (
     participant.accessSourceLabel ||
-    (participant.joinedViaRole ? `${participant.joinedViaRole} link` : 'Legacy / unknown link')
+    (participant.joinedViaRole ? `${participant.joinedViaRole} link` : null)
   )
 
-  const formatDate = (value: string | null) => {
+  const formatDate = (value: string | null | undefined) => {
     if (!value) return 'Never'
     return new Date(value).toLocaleString([], {
       month: 'short',
@@ -40,9 +40,13 @@ export function TeamPanel({
     })
   }
 
-  const formatSessionExpiry = (value: string | null) => (
+  const formatSessionExpiry = (value: string | null | undefined) => (
     value ? formatDate(value) : 'not set'
   )
+
+  // Editors receive a reduced participant projection (no timestamps/link
+  // metadata) — only render the detail line when that data is present.
+  const hasFullDetails = (participant: Participant) => participant.createdAt !== undefined
 
   return (
     <section className="team-view">
@@ -93,9 +97,11 @@ export function TeamPanel({
                     <span>{participant.role}</span>
                     {participant.isCurrentParticipant && <span>Current session</span>}
                   </div>
-                  <div className="team-counts">
-                    {accessLabelFor(participant)}
-                  </div>
+                  {accessLabelFor(participant) && (
+                    <div className="team-counts">
+                      {accessLabelFor(participant)}
+                    </div>
+                  )}
                 </div>
                 <div className="team-row-actions">
                   {canManageParticipants && !participant.isCurrentParticipant && (
@@ -106,7 +112,11 @@ export function TeamPanel({
                 </div>
               </div>
               <div className="team-meta">
-                Joined {formatDate(participant.createdAt)} · Last seen {formatDate(participant.lastSeenAt)} · Session expires: {formatSessionExpiry(participant.sessionExpiresAt)}
+                {hasFullDetails(participant) && (
+                  <>
+                    Joined {formatDate(participant.createdAt)} · Last seen {formatDate(participant.lastSeenAt)} · Session expires: {formatSessionExpiry(participant.sessionExpiresAt)}
+                  </>
+                )}
                 {(claimedCountByParticipantId[participant.id] ?? 0) > 0 && (
                   <span className="team-claim-badge">
                     Working on {claimedCountByParticipantId[participant.id]} task{claimedCountByParticipantId[participant.id] === 1 ? '' : 's'}

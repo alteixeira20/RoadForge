@@ -184,14 +184,18 @@ export interface Participant {
   id: string
   displayName: string
   role: ShareRole
-  createdAt: string
-  lastSeenAt: string | null
-  sessionExpiresAt: string | null
-  revokedAt: string | null
   isCurrentParticipant: boolean
-  shareLinkId: string | null
-  joinedViaRole: ShareRole | null
-  accessSourceLabel: string
+  /**
+   * Fields below are only present in the full (owner) projection.
+   * Editors receive a reduced projection without session/link metadata.
+   */
+  createdAt?: string
+  lastSeenAt?: string | null
+  sessionExpiresAt?: string | null
+  revokedAt?: string | null
+  shareLinkId?: string | null
+  joinedViaRole?: ShareRole | null
+  accessSourceLabel?: string
 }
 
 export interface RoadmapVersionSummary {

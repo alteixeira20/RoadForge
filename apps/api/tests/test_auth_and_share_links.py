@@ -285,6 +285,100 @@ async def test_revoked_editor_session_returns_401(client: AsyncClient):
     assert resp.status_code == 401
 
 
+# ─── Group F — Participant list read (owner/editor/viewer) ──────────────────
+
+
+async def test_owner_gets_full_participant_fields(client: AsyncClient):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    editor_url = await _rotate_link(client, roadmap_id, owner_token, "editor")
+    await _join(client, editor_url, display_name="EditorOne")
+
+    resp = await client.get(
+        f"/api/roadmaps/{roadmap_id}/participants", headers=_auth(owner_token)
+    )
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()
+    assert len(rows) == 2
+    editor_row = next(r for r in rows if r["display_name"] == "EditorOne")
+    # Full projection includes timestamps and link linkage.
+    assert "created_at" in editor_row
+    assert "share_link_id" in editor_row
+    assert "joined_via_role" in editor_row
+    assert "access_source_label" in editor_row
+
+
+async def test_editor_gets_reduced_participant_fields(client: AsyncClient):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    editor_url = await _rotate_link(client, roadmap_id, owner_token, "editor")
+    join_resp = await _join(client, editor_url, display_name="EditorOne")
+    editor_token = join_resp.json()["session_token"]
+
+    resp = await client.get(
+        f"/api/roadmaps/{roadmap_id}/participants", headers=_auth(editor_token)
+    )
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()
+    assert len(rows) == 2
+    names = {r["display_name"] for r in rows}
+    assert names == {"Owner", "EditorOne"}
+
+    for row in rows:
+        assert set(row.keys()) == {
+            "id",
+            "display_name",
+            "role",
+            "is_current_participant",
+        }
+
+
+async def test_editor_participant_list_excludes_revoked(client: AsyncClient):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    editor_url = await _rotate_link(client, roadmap_id, owner_token, "editor")
+    join_resp = await _join(client, editor_url, display_name="EditorOne")
+    editor_pid = join_resp.json()["participant_id"]
+
+    other_editor_url = await _rotate_link(client, roadmap_id, owner_token, "editor")
+    other_join_resp = await _join(client, other_editor_url, display_name="EditorTwo")
+    other_editor_token = other_join_resp.json()["session_token"]
+
+    revoke_resp = await client.post(
+        f"/api/roadmaps/{roadmap_id}/participants/{editor_pid}/revoke",
+        headers=_auth(owner_token),
+    )
+    assert revoke_resp.status_code == 204
+
+    resp = await client.get(
+        f"/api/roadmaps/{roadmap_id}/participants", headers=_auth(other_editor_token)
+    )
+    assert resp.status_code == 200, resp.text
+    names = {r["display_name"] for r in resp.json()}
+    assert names == {"Owner", "EditorTwo"}
+
+
+async def test_viewer_cannot_read_participants(client: AsyncClient):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    links = await _get_share_links(client, roadmap_id, owner_token)
+    join_resp = await _join(client, links["viewer"]["url"])
+    viewer_token = join_resp.json()["session_token"]
+
+    resp = await client.get(
+        f"/api/roadmaps/{roadmap_id}/participants", headers=_auth(viewer_token)
+    )
+    assert resp.status_code == 403
+
+
 # ─── Group E — Expired session ───────────────────────────────────────────────
 
 

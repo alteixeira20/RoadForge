@@ -103,7 +103,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
     setTimeout(() => setCopied(null), 1600)
   }
 
-  const formatDate = (value: string | null) => {
+  const formatDate = (value: string | null | undefined) => {
     if (!value) return 'Never'
     return new Date(value).toLocaleString([], {
       month: 'short',

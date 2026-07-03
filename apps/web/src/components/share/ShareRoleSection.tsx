@@ -23,7 +23,7 @@ interface ShareRoleSectionProps {
   onRegenerate: (targetRole: ShareRole) => void
   onRevokeLink: (targetRole: ShareRole) => void
   onRevokeParticipant: (participant: Participant) => void
-  formatDate: (value: string | null) => string
+  formatDate: (value: string | null | undefined) => string
   linkStateLabel: (link: ShareLink) => string
   linkHint: (targetRole: ShareRole, link: ShareLink) => string
   rotateLabel: (targetRole: ShareRole) => string

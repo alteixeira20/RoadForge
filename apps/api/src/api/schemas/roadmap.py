@@ -27,7 +27,11 @@ from api.schemas.shared import (
     ShareRole,
     validate_change_summary,
 )
-from api.schemas.sharing import ParticipantResponse, ShareLinkResponse
+from api.schemas.sharing import (
+    ParticipantResponse,
+    ParticipantSummaryResponse,
+    ShareLinkResponse,
+)
 from api.schemas.tags import (
     CreateTagRequest,
     TagDefinitionDTO,
@@ -77,6 +81,7 @@ __all__ = [
     "validate_change_summary",
     # Sharing
     "ParticipantResponse",
+    "ParticipantSummaryResponse",
     "ShareLinkResponse",
     # Tags
     "CreateTagRequest",

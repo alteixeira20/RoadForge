@@ -10,7 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant, ShareLink
-from api.schemas.roadmap import ParticipantResponse, ShareLinkResponse, ShareRole
+from api.schemas.roadmap import (
+    ParticipantResponse,
+    ParticipantSummaryResponse,
+    ShareLinkResponse,
+    ShareRole,
+)
 from api.services.id_service import generate_id
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
@@ -244,6 +249,38 @@ async def get_participants(
             )
         )
     return responses
+
+
+async def get_participants_summary(
+    db: AsyncSession,
+    roadmap_id: str,
+    current_participant: Participant,
+) -> list[ParticipantSummaryResponse]:
+    """Reduced participant projection for editors — active participants only.
+
+    Excludes timestamps, share-link linkage, and access labels that owners
+    see in the full listing. Used to feed assignee suggestions without
+    exposing session/link metadata to non-owners.
+    """
+    await _fetch_active_roadmap_for_sharing(db, roadmap_id)
+
+    result = await db.execute(
+        select(Participant)
+        .where(
+            Participant.roadmap_id == roadmap_id,
+            Participant.revoked_at.is_(None),
+        )
+        .order_by(Participant.created_at.asc())
+    )
+    return [
+        ParticipantSummaryResponse(
+            id=participant.id,
+            display_name=participant.display_name,
+            role=participant.role,  # type: ignore[arg-type]
+            is_current_participant=participant.id == current_participant.id,
+        )
+        for participant in result.scalars().all()
+    ]
 
 
 async def revoke_participant(

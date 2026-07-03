@@ -16,18 +16,21 @@ interface ApiShareLinkResponse {
   rotated_at: string | null
 }
 
+// Owners receive every field below; editors receive a reduced projection
+// with only id/display_name/role/is_current_participant (see backend
+// ParticipantSummaryResponse) — the rest are absent, not null, for editors.
 interface ApiParticipantResponse {
   id: string
   display_name: string
   role: string
-  created_at: string
-  last_seen_at: string | null
-  session_expires_at: string | null
-  revoked_at: string | null
   is_current_participant: boolean
-  share_link_id: string | null
-  joined_via_role: string | null
-  access_source_label: string
+  created_at?: string
+  last_seen_at?: string | null
+  session_expires_at?: string | null
+  revoked_at?: string | null
+  share_link_id?: string | null
+  joined_via_role?: string | null
+  access_source_label?: string
 }
 
 interface ApiJoinResponse {
@@ -68,14 +71,14 @@ function toParticipant(r: ApiParticipantResponse): Participant {
     id: r.id,
     displayName: r.display_name,
     role: r.role as ShareRole,
+    isCurrentParticipant: r.is_current_participant,
     createdAt: r.created_at,
     lastSeenAt: r.last_seen_at,
     sessionExpiresAt: r.session_expires_at,
     revokedAt: r.revoked_at,
-    isCurrentParticipant: r.is_current_participant,
-    shareLinkId: r.share_link_id ?? null,
+    shareLinkId: r.share_link_id,
     joinedViaRole: (r.joined_via_role ?? null) as ShareRole | null,
-    accessSourceLabel: r.access_source_label ?? 'Legacy / unknown link',
+    accessSourceLabel: r.access_source_label,
   }
 }
 

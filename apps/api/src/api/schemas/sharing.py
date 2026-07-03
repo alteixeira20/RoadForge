@@ -35,3 +35,17 @@ class ParticipantResponse(BaseModel):
     share_link_id: str | None = None
     joined_via_role: ShareRole | None = None
     access_source_label: str = "Legacy / unknown link"
+
+
+class ParticipantSummaryResponse(BaseModel):
+    """Reduced participant projection for editors.
+
+    Excludes session/link metadata (last_seen_at, session_expires_at,
+    share_link_id, joined_via_role, access_source_label, revoked_at) that
+    owners can see but editors don't need for assignee suggestions.
+    """
+
+    id: str
+    display_name: str
+    role: ShareRole
+    is_current_participant: bool = False

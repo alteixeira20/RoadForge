@@ -19,6 +19,7 @@ from api.schemas.roadmap import (
     LockRequest,
     LockResponse,
     ParticipantResponse,
+    ParticipantSummaryResponse,
     PatchTaskDoneRequest,
     RoadmapConflictResponse,
     RoadmapResponse,
@@ -57,6 +58,7 @@ from api.services.roadmap_task_service import (
 )
 from api.services.sharing_service import (
     get_participants,
+    get_participants_summary,
     get_share_links,
     revoke_participant,
     revoke_share_link,
@@ -353,20 +355,25 @@ async def post_restore_roadmap_version(
     return await restore_roadmap_version(db, roadmap_id, version_id, participant)
 
 
-@router.get("/{roadmap_id}/participants", response_model=list[ParticipantResponse])
+@router.get("/{roadmap_id}/participants")
 async def fetch_participants(
     roadmap_id: str,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
-) -> list[ParticipantResponse]:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+) -> list[ParticipantResponse] | list[ParticipantSummaryResponse]:
+    # Owners see the full participant listing (timestamps, link linkage).
+    # Editors see a reduced projection — just enough for assignee suggestions.
+    # Viewers remain forbidden.
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
     await rate_limiter.enforce(
         "participants.read",
         _participant_rate_key(participant.id, roadmap_id),
         limit=120,
         window_seconds=60,
     )
-    return await get_participants(db, roadmap_id, participant)
+    if participant.role == "owner":
+        return await get_participants(db, roadmap_id, participant)
+    return await get_participants_summary(db, roadmap_id, participant)
 
 
 @router.post(

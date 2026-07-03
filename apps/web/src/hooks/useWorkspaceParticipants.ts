@@ -31,7 +31,7 @@ export function useWorkspaceParticipants({
   useEffect(() => {
     setParticipants([])
     setParticipantsError(null)
-    if (!serverRoadmapId || !sessionToken || role !== 'owner') {
+    if (!serverRoadmapId || !sessionToken || (role !== 'owner' && role !== 'editor')) {
       setParticipantsLoading(false)
       return
     }
