@@ -1,0 +1,458 @@
+{
+  "schema": "anvilary.roadmap.import",
+  "version": 1,
+  "roadmap": {
+    "name": "RoadForge Inline Task Editing"
+  },
+  "tagRegistry": [
+    { "id": "size-xs", "label": "size:XS", "color": "#8a9aa8" },
+    { "id": "size-s", "label": "size:S", "color": "#7d9c6e" },
+    { "id": "size-m", "label": "size:M", "color": "#c9a15a" },
+    { "id": "size-l", "label": "size:L", "color": "#c47a4f" },
+    { "id": "risk-low", "label": "risk:low", "color": "#5f8f5f" },
+    { "id": "risk-med", "label": "risk:medium", "color": "#c9903a" },
+    { "id": "risk-high", "label": "risk:high", "color": "#c05545" },
+    { "id": "frontend", "label": "frontend" },
+    { "id": "backend", "label": "backend" },
+    { "id": "css", "label": "css" },
+    { "id": "docs", "label": "docs" },
+    { "id": "tests", "label": "tests" },
+    { "id": "ux", "label": "ux" },
+    { "id": "beta", "label": "beta" }
+  ],
+  "phases": [
+    {
+      "id": "phase-01",
+      "num": "01",
+      "name": "Public Alpha polish blockers",
+      "color": "#c05545",
+      "colorMode": "manual",
+      "status": "active",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "IE-101",
+          "title": "Restore bullet markers in Markdown lists",
+          "done": false,
+          "next": true,
+          "est": "1h",
+          "tags": ["css", "size-xs", "risk-low"],
+          "deps": [],
+          "desc": "**Problem:** `- item` lists in task descriptions render without bullet dots. Tailwind preflight resets `list-style` to `none` on `ul`/`ol`, and `.markdown-description ul, ol` in `apps/web/src/styles/workspace/task-row.css` (~line 137) only restores margin/padding, never `list-style`.\n\n**Fix:** add `list-style: disc` for `ul` and `list-style: decimal` for `ol` scoped under `.markdown-description`. Keep the existing `.task-list-item { list-style: none }` override so checkbox items stay marker-free. Do not rename any CSS class.\n\n**Acceptance criteria**\n- [ ] `- item` renders with a visible bullet dot\n- [ ] `1. item` renders with numbers\n- [ ] `- [ ] item` checkbox lists still show no marker\n- [ ] Nothing else in task detail layout shifts\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`, then manually open a task whose description contains all three list types in light and dark theme."
+        },
+        {
+          "id": "IE-102",
+          "title": "Remove shortcut badge from the search input",
+          "done": false,
+          "next": true,
+          "est": "30m",
+          "tags": ["frontend", "size-xs", "risk-low"],
+          "deps": [],
+          "desc": "**Problem:** the toolbar search box shows a `⌘ K` badge (`<span className=\"kbd\">` in `apps/web/src/components/roadmap/WorkspaceToolbar.tsx`, ~line 153). Product decision: the badge should not be shown.\n\n**Fix:** remove the badge span only. Keep the Ctrl/Cmd+K focus handler (the `useEffect` keydown listener) working exactly as today. Check whether the `.kbd` rule in `src/styles/workspace-toolbar.css` is used elsewhere before deleting it; if it is shared, leave the CSS alone.\n\n**Acceptance criteria**\n- [ ] No shortcut badge visible in the search field\n- [ ] Ctrl/Cmd+K still focuses the search input\n- [ ] Search placeholder and icon unchanged\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`, manual check of search focus shortcut."
+        },
+        {
+          "id": "IE-103",
+          "title": "Persist dismissal of the roadmap-updated notice",
+          "done": false,
+          "next": true,
+          "est": "3h",
+          "tags": ["frontend", "size-s", "risk-low"],
+          "deps": [],
+          "desc": "**Problem:** the \"Roadmap updated\" upgrade notice (`WorkspaceUpgradeNotice`) reappears after a page refresh even when dismissed. `dismissRoadmapUpgradeNotice` in `apps/web/src/context/RoadmapContext.tsx` (~line 302) only sets React state to `null`; nothing is persisted, and hydration recreates the notice.\n\n**Fix:** persist a dismissal marker in the per-roadmap UI state (`storage.getRoadmapUiState` / `setRoadmapUiState`). Key the marker by an upgrade signature (for example the sorted upgrade codes plus the roadmap `updatedAt` at upgrade time) so a *new* upgrade still shows a fresh notice. On hydration, skip setting the notice when the current signature is already dismissed.\n\n**Acceptance criteria**\n- [ ] Dismissing the notice, then refreshing, keeps it hidden\n- [ ] A genuinely new upgrade (different repair codes) shows the notice again\n- [ ] Dismissal is scoped per roadmap, not global\n- [ ] `storage.ts` stays SSR-safe and parse-safe\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`, plus manual QA: import an old-format roadmap, dismiss the notice, refresh."
+        },
+        {
+          "id": "IE-103-S1",
+          "title": "Add dismissedUpgradeSignature to roadmap UI state schema",
+          "done": false,
+          "tags": ["frontend", "size-xs", "risk-low"],
+          "deps": [],
+          "parentId": "IE-103",
+          "desc": "Extend the `RoadmapUiState` shape in `apps/web/src/lib/storage.ts` with an optional `dismissedUpgradeSignature?: string` field. Additive and optional, so no migration of existing stored state is needed. Unit-test that old stored JSON without the field still parses.\n\n**Validation:** `pnpm --filter web test` (storage tests) and `pnpm typecheck`."
+        }
+      ]
+    },
+    {
+      "id": "phase-02",
+      "num": "02",
+      "name": "Inline editing architecture foundation",
+      "color": "#f5853f",
+      "colorMode": "manual",
+      "status": "next",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "IE-201",
+          "title": "Add commitTaskField helper for single-field task updates",
+          "done": false,
+          "est": "3h",
+          "tags": ["frontend", "size-s", "risk-low"],
+          "deps": [],
+          "desc": "**Goal:** one normalized path for inline field commits, reusing today's mutation flow.\n\n`createTaskMutations.handleUpdateTask` already merges `Partial<Task>` into phases, records a `task.updated` activity change, and marks `saved=false` (autosync then persists via snapshot PUT). Add a thin `commitTaskField(taskId, field, value)` helper (suggested home: `apps/web/src/hooks/taskMutationHelpers.ts`) that:\n\n- trims/normalizes per field: `title` must stay non-empty, `est` trimmed (empty clears), `tags` through `splitAndNormalizeTags`, `assignees` through `dedupeNames`\n- no-ops when the normalized value equals the current value (no dirty flag, no activity row)\n- delegates to `handleUpdateTask` for the actual write\n\nPure logic slice: no UI change yet.\n\n**Acceptance criteria**\n- [ ] Unit tests cover normalization and the unchanged-value no-op\n- [ ] No behavior change in existing edit form\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
+        },
+        {
+          "id": "IE-202",
+          "title": "Create useInlineTaskEdit hook (field state + task lock)",
+          "done": false,
+          "est": "1d",
+          "tags": ["frontend", "size-m", "risk-med"],
+          "deps": ["IE-201"],
+          "desc": "**Goal:** the collaboration-safe core of inline editing.\n\nNew hook `apps/web/src/hooks/useInlineTaskEdit.ts` owning, per task: which field is being edited (`title | est | desc | tags | assignees | null`), per-field draft value, dirty flag, and the lock lifecycle. Lock model decision (alpha): **one whole-task lock**, reusing `useEditLock` with target `task:{id}` — same target the current edit form and other participants' lock badges already use, so no backend change and no new lock semantics.\n\nAPI: `beginEdit(field): Promise<boolean>` (acquires the lock on first activation; resolves false on 409 so the caller can toast \"X is editing this task\"), `commit(field)` (delegates to `commitTaskField`, keeps lock while another field is active), `cancelEdit(field)`, plus `isFieldEditing`, `isDirty`. Lock stays held while any field editor is open (the existing 20s refresh vs 30s TTL keeps it alive) and is released when the last field editor closes or the task collapses.\n\nLocal-first: with no `serverRoadmapId`, `useEditLock.tryAcquire` already grants ownership locally — preserve that so everything works offline.\n\n**Acceptance criteria**\n- [ ] Lock acquired once on first field edit, released on collapse/cancel\n- [ ] 409 surfaces as a toast-able failure, field stays read-only\n- [ ] Works with no backend running\n- [ ] Unit tests for the state machine\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
+        },
+        {
+          "id": "IE-203",
+          "title": "Inline-editable task title in expanded task",
+          "done": false,
+          "est": "4h",
+          "tags": ["frontend", "ux", "size-s", "risk-med"],
+          "deps": ["IE-202"],
+          "desc": "**Goal:** first visible inline field. In the expanded task detail, the title becomes click-to-edit: a static span normally, swapping to a text input after `beginEdit('title')` succeeds.\n\nBehavior:\n- Enter or blur commits via `commitTaskField` (title must stay non-empty; empty reverts with a toast)\n- Escape reverts to the original value\n- `readOnly`, locked-by-other, and pending-done states keep the static text\n- The collapsed row title rendering is untouched\n- Max length matches the import limit (160 chars)\n\n**Acceptance criteria**\n- [ ] Click title in expanded task → input with current value focused\n- [ ] Enter/blur saves, Esc reverts, empty title rejected\n- [ ] Viewer role and lock-held-by-other cannot enter edit mode\n- [ ] Activity log shows `task.updated` after save-and-sync\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA with two browser sessions on a synced roadmap to confirm the lock toast."
+        },
+        {
+          "id": "IE-204",
+          "title": "Inline estimate editor chip",
+          "done": false,
+          "est": "3h",
+          "tags": ["frontend", "ux", "size-s", "risk-low"],
+          "deps": ["IE-202", "IE-203"],
+          "desc": "**Goal:** estimate edited in place as a small chip control in the task detail meta.\n\nBehavior: display the estimate as a chip (or an \"Add estimate\" ghost chip when empty). Click → small inline input after `beginEdit('est')`. Enter/blur commits, Esc reverts, clearing the input removes the estimate. Hidden for nested subtasks (matching today's `isNested` behavior). Max 64 chars (import limit).\n\n**Acceptance criteria**\n- [ ] Estimate editable in place, empty state has an add affordance\n- [ ] Clearing removes `est` from the task\n- [ ] Lock/readOnly rules identical to title\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`, manual QA on a task with and without an estimate."
+        },
+        {
+          "id": "IE-205",
+          "title": "Keyboard and touch pass for inline field editors",
+          "done": false,
+          "est": "4h",
+          "tags": ["frontend", "ux", "size-s", "risk-low"],
+          "deps": ["IE-203", "IE-204"],
+          "desc": "**Goal:** consistent interaction rules across all inline editors shipped so far.\n\n- Enter commits, Esc reverts — everywhere, honoring IME composition (`e.nativeEvent.isComposing`) like `TaskEditForm` does today\n- Visible focus outline on every editable control\n- Touch targets at least 40px on coarse pointers\n- Inline inputs use font-size ≥ 16px at mobile widths so iOS Safari does not zoom on focus\n- Responsive rules go at the bottom of the owning CSS file, per project convention\n\n**Acceptance criteria**\n- [ ] Keyboard-only round trip: expand task, edit title, save, edit estimate, cancel\n- [ ] 375px viewport: all editors reachable and usable by touch\n- [ ] No iOS focus zoom\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA per `docs/workspace-responsive-manual-qa.md` flow at 375px and 768px."
+        }
+      ]
+    },
+    {
+      "id": "phase-03",
+      "num": "03",
+      "name": "Inline description editing",
+      "color": "#c9903a",
+      "colorMode": "manual",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "IE-301",
+          "title": "Build DescriptionEditor with Preview and Markdown tabs",
+          "done": false,
+          "est": "1d",
+          "tags": ["frontend", "ux", "size-m", "risk-med"],
+          "deps": ["IE-202"],
+          "desc": "**Goal:** GitHub-style description editing. New component `apps/web/src/components/roadmap/DescriptionEditor.tsx` with two tabs:\n\n- **Preview** (default): renders the draft through the existing `MarkdownDescription` component — same safe parser, no raw HTML execution\n- **Markdown**: plain `<textarea>` with the existing `MarkdownToolbar` above it — no contenteditable; the raw text is the source of truth so humans and coding agents can write exact Markdown\n\nBehavior: explicit **Save / Cancel** buttons (description is multiline and high-value, so no autosave-on-blur). Ctrl/Cmd+Enter saves. Esc with a dirty draft opens the existing `ConfirmDialog` discard prompt. Show a character counter against the 2000-char limit (`TASK_DESC_MAX` in `roadmap-validation.ts`) and block save when over.\n\nThis slice builds the component in isolation (props: `value`, `onSave`, `onCancel`); wiring comes in IE-302.\n\n**Acceptance criteria**\n- [ ] Preview is the default tab and re-renders the current draft\n- [ ] Markdown tab round-trips raw text exactly (no normalization)\n- [ ] Save disabled over 2000 chars, counter visible near the limit\n- [ ] Cmd/Ctrl+Enter saves, Esc guards dirty state\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
+        },
+        {
+          "id": "IE-302",
+          "title": "Wire DescriptionEditor into the expanded task detail",
+          "done": false,
+          "est": "4h",
+          "tags": ["frontend", "size-s", "risk-med"],
+          "deps": ["IE-301"],
+          "desc": "**Goal:** description becomes editable in place. In `TaskDetailMeta` (or its successor), the rendered description gets an \"Edit\" affordance; activating it calls `beginEdit('desc')` (task lock) and swaps in `DescriptionEditor` in Markdown mode with Preview available. Save commits via `commitTaskField('desc', ...)` and returns to the rendered view; Cancel restores the read view.\n\nDirty-state safety: while the description editor is dirty, collapsing the task must warn (reuse the existing `onDirtyChange` plumbing TaskRow already has for the legacy edit form).\n\n**Acceptance criteria**\n- [ ] Edit → modify → Save persists and re-renders Markdown\n- [ ] Cancel discards, dirty cancel prompts\n- [ ] Collapse guard works while dirty\n- [ ] Lock respected: second participant sees read-only description with a lock hint\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; two-session manual QA on a synced roadmap."
+        },
+        {
+          "id": "IE-303",
+          "title": "Empty-description affordance",
+          "done": false,
+          "est": "2h",
+          "tags": ["frontend", "ux", "size-xs", "risk-low"],
+          "deps": ["IE-302"],
+          "desc": "When a task has no description, the expanded detail currently renders nothing. Add a ghost \"Add description\" button that opens `DescriptionEditor` directly in the Markdown tab (after lock acquire). Hidden for viewers and while locked by another participant.\n\n**Acceptance criteria**\n- [ ] Empty task shows the affordance; tasks with text show rendered Markdown\n- [ ] Saving a first description works end to end\n- [ ] Not shown in read-only mode\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`, manual QA."
+        }
+      ]
+    },
+    {
+      "id": "phase-04",
+      "num": "04",
+      "name": "Tags, assignees, and team suggestions",
+      "color": "#7d9c6e",
+      "colorMode": "manual",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "IE-401",
+          "title": "Tag pills: remove on hover/touch in expanded detail",
+          "done": false,
+          "est": "4h",
+          "tags": ["frontend", "ux", "size-s", "risk-low"],
+          "deps": ["IE-202"],
+          "desc": "**Goal:** users remove tags directly from the expanded task. In the detail-meta tag pills, show an X affordance on hover; on coarse pointers (`@media (pointer: coarse)`) the X is always visible. Clicking X calls `beginEdit('tags')` if no lock is held yet, removes the tag id from `task.tags`, and commits via `commitTaskField('tags', ...)`.\n\nScope guards: collapsed-row tag pills stay untouched (no X there — avoids clutter). Removal is blocked in read-only mode and while locked by another participant. Removing a tag does **not** delete it from the tag registry.\n\n**Acceptance criteria**\n- [ ] Hover shows X on desktop, X always visible on touch\n- [ ] Removal persists and syncs; registry entry survives\n- [ ] Viewer/locked states show plain pills\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA on desktop hover and a touch viewport."
+        },
+        {
+          "id": "IE-402",
+          "title": "Inline add-tag control in task detail",
+          "done": false,
+          "est": "4h",
+          "tags": ["frontend", "size-s", "risk-med"],
+          "deps": ["IE-401"],
+          "desc": "**Goal:** add tags without the edit form. A \"+ Tag\" ghost chip next to the tag pills opens the existing `TagInput` inline (registry-aware suggestions). Committing runs the same registry flow the legacy form uses today: `ensureRegistryForTagIds(updates.tags, tagRegistry)` then `setTagRegistry` when new ids appear, then `commitTaskField('tags', ...)`.\n\nRespect limits: max 20 tags per task, 40 chars per tag (import limits). Respect the task lock like every other inline editor.\n\n**Acceptance criteria**\n- [ ] Existing registry tags suggested; free text creates a new registry entry\n- [ ] New tag immediately usable in toolbar tag filters\n- [ ] Tag count/length limits enforced with a friendly message\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
+        },
+        {
+          "id": "IE-403",
+          "title": "Inline assignee chips with add/remove",
+          "done": false,
+          "est": "5h",
+          "tags": ["frontend", "ux", "size-m", "risk-med"],
+          "deps": ["IE-202"],
+          "desc": "**Goal:** assignment edited in place. Assignee pills in the detail meta get an X (same hover/touch rules as tags), plus a \"+ Assign\" control opening a small combobox: suggestions from `taskEditorAssigneeNames` (already aggregates participants where available, existing assignees, and the user's display name) with free-text entry preserved for local roadmaps.\n\nCommits go through `commitTaskField('assignees', ...)` with `dedupeNames` (case-insensitive dedupe, as `TaskEditForm.toggleAssignee` does today). Do not touch claim state — claims (`claimedBy/claimedById`) remain a separate server-managed concept.\n\n**Acceptance criteria**\n- [ ] Add and remove assignees inline, synced and local roadmaps both work\n- [ ] Free-text assignment still possible with no backend\n- [ ] Claim badge/behavior unchanged\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual QA with backend stopped (local-first check)."
+        },
+        {
+          "id": "IE-404",
+          "title": "Backend: expose participant names to editors",
+          "done": false,
+          "est": "1d",
+          "tags": ["backend", "size-m", "risk-med"],
+          "deps": [],
+          "desc": "**Problem:** `GET /api/roadmaps/{id}/participants` is owner-only (`_OWNER_ONLY` in `apps/api/src/api/routers/roadmaps.py`), so editors get no real team names for assignment suggestions.\n\n**Slice:** allow `{owner, editor}` on that GET. When the caller is an editor, return a reduced projection: `id`, `displayName`, `role` only — omit `lastSeenAt`, `sessionExpiresAt`, `revokedAt`, `shareLinkId`, `joinedViaRole`, `accessSourceLabel`, and exclude revoked participants entirely. Owner response stays byte-identical to today. Implement the projection in `sharing_service.get_participants` keyed off the caller's role; make the omitted response fields optional in the Pydantic schema.\n\nViewer stays 403. No new endpoint, no auth-model change.\n\n**Acceptance criteria**\n- [ ] Editor gets names+roles of active participants only\n- [ ] Owner response unchanged (existing tests still pass)\n- [ ] Viewer still rejected\n- [ ] New API tests cover all three roles\n\n**Validation:** run the `apps/api` pytest suite; smoke-check with `docker compose up --build api postgres` and a curl as editor per `docs/backend-smoke-tests.md`."
+        },
+        {
+          "id": "IE-405",
+          "title": "Frontend: editor-visible team suggestions in assignment",
+          "done": false,
+          "est": "4h",
+          "tags": ["frontend", "size-s", "risk-low"],
+          "deps": ["IE-403", "IE-404"],
+          "desc": "**Goal:** editors see real team members as assignment suggestions. Update `useWorkspaceParticipants` to fetch the participant list for editors as well as owners (it is currently gated to owner because the endpoint was owner-only). Feed active participant display names into `taskEditorAssigneeNames` for the inline assignee combobox from IE-403.\n\nGuards: viewers never fetch; local roadmaps (no `serverRoadmapId`) keep pure free-text suggestions; a failed fetch degrades silently to today's behavior (names from existing assignees + own display name).\n\n**Acceptance criteria**\n- [ ] Editor session shows teammate names as suggestions\n- [ ] Local roadmap unchanged\n- [ ] Fetch failure does not break the editor UI\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA joining a roadmap via an editor link."
+        }
+      ]
+    },
+    {
+      "id": "phase-05",
+      "num": "05",
+      "name": "Workspace navigation and task layout polish",
+      "color": "#5b8bab",
+      "colorMode": "manual",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "IE-501",
+          "title": "Unify workspace navigation into one tab model",
+          "done": false,
+          "est": "1d",
+          "tags": ["frontend", "ux", "size-m", "risk-med"],
+          "deps": [],
+          "desc": "**Problem:** navigation is split across two idioms in `WorkspaceToolbar`: Roadmap/Team are view tabs on the left, while Activity/Versions/Tags are loose action buttons on the right.\n\n**Target:** one coherent nav row — **Roadmap / Team / Activity / Versions** — while **Tags** moves next to the search/filter cluster (it configures filtering vocabulary, not a view). Keep every existing visibility gate: Team only when `canViewTeam`, Versions per `canViewVersions`, Activity disabled until server sync with its helper text. Activity and Versions may keep rendering as panels initially; this slice unifies the triggers, not the panel architecture.\n\nDo not rename existing CSS classes; extend `workspace-toolbar.css` additively.\n\n**Acceptance criteria**\n- [ ] Single visual tab group for the four destinations\n- [ ] Tags trigger sits beside Filters\n- [ ] All role/sync gating identical to before\n- [ ] Responsive: usable at 375px\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; responsive manual QA."
+        },
+        {
+          "id": "IE-501-S1",
+          "title": "Move Tags trigger next to search and filters",
+          "done": false,
+          "tags": ["frontend", "size-xs", "risk-low"],
+          "deps": [],
+          "parentId": "IE-501",
+          "desc": "Relocate the Tags (tag registry) button from `toolbar-end` into `toolbar-start` beside the Filters trigger in `WorkspaceToolbar.tsx`. Behavior unchanged — still opens `TagRegistryModal`.\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`."
+        },
+        {
+          "id": "IE-501-S2",
+          "title": "Render Activity and Versions as nav tabs",
+          "done": false,
+          "tags": ["frontend", "size-s", "risk-low"],
+          "deps": [],
+          "parentId": "IE-501",
+          "desc": "Convert the Activity and Versions buttons into entries of the workspace view tab group, preserving disabled/gated states and their panel-open behavior. Keep `aria-expanded`/`aria-describedby` semantics for the disabled Activity helper.\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; keyboard navigation check across tabs."
+        },
+        {
+          "id": "IE-502",
+          "title": "Redesign task detail meta as chip rows",
+          "done": false,
+          "est": "5h",
+          "tags": ["frontend", "ux", "css", "size-m", "risk-med"],
+          "deps": ["IE-204", "IE-402", "IE-403"],
+          "desc": "**Problem:** the Estimate / Assigned / Tags block is an awkward 80px label-column grid (`.task-detail .grid` in `task-row.css`).\n\n**Target:** compact chip rows — each meta group as a small inline label plus its chips/inline controls, wrapping naturally. This is the layout home for the inline editors already built: estimate chip (IE-204), assignee pills with add/remove (IE-403), tag pills with X and + Tag (IE-402/401).\n\nAdd new CSS classes rather than renaming existing ones; keep the old `.grid` rules until the last consumer is gone.\n\n**Acceptance criteria**\n- [ ] No label column; chips wrap on narrow widths\n- [ ] All inline editors keep working inside the new layout\n- [ ] Nested subtasks still hide the estimate group\n- [ ] Light/dark themes both checked\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA at 375px/768px/desktop."
+        },
+        {
+          "id": "IE-503",
+          "title": "Relocate Add-subtask and Link-dependency into their sections",
+          "done": false,
+          "est": "4h",
+          "tags": ["frontend", "ux", "size-s", "risk-low"],
+          "deps": ["IE-502"],
+          "desc": "**Problem:** \"Add subtask\" and \"Link dependency\" live in a generic actions footer, disconnected from the content they affect.\n\n**Target:** move each trigger into its own section: a \"+ Add subtask\" affordance in the Subtasks section (section renders with just the affordance when empty, for editors) and a \"+ Link dependency\" affordance in the Depends-on section. Both still acquire the task lock before opening their forms (`SubtaskForm`, `DependencyPicker`), exactly as today. Remove the old footer buttons once relocated; keep the locked/read-only note behavior.\n\n**Acceptance criteria**\n- [ ] Empty sections show ghost add affordances for editors, nothing for viewers\n- [ ] Lock acquisition still gates both forms\n- [ ] Cycle guard toast on circular dependency unchanged\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA add-subtask and link-dep flows."
+        },
+        {
+          "id": "IE-504",
+          "title": "Remove the global task edit button and legacy edit form path",
+          "done": false,
+          "est": "5h",
+          "tags": ["frontend", "size-m", "risk-med"],
+          "deps": ["IE-203", "IE-204", "IE-302", "IE-402", "IE-403", "IE-503"],
+          "desc": "**Goal:** the target UX — no pencil button; the expanded task *is* the editor.\n\nRemove the pencil `iconbtn` and the `isEditing`/`TaskEditForm` swap from `TaskRow.tsx` now that every field (title, estimate, description, tags, assignees) edits inline. Before deleting `TaskEditForm.tsx`, check remaining consumers — `DraftTaskRow.tsx` may reuse it for new-task drafts; if so, keep the component and only remove the TaskRow entry point. Clean up now-dead dirty-state plumbing that existed solely for the form, but keep `onDirtyChange` wiring used by the description editor's collapse guard.\n\n**Acceptance criteria**\n- [ ] No pencil button anywhere in the task UI\n- [ ] Every previously editable field still editable inline\n- [ ] New-task draft flow unaffected\n- [ ] No unused exports/dead code left behind\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; full manual edit pass over one task."
+        },
+        {
+          "id": "IE-505",
+          "title": "Mobile and touch QA pass for the full inline editing surface",
+          "done": false,
+          "est": "4h",
+          "tags": ["frontend", "ux", "tests", "size-s", "risk-low"],
+          "deps": ["IE-504"],
+          "desc": "End-to-end manual QA of inline editing on touch devices, fixing small issues found (each fix stays a small commit).\n\n**Checklist**\n- [ ] 375px: expand task, edit title, estimate, description (both tabs), tags, assignees\n- [ ] Tag/assignee X targets comfortably tappable\n- [ ] No layout overflow in the chip rows\n- [ ] Two-device lock test: second device sees lock hints, cannot edit\n- [ ] Update `docs/workspace-responsive-manual-qa.md` with the inline-editing checklist\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build` after any fixes; documented QA results in the PR/commit description."
+        }
+      ]
+    },
+    {
+      "id": "phase-06",
+      "num": "06",
+      "name": "Permissions, versions, and invite model",
+      "color": "#8a6bab",
+      "colorMode": "manual",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "IE-601",
+          "title": "Document the alpha permission matrix and beta targets",
+          "done": false,
+          "est": "3h",
+          "tags": ["docs", "size-s", "risk-low"],
+          "deps": ["IE-404"],
+          "desc": "Update `docs/access-model.md` with the *actual current* matrix (verified against `routers/roadmaps.py`): viewers read + SSE + activity + locks-read; editors edit (PUT/PATCH), claim, tags CRUD, checkpoint, and (after IE-404) participant names; owners additionally manage share links, participants, versions list/read/restore, delete.\n\nThen record the target model and what is deliberately deferred to beta: owner invites multiple users via per-user invite links, owner manages/annotates team members, generic view-only link stays, groups/permission templates only if a concrete need appears.\n\n**Acceptance criteria**\n- [ ] Matrix matches code, not stale docs\n- [ ] Each beta deferral has a one-line justification\n\n**Validation:** cross-check every row against route `require_participant` role sets."
+        },
+        {
+          "id": "IE-602",
+          "title": "Allow editors to view version history (restore stays owner-only)",
+          "done": false,
+          "est": "5h",
+          "tags": ["backend", "frontend", "size-m", "risk-med"],
+          "deps": ["IE-601"],
+          "desc": "**Goal:** editors can see what changed, without gaining restore power.\n\nBackend: relax `GET /versions` and `GET /versions/{version_id}` from `_OWNER_ONLY` to `{owner, editor}` in `routers/roadmaps.py`. `POST /versions/{vid}/restore` and checkpoint policy stay as they are (restore owner-only; checkpoint already owner+editor). Add API tests for editor list/read and editor-restore-403.\n\nFrontend: update the `canViewVersions` gate in `Workspace.tsx` (currently `role === 'owner' && ...`) and hide the Restore button inside `VersionsPanel` for non-owners.\n\n**Acceptance criteria**\n- [ ] Editor sees the Versions tab and version details\n- [ ] Editor cannot restore (no button; API returns 403)\n- [ ] Owner flow unchanged\n\n**Validation:** apps/api pytest suite; `pnpm lint && pnpm typecheck && pnpm build`; manual editor-session QA."
+        },
+        {
+          "id": "IE-603",
+          "title": "Design doc: per-user invite links and team management",
+          "done": false,
+          "est": "1d",
+          "tags": ["docs", "backend", "beta", "size-m", "risk-low"],
+          "deps": ["IE-601"],
+          "desc": "**Design-only slice** (no implementation): a doc under `docs/architecture/` covering the beta invite model on top of the existing accountless system:\n\n- multiple named invite links per roadmap (per-invitee), each individually revocable, alongside today's single owner/editor/viewer links\n- generic view-only link retained\n- owner UI for naming/annotating participants and mapping them to invite links\n- explicit non-goals: accounts, email flows, groups/permission templates (defer until a real customer need is documented)\n- data-model sketch (ShareLink rows with labels vs a new invite table), token/rotation semantics, and migration/compat notes for existing share links\n\n**Acceptance criteria**\n- [ ] Doc reviewed against `models/roadmap.py` and `sharing_service.py` realities\n- [ ] Slice list at the end, each item commit-sized\n\n**Validation:** review only; no code changes."
+        },
+        {
+          "id": "IE-604",
+          "title": "Recovery safety check: import, replace, and restore paths",
+          "done": false,
+          "est": "4h",
+          "tags": ["tests", "backend", "size-s", "risk-med"],
+          "deps": [],
+          "desc": "**Goal:** confirm inline editing changed nothing about data-safety guarantees.\n\nAudit + test pass over the three destructive-ish flows: JSON import (replace mode creates a checkpoint first — verify against `version_service._should_create_version` and the import flow), version restore (owner-only, snapshot round-trip), and full-snapshot PUT conflict handling (409 + conflict metadata + review panel). Add any missing regression tests, especially: an inline field commit racing a concurrent PUT produces the conflict flow rather than silent data loss.\n\n**Acceptance criteria**\n- [ ] Checkpoint-before-replace verified by a test\n- [ ] Restore round-trip test covers tags/assignees/deps/parentId\n- [ ] Conflict path test for a stale `last_updated_at` write\n\n**Validation:** apps/api pytest suite green; `pnpm --filter web test` green."
+        }
+      ]
+    },
+    {
+      "id": "phase-07",
+      "num": "07",
+      "name": "Import, export, schema, and docs cleanup",
+      "color": "#6e9c8f",
+      "colorMode": "manual",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "IE-701",
+          "title": "Refresh the AI roadmap template (fields, Markdown, typos)",
+          "done": false,
+          "est": "3h",
+          "tags": ["docs", "size-s", "risk-low"],
+          "deps": [],
+          "desc": "Update `apps/web/src/lib/ai-roadmap-template.ts` (the in-app copyable template) and the docs copy (`docs/anvilary-ai-roadmap-template.txt` — commit it under a RoadForge-named path, e.g. `docs/roadforge-ai-roadmap-template.txt`, and remove the stray untracked file):\n\n- fix \"Create an RoadForge JSON\" typo\n- document the `assignees` array and top-level `tagRegistry` (both accepted by `roadmap-validation.ts` today but missing from the template)\n- state that `desc` supports Markdown (paragraphs, bold/italic/code, links, lists, checkboxes) with a 2000-char limit\n- keep the existing security note about tokens/secrets\n\n**Acceptance criteria**\n- [ ] Template example imports cleanly with zero repair warnings\n- [ ] Both copies (lib + docs) say the same thing\n\n**Validation:** paste the template's example JSON into the import modal and confirm no warnings; `pnpm lint && pnpm typecheck && pnpm build`."
+        },
+        {
+          "id": "IE-702",
+          "title": "Accept roadforge.* schema ids on import (legacy ids kept)",
+          "done": false,
+          "est": "3h",
+          "tags": ["frontend", "size-s", "risk-low"],
+          "deps": [],
+          "desc": "**Step 1 of the schema-id rename.** Add `roadforge.roadmap.import` and `roadforge.roadmap.export` to `KNOWN_SCHEMAS` in `apps/web/src/lib/roadmap-validation.ts`. The legacy `anvilary.*` ids remain accepted indefinitely — files in the wild must never start warning. Export keeps writing the legacy id in this slice (flip happens in IE-702-S1 only after this ships), so older deployments can still import fresh exports during the transition.\n\n**Acceptance criteria**\n- [ ] Files with either id import with no `schema_unknown` warning\n- [ ] Unknown ids still warn as today\n- [ ] Tests cover both ids plus an unknown id\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
+        },
+        {
+          "id": "IE-702-S1",
+          "title": "Flip export writer and templates to the roadforge schema id",
+          "done": false,
+          "tags": ["frontend", "docs", "size-xs", "risk-med"],
+          "deps": ["IE-702", "IE-701"],
+          "parentId": "IE-702",
+          "desc": "After IE-702 has shipped (and, for self-hosters, after a release window so import-side acceptance is deployed), switch the export payload in `services/roadmap-crud.service.ts` from `anvilary.roadmap.export` to `roadforge.roadmap.export`, and update the AI template's example to `roadforge.roadmap.import`. Update export/import round-trip tests.\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual export→import round trip."
+        },
+        {
+          "id": "IE-703",
+          "title": "Sync CLAUDE.md and backend-api docs with real routes",
+          "done": false,
+          "est": "3h",
+          "tags": ["docs", "size-s", "risk-low"],
+          "deps": [],
+          "desc": "The route list in `CLAUDE.md` and `docs/backend-api.md` is stale: it omits `PATCH /tasks/{task_id}/done`, `PATCH|DELETE /tasks/{task_id}/claim`, and the tag registry CRUD (`GET|POST /tags`, `PUT|DELETE /tags/{tag_id}`). The frontend wiring table also predates markdown descriptions, task claiming, and the versions/activity panels.\n\nRegenerate both from `routers/roadmaps.py` as the source of truth, and refresh the CLAUDE.md folder/hook/service listings that have drifted (e.g. `useEditLock`, `useTaskClaim`, split services). Do this **after** IE-404/IE-602 land so the documented role sets are final, or note pending changes explicitly.\n\n**Acceptance criteria**\n- [ ] Every documented route exists with the correct method and role set\n- [ ] No documented route is missing from code\n\n**Validation:** line-by-line diff against `routers/roadmaps.py`."
+        },
+        {
+          "id": "IE-704",
+          "title": "Export/import round-trip regression test",
+          "done": false,
+          "est": "3h",
+          "tags": ["tests", "size-s", "risk-low"],
+          "deps": [],
+          "desc": "Add a vitest that builds a maximal roadmap (markdown desc with lists/checkboxes/links, assignees, tags + tagRegistry with colors, deps, subtasks via parentId, claimed fields), serializes it through the export payload builder, re-parses via `parseImportedRoadmapJson`, and asserts deep equality with zero warnings and zero repairs.\n\nThis is the compatibility safety net for all later schema work (IE-702 family) and for any inline-editing field additions.\n\n**Acceptance criteria**\n- [ ] Round trip preserves every field byte-for-byte\n- [ ] Test fails loudly if a new Task field is added without export/import support\n\n**Validation:** `pnpm --filter web test`"
+        }
+      ]
+    },
+    {
+      "id": "phase-08",
+      "num": "08",
+      "name": "Beta hardening",
+      "color": "#8a9aa8",
+      "colorMode": "manual",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "IE-801",
+          "title": "Backend: task-level PATCH for scalar task fields",
+          "done": false,
+          "est": "2d",
+          "tags": ["backend", "beta", "size-l", "risk-high"],
+          "deps": ["IE-604"],
+          "desc": "**Goal:** shrink the write surface for inline edits. New endpoint `PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}` accepting a partial body of `title`, `est`, `desc`, `tags`, `assignees` plus a required `last_updated_at` for optimistic concurrency — mirroring the existing `patch_task_done` pattern in `roadmap_task_service.py` (409 `RoadmapConflictError` with conflict metadata on stale timestamps).\n\nRequirements: owner+editor roles; field validation reuses `schemas/limits.py` constants; emits a `task.updated` activity row with changed-field metadata; publishes the SSE roadmap event like other task patches; respects the version-checkpoint policy (`_should_create_version`); rate limit in line with `task.done.patch`.\n\nSplit into review-sized commits if needed: schema+service, then router+tests.\n\n**Acceptance criteria**\n- [ ] Partial update touches only provided fields\n- [ ] Stale `last_updated_at` → 409 with conflict payload\n- [ ] Viewer 403, editor/owner 200\n- [ ] Activity + SSE + version behavior covered by tests\n\n**Validation:** apps/api pytest suite; smoke per `docs/backend-smoke-tests.md`."
+        },
+        {
+          "id": "IE-802",
+          "title": "Frontend: route inline commits through task PATCH when synced",
+          "done": false,
+          "est": "1d",
+          "tags": ["frontend", "beta", "size-m", "risk-med"],
+          "deps": ["IE-801"],
+          "desc": "**Goal:** synced roadmaps stop shipping full snapshots for single-field edits. Add the service function (only in `roadmap.service`/`roadmap-crud.service` per the fetch rule), then make `commitTaskField` call PATCH when `serverRoadmapId && sessionToken`, applying the returned roadmap/updatedAt like `useTaskClaim` does. Local/unsynced roadmaps keep the existing context mutation + autosync PUT path unchanged.\n\nFailure handling: 409 feeds the existing conflict flow (`handlePartialWriteConflict`), auth errors surface the session-expired path, connection errors fall back to marking `saved=false` so autosync retries — never silently drop an edit.\n\n**Acceptance criteria**\n- [ ] Single-field edit on a synced roadmap issues one PATCH, no full PUT\n- [ ] Conflict opens the review flow with the draft preserved\n- [ ] Offline edit still lands via autosync when the server returns\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; two-session conflict QA."
+        },
+        {
+          "id": "IE-803",
+          "title": "Evaluate field-level presence hints on task locks",
+          "done": false,
+          "est": "4h",
+          "tags": ["frontend", "beta", "ux", "size-s", "risk-low"],
+          "deps": ["IE-802"],
+          "desc": "**Evaluation slice, may conclude \"not needed\".** Today the whole-task lock shows \"X is editing\" on the row. Assess whether beta needs finer hints (which *field* is being edited) using the existing lock SSE payloads — e.g. encoding the active field in the lock target (`task:{id}:desc`) versus keeping one task lock and adding a lightweight hint channel.\n\nDeliverable: a short written recommendation (in `docs/architecture/`) with complexity/benefit trade-offs. Field-level *locking* is explicitly out of scope for alpha and probably beta; the whole-task lock remains the safety mechanism.\n\n**Acceptance criteria**\n- [ ] Recommendation documented with a go/no-go\n- [ ] If no-go, ticket closed with rationale — no code\n\n**Validation:** review only."
+        },
+        {
+          "id": "IE-804",
+          "title": "Conflict UX polish for inline edits",
+          "done": false,
+          "est": "1d",
+          "tags": ["frontend", "beta", "ux", "size-m", "risk-med"],
+          "deps": ["IE-802"],
+          "desc": "**Goal:** an inline edit that hits a 409 should feel recoverable, not scary. When a task PATCH conflicts: keep the user's draft in the field editor, show a focused prompt (\"This task changed on the server\") offering *Reload task and reapply my edit* or *Review full conflict*, and reuse `SyncConflictReviewPanel` for the full path. For the common case (the other change touched a different field), reapplying after reload should just work.\n\n**Acceptance criteria**\n- [ ] Draft text never lost on conflict\n- [ ] One-click reload-and-reapply for non-overlapping changes\n- [ ] Overlapping-field conflict routes to the review panel\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; scripted two-session conflict QA (both editing the same task)."
+        },
+        {
+          "id": "IE-805",
+          "title": "Automated test coverage for the inline editing surface",
+          "done": false,
+          "est": "1d",
+          "tags": ["tests", "beta", "size-m", "risk-low"],
+          "deps": ["IE-504"],
+          "desc": "Backfill automated coverage so smaller agents can refactor safely later:\n\n- vitest unit tests for `useInlineTaskEdit` (lock acquire/release, dirty transitions, local-first grant)\n- component tests for `DescriptionEditor` (tab switch preserves draft, char limit, Cmd+Enter, Esc guard)\n- tests for `commitTaskField` normalization edge cases (empty title, dup assignees case-insensitive, tag limits)\n- API tests already added in IE-801 verified green in CI\n\n**Acceptance criteria**\n- [ ] `pnpm --filter web test` covers every inline editor behavior listed above\n- [ ] CI (`.github/workflows/ci.yml`) runs the suite\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
+        }
+      ]
+    }
+  ]
+}
