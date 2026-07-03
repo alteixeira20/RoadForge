@@ -150,7 +150,6 @@ export function WorkspaceToolbar({
                 value={filterState.query}
                 onChange={(event) => onFilterChange('query', event.target.value)}
               />
-              <span className="kbd">⌘ K</span>
             </div>
 
             <div className="task-filter" ref={filterRef}>

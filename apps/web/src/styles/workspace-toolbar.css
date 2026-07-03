@@ -65,15 +65,6 @@
   color: var(--ink);
 }
 .workspace-bar .search input::placeholder { color: var(--ink-4); }
-.workspace-bar .kbd {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-3);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 2px 6px;
-  background: var(--bg-2);
-}
 
 /* ─── Task filter ──────────────────────────────────────────────────────────── */
 .task-filter {
@@ -223,7 +214,6 @@
 /* ── 900px — half-screen: tighten toolbar to prevent premature wrap ──────── */
 @media (max-width: 900px) {
   .workspace-bar .search { min-width: 180px; }
-  .workspace-bar .kbd { display: none; }
   .toolbar-action { padding: 0 9px; }
 }
 
@@ -235,7 +225,6 @@
   /* toolbar-start takes its own row below tabs */
   .toolbar-start { flex-basis: 100%; }
   .workspace-bar .search { flex: 1; min-width: 0; }
-  .workspace-bar .kbd { display: none; }
   /* Filter grows to fill remaining space on its row */
   .task-filter { flex: 1; min-width: 0; }
   /* Open menu left-anchored to avoid right-edge overflow */
