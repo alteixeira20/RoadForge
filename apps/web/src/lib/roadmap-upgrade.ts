@@ -22,8 +22,33 @@ export interface RoadmapUpgradeResult {
   changed: boolean
 }
 
+interface RoadmapUpgradeNoticeSignatureInput {
+  roadmapId: string
+  updatedAt: string | null
+  notices: RoadmapUpgradeNotice[]
+}
+
 const DEFAULT_PHASE_COLOR = '#808080'
 const VALID_STATUSES = new Set<PhaseStatus>(['done', 'active', 'next', 'future'])
+
+export function getRoadmapUpgradeNoticeSignature({
+  roadmapId,
+  updatedAt,
+  notices,
+}: RoadmapUpgradeNoticeSignatureInput): string {
+  const noticeParts = notices
+    .map(({ code, severity, message }) => [code, severity, message])
+    .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
+
+  return JSON.stringify([roadmapId, updatedAt, noticeParts])
+}
+
+export function isRoadmapUpgradeNoticeDismissed(
+  dismissedSignature: string | undefined,
+  currentSignature: string,
+): boolean {
+  return dismissedSignature === currentSignature
+}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

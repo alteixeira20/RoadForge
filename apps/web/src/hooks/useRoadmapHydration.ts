@@ -5,7 +5,12 @@ import type { Phase, ShareRole, TagDefinition } from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage, type RoadmapCache } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
-import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
+import {
+  getRoadmapUpgradeNoticeSignature,
+  isRoadmapUpgradeNoticeDismissed,
+  upgradeRoadmapSnapshot,
+  type RoadmapUpgradeNotice,
+} from '@/lib/roadmap-upgrade'
 import { buildRegistryFromPhases } from '@/lib/tag-registry'
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
@@ -14,6 +19,7 @@ import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-
 
 export interface RoadmapUpgradeState {
   roadmapId: string
+  signature: string
 }
 
 interface HydrationRoadmapStateSetters {
@@ -55,7 +61,11 @@ export interface UseRoadmapHydrationReturn {
   isHydratingServer: boolean
   backendUnavailableRoadmapId: string | null
   sessionExpiredRoadmapId: string | null
-  showUpgradeNoticeOnce: (targetId: string, result: { changed: boolean; notices: RoadmapUpgradeNotice[] }) => void
+  showUpgradeNoticeOnce: (
+    targetId: string,
+    updatedAt: string | null,
+    result: { changed: boolean; notices: RoadmapUpgradeNotice[] },
+  ) => void
   loadRoadmapIntoState: (targetId: string, cancelled: { value: boolean }) => void
   activateRoadmap: (id: string) => void
   createLocalRoadmap: (
@@ -137,16 +147,26 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
   const [isHydratingServer, setIsHydratingServer] = useState(false)
   const [backendUnavailableRoadmapId, setBackendUnavailableRoadmapId] = useState<string | null>(null)
   const [sessionExpiredRoadmapId, setSessionExpiredRoadmapId] = useState<string | null>(null)
-  const shownUpgradeNoticeIdsRef = useRef<Set<string>>(new Set())
+  const shownUpgradeNoticeSignaturesRef = useRef<Set<string>>(new Set())
 
   const showUpgradeNoticeOnce = useCallback((
     targetId: string,
+    updatedAt: string | null,
     result: { changed: boolean; notices: RoadmapUpgradeNotice[] },
   ) => {
     if (!result.changed || result.notices.length === 0) return
-    if (shownUpgradeNoticeIdsRef.current.has(targetId)) return
-    shownUpgradeNoticeIdsRef.current.add(targetId)
-    setRoadmapUpgradeNotice({ roadmapId: targetId })
+    const signature = getRoadmapUpgradeNoticeSignature({
+      roadmapId: targetId,
+      updatedAt,
+      notices: result.notices,
+    })
+    const dismissedSignature = storage
+      .getRoadmapUiState(targetId)
+      ?.dismissedUpgradeNoticeSignature
+    if (isRoadmapUpgradeNoticeDismissed(dismissedSignature, signature)) return
+    if (shownUpgradeNoticeSignaturesRef.current.has(signature)) return
+    shownUpgradeNoticeSignaturesRef.current.add(signature)
+    setRoadmapUpgradeNotice({ roadmapId: targetId, signature })
   }, [setRoadmapUpgradeNotice])
 
   const resetAllState = useCallback((
@@ -210,7 +230,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
             saved: canPersistCachedUpgrade ? false : rc.saved,
           }
           storage.setRoadmapCache(targetId, cacheToLoad)
-          showUpgradeNoticeOnce(targetId, upgraded)
+          showUpgradeNoticeOnce(targetId, rc.updatedAt, upgraded)
         }
       } catch (err) {
         console.warn('Could not upgrade cached roadmap snapshot:', err)
@@ -253,7 +273,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
             normalizedLoadedPhases = normalizePhasesProgress(upgraded.phases)
             const canPersistUpgrade = ac.role === 'owner' || ac.role === 'editor'
             nextSaved = !(upgraded.changed && canPersistUpgrade)
-            showUpgradeNoticeOnce(targetId, upgraded)
+            showUpgradeNoticeOnce(targetId, loaded.updatedAt, upgraded)
           } catch (err) {
             console.warn('Could not upgrade server roadmap snapshot:', err)
           }

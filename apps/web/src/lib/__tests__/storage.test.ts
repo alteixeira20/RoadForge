@@ -158,10 +158,39 @@ describe('storage', () => {
         schemaVersion: 1 as const,
         openPhaseIds: ['ph-1', 'ph-2'],
         expandedTaskId: 'task-abc',
+        dismissedUpgradeNoticeSignature: 'upgrade-signature',
         updatedAt: '2025-01-01T00:00:00Z',
       }
       storage.setRoadmapUiState('rm-1', state)
       expect(storage.getRoadmapUiState('rm-1')).toEqual(state)
+    })
+
+    it('accepts old UI state without an upgrade dismissal marker', () => {
+      const state = {
+        schemaVersion: 1 as const,
+        openPhaseIds: ['ph-1'],
+        expandedTaskId: null,
+        updatedAt: '2025-01-01T00:00:00Z',
+      }
+      window.localStorage.setItem('rf:ui:rm-1', JSON.stringify(state))
+      expect(storage.getRoadmapUiState('rm-1')).toEqual(state)
+    })
+
+    it('persists an upgrade dismissal marker without replacing existing UI state', () => {
+      const state = {
+        schemaVersion: 1 as const,
+        openPhaseIds: ['ph-1'],
+        expandedTaskId: 'task-1',
+        updatedAt: '2025-01-01T00:00:00Z',
+      }
+      storage.setRoadmapUiState('rm-1', state)
+      storage.setDismissedUpgradeNoticeSignature('rm-1', 'upgrade-signature')
+
+      expect(storage.getRoadmapUiState('rm-1')).toMatchObject({
+        openPhaseIds: ['ph-1'],
+        expandedTaskId: 'task-1',
+        dismissedUpgradeNoticeSignature: 'upgrade-signature',
+      })
     })
 
     it('returns null for unparseable data', () => {
@@ -196,6 +225,17 @@ describe('storage', () => {
 
     it('returns null when updatedAt is not a string', () => {
       window.localStorage.setItem('rf:ui:rm-x', JSON.stringify({ schemaVersion: 1, openPhaseIds: [], expandedTaskId: null, updatedAt: null }))
+      expect(storage.getRoadmapUiState('rm-x')).toBeNull()
+    })
+
+    it('returns null when the upgrade dismissal marker is not a string', () => {
+      window.localStorage.setItem('rf:ui:rm-x', JSON.stringify({
+        schemaVersion: 1,
+        openPhaseIds: [],
+        expandedTaskId: null,
+        dismissedUpgradeNoticeSignature: 42,
+        updatedAt: '',
+      }))
       expect(storage.getRoadmapUiState('rm-x')).toBeNull()
     })
 

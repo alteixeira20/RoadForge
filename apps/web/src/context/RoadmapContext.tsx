@@ -300,8 +300,13 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const dismissRoadmapUpgradeNotice = useCallback(() => {
+    if (!roadmapUpgradeNotice) return
+    storage.setDismissedUpgradeNoticeSignature(
+      roadmapUpgradeNotice.roadmapId,
+      roadmapUpgradeNotice.signature,
+    )
     setRoadmapUpgradeNotice(null)
-  }, [])
+  }, [roadmapUpgradeNotice])
 
   const clearSessionExpiredNotice = useCallback(() => {
     setSessionExpiredRoadmapId(null)

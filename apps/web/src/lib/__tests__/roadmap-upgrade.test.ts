@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
+import {
+  getRoadmapUpgradeNoticeSignature,
+  isRoadmapUpgradeNoticeDismissed,
+  upgradeRoadmapSnapshot,
+  type RoadmapUpgradeNotice,
+} from '@/lib/roadmap-upgrade'
 import type { Phase } from '@/types/roadmap'
 
 function makePhase(overrides: Partial<Phase> = {}): Phase {
@@ -16,6 +21,56 @@ function makePhase(overrides: Partial<Phase> = {}): Phase {
 }
 
 describe('roadmap-upgrade', () => {
+  describe('upgrade notice dismissal', () => {
+    const notices: RoadmapUpgradeNotice[] = [{
+      code: 'task_defaults_added',
+      message: 'Missing task defaults were filled in.',
+      severity: 'info',
+    }]
+
+    it('suppresses a notice with a matching dismissed signature', () => {
+      const signature = getRoadmapUpgradeNoticeSignature({
+        roadmapId: 'rm-1',
+        updatedAt: '2026-07-01T10:00:00Z',
+        notices,
+      })
+
+      expect(isRoadmapUpgradeNoticeDismissed(signature, signature)).toBe(true)
+    })
+
+    it('does not suppress a notice from a different update event', () => {
+      const dismissedSignature = getRoadmapUpgradeNoticeSignature({
+        roadmapId: 'rm-1',
+        updatedAt: '2026-07-01T10:00:00Z',
+        notices,
+      })
+      const currentSignature = getRoadmapUpgradeNoticeSignature({
+        roadmapId: 'rm-1',
+        updatedAt: '2026-07-02T10:00:00Z',
+        notices,
+      })
+
+      expect(
+        isRoadmapUpgradeNoticeDismissed(dismissedSignature, currentSignature),
+      ).toBe(false)
+    })
+
+    it('produces a different signature for the same update on another roadmap', () => {
+      const first = getRoadmapUpgradeNoticeSignature({
+        roadmapId: 'rm-1',
+        updatedAt: '2026-07-01T10:00:00Z',
+        notices,
+      })
+      const second = getRoadmapUpgradeNoticeSignature({
+        roadmapId: 'rm-2',
+        updatedAt: '2026-07-01T10:00:00Z',
+        notices,
+      })
+
+      expect(first).not.toBe(second)
+    })
+  })
+
   describe('upgradeRoadmapSnapshot', () => {
     it('returns a valid shape for a clean snapshot', () => {
       const input = { phases: [makePhase()] }

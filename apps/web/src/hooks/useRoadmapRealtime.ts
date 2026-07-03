@@ -27,7 +27,11 @@ interface RealtimeLifecycleParams {
   isHydratingServer: boolean
   backendUnavailableRoadmapId: string | null
   savedRef: MutableRefObject<boolean>
-  showUpgradeNoticeOnce: (targetId: string, result: { changed: boolean; notices: RoadmapUpgradeNotice[] }) => void
+  showUpgradeNoticeOnce: (
+    targetId: string,
+    updatedAt: string | null,
+    result: { changed: boolean; notices: RoadmapUpgradeNotice[] },
+  ) => void
   setBackendUnavailableRoadmapId: Dispatch<SetStateAction<string | null>>
 }
 
@@ -164,7 +168,9 @@ export function useRoadmapRealtime({
                 normalizedSsePhases = normalizePhasesProgress(upgraded.phases)
                 const canPersistUpgrade = role === 'owner' || role === 'editor'
                 nextSaved = !(upgraded.changed && canPersistUpgrade)
-                if (activeRoadmapId) showUpgradeNoticeOnce(activeRoadmapId, upgraded)
+                if (activeRoadmapId) {
+                  showUpgradeNoticeOnce(activeRoadmapId, loaded.updatedAt, upgraded)
+                }
               } catch (err) {
                 console.warn('Could not upgrade realtime roadmap snapshot:', err)
               }

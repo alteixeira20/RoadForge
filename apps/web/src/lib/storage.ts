@@ -41,6 +41,7 @@ export interface RoadmapUiState {
   schemaVersion: 1
   openPhaseIds: string[]
   expandedTaskId: string | null
+  dismissedUpgradeNoticeSignature?: string
   updatedAt: string
 }
 
@@ -51,6 +52,10 @@ function isValidRoadmapUiState(value: unknown): value is RoadmapUiState {
   if (!Array.isArray(v.openPhaseIds)) return false
   if (!(v.openPhaseIds as unknown[]).every((id) => typeof id === 'string')) return false
   if (v.expandedTaskId !== null && typeof v.expandedTaskId !== 'string') return false
+  if (
+    v.dismissedUpgradeNoticeSignature !== undefined &&
+    typeof v.dismissedUpgradeNoticeSignature !== 'string'
+  ) return false
   if (typeof v.updatedAt !== 'string') return false
   return true
 }
@@ -224,6 +229,19 @@ export const storage = {
   },
   setRoadmapUiState(id: string, state: RoadmapUiState): void {
     setLocal(`rf:ui:${id}`, JSON.stringify(state))
+  },
+  setDismissedUpgradeNoticeSignature(id: string, signature: string): void {
+    const current = this.getRoadmapUiState(id) ?? {
+      schemaVersion: 1,
+      openPhaseIds: [],
+      expandedTaskId: null,
+      updatedAt: new Date().toISOString(),
+    }
+    this.setRoadmapUiState(id, {
+      ...current,
+      dismissedUpgradeNoticeSignature: signature,
+      updatedAt: new Date().toISOString(),
+    })
   },
   clearRoadmapUiState(id: string): void {
     removeLocal(`rf:ui:${id}`)
