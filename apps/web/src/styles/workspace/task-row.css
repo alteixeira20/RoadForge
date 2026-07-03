@@ -162,15 +162,53 @@
   margin-top: 3px;
   accent-color: var(--ember);
 }
-.task-detail .grid {
-  display: grid;
-  grid-template-columns: 80px 1fr;
-  row-gap: 8px;
-  column-gap: 14px;
-  font-size: 13.5px;
+.task-detail-meta {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.task-detail .grid .label { color: var(--ink-4); font-weight: 500; }
-.task-detail .grid .value { color: var(--ink-2); }
+.task-meta-group {
+  min-width: 0;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 8px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
+  border-radius: 9px;
+}
+.task-meta-group.is-estimate { flex: 0 0 auto; }
+.task-meta-group.is-assignees,
+.task-meta-group.is-tags { flex: 1 1 260px; }
+.task-meta-label {
+  padding-top: 6px;
+  color: var(--ink-4);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.task-meta-value {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--ink-2);
+}
+.task-meta-empty {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-4);
+  font-size: 12px;
+}
 
 /* ─── Task claim row ────────────────────────────────────────────────────────── */
 .task-claim-row {
@@ -194,7 +232,17 @@
   flex-wrap: wrap;
 }
 
-.task-detail .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.task-detail .actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+.task-detail .actions .btn:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
 .task-action-note {
   display: inline-flex; align-items: center; gap: 8px;
   color: var(--ink-3);
@@ -305,7 +353,6 @@
   font-size: 12px;
   font-weight: 550;
 }
-.value .muted { color: var(--ink-4); }
 .tag-pill {
   display: inline-flex; align-items: center;
   padding: 1.5px 7px; border-radius: 4px;
@@ -499,7 +546,7 @@
 }
 
 /* ─── Inline tag editor (expanded task detail) ─────────────────────────────── */
-.task-tag-editor { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.task-tag-editor { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .task-tag-editor.is-busy { opacity: 0.6; pointer-events: none; }
 .tag-pill-editable { padding-right: 4px; gap: 4px; }
 .tag-pill-remove {
@@ -526,7 +573,7 @@
 }
 
 /* ─── Inline assignee editor (expanded task detail) ────────────────────────── */
-.assignee-editor-inline { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.assignee-editor-inline { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .assignee-editor-inline.is-busy { opacity: 0.6; pointer-events: none; }
 .assignee-chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .assignee-chip { padding-right: 4px; gap: 4px; }
@@ -596,15 +643,27 @@
   .task-row { padding: 14px 16px; gap: 10px; flex-wrap: wrap; }
   .task-row .meta-pill { display: none; }
   .task-detail { padding-left: 16px; padding-right: 16px; }
-  .task-detail .grid { grid-template-columns: 1fr; }
-  .task-detail .grid .label {
-    color: var(--ink-3); font-size: 12px;
-    text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px;
-  }
+  .task-meta-group.is-assignees,
+  .task-meta-group.is-tags { flex-basis: 100%; }
 }
 
 /* ── 600px — mobile: compact task density ───────────────────────────────── */
 @media (max-width: 600px) {
   .task-row { padding: 12px 14px; gap: 10px; }
   .draft-task-row { padding: 10px 14px; }
+  .task-detail { gap: 14px; }
+  .task-detail-meta { flex-direction: column; }
+  .task-meta-group,
+  .task-meta-group.is-estimate,
+  .task-meta-group.is-assignees,
+  .task-meta-group.is-tags {
+    width: 100%;
+    flex-basis: auto;
+  }
+  .task-actions-footer,
+  .task-detail .actions { width: 100%; }
+  .task-detail .actions .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
 }

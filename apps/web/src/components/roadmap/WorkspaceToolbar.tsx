@@ -120,11 +120,12 @@ export function WorkspaceToolbar({
   return (
     <div className="workspace-toolbar-wrap">
       <div className="workspace-bar">
-        <div className="workspace-view-tabs" aria-label="Workspace views">
+        <nav className="workspace-view-tabs" aria-label="Workspace views">
           <button
             type="button"
             className={`workspace-view-tab ${workspaceView === 'roadmap' ? 'active' : ''}`}
             onClick={() => onWorkspaceViewChange('roadmap')}
+            aria-current={workspaceView === 'roadmap' ? 'page' : undefined}
           >
             <Icon name="fold" size={14} /> Roadmap
           </button>
@@ -133,14 +134,39 @@ export function WorkspaceToolbar({
               type="button"
               className={`workspace-view-tab ${workspaceView === 'team' ? 'active' : ''}`}
               onClick={() => onWorkspaceViewChange('team')}
+              aria-current={workspaceView === 'team' ? 'page' : undefined}
             >
               <Icon name="users" size={14} /> Team
             </button>
           )}
-        </div>
+          <button
+            type="button"
+            className="workspace-view-tab"
+            onClick={onOpenActivity}
+            disabled={!hasServerActivity}
+            aria-describedby={!hasServerActivity ? activityHelpId : undefined}
+            title={hasServerActivity ? 'View recent activity' : 'Available after save or sync.'}
+          >
+            <Icon name="activity" size={14} /> Activity
+          </button>
+          {canViewVersions && (
+            <button
+              type="button"
+              className="workspace-view-tab"
+              onClick={onOpenVersions}
+            >
+              <Icon name="clock" size={14} /> Versions
+            </button>
+          )}
+        </nav>
+        {!hasServerActivity && (
+          <span id={activityHelpId} className="activity-helper">
+            Activity is available after save or sync.
+          </span>
+        )}
 
         {workspaceView === 'roadmap' && (
-          <div className="toolbar-start">
+          <div className="workspace-roadmap-tools">
             <div className="search">
               <Icon name="search" size={15} stroke="var(--ink-3)" />
               <input
@@ -254,39 +280,21 @@ export function WorkspaceToolbar({
 
             <button
               type="button"
-              className="toolbar-action"
+              className="toolbar-action toolbar-tags-action"
+              onClick={onOpenTagRegistry}
+            >
+              Tags
+            </button>
+
+            <button
+              type="button"
+              className="toolbar-action toolbar-collapse-action"
               onClick={allOpen ? onCollapseAll : onExpandAll}
             >
               <Icon name="fold" size={14} /> {allOpen ? 'Collapse all' : 'Expand all'}
             </button>
           </div>
         )}
-
-        <div className="toolbar-end">
-          <button
-            type="button"
-            className="toolbar-action"
-            onClick={onOpenActivity}
-            disabled={!hasServerActivity}
-            aria-describedby={!hasServerActivity ? activityHelpId : undefined}
-            title={hasServerActivity ? 'View recent activity' : 'Available after save or sync.'}
-          >
-            <Icon name="activity" size={14} /> Activity
-          </button>
-          {!hasServerActivity && (
-            <span id={activityHelpId} className="activity-helper">
-              Available after save or sync.
-            </span>
-          )}
-          {canViewVersions && (
-            <button type="button" className="toolbar-action" onClick={onOpenVersions}>
-              <Icon name="clock" size={14} /> Versions
-            </button>
-          )}
-          <button type="button" className="toolbar-action" onClick={onOpenTagRegistry}>
-            Tags
-          </button>
-        </div>
       </div>
 
       {workspaceView === 'roadmap' && (

@@ -32,29 +32,37 @@ export function TaskDetailMeta({
     <>
       {showDescription && task.desc && <MarkdownDescription value={task.desc} />}
 
-      <div className="grid">
+      <div className="task-detail-meta">
         {!isNested && (
-          <>
-            <div className="label">Estimate</div>
-            <div className="value">{estimateControl ?? task.est ?? '—'}</div>
-          </>
+          <div className="task-meta-group is-estimate">
+            <span className="task-meta-label">Estimate</span>
+            <div className="task-meta-value">
+              {estimateControl ?? (
+                <span className={`estimate-chip${task.est ? '' : ' is-empty'}`}>
+                  {task.est || 'No estimate'}
+                </span>
+              )}
+            </div>
+          </div>
         )}
-        <div className="label">Assigned</div>
-        <div className="value assignees">
-          {assigneesControl ?? (
-            assignedNames.length > 0 ? (
-              assignedNames.map((name) => (
-                <span key={name} className="assignee-pill">{name}</span>
-              ))
-            ) : (
-              <span className="muted">None</span>
-            )
-          )}
+        <div className="task-meta-group is-assignees">
+          <span className="task-meta-label">Assignees</span>
+          <div className="task-meta-value assignees">
+            {assigneesControl ?? (
+              assignedNames.length > 0 ? (
+                assignedNames.map((name) => (
+                  <span key={name} className="assignee-pill">{name}</span>
+                ))
+              ) : (
+                <span className="task-meta-empty">Unassigned</span>
+              )
+            )}
+          </div>
         </div>
         {(visibleTags.length > 0 || tagsControl) && (
-          <>
-            <div className="label">Tags</div>
-            <div className="value tags">
+          <div className="task-meta-group is-tags">
+            <span className="task-meta-label">Tags</span>
+            <div className="task-meta-value tags">
               {tagsControl ?? visibleTags.map((tagId) => {
                 const { label } = resolveTagDisplay(tagId, registry)
                 const bg = resolveTagColor(tagId, registry)
@@ -65,7 +73,7 @@ export function TaskDetailMeta({
                 )
               })}
             </div>
-          </>
+          </div>
         )}
       </div>
     </>

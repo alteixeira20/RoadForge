@@ -1,38 +1,39 @@
 /* ─── Search toolbar ───────────────────────────────────────────────────────── */
 .workspace-bar {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  display: flex; align-items: stretch; gap: 8px; flex-direction: column;
   margin: 24px 0 16px;
   padding: 8px;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
-.toolbar-start {
-  flex: 1;
+.workspace-roadmap-tools {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   min-width: 0;
-}
-.toolbar-end {
-  display: flex; align-items: center; gap: 4px;
-  margin-left: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-faint);
 }
 .workspace-view-tabs {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 4px;
-  padding: 3px;
-  background: var(--bg);
-  border: 1px solid var(--border-faint);
-  border-radius: 9px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.workspace-view-tabs::-webkit-scrollbar {
+  display: none;
 }
 .workspace-view-tab {
-  height: 30px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   gap: 6px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 8px;
   background: transparent;
   color: var(--ink-3);
   font-size: 13px;
@@ -41,10 +42,24 @@
   color: var(--ink);
   background: var(--bg-2);
 }
+.workspace-view-tab:focus-visible,
+.toolbar-action:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 1px;
+}
 .workspace-view-tab.active {
   color: var(--ember);
   background: var(--lava-glow);
   border-color: rgba(217,116,66,0.28);
+}
+.workspace-view-tab:disabled {
+  cursor: not-allowed;
+  color: var(--ink-4);
+  opacity: 0.65;
+}
+.workspace-view-tab:disabled:hover {
+  color: var(--ink-4);
+  background: transparent;
 }
 .workspace-bar .search {
   flex: 1;
@@ -203,10 +218,15 @@
   background: transparent;
 }
 .activity-helper {
-  max-width: 160px;
-  color: var(--ink-4);
-  font-size: 12px;
-  line-height: 1.3;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
@@ -215,26 +235,29 @@
 @media (max-width: 900px) {
   .workspace-bar .search { min-width: 180px; }
   .toolbar-action { padding: 0 9px; }
+  .toolbar-collapse-action { margin-left: auto; }
 }
 
-/* ── 600px — mobile: tabs full-width, search+filter fill remaining row ─── */
+/* ── 600px — mobile: scrollable nav, search+filter fill remaining row ───── */
 @media (max-width: 600px) {
   .workspace-bar { gap: 6px; padding: 6px; }
-  .workspace-view-tabs { flex-basis: 100%; }
-  .workspace-view-tab { flex: 1; justify-content: center; }
-  /* toolbar-start takes its own row below tabs */
-  .toolbar-start { flex-basis: 100%; }
-  .workspace-bar .search { flex: 1; min-width: 0; }
-  /* Filter grows to fill remaining space on its row */
-  .task-filter { flex: 1; min-width: 0; }
-  /* Open menu left-anchored to avoid right-edge overflow */
+  .workspace-view-tabs { margin: 0 -2px; }
+  .workspace-view-tab { min-width: max-content; padding: 0 10px; }
+  .workspace-roadmap-tools { padding-top: 6px; }
+  .workspace-bar .search { flex: 1 1 calc(100% - 132px); min-width: 0; }
+  .workspace-bar .search input { min-width: 0; }
+  .task-filter { flex: 0 0 124px; min-width: 0; }
   .filter-panel {
     left: 0;
     right: auto;
     max-width: calc(100vw - 32px);
     width: 280px;
   }
-  .toolbar-end { margin-left: 0; flex-basis: 100%; justify-content: flex-end; }
   .toolbar-action { padding: 0 8px; font-size: 13px; height: 34px; }
-  .activity-helper { max-width: 180px; font-size: 11.5px; }
+  .toolbar-tags-action { flex: 1 1 calc(50% - 4px); justify-content: center; }
+  .toolbar-collapse-action {
+    flex: 1 1 calc(50% - 4px);
+    margin-left: 0;
+    justify-content: center;
+  }
 }

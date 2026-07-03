@@ -720,7 +720,7 @@ export function TaskRow({
                       onCancel={() => setShowDepPicker(false)}
                     />
                   ) : (
-                    <div className="actions">
+                    <div className="actions" role="group" aria-label="Task actions">
                       {!isNested && (
                         <button className="btn sm" disabled={inlineEdit.isEditing} onClick={async () => {
                           const success = await tryAcquireEditLock()
@@ -737,14 +737,13 @@ export function TaskRow({
                           <Icon name="link" size={13} /> Link dependency
                         </button>
                       )}
-                      <span className="spacer" />
                       <button
-                        className="iconbtn"
+                        className="btn sm"
                         onClick={handleStartEdit}
                         title={inlineEdit.isEditing ? 'Finish inline edit first' : 'Edit task'}
                         disabled={inlineEdit.isEditing}
                       >
-                        <Icon name="pencil" size={14} />
+                        <Icon name="pencil" size={13} /> Edit task
                       </button>
                     </div>
                   )}
