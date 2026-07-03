@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, type CSSProperties } from 'react'
 import { removeAssignmentTags } from '@/lib/task-assignment'
-import { buildTagId } from '@/lib/tag-registry'
+import { buildTagId, resolveTagColor, resolveTagDisplay } from '@/lib/tag-registry'
 import type { TagDefinition } from '@/types/roadmap'
 
 interface TagInputProps {
   tags: string[]
   onChange: (tags: string[]) => void
   registry?: TagDefinition[]
+  /** 'pill' renders colored registry pills (task detail inline editing); 'chip' (default) matches the plain edit-form style. */
+  variant?: 'chip' | 'pill'
+  disabled?: boolean
 }
 
 function normalizeSingle(raw: string): string {
@@ -29,10 +32,17 @@ function dedupeTagList(tags: string[]): string[] {
   })
 }
 
-export function TagInput({ tags, onChange, registry = [] }: TagInputProps) {
+export function TagInput({
+  tags,
+  onChange,
+  registry = [],
+  variant = 'chip',
+  disabled = false,
+}: TagInputProps) {
   const [inputValue, setInputValue] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const isPill = variant === 'pill'
 
   const suggestions = inputValue.trim()
     ? registry.filter(
@@ -44,6 +54,7 @@ export function TagInput({ tags, onChange, registry = [] }: TagInputProps) {
     : []
 
   const commitInput = (raw: string) => {
+    if (disabled) return
     const next = splitAndNormalizeTags([...tags, raw])
     onChange(dedupeTagList(next))
     setInputValue('')
@@ -51,13 +62,14 @@ export function TagInput({ tags, onChange, registry = [] }: TagInputProps) {
   }
 
   const commitSuggestion = (tag: TagDefinition) => {
-    if (tags.includes(tag.id)) return
+    if (disabled || tags.includes(tag.id)) return
     onChange(dedupeTagList([...tags, tag.id]))
     setInputValue('')
     setShowSuggestions(false)
   }
 
   const removeTag = (tag: string) => {
+    if (disabled) return
     onChange(tags.filter((t) => t !== tag))
   }
 
@@ -89,22 +101,47 @@ export function TagInput({ tags, onChange, registry = [] }: TagInputProps) {
   }
 
   return (
-    <div className="tag-input-field" ref={wrapRef}>
+    <div className={`tag-input-field${isPill ? ' tag-input-field-pill' : ''}`} ref={wrapRef}>
       {tags.length > 0 && (
         <div className="tag-chip-list">
-          {tags.map((tag) => (
-            <span key={tag} className="tag-chip">
-              {resolveLabel(tag)}
-              <button
-                type="button"
-                className="tag-chip-remove"
-                onClick={() => removeTag(tag)}
-                aria-label={`Remove tag ${resolveLabel(tag)}`}
+          {tags.map((tag) => {
+            if (!isPill) {
+              return (
+                <span key={tag} className="tag-chip">
+                  {resolveLabel(tag)}
+                  <button
+                    type="button"
+                    className="tag-chip-remove"
+                    onClick={() => removeTag(tag)}
+                    disabled={disabled}
+                    aria-label={`Remove tag ${resolveLabel(tag)}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              )
+            }
+            const { label } = resolveTagDisplay(tag, registry)
+            const bg = resolveTagColor(tag, registry)
+            return (
+              <span
+                key={tag}
+                className="tag-pill tag-pill-editable"
+                style={{ '--tag-bg': bg } as CSSProperties}
               >
-                ×
-              </button>
-            </span>
-          ))}
+                {label}
+                <button
+                  type="button"
+                  className="tag-pill-remove"
+                  onClick={() => removeTag(tag)}
+                  disabled={disabled}
+                  aria-label={`Remove tag ${label}`}
+                >
+                  ×
+                </button>
+              </span>
+            )
+          })}
         </div>
       )}
       <div className="tag-input-wrap">
@@ -116,8 +153,9 @@ export function TagInput({ tags, onChange, registry = [] }: TagInputProps) {
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder={tags.length === 0 ? 'Add tags…' : 'Add another…'}
+          disabled={disabled}
         />
-        {showSuggestions && suggestions.length > 0 && (
+        {!disabled && showSuggestions && suggestions.length > 0 && (
           <ul className="tag-suggestions">
             {suggestions.map((tag) => (
               <li key={tag.id}>

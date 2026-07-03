@@ -1,6 +1,14 @@
+import { getTaskAssignees, getVisibleTaskTags } from '@/lib/task-assignment'
 import type { ActivityChange, Phase, Task } from '@/types/roadmap'
 
-export type InlineTaskField = 'title' | 'est' | 'desc'
+export type InlineTaskField = 'title' | 'est' | 'desc' | 'tags' | 'assignees'
+export type InlineTaskListField = Extract<InlineTaskField, 'tags' | 'assignees'>
+
+const LIST_FIELDS: readonly InlineTaskListField[] = ['tags', 'assignees']
+
+function isListField(field: InlineTaskField): field is InlineTaskListField {
+  return (LIST_FIELDS as readonly string[]).includes(field)
+}
 
 export type CommitTaskFieldResult =
   | {
@@ -15,12 +23,38 @@ export type CommitTaskFieldResult =
       task: Task
     }
 
+function commitListField(
+  task: Task,
+  field: InlineTaskListField,
+  value: string[],
+): CommitTaskFieldResult {
+  const previous = field === 'tags' ? getVisibleTaskTags(task) : getTaskAssignees(task)
+  const updates: Partial<Task> = { [field]: value }
+  const unchanged = previous.length === value.length
+    && previous.every((item, index) => item === value[index])
+  if (unchanged) {
+    return { ok: true, changed: false, task, updates }
+  }
+
+  return {
+    ok: true,
+    changed: true,
+    task: { ...task, ...updates },
+    updates,
+  }
+}
+
 export function commitTaskField(
   task: Task,
   field: InlineTaskField,
-  value: string,
+  value: string | string[],
 ): CommitTaskFieldResult {
-  const normalizedValue = field === 'desc' ? value : value.trim()
+  if (isListField(field)) {
+    return commitListField(task, field, value as string[])
+  }
+
+  const strValue = value as string
+  const normalizedValue = field === 'desc' ? strValue : strValue.trim()
   if (field === 'title' && !normalizedValue) {
     return { ok: false, reason: 'empty-title', task }
   }

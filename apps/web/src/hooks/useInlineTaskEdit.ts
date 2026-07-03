@@ -32,7 +32,7 @@ export interface UseInlineTaskEditResult {
   canCommit: boolean
   beginEdit: (field: InlineTaskField) => Promise<boolean>
   cancelEdit: () => Promise<void>
-  commitEdit: (value: string) => Promise<CommitTaskFieldResult | null>
+  commitEdit: (value: string | string[]) => Promise<CommitTaskFieldResult | null>
   recordInteraction: () => void
   resumeEditing: () => Promise<boolean>
 }
@@ -97,7 +97,7 @@ export function useInlineTaskEdit({
   }, [release])
 
   const commitEdit = useCallback(async (
-    value: string,
+    value: string | string[],
   ): Promise<CommitTaskFieldResult | null> => {
     if (!canCommit || activeField === null) return null
 

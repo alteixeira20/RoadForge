@@ -12,6 +12,8 @@ interface TaskDetailMetaProps {
   visibleTags: string[]
   registry?: TagDefinition[]
   estimateControl?: ReactNode
+  tagsControl?: ReactNode
+  assigneesControl?: ReactNode
   showDescription?: boolean
 }
 
@@ -22,6 +24,8 @@ export function TaskDetailMeta({
   visibleTags,
   registry = [],
   estimateControl,
+  tagsControl,
+  assigneesControl,
   showDescription = true,
 }: TaskDetailMetaProps) {
   return (
@@ -37,19 +41,21 @@ export function TaskDetailMeta({
         )}
         <div className="label">Assigned</div>
         <div className="value assignees">
-          {assignedNames.length > 0 ? (
-            assignedNames.map((name) => (
-              <span key={name} className="assignee-pill">{name}</span>
-            ))
-          ) : (
-            <span className="muted">None</span>
+          {assigneesControl ?? (
+            assignedNames.length > 0 ? (
+              assignedNames.map((name) => (
+                <span key={name} className="assignee-pill">{name}</span>
+              ))
+            ) : (
+              <span className="muted">None</span>
+            )
           )}
         </div>
-        {visibleTags.length > 0 && (
+        {(visibleTags.length > 0 || tagsControl) && (
           <>
             <div className="label">Tags</div>
             <div className="value tags">
-              {visibleTags.map((tagId) => {
+              {tagsControl ?? visibleTags.map((tagId) => {
                 const { label } = resolveTagDisplay(tagId, registry)
                 const bg = resolveTagColor(tagId, registry)
                 return (

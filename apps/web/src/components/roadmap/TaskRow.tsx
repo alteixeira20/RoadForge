@@ -9,6 +9,8 @@ import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
 import { TaskDescriptionEditor } from './TaskDescriptionEditor'
 import { TaskInlineField } from './TaskInlineField'
+import { TaskTagEditor } from './TaskTagEditor'
+import { TaskAssigneeEditor } from './TaskAssigneeEditor'
 import { TaskSubtaskList } from './TaskSubtaskList'
 import { useEditLock } from '@/hooks/useEditLock'
 import { useIdleEditPause } from '@/hooks/useIdleEditPause'
@@ -322,6 +324,22 @@ export function TaskRow({
     await inlineEdit.cancelEdit()
   }
 
+  const handleTagsChange = async (nextTags: string[]) => {
+    if (effectivelyReadOnly) return
+    const acquired = await inlineEdit.beginEdit('tags')
+    if (!acquired) return
+    const nextRegistry = ensureRegistryForTagIds(nextTags, tagRegistry)
+    if (nextRegistry.length !== tagRegistry.length) setTagRegistry(nextRegistry)
+    await inlineEdit.commitEdit(nextTags)
+  }
+
+  const handleAssigneesChange = async (nextAssignees: string[]) => {
+    if (effectivelyReadOnly) return
+    const acquired = await inlineEdit.beginEdit('assignees')
+    if (!acquired) return
+    await inlineEdit.commitEdit(nextAssignees)
+  }
+
   const navigateToTask = (id: string) => {
     const el = document.getElementById(`task-${id}`)
     if (el) {
@@ -341,6 +359,15 @@ export function TaskRow({
     ...assignedNames,
     displayName,
   ]).sort((a, b) => a.localeCompare(b))
+
+  const tagsEditable = !activeForm && !effectivelyReadOnly
+    && (!inlineEdit.isEditing || inlineEdit.activeField === 'tags')
+  const assigneesEditable = !activeForm && !effectivelyReadOnly
+    && (!inlineEdit.isEditing || inlineEdit.activeField === 'assignees')
+  const tagsBusy = inlineEdit.activeField === 'tags'
+    && (inlineEdit.isAcquiring || inlineEdit.isReleasing)
+  const assigneesBusy = inlineEdit.activeField === 'assignees'
+    && (inlineEdit.isAcquiring || inlineEdit.isReleasing)
 
   const taskStatus = deriveTaskStatus(task, allTasks)
   const blockedBy = getBlockingTasks(task, allTasks)
@@ -548,6 +575,22 @@ export function TaskRow({
                     onCommit={() => { void handleCommitInlineEdit() }}
                     onCancel={() => { void handleCancelInlineEdit() }}
                     onInteraction={handleInlineInteraction}
+                  />
+                ) : undefined}
+                tagsControl={tagsEditable ? (
+                  <TaskTagEditor
+                    tags={visibleTags}
+                    registry={tagRegistry}
+                    busy={tagsBusy}
+                    onChange={(next) => { void handleTagsChange(next) }}
+                  />
+                ) : undefined}
+                assigneesControl={assigneesEditable ? (
+                  <TaskAssigneeEditor
+                    assignees={assignedNames}
+                    availableAssignees={availableAssignees}
+                    busy={assigneesBusy}
+                    onChange={(next) => { void handleAssigneesChange(next) }}
                   />
                 ) : undefined}
               />
