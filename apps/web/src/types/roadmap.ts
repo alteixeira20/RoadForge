@@ -18,6 +18,13 @@ export type ExportFormat = 'json'
 export type ShareRole = 'owner' | 'editor' | 'viewer'
 export type Theme = 'dark' | 'light'
 export type SyncStatus = 'local' | 'live' | 'syncing' | 'offline' | 'conflict'
+export type RealtimeConnectionStatus =
+  | 'local'
+  | 'connecting'
+  | 'live'
+  | 'updating'
+  | 'reconnecting'
+  | 'offline'
 export type TaskStatusFilter = 'all' | 'open' | 'done'
 export type TaskClaimFilter = 'all' | 'mine' | 'claimed' | 'unclaimed'
 

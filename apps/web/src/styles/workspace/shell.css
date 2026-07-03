@@ -6,3 +6,34 @@
     radial-gradient(1000px 500px at 100% -10%, var(--lava-glow), transparent 60%),
     var(--bg);
 }
+.sync-status-indicator {
+  position: fixed;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: var(--z-popover);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 5px 9px;
+  color: var(--ink-3);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  font-size: 11px;
+  line-height: 1;
+  pointer-events: none;
+}
+.sync-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-4);
+}
+.sync-status-indicator.is-live .sync-status-dot { background: var(--sage); }
+.sync-status-indicator.is-saving .sync-status-dot,
+.sync-status-indicator.is-updating .sync-status-dot,
+.sync-status-indicator.is-reconnecting .sync-status-dot { background: var(--ember); }
+.sync-status-indicator.is-offline .sync-status-dot,
+.sync-status-indicator.is-conflict .sync-status-dot { background: #e05252; }

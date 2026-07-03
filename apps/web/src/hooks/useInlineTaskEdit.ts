@@ -7,6 +7,7 @@ import {
   type InlineTaskField,
 } from '@/hooks/taskMutationHelpers'
 import { useEditLock } from '@/hooks/useEditLock'
+import { useIdleEditPause } from '@/hooks/useIdleEditPause'
 import type { Task } from '@/types/roadmap'
 
 export interface UseInlineTaskEditParams {
@@ -26,9 +27,14 @@ export interface UseInlineTaskEditResult {
   ownsLock: boolean
   isAcquiring: boolean
   isReleasing: boolean
+  isIdlePaused: boolean
+  lastInteractionAt: number | null
+  canCommit: boolean
   beginEdit: (field: InlineTaskField) => Promise<boolean>
   cancelEdit: () => Promise<void>
   commitEdit: (value: string) => Promise<CommitTaskFieldResult | null>
+  recordInteraction: () => void
+  resumeEditing: () => Promise<boolean>
 }
 
 export function useInlineTaskEdit({
@@ -43,6 +49,14 @@ export function useInlineTaskEdit({
   const [activeField, setActiveField] = useState<InlineTaskField | null>(null)
   const isBlocked = readOnly || lockedByOther
   const {
+    isIdlePaused,
+    lastInteractionAt,
+    recordInteraction,
+    resumeEditing: markEditingResumed,
+  } = useIdleEditPause({
+    active: activeField !== null && !readOnly,
+  })
+  const {
     ownsLock,
     isAcquiring,
     isReleasing,
@@ -50,11 +64,12 @@ export function useInlineTaskEdit({
     release,
   } = useEditLock({
     target: `task:${task.id}`,
-    active: activeField !== null && !isBlocked,
+    active: activeField !== null && !isBlocked && !isIdlePaused,
     serverRoadmapId,
     sessionToken,
     onAcquireError,
   })
+  const canCommit = activeField !== null && ownsLock && !isBlocked && !isIdlePaused
 
   const beginEdit = useCallback(async (field: InlineTaskField): Promise<boolean> => {
     if (isBlocked || isAcquiring || isReleasing) return false
@@ -68,6 +83,14 @@ export function useInlineTaskEdit({
     return acquired
   }, [activeField, isAcquiring, isBlocked, isReleasing, ownsLock, tryAcquire])
 
+  const resumeEditing = useCallback(async (): Promise<boolean> => {
+    if (readOnly || lockedByOther) return false
+    await release()
+    const acquired = await tryAcquire()
+    if (acquired) markEditingResumed()
+    return acquired
+  }, [lockedByOther, markEditingResumed, readOnly, release, tryAcquire])
+
   const cancelEdit = useCallback(async (): Promise<void> => {
     setActiveField(null)
     await release()
@@ -76,7 +99,7 @@ export function useInlineTaskEdit({
   const commitEdit = useCallback(async (
     value: string,
   ): Promise<CommitTaskFieldResult | null> => {
-    if (activeField === null) return null
+    if (!canCommit || activeField === null) return null
 
     const result = commitTaskField(task, activeField, value)
     if (!result.ok) return result
@@ -85,13 +108,12 @@ export function useInlineTaskEdit({
     setActiveField(null)
     await release()
     return result
-  }, [activeField, onUpdateTask, release, task])
+  }, [activeField, canCommit, onUpdateTask, release, task])
 
   useEffect(() => {
-    if (!isBlocked || activeField === null) return
-    setActiveField(null)
+    if (!readOnly || activeField === null) return
     void release()
-  }, [activeField, isBlocked, release])
+  }, [activeField, readOnly, release])
 
   return {
     activeField,
@@ -100,8 +122,13 @@ export function useInlineTaskEdit({
     ownsLock,
     isAcquiring,
     isReleasing,
+    isIdlePaused,
+    lastInteractionAt,
+    canCommit,
     beginEdit,
     cancelEdit,
     commitEdit,
+    recordInteraction,
+    resumeEditing,
   }
 }

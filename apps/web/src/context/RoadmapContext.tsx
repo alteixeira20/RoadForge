@@ -1,7 +1,12 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
-import type { Phase, ShareRole, TagDefinition } from '@/types/roadmap'
+import type {
+  Phase,
+  RealtimeConnectionStatus,
+  ShareRole,
+  TagDefinition,
+} from '@/types/roadmap'
 import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
@@ -59,6 +64,7 @@ interface RoadmapLifecycleContextValue {
   clearSessionExpiredNotice: () => void
   roadmapUpgradeNotice: RoadmapUpgradeState | null
   dismissRoadmapUpgradeNotice: () => void
+  realtimeStatus: RealtimeConnectionStatus
 }
 
 // Legacy combined interface — kept for backward compatibility
@@ -133,7 +139,11 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
   // ─── Realtime subscription ───────────────────────────────────────────────────
 
-  const { accessRevokedEvent, clearAccessRevokedEvent } = useRoadmapRealtime({
+  const {
+    accessRevokedEvent,
+    clearAccessRevokedEvent,
+    realtimeStatus,
+  } = useRoadmapRealtime({
     connection: {
       serverRoadmapId,
       sessionToken,
@@ -345,6 +355,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     clearSessionExpiredNotice,
     roadmapUpgradeNotice,
     dismissRoadmapUpgradeNotice,
+    realtimeStatus,
   }
 
   const combinedValue: RoadmapContextValue = {

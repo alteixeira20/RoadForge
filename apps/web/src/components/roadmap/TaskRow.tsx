@@ -9,6 +9,7 @@ import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
 import { TaskSubtaskList } from './TaskSubtaskList'
 import { useEditLock } from '@/hooks/useEditLock'
+import { useIdleEditPause } from '@/hooks/useIdleEditPause'
 import { useTaskClaim } from '@/hooks/useTaskClaim'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
@@ -95,6 +96,9 @@ export function TaskRow({
 
   const target = `task:${task.id}`
   const lock = locks[target]
+  const knownLockHeldByOther = Boolean(
+    lock && participantId && lock.participantId !== participantId,
+  )
   const lockHolderName = lock?.displayName || 'Another participant'
   const isTaskDonePending = pendingTaskDoneIds.has(task.id)
 
@@ -119,6 +123,13 @@ export function TaskRow({
   // ─── Lock lifecycle ──────────────────────────────────────────────────────────
 
   const activeForm = isEditing || showSubtaskForm || showDepPicker
+  const {
+    isIdlePaused,
+    recordInteraction,
+    resumeEditing: markEditingResumed,
+  } = useIdleEditPause({
+    active: activeForm && !readOnly,
+  })
 
   const lockRef = useRef(lock)
   lockRef.current = lock
@@ -132,9 +143,15 @@ export function TaskRow({
     }
   }, [onToast])
 
-  const { ownsLock, isAcquiring, isReleasing, tryAcquire: tryAcquireLock } = useEditLock({
+  const {
+    ownsLock,
+    isAcquiring,
+    isReleasing,
+    tryAcquire: tryAcquireLock,
+    release: releaseEditLock,
+  } = useEditLock({
     target,
-    active: activeForm && !readOnly,
+    active: activeForm && !readOnly && !isIdlePaused && !knownLockHeldByOther,
     serverRoadmapId,
     sessionToken,
     onAcquireError: handleEditLockError,
@@ -158,7 +175,7 @@ export function TaskRow({
     void handleClaim(true)
   }, [handleClaim])
 
-  const isLockedByMe = ownsLock || (!!participantId && lock?.participantId === participantId)
+  const isLockedByMe = !!participantId && lock?.participantId === participantId
 
   // Track whether this component instance has ever controlled the lock.
   // Set when acquiring/owning/releasing begins; cleared only once the server
@@ -172,7 +189,37 @@ export function TaskRow({
   }
 
   const hasLocalLockControl = isAcquiring || ownsLock || isReleasing || hadLocalLockControlRef.current
-  const isLockedByOther = Boolean(lock && !isLockedByMe && !hasLocalLockControl)
+  const isLockedByOther = knownLockHeldByOther
+    || Boolean(lock && !isLockedByMe && !hasLocalLockControl)
+  const canCommitEdit = activeForm && ownsLock && !isIdlePaused && !isLockedByOther
+  const resumeInFlightRef = useRef(false)
+
+  const handleResumeEditing = useCallback(async () => {
+    if (readOnly || resumeInFlightRef.current) return
+    resumeInFlightRef.current = true
+    try {
+      await releaseEditLock()
+      const acquired = await tryAcquireLock()
+      if (acquired) markEditingResumed()
+    } finally {
+      resumeInFlightRef.current = false
+    }
+  }, [markEditingResumed, readOnly, releaseEditLock, tryAcquireLock])
+
+  const handleEditorInteraction = useCallback(() => {
+    if (!activeForm) return
+    if (isIdlePaused || !ownsLock) {
+      void handleResumeEditing()
+      return
+    }
+    recordInteraction()
+  }, [
+    activeForm,
+    handleResumeEditing,
+    isIdlePaused,
+    ownsLock,
+    recordInteraction,
+  ])
   const effectivelyReadOnly = readOnly || isLockedByOther || isTaskDonePending
   const canDragTask =
     !effectivelyReadOnly && !expanded && !dragDisabled && Boolean(dragHandleProps)
@@ -323,7 +370,30 @@ export function TaskRow({
       </div>
 
       {expanded && (
-        <div className="task-detail" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="task-detail"
+          onClick={(e) => e.stopPropagation()}
+          onInputCapture={handleEditorInteraction}
+          onKeyDownCapture={handleEditorInteraction}
+          onPointerDownCapture={handleEditorInteraction}
+        >
+          {activeForm && !canCommitEdit && (
+            <div className="edit-session-status" role="status" aria-live="polite">
+              <span>
+                {isIdlePaused
+                  ? 'Editing paused after 90 seconds of inactivity. Your draft is still here.'
+                  : 'Edit lock unavailable. Your draft is still here.'}
+              </span>
+              <button
+                type="button"
+                className="btn sm ghost"
+                onClick={() => { void handleResumeEditing() }}
+                disabled={isAcquiring || isReleasing}
+              >
+                {isAcquiring || isReleasing ? 'Reconnecting…' : 'Resume editing'}
+              </button>
+            </div>
+          )}
           {isEditing ? (
             <TaskEditForm
               task={task}
@@ -331,6 +401,7 @@ export function TaskRow({
               availableAssignees={availableAssignees}
               registry={tagRegistry}
               onSave={(updates) => {
+                if (!canCommitEdit) return
                 if (updates.tags) {
                   const nextRegistry = ensureRegistryForTagIds(updates.tags, tagRegistry)
                   if (nextRegistry.length !== tagRegistry.length) {
@@ -347,6 +418,7 @@ export function TaskRow({
                 setEditDirty(false)
               }}
               onDirtyChange={setEditDirty}
+              canCommit={canCommitEdit}
             />
           ) : (
             <>
@@ -459,7 +531,9 @@ export function TaskRow({
                     </div>
                   ) : showSubtaskForm ? (
                     <SubtaskForm
+                      canCommit={canCommitEdit}
                       onAdd={(title) => {
+                        if (!canCommitEdit) return
                         onAddSubtask(task.id, title)
                         setShowSubtaskForm(false)
                         onToast('Subtask added', 'success')
@@ -468,10 +542,12 @@ export function TaskRow({
                     />
                   ) : showDepPicker ? (
                     <DependencyPicker
+                      canCommit={canCommitEdit}
                       currentTask={task}
                       allTasks={allTasks}
                       hasCycle={hasCycle}
                       onLink={(depId) => {
+                        if (!canCommitEdit) return
                         onLinkDependency(task.id, depId)
                         setShowDepPicker(false)
                         onToast('Dependency linked', 'success')

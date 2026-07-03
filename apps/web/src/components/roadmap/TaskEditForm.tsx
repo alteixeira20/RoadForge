@@ -20,6 +20,7 @@ interface TaskEditFormProps {
   onSave: (updates: Partial<Task>) => void
   onCancel: () => void
   onDirtyChange?: (dirty: boolean) => void
+  canCommit?: boolean
 }
 
 interface EditDraft {
@@ -61,6 +62,7 @@ export function TaskEditForm({
   onSave,
   onCancel,
   onDirtyChange,
+  canCommit = true,
 }: TaskEditFormProps) {
   const [draft, setDraft] = useState<EditDraft>(() => initialDraft(task))
   const [assigneeDraft, setAssigneeDraft] = useState('')
@@ -74,7 +76,7 @@ export function TaskEditForm({
   }, [isDirty, onDirtyChange])
 
   const handleSave = () => {
-    if (!draft.title.trim()) return
+    if (!canCommit || !draft.title.trim()) return
     const assignees = dedupeNames(draft.assignees)
     onSave({
       title: draft.title.trim(),
@@ -234,7 +236,7 @@ export function TaskEditForm({
         <button
           className="btn sm primary"
           onClick={handleSave}
-          disabled={!draft.title.trim()}
+          disabled={!draft.title.trim() || !canCommit}
         >
           Save
         </button>

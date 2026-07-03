@@ -7,14 +7,15 @@ import type { Task } from '@/types/roadmap'
 interface SubtaskFormProps {
   onAdd: (title: string) => void
   onCancel: () => void
+  canCommit?: boolean
 }
 
-export function SubtaskForm({ onAdd, onCancel }: SubtaskFormProps) {
+export function SubtaskForm({ onAdd, onCancel, canCommit = true }: SubtaskFormProps) {
   const [title, setTitle] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (title.trim()) {
+    if (canCommit && title.trim()) {
       onAdd(title.trim())
       setTitle('')
     }
@@ -31,7 +32,7 @@ export function SubtaskForm({ onAdd, onCancel }: SubtaskFormProps) {
         className="form-input"
       />
       <div className="form-actions">
-        <button type="submit" className="btn sm primary" disabled={!title.trim()}>
+        <button type="submit" className="btn sm primary" disabled={!title.trim() || !canCommit}>
           Add
         </button>
         <button type="button" className="btn sm ghost" onClick={onCancel}>
@@ -48,6 +49,7 @@ interface DependencyPickerProps {
   onLink: (depId: string) => void
   onCancel: () => void
   hasCycle: (taskId: string, depId: string) => boolean
+  canCommit?: boolean
 }
 
 export function DependencyPicker({
@@ -56,6 +58,7 @@ export function DependencyPicker({
   onLink,
   onCancel,
   hasCycle,
+  canCommit = true,
 }: DependencyPickerProps) {
   const [search, setSearch] = useState('')
 
@@ -91,7 +94,10 @@ export function DependencyPicker({
             <button
               key={t.id}
               className="task-option"
-              onClick={() => onLink(t.id)}
+              onClick={() => {
+                if (canCommit) onLink(t.id)
+              }}
+              disabled={!canCommit}
             >
               <span className="tid">{t.id}</span>
               <span className="tt">{t.title}</span>

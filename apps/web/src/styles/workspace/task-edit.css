@@ -5,6 +5,21 @@
   border: 1px solid var(--border); border-radius: 10px;
   box-shadow: var(--shadow-sm);
 }
+.edit-session-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  color: var(--ink-2);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.edit-session-status .btn { flex: 0 0 auto; }
 .edit-form .field { display: flex; flex-direction: column; gap: 4px; }
 .edit-form label { font-size: 11px; font-weight: 600; color: var(--ink-4); text-transform: uppercase; }
 .edit-form input, .edit-form textarea {
@@ -17,6 +32,12 @@
   min-height: 112px;
   resize: vertical;
   line-height: 1.45;
+}
+@media (max-width: 640px) {
+  .edit-session-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 .markdown-toolbar {
   display: flex;

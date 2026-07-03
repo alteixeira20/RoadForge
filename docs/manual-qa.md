@@ -34,7 +34,7 @@ Open four browser contexts and keep them active throughout:
 ## 1 — Local roadmap (tab B)
 
 - [ ] Complete wizard → name "Local QA Roadmap" → start blank.
-- [ ] Workspace loads. Roadmap name appears in header. No sync badge visible (local state = LOCAL).
+- [ ] Workspace loads. Roadmap name appears in header. The bottom-right status indicator shows **Local draft**.
 - [ ] Team button is hidden. No participant/collaborator management appears for this local-only roadmap.
 - [ ] Add a phase. Add two tasks to it. Mark one done.
 - [ ] Add an assignee named "Farreca" to one local task. Confirm Farreca appears only as a task/person filter option, not as a collaborator.
@@ -49,20 +49,21 @@ Open four browser contexts and keep them active throughout:
 - [ ] Click **Save to server** in header.
 - [ ] Save modal opens. Submit without a password (leave blank).
 - [ ] Toast: "Saved · collaboration enabled".
-- [ ] Header badge changes to **LIVE**.
+- [ ] Bottom-right status indicator changes to **Live**.
 - [ ] `localStorage` contains scoped entries: `rf:roadmap:rm_...` and `rf:auth:rm_...` with a session token and owner role.
 
 ---
 
-## 3 — Sync state badge verification
+## 3 — Sync status indicator verification
 
-- [ ] With server roadmap loaded, badge shows **LIVE**.
-- [ ] Edit any task title (do not save yet) → badge shows **LOCAL** or equivalent unsaved indicator.
-- [ ] Click Save → badge briefly shows **SYNCING**, then returns to **LIVE**.
+- [ ] With server roadmap loaded and SSE connected, the subtle bottom-right indicator shows **Live**.
+- [ ] Trigger a save that takes longer than 300ms → indicator shows **Saving…**, then returns to **Live**. A faster save does not flash **Saving…**.
+- [ ] Change the roadmap in a collaborator window → the local view updates without refresh. A fetch longer than 300ms shows **Updating…**.
+- [ ] Interrupt and restore the SSE connection → indicator shows **Reconnecting…**, then **Live** after the stream opens.
 - [ ] Kill Docker API (`make api-down`) while roadmap is loaded.
-- [ ] Edit a task and click Save → badge shows **OFFLINE** and toast about failed save.
-- [ ] Restart API (`make api-up`). Retry Save → succeeds, badge returns to **LIVE**.
-- [ ] **Conflict test:** open same roadmap in a second tab. Save from tab 2 first, then try to save from tab 1 → badge shows **CONFLICT**, toast says local edits are preserved, and the conflict banner offers review plus reload fallback.
+- [ ] Edit a task and click Save → indicator shows **Offline** and the existing failure feedback remains visible.
+- [ ] Restart API (`make api-up`). Retry Save → succeeds, indicator returns to **Live**.
+- [ ] **Conflict test:** open same roadmap in a second tab. Save from tab 2 first, then try to save from tab 1 → indicator shows **Conflict**, toast says local edits are preserved, and the conflict banner offers review plus reload fallback.
 
 ---
 
@@ -196,11 +197,17 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ## 12 — Task edit locks
 
-- [ ] Owner expands a task → lock acquired. (Check Network tab: POST `.../locks/acquire`.)
+- [ ] Owner expands a task and clicks Edit → `task:<id>` lock acquired.
 - [ ] **In Editor window:** same task shows "Owner is editing" badge. Checkbox and edit inputs are disabled.
-- [ ] Owner collapses task → lock released. Badge disappears in Editor window.
+- [ ] Type or click inside the edit form before 90 seconds elapse → the idle deadline resets and the lock refreshes every 20 seconds while editing remains active.
+- [ ] Leave the edit form untouched for 90 seconds → the form stays open, an editing-paused notice appears, lock refresh stops, and release is attempted. The badge disappears in the Editor window.
+- [ ] Confirm changed title, description, estimate, tags, and assignees remain in the Owner's local draft after the pause.
+- [ ] Click **Resume editing** → the lock is reacquired before Save enables.
+- [ ] While paused, acquire the same task lock in the Editor window. Resume in Owner → Owner's draft remains visible, Save stays disabled, and conflict feedback identifies the active editor.
+- [ ] Release from Editor, then resume in Owner → Owner reacquires the lock and can save the preserved draft.
+- [ ] Simulate a failed 20-second lock refresh → ownership is cleared and Save disables until explicit reacquisition; the draft remains mounted.
+- [ ] Owner cancels or closes a clean edit → lock released. Badge disappears in Editor window.
 - [ ] Editor can now expand and edit the task.
-- [ ] Lock expires automatically after ~30s of inactivity (verify by leaving task open but idle).
 
 ---
 

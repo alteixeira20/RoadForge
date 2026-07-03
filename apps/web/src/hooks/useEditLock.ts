@@ -45,30 +45,42 @@ export function useEditLock({
   const [isAcquiring, setIsAcquiring] = useState(false)
   const [isReleasing, setIsReleasing] = useState(false)
   const ownsLockRef = useRef(false)
+  const releasePromiseRef = useRef<Promise<void> | null>(null)
+  const lockGenerationRef = useRef(0)
   const releaseRef = useRef<() => Promise<void>>(async () => {})
 
-  const release = useCallback(async () => {
-    if (!ownsLockRef.current) return
+  const release = useCallback((): Promise<void> => {
+    lockGenerationRef.current += 1
+    if (releasePromiseRef.current) return releasePromiseRef.current
+    if (!ownsLockRef.current) return Promise.resolve()
 
     ownsLockRef.current = false
     setOwnsLock(false)
 
-    if (!serverRoadmapId || !sessionToken) return
+    if (!serverRoadmapId || !sessionToken) return Promise.resolve()
 
-    setIsReleasing(true)
-    try {
-      await releaseLock(serverRoadmapId, target, sessionToken)
-    } catch {
-      // Server TTL handles any missed cleanup
-    } finally {
-      setIsReleasing(false)
-    }
+    const pendingRelease = (async () => {
+      setIsReleasing(true)
+      try {
+        await releaseLock(serverRoadmapId, target, sessionToken)
+      } catch {
+        // Server TTL handles any missed cleanup
+      } finally {
+        setIsReleasing(false)
+        releasePromiseRef.current = null
+      }
+    })()
+    releasePromiseRef.current = pendingRelease
+    return pendingRelease
   }, [serverRoadmapId, sessionToken, target])
 
   // Keep fresh so the unmount-only effect below always calls the latest version
   releaseRef.current = release
 
   const tryAcquire = useCallback(async (): Promise<boolean> => {
+    if (releasePromiseRef.current) await releasePromiseRef.current
+    const lockGeneration = lockGenerationRef.current
+
     if (!serverRoadmapId || !sessionToken) {
       ownsLockRef.current = true
       setOwnsLock(true)
@@ -78,6 +90,14 @@ export function useEditLock({
     setIsAcquiring(true)
     try {
       await acquireLock(serverRoadmapId, target, sessionToken)
+      if (lockGeneration !== lockGenerationRef.current) {
+        try {
+          await releaseLock(serverRoadmapId, target, sessionToken)
+        } catch {
+          // Server TTL handles cleanup if the cancelled acquire cannot release.
+        }
+        return false
+      }
       ownsLockRef.current = true
       setOwnsLock(true)
       return true
@@ -96,10 +116,14 @@ export function useEditLock({
     if (!active || !serverRoadmapId || !sessionToken) return
 
     const tryRefresh = async () => {
+      if (!ownsLockRef.current) return
       try {
         await acquireLock(serverRoadmapId, target, sessionToken)
       } catch {
-        // Silently fail on refresh; TTL handles expiry
+        // Treat a failed refresh as lock loss. The editor keeps its local draft,
+        // but must explicitly reacquire before committing.
+        ownsLockRef.current = false
+        setOwnsLock(false)
       }
     }
 

@@ -1,7 +1,12 @@
 'use client'
 
 import { useState, useCallback, useEffect, type Dispatch, type SetStateAction, type MutableRefObject } from 'react'
-import type { Phase, ShareRole, TagDefinition } from '@/types/roadmap'
+import type {
+  Phase,
+  RealtimeConnectionStatus,
+  ShareRole,
+  TagDefinition,
+} from '@/types/roadmap'
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { buildRegistryFromPhases } from '@/lib/tag-registry'
@@ -71,6 +76,7 @@ export interface UseRoadmapRealtimeParams {
 export interface UseRoadmapRealtimeReturn {
   accessRevokedEvent: 'revoked' | 'deleted' | 'expired' | null
   clearAccessRevokedEvent: () => void
+  realtimeStatus: RealtimeConnectionStatus
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -101,6 +107,22 @@ export function useRoadmapRealtime({
   const { setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState } = metadataState
   const { setLocks } = lockState
   const [accessRevokedEvent, setAccessRevokedEvent] = useState<'revoked' | 'deleted' | 'expired' | null>(null)
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('local')
+
+  useEffect(() => {
+    if (!serverRoadmapId || !sessionToken) {
+      setRealtimeStatus('local')
+    } else if (backendUnavailableRoadmapId === serverRoadmapId) {
+      setRealtimeStatus('offline')
+    } else if (isHydratingServer) {
+      setRealtimeStatus('connecting')
+    }
+  }, [
+    backendUnavailableRoadmapId,
+    isHydratingServer,
+    serverRoadmapId,
+    sessionToken,
+  ])
 
   // ─── Realtime subscription ───────────────────────────────────────────────────
 
@@ -113,8 +135,9 @@ export function useRoadmapRealtime({
     let unsubscribe: (() => void) | null = null
     let hiddenAt: number | null = null
 
-    const startSync = async () => {
+    const startSync = async (isReconnect = false) => {
       const subscribedActiveId = activeRoadmapId
+      setRealtimeStatus(isReconnect ? 'reconnecting' : 'connecting')
 
       // Shared teardown for participant-revoked, roadmap-deleted, and expired-session events.
       // Closes the EventSource first (auth is no longer valid), then clears
@@ -144,6 +167,9 @@ export function useRoadmapRealtime({
 
         const { ticket } = await getEventTicket(serverRoadmapId, sessionToken)
         unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, ticket, {
+          onOpen: () => {
+            setRealtimeStatus('live')
+          },
           onUpdated: (payload) => {
             if (payload.participant_id === participantId) return
 
@@ -155,6 +181,7 @@ export function useRoadmapRealtime({
               return
             }
 
+            setRealtimeStatus('updating')
             getRoadmap(serverRoadmapId, sessionToken).then((loaded) => {
               let nextRoadmapName = loaded.roadmap.name
               let normalizedSsePhases = normalizePhasesProgress(loaded.phases)
@@ -185,6 +212,7 @@ export function useRoadmapRealtime({
               setUpdatedAtState(loaded.updatedAt)
               setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
               setSavedState(nextSaved)
+              setRealtimeStatus('live')
 
               const activeId = storage.getActiveRoadmapId()
               if (activeId) {
@@ -203,7 +231,13 @@ export function useRoadmapRealtime({
                 }
               }
             }).catch((err: unknown) => {
-              if (isSessionExpiredError(err)) handleAccessLoss('expired')
+              if (isSessionExpiredError(err)) {
+                handleAccessLoss('expired')
+              } else if (isApiConnectionError(err)) {
+                setRealtimeStatus('offline')
+              } else {
+                setRealtimeStatus('reconnecting')
+              }
             })
           },
           onLockAcquired: (payload) => {
@@ -228,9 +262,13 @@ export function useRoadmapRealtime({
             if (payload.roadmap_id !== serverRoadmapId) return
             handleAccessLoss('deleted')
           },
+          onError: () => {
+            setRealtimeStatus('reconnecting')
+          },
         })
       } catch (err) {
         if (isApiConnectionError(err)) {
+          setRealtimeStatus('offline')
           setBackendUnavailableRoadmapId(serverRoadmapId)
           console.warn('Realtime sync paused; RoadForge API is unavailable.')
           return
@@ -239,6 +277,7 @@ export function useRoadmapRealtime({
           handleAccessLoss('expired')
           return
         }
+        setRealtimeStatus('reconnecting')
         console.error('Realtime sync failed', err)
       }
     }
@@ -248,7 +287,7 @@ export function useRoadmapRealtime({
         const now = Date.now()
         if (hiddenAt && now - hiddenAt > 60_000) {
           if (unsubscribe) unsubscribe()
-          startSync()
+          startSync(true)
         }
         hiddenAt = null
       } else {
@@ -269,5 +308,5 @@ export function useRoadmapRealtime({
     setAccessRevokedEvent(null)
   }, [])
 
-  return { accessRevokedEvent, clearAccessRevokedEvent }
+  return { accessRevokedEvent, clearAccessRevokedEvent, realtimeStatus }
 }

@@ -14,6 +14,7 @@ import { SyncConflictReviewPanel } from './SyncConflictReviewPanel'
 import { ActivityPanel } from './ActivityPanel'
 import { TeamPanel } from './TeamPanel'
 import { VersionsPanel } from './VersionsPanel'
+import { SyncStatusIndicator } from './SyncStatusIndicator'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { useWorkspaceViewModel } from '@/hooks/useWorkspaceViewModel'
@@ -26,6 +27,7 @@ import { revokeParticipant } from '@/services/roadmap-sharing.service'
 import { renumberPhases } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { storage } from '@/lib/storage'
+import { resolveWorkspaceSyncStatus } from '@/lib/sync-status'
 import type { WorkspaceMode, Phase as PhaseType, Participant, Roadmap, RoadmapConflictMetadata } from '@/types/roadmap'
 
 interface WorkspaceProps {
@@ -80,6 +82,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     clearSessionExpiredNotice,
     roadmapUpgradeNotice,
     dismissRoadmapUpgradeNotice,
+    realtimeStatus,
   } = useRoadmap()
   const readOnly = mode === 'viewer' || role === 'viewer'
   const canManageShare = role === 'owner'
@@ -314,6 +317,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   }
   taskDoneConflictRef.current = handlePartialWriteConflict
   taskDoneSessionExpiredRef.current = handleSessionExpired
+  const workspaceSyncStatus = resolveWorkspaceSyncStatus(syncStatus, realtimeStatus)
 
   const handleRenameRoadmap = (name: string) => {
     if (!canRenameRoadmap) return false
@@ -619,6 +623,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       />
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+      <SyncStatusIndicator status={workspaceSyncStatus} />
 
       <SyncConflictReviewPanel
         open={showConflictReview}

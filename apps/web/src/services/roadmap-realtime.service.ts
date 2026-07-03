@@ -7,6 +7,7 @@ import { API_BASE_URL, requestJson } from './roadmap-http'
 // ─── Realtime handler types ────────────────────────────────────────────────────
 
 export interface RealtimeHandlers {
+  onOpen?: () => void
   onUpdated?: (payload: { roadmap_id: string; updated_at: string; participant_id: string }) => void
   onLockAcquired?: (payload: { roadmap_id: string; target: string; participant_id: string; display_name: string }) => void
   onLockReleased?: (payload: { roadmap_id: string; target: string; participant_id: string }) => void
@@ -44,6 +45,10 @@ export function subscribeToRoadmapEvents(
 ): () => void {
   const url = `${API_BASE_URL}/api/roadmaps/${roadmapId}/events?ticket=${ticket}`
   const es = new EventSource(url)
+
+  es.onopen = () => {
+    handlers.onOpen?.()
+  }
 
   es.addEventListener('roadmap.updated', (e) => {
     try {
