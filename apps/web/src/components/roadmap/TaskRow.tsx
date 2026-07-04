@@ -520,6 +520,73 @@ export function TaskRow({
                 showDescription={false}
               />
 
+              <div
+                className={`task-action-area${showSubtaskForm || showDepPicker ? ' has-form' : ''}`}
+              >
+                {unavailableActionsMessage ? (
+                  <div className="task-action-note">
+                    <Icon name="shield" size={14} />
+                    {unavailableActionsMessage}
+                  </div>
+                ) : showSubtaskForm ? (
+                  <SubtaskForm
+                    canCommit={canCommitEdit}
+                    onAdd={(title) => {
+                      if (!canCommitEdit) return
+                      onAddSubtask(task.id, title)
+                      setShowSubtaskForm(false)
+                      onToast('Subtask added', 'success')
+                    }}
+                    onCancel={() => setShowSubtaskForm(false)}
+                  />
+                ) : showDepPicker ? (
+                  <DependencyPicker
+                    canCommit={canCommitEdit}
+                    currentTask={task}
+                    allTasks={allTasks}
+                    hasCycle={hasCycle}
+                    onLink={(depId) => {
+                      if (!canCommitEdit) return
+                      onLinkDependency(task.id, depId)
+                      setShowDepPicker(false)
+                      onToast('Dependency linked', 'success')
+                    }}
+                    onCancel={() => setShowDepPicker(false)}
+                  />
+                ) : (
+                  <div className="actions" role="group" aria-label="Task actions">
+                    {!inlineEdit.isEditing && (
+                      <button
+                        type="button"
+                        className="btn sm task-details-action"
+                        onClick={async () => {
+                          const success = await tryAcquireEditLock()
+                          if (success) setIsEditing(true)
+                        }}
+                      >
+                        <Icon name="pencil" size={13} /> Edit details
+                      </button>
+                    )}
+                    {!isNested && (
+                      <button type="button" className="btn sm" disabled={inlineEdit.isEditing} onClick={async () => {
+                        const success = await tryAcquireEditLock()
+                        if (success) setShowSubtaskForm(true)
+                      }}>
+                        <Icon name="plus" size={13} /> Add subtask
+                      </button>
+                    )}
+                    {!isNested && (
+                      <button type="button" className="btn sm" disabled={inlineEdit.isEditing} onClick={async () => {
+                        const success = await tryAcquireEditLock()
+                        if (success) setShowDepPicker(true)
+                      }}>
+                        <Icon name="link" size={13} /> Link dependency
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {depTasks.length > 0 && (
                 <div className="task-detail-section">
                   <div className="section-label">Depends on</div>
@@ -612,72 +679,6 @@ export function TaskRow({
                 </div>
               )}
 
-              {!isEditing && (
-                <div className="task-action-area">
-                  {unavailableActionsMessage ? (
-                    <div className="task-action-note">
-                      <Icon name="shield" size={14} />
-                      {unavailableActionsMessage}
-                    </div>
-                  ) : showSubtaskForm ? (
-                    <SubtaskForm
-                      canCommit={canCommitEdit}
-                      onAdd={(title) => {
-                        if (!canCommitEdit) return
-                        onAddSubtask(task.id, title)
-                        setShowSubtaskForm(false)
-                        onToast('Subtask added', 'success')
-                      }}
-                      onCancel={() => setShowSubtaskForm(false)}
-                    />
-                  ) : showDepPicker ? (
-                    <DependencyPicker
-                      canCommit={canCommitEdit}
-                      currentTask={task}
-                      allTasks={allTasks}
-                      hasCycle={hasCycle}
-                      onLink={(depId) => {
-                        if (!canCommitEdit) return
-                        onLinkDependency(task.id, depId)
-                        setShowDepPicker(false)
-                        onToast('Dependency linked', 'success')
-                      }}
-                      onCancel={() => setShowDepPicker(false)}
-                    />
-                  ) : (
-                    <div className="actions" role="group" aria-label="Task actions">
-                      {!inlineEdit.isEditing && (
-                        <button
-                          type="button"
-                          className="btn sm"
-                          onClick={async () => {
-                            const success = await tryAcquireEditLock()
-                            if (success) setIsEditing(true)
-                          }}
-                        >
-                          <Icon name="pencil" size={13} /> Edit details
-                        </button>
-                      )}
-                      {!isNested && (
-                        <button className="btn sm" disabled={inlineEdit.isEditing} onClick={async () => {
-                          const success = await tryAcquireEditLock()
-                          if (success) setShowSubtaskForm(true)
-                        }}>
-                          <Icon name="plus" size={13} /> Add subtask
-                        </button>
-                      )}
-                      {!isNested && (
-                        <button className="btn sm" disabled={inlineEdit.isEditing} onClick={async () => {
-                          const success = await tryAcquireEditLock()
-                          if (success) setShowDepPicker(true)
-                        }}>
-                          <Icon name="link" size={13} /> Link dependency
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
             </>
           )}
         </div>

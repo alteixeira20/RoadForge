@@ -26,20 +26,20 @@ export function TaskDetailMeta({
     <>
       {showDescription && task.desc && <MarkdownDescription value={task.desc} />}
 
-      <div className="task-meta-stack">
+      <dl className="task-meta-stack">
         {!isNested && (
           <div className="task-meta-group is-estimate">
-            <span className="task-meta-label">Estimate</span>
-            <div className="task-meta-value">
-              <span className={`estimate-chip${task.est ? '' : ' is-empty'}`}>
-                {task.est || 'No estimate'}
-              </span>
-            </div>
+            <dt className="task-meta-label">Estimate</dt>
+            <dd className="task-meta-value">
+              {task.est
+                ? <span className="estimate-chip">{task.est}</span>
+                : <span className="task-meta-empty">No estimate</span>}
+            </dd>
           </div>
         )}
         <div className="task-meta-group is-assignees">
-          <span className="task-meta-label">Assignees</span>
-          <div className="task-meta-value assignees">
+          <dt className="task-meta-label">Assignees</dt>
+          <dd className="task-meta-value assignees">
             {assignedNames.length > 0 ? (
               assignedNames.map((name) => (
                 <span key={name} className="assignee-pill">{name}</span>
@@ -47,11 +47,11 @@ export function TaskDetailMeta({
             ) : (
               <span className="task-meta-empty">None</span>
             )}
-          </div>
+          </dd>
         </div>
         <div className="task-meta-group is-tags">
-          <span className="task-meta-label">Tags</span>
-          <div className="task-meta-value tags">
+          <dt className="task-meta-label">Tags</dt>
+          <dd className="task-meta-value tags">
             {visibleTags.length > 0
               ? visibleTags.map((tagId) => {
                   const { label } = resolveTagDisplay(tagId, registry)
@@ -63,9 +63,9 @@ export function TaskDetailMeta({
                   )
                 })
               : <span className="task-meta-empty">No tags</span>}
-          </div>
+          </dd>
         </div>
-      </div>
+      </dl>
     </>
   )
 }

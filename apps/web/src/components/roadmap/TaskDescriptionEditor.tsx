@@ -88,8 +88,10 @@ export function TaskDescriptionEditor({
           className="desc-edit-trigger"
           onClick={onBegin}
           disabled={busy}
+          aria-label="Edit description"
+          title="Edit description"
         >
-          <Icon name="pencil" size={12} /> Edit description
+          <Icon name="pencil" size={13} />
         </button>
       </div>
     )

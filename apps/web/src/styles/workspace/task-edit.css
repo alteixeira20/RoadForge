@@ -89,23 +89,32 @@
   border-color: var(--border);
   outline: none;
 }
-.desc-preview-wrap { position: relative; }
+.desc-preview-wrap {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  padding-right: 30px;
+}
 .desc-edit-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 6px;
-  padding: 3px 8px;
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   color: var(--ink-4);
-  background: transparent;
+  background: var(--bg-2);
   border: 1px solid transparent;
   border-radius: 6px;
-  font-size: 11.5px;
-  font-weight: 550;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
   cursor: pointer;
-  transition: all 160ms;
+  opacity: 0;
+  transition: opacity 160ms, color 160ms, background 160ms, border-color 160ms;
+}
+.desc-preview-wrap:hover .desc-edit-trigger,
+.desc-edit-trigger:focus-visible {
+  opacity: 1;
 }
 .desc-edit-trigger:hover,
 .desc-edit-trigger:focus-visible {
@@ -113,6 +122,10 @@
   background: var(--bg-3);
   border-color: var(--border-faint);
   outline: none;
+}
+.desc-edit-trigger:disabled {
+  cursor: wait;
+  opacity: 0.45;
 }
 .desc-editor {
   display: flex;
@@ -221,8 +234,8 @@
 .estimate-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
-  padding: 4px 9px;
+  min-height: 24px;
+  padding: 3px 8px;
   color: var(--ink-2);
   background: var(--bg-inset);
   border: 1px solid var(--border-faint);
@@ -230,11 +243,6 @@
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1;
-}
-.estimate-chip.is-empty {
-  color: var(--ink-4);
-  background: transparent;
-  border-style: dashed;
 }
 .inline-field-error {
   position: absolute;
@@ -332,7 +340,7 @@
 
 /* ─── Task action forms ────────────────────────────────────────────────────── */
 .task-action-form {
-  margin-top: 12px;
+  margin-top: 0;
   padding: 16px;
   background: var(--bg-inset);
   border: 1px solid var(--border-faint);
@@ -402,6 +410,7 @@
 /* ── 600px — mobile: compact edit form ──────────────────────────────────── */
 @media (max-width: 600px) {
   .edit-form { padding: 10px; gap: 10px; }
+  .desc-edit-trigger { opacity: 0.65; }
   .inline-title-trigger,
   .inline-task-input {
     min-height: 44px;

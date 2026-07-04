@@ -114,9 +114,9 @@
 
 /* ─── Task detail panel ────────────────────────────────────────────────────── */
 .task-detail {
-  padding: 4px 22px 22px 56px;
+  padding: 2px 22px 18px 56px;
   display: flex; flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   animation: detailIn 240ms cubic-bezier(.2,.8,.2,1);
   position: relative;
 }
@@ -163,25 +163,21 @@
   accent-color: var(--ember);
 }
 .task-meta-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  width: fit-content;
+  max-width: min(100%, 720px);
+  display: grid;
+  gap: 5px;
+  margin: 0;
 }
 .task-meta-group {
-  width: 100%;
+  display: grid;
+  grid-template-columns: 78px minmax(0, auto);
+  align-items: center;
+  column-gap: 12px;
   min-width: 0;
-  min-height: 42px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 7px 10px;
-  background: var(--bg-inset);
-  border: 1px solid var(--border-faint);
-  border-radius: 9px;
+  min-height: 26px;
 }
 .task-meta-label {
-  flex: 0 0 76px;
-  padding-top: 6px;
   color: var(--ink-4);
   font-family: var(--font-mono);
   font-size: 10px;
@@ -192,19 +188,15 @@
   white-space: nowrap;
 }
 .task-meta-value {
+  margin: 0;
   min-width: 0;
   display: flex;
   align-items: center;
-  flex: 1 1 auto;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
   color: var(--ink-2);
 }
-.task-meta-group.is-estimate .task-meta-value {
-  flex: 0 1 auto;
-}
 .task-meta-empty {
-  min-height: 30px;
   display: inline-flex;
   align-items: center;
   color: var(--ink-4);
@@ -214,7 +206,6 @@
 /* ─── Task claim row ────────────────────────────────────────────────────────── */
 .task-claim-row {
   display: flex; align-items: center; gap: 10px;
-  margin-top: 10px;
 }
 .task-claim-row .claim-status {
   display: inline-flex; align-items: center; gap: 6px;
@@ -227,14 +218,15 @@
 }
 
 .task-action-area {
-  width: 100%;
-  margin-top: 4px;
-  padding-top: 14px;
+  width: fit-content;
+  max-width: min(100%, 720px);
   display: flex;
   align-items: center;
   justify-content: flex-start;
   flex-wrap: wrap;
-  border-top: 1px solid var(--border-faint);
+}
+.task-action-area.has-form {
+  width: min(100%, 720px);
 }
 
 .task-detail .actions {
@@ -243,6 +235,18 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-start;
+}
+.task-detail .actions .btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  gap: 6px;
+}
+.task-detail .actions .task-details-action {
+  color: var(--ember);
+  border-color: color-mix(in srgb, var(--ember), transparent 68%);
+  background: var(--lava-glow);
 }
 .task-detail .actions .btn:focus-visible {
   outline: 2px solid var(--ember);
@@ -259,7 +263,7 @@
 }
 
 /* ─── Task detail sections ─────────────────────────────────────────────────── */
-.task-detail-section { margin-top: 12px; }
+.task-detail-section { margin-top: 4px; }
 .section-label {
   font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.08em;
@@ -350,9 +354,9 @@
 .assignee-pill {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 1.5px 7px;
   border-radius: 999px;
-  background: var(--bg-2);
+  background: var(--bg-inset);
   border: 1px solid var(--border-faint);
   color: var(--ink-2);
   font-size: 12px;
@@ -562,11 +566,6 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 900px — compact metadata rows without changing row order ──────────── */
-@media (max-width: 900px) {
-  .task-meta-label { flex-basis: 72px; }
-}
-
 /* ── 760px — tablet: tighten task row and detail layout ─────────────────── */
 @media (max-width: 760px) {
   .task-row { padding: 14px 16px; gap: 10px; flex-wrap: wrap; }
@@ -578,19 +577,16 @@
 @media (max-width: 600px) {
   .task-row { padding: 12px 14px; gap: 10px; }
   .draft-task-row { padding: 10px 14px; }
-  .task-detail { gap: 14px; }
+  .task-detail { gap: 10px; }
+  .task-meta-stack { width: 100%; }
   .task-meta-group {
-    flex-direction: column;
-    gap: 6px;
-  }
-  .task-meta-label {
-    flex-basis: auto;
-    padding-top: 0;
+    grid-template-columns: 72px minmax(0, 1fr);
+    column-gap: 10px;
   }
   .task-action-area,
   .task-detail .actions { width: 100%; }
   .task-detail .actions .btn {
-    flex: 1 1 160px;
+    flex: 1 1 140px;
     justify-content: center;
   }
 }
