@@ -2,13 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { saveToServer } from '@/services/roadmap-crud.service'
-import {
-  getConflictMetadata,
-  isApiConnectionError,
-  isAuthError,
-  isSessionExpiredError,
-} from '@/services/roadmap-http'
 import { buildChangeSummary } from '@/lib/activity-changes'
+import { classifyRoadmapSaveError } from '@/lib/roadmap-sync-errors'
 import type { Phase, ActivityChange, RoadmapConflictMetadata, SyncStatus, TagDefinition } from '@/types/roadmap'
 
 interface AutoSyncParams {
@@ -155,18 +150,22 @@ export function useAutoSync({
         setConflictMetadata(null)
         if (showAct) activityRefresh()
       } catch (err) {
-        const nextConflict = getConflictMetadata(err)
-        if (nextConflict || (err instanceof Error && err.message.includes('409'))) {
+        const {
+          kind,
+          conflictMetadata: nextConflict,
+          hasLegacyConflictStatus,
+        } = classifyRoadmapSaveError(err)
+        if (kind === 'conflict' || hasLegacyConflictStatus) {
           setIsConflict(true)
           setConflictMetadata(nextConflict)
           if (nextConflict) openConflict?.(nextConflict)
           setIsOffline(false)
           toast('The roadmap changed elsewhere. Your edits are preserved locally.')
-        } else if (isSessionExpiredError(err)) {
+        } else if (kind === 'session-expired') {
           sessionExpired()
-        } else if (isApiConnectionError(err)) {
+        } else if (kind === 'connection') {
           setIsOffline(true)
-        } else if (isAuthError(err)) {
+        } else if (kind === 'unauthorized' || kind === 'forbidden') {
           sessionExpired()
         } else {
           setIsOffline(true)

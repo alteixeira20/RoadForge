@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
-import { getConflictMetadata, isApiConnectionError, isApiError, isAuthError, isConflictError, isSessionExpiredError } from '@/services/roadmap-http'
 import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-changes'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
+import { classifyRoadmapSaveError } from '@/lib/roadmap-sync-errors'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { storage } from '@/lib/storage'
 import type { ActivityChange, Phase, RoadmapConflictMetadata, ShareRole, TagDefinition } from '@/types/roadmap'
@@ -183,21 +183,19 @@ export function useSaveFlow({
       if (showActivity) setActivityRefreshKey((k) => k + 1)
       showToast('Saved · collaboration enabled')
     } catch (err) {
-      const nextConflict = getConflictMetadata(err)
-      if (nextConflict || isConflictError(err)) {
+      const { kind, conflictMetadata: nextConflict } = classifyRoadmapSaveError(err)
+      if (kind === 'conflict') {
         setIsConflict(true)
         setConflictMetadata(nextConflict)
-        if (nextConflict) {
-          setShowConflictReview(true)
-        }
+        if (nextConflict) setShowConflictReview(true)
         showToast('The roadmap changed elsewhere. Your edits are preserved locally.')
-      } else if (isSessionExpiredError(err)) {
+      } else if (kind === 'session-expired') {
         handleSessionExpired()
-      } else if (isApiError(err, 401)) {
+      } else if (kind === 'unauthorized') {
         showToast('Session expired — rejoin from the invite link')
-      } else if (isApiError(err, 403)) {
+      } else if (kind === 'forbidden') {
         showToast('You do not have permission for this action')
-      } else if (isApiConnectionError(err)) {
+      } else if (kind === 'connection') {
         showToast('RoadForge API is not reachable. Start the backend with make start.')
       } else {
         showToast('Save failed — check backend connection')
@@ -244,16 +242,16 @@ export function useSaveFlow({
       showToast('Saved your local version.')
       return null
     } catch (err) {
-      const nextConflict = getConflictMetadata(err)
-      if (nextConflict || isConflictError(err)) {
+      const { kind, conflictMetadata: nextConflict } = classifyRoadmapSaveError(err)
+      if (kind === 'conflict') {
         setIsConflict(true)
         if (nextConflict) setConflictMetadata(nextConflict)
         showToast('The server changed again. Review the latest conflict.')
         return 'The server changed again. Review the latest conflict.'
-      } else if (isSessionExpiredError(err)) {
+      } else if (kind === 'session-expired') {
         handleSessionExpired()
         return 'Session expired. Rejoin through an active invite link before resolving this conflict.'
-      } else if (isApiConnectionError(err)) {
+      } else if (kind === 'connection') {
         setIsOffline(true)
         showToast('Could not reach the server — try again later.')
         return 'Could not reach the server. Your local edits are still preserved in this browser.'
@@ -287,11 +285,12 @@ export function useSaveFlow({
       setIsOffline(false)
       showToast('Reloaded server version.')
     } catch (err) {
-      if (isApiConnectionError(err)) {
+      const { kind } = classifyRoadmapSaveError(err)
+      if (kind === 'connection') {
         showToast('Could not reach the server — try again later.')
-      } else if (isSessionExpiredError(err)) {
+      } else if (kind === 'session-expired') {
         handleSessionExpired()
-      } else if (isAuthError(err)) {
+      } else if (kind === 'unauthorized' || kind === 'forbidden') {
         showToast('Session expired — rejoin from the invite link.')
       } else {
         showToast('Could not reload server version.')
