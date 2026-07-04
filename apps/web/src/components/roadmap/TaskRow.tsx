@@ -495,12 +495,7 @@ export function TaskRow({
               <div
                 className={`task-action-area${showSubtaskForm || showDepPicker ? ' has-form' : ''}`}
               >
-                {unavailableActionsMessage ? (
-                  <div className="task-action-note">
-                    <Icon name="shield" size={14} />
-                    {unavailableActionsMessage}
-                  </div>
-                ) : showSubtaskForm ? (
+                {showSubtaskForm ? (
                   <SubtaskForm
                     canCommit={canCommitEdit}
                     onAdd={(title) => {
@@ -525,6 +520,11 @@ export function TaskRow({
                     }}
                     onCancel={() => setShowDepPicker(false)}
                   />
+                ) : unavailableActionsMessage ? (
+                  <div className="task-action-note">
+                    <Icon name="shield" size={14} />
+                    {unavailableActionsMessage}
+                  </div>
                 ) : (
                   <TaskDetailActions
                     showEditDetails={!inlineEdit.isEditing}
