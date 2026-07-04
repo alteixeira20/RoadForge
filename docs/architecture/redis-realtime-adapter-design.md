@@ -28,8 +28,8 @@ process-local Python objects:
   - Returns `RateLimitResult` with `allowed`, `remaining`, and `retry_after`.
   - `enforce()` raises FastAPI `429` with generic detail `"Too many requests. Try again later."` and a `Retry-After` header.
 
-The API defaults to exactly one Uvicorn worker through `ROADFORGE_API_WORKERS=1`.
-One worker is required for `ROADFORGE_REALTIME_BACKEND=memory` because SSE
+The API defaults to one API process with exactly one Uvicorn worker through
+`ROADFORGE_API_WORKERS=1`. Memory mode requires that topology because SSE
 subscribers, tickets, locks, and rate-limit buckets are isolated inside one
 Python process.
 
@@ -53,7 +53,7 @@ Multiple workers break current correctness:
 - Preserve accountless sessions and role-scoped participant access.
 - Preserve edit-lock semantics: 30 second soft locks, owner refresh, owner-only release by participant ID, and lock event broadcasts.
 - Preserve event-ticket one-time and TTL semantics.
-- Preserve current rate-limit behavior while allowing Redis storage later.
+- Preserve current rate-limit behavior across memory and Redis storage.
 - Avoid WebSockets.
 - Avoid changing frontend behavior in the first Redis implementation.
 
@@ -68,7 +68,7 @@ Multiple workers break current correctness:
 
 ## 4. Redis configuration boundary
 
-Proposed settings in `apps/api/src/api/config.py`:
+Implemented settings in `apps/api/src/api/config.py`:
 
 - `REDIS_URL`
   - Redis connection string. Example local value after RF-881: `redis://localhost:6379/0`.
@@ -96,7 +96,7 @@ Local development defaults:
 
 - Keep `ROADFORGE_REALTIME_BACKEND=memory` as the default.
 - Allow `REDIS_URL` to be omitted when `ROADFORGE_REALTIME_BACKEND=memory`.
-- Docker Compose provides a `redis` service and sets API `REDIS_URL=redis://redis:6379/0` for future adapter work.
+- Docker Compose provides a `redis` service and sets API `REDIS_URL=redis://redis:6379/0`.
 - Keep `ROADFORGE_API_WORKERS=1` unless explicitly validating Redis-backed
   multi-worker mode.
 
@@ -113,6 +113,13 @@ Fail-fast versus fallback:
 - If `ROADFORGE_REALTIME_BACKEND=memory`, the app should not require Redis and should keep the current single-worker behavior.
 - Do not automatically fall back from Redis to memory in production or when worker count is greater than one.
 - If a future deployment needs emergency fallback, it should be an explicit config change paired with single-worker mode.
+
+These checks are implemented twice where appropriate: application startup
+validates the worker/backend combination and Redis URL, then pings Redis during
+the FastAPI lifespan; the API container command also rejects memory mode with a
+worker count other than one before starting Uvicorn. This does not detect two
+separate one-worker API instances configured with memory. Operators must treat
+memory mode as single-process as well as single-worker.
 
 ## 5. Service adapter boundaries
 
@@ -514,8 +521,9 @@ Risks:
 
 Implementation status: complete as guarded, configurable deployment support.
 `ROADFORGE_API_WORKERS` controls the Uvicorn worker count, defaults to `1`, and
-container startup refuses values greater than `1` unless
-`ROADFORGE_REALTIME_BACKEND=redis`.
+both application and container startup refuse values greater than `1` unless
+`ROADFORGE_REALTIME_BACKEND=redis`. Redis mode also requires `REDIS_URL` and a
+successful startup ping.
 
 Likely files touched:
 
@@ -616,9 +624,11 @@ Clear recommendation:
 - [ ] Redis restart behavior is understood and documented for tickets, locks, Pub/Sub subscriptions, and rate counters.
 - [ ] Single-worker in-memory fallback still works when intentionally configured.
 
-## 13. Recommended decision
+## 13. Implemented decision
 
-Use adapter interfaces and keep the current in-memory services as the `memory` backend for single-worker development. Add Redis-backed adapters one service at a time:
+Adapter interfaces keep the current in-memory services as the `memory` backend
+for single-worker development. Redis-backed adapters were added one service at
+a time:
 
 - RF-882: Redis Pub/Sub event bus.
 - RF-883: Redis TTL keys for one-time SSE tickets.

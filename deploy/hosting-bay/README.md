@@ -81,18 +81,22 @@ Current required migration note:
 `ROADFORGE_API_WORKERS=1`. Multi-worker mode is configurable only when
 `ROADFORGE_REALTIME_BACKEND=redis`; the Dockerfile startup command refuses to
 start with `ROADFORGE_API_WORKERS` greater than `1` unless the Redis realtime
-backend is active. Keep `memory` plus one worker for ordinary local/deploy
+backend is active. Application startup enforces the same combination. Keep
+`memory` plus one worker and one API instance for ordinary local/deploy
 maintenance.
 
 **Redis backend status:** The compose stack provisions private Redis at
 `redis://roadforge-redis:6379/0`. Set `ROADFORGE_REALTIME_BACKEND=redis` and a
 worker count greater than `1` only for RF-886 staging validation or an approved
-multi-worker deployment. Do not use multi-worker mode with the memory backend.
+multi-worker deployment. Redis mode requires a successful startup ping and does
+not fall back to memory. Do not use multiple workers or API instances with the
+memory backend.
 
 ## Validation
 
 ```bash
 docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge ps
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge exec roadforge-redis redis-cli ping
 curl -I https://roadforge.alexandreteixeira.dev
 curl -s https://roadforge.alexandreteixeira.dev/api/health
 ```

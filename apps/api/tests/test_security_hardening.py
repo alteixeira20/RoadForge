@@ -3,9 +3,11 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from redis.exceptions import RedisError
 
 from api.config import Settings, get_settings
 from api.main import create_app
+from api.services import realtime_startup
 from api.services.client_ip_service import extract_client_ip
 
 
@@ -46,6 +48,92 @@ def test_production_rejects_default_database_url():
 
     with pytest.raises(RuntimeError, match="default local development DATABASE_URL"):
         settings.validate_startup_security()
+
+
+def test_memory_realtime_rejects_multiple_workers():
+    settings = Settings(realtime_backend="memory", api_workers=2)
+
+    with pytest.raises(RuntimeError, match="ROADFORGE_API_WORKERS must be 1"):
+        settings.validate_startup_realtime()
+
+
+def test_application_startup_rejects_multi_worker_memory_mode(monkeypatch):
+    monkeypatch.setenv("ROADFORGE_REALTIME_BACKEND", "memory")
+    monkeypatch.setenv("ROADFORGE_API_WORKERS", "2")
+    get_settings.cache_clear()
+
+    with pytest.raises(RuntimeError, match="ROADFORGE_API_WORKERS must be 1"):
+        create_app()
+
+    get_settings.cache_clear()
+
+
+def test_redis_realtime_requires_url():
+    settings = Settings(realtime_backend="redis", redis_url=None)
+
+    with pytest.raises(RuntimeError, match="REDIS_URL is required"):
+        settings.validate_startup_realtime()
+
+
+@pytest.mark.parametrize(
+    ("backend", "workers", "redis_url"),
+    [
+        ("memory", 1, None),
+        ("redis", 1, "redis://redis:6379/0"),
+        ("redis", 2, "redis://redis:6379/0"),
+    ],
+)
+def test_safe_realtime_worker_configurations_pass(backend, workers, redis_url):
+    settings = Settings(
+        realtime_backend=backend,
+        api_workers=workers,
+        redis_url=redis_url,
+    )
+
+    settings.validate_startup_realtime()
+
+
+async def test_redis_realtime_startup_pings_and_closes_client(monkeypatch):
+    calls = []
+
+    class FakeRedis:
+        async def ping(self):
+            calls.append("ping")
+
+        async def aclose(self):
+            calls.append("close")
+
+    monkeypatch.setattr(
+        realtime_startup.redis.Redis,
+        "from_url",
+        lambda *args, **kwargs: FakeRedis(),
+    )
+
+    await realtime_startup.validate_realtime_connectivity(
+        Settings(realtime_backend="redis", redis_url="redis://redis:6379/0")
+    )
+
+    assert calls == ["ping", "close"]
+
+
+async def test_redis_realtime_startup_fails_when_unreachable(monkeypatch):
+    class FakeRedis:
+        async def ping(self):
+            raise RedisError("unreachable")
+
+        async def aclose(self):
+            return None
+
+    monkeypatch.setattr(
+        realtime_startup.redis.Redis,
+        "from_url",
+        lambda *args, **kwargs: FakeRedis(),
+    )
+
+    with pytest.raises(RuntimeError, match="Redis is unavailable"):
+        await realtime_startup.validate_realtime_connectivity(
+            Settings(realtime_backend="redis", redis_url="redis://redis:6379/0")
+        )
 
 
 @pytest.mark.parametrize("trusted_proxy", ["0.0.0.0/0", "::/0"])

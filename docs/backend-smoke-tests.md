@@ -52,6 +52,38 @@ A non-200 response or connection refused means the stack is not ready. Check `do
 
 ---
 
+## Step 1b — Realtime deployment preflight
+
+Inspect the configured backend and worker count:
+
+```bash
+docker compose exec api sh -c \
+  'echo "backend=$ROADFORGE_REALTIME_BACKEND workers=$ROADFORGE_API_WORKERS"'
+```
+
+Expected:
+
+- `memory` is valid only with exactly one worker and one API process/instance.
+- More than one worker or API instance requires `redis`.
+- In Redis mode, startup requires `REDIS_URL` and a successful Redis ping; the
+  API must not silently fall back to memory.
+
+For Redis mode, also confirm Redis health and check API startup logs:
+
+```bash
+docker compose exec redis redis-cli ping
+docker compose logs --tail=40 api
+```
+
+Expected: `PONG`, `Application startup complete.`, and no Redis startup error.
+The local service name is `redis`; hosting-bay uses `roadforge-redis`.
+
+For a multi-worker staging check, complete
+`docs/manual-qa.md` section `30b`. A health response alone does not prove
+cross-worker event, ticket, lock, or rate-limit behavior.
+
+---
+
 ## Step 2 — Create a roadmap
 
 Extract `ROADMAP_ID` and `OWNER_TOKEN` from the response:

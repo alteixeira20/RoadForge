@@ -102,7 +102,7 @@ Before self-hosting or releasing RoadForge publicly:
 - **Review CSP reports** — the current application emits a report-only Content
   Security Policy. Review violations and move to enforcement only after the release
   candidate works without required exceptions.
-- **API worker mode** — the API defaults to one Uvicorn worker. Set `ROADFORGE_API_WORKERS` above `1` only with `ROADFORGE_REALTIME_BACKEND=redis`; container startup refuses unsafe memory-backed multi-worker mode.
+- **API worker mode** — the API defaults to one Uvicorn worker. Set `ROADFORGE_API_WORKERS` above `1` only with `ROADFORGE_REALTIME_BACKEND=redis`; application and container startup refuse unsafe memory-backed multi-worker mode.
 - **Run `make check` before deploying** — this runs `pnpm lint`, `pnpm typecheck`, and `pnpm build`. All three must pass with zero errors and zero warnings.
 - **Database migrations before rollback** — Alembic migrations are not reversible by default. Take a Postgres snapshot before any release that includes new files under `apps/api/alembic/versions/`.
 - **Run migrations on deploy** — releases at or after `0005_add_public_viewer_tokens.py` require `make migrate` so active viewer links can remain copyable as public read-only demo links.
@@ -188,6 +188,8 @@ Defined in `.env.example`. Copy to `.env.local` for local overrides.
 | `REDIS_URL` | `redis://redis:6379/0` | Backend Redis connection string |
 | `ROADFORGE_REALTIME_BACKEND` | `memory` | Backend realtime storage, `memory` or `redis` |
 | `ROADFORGE_REDIS_KEY_PREFIX` | `roadforge` | Backend namespace for Redis keys |
+| `ROADFORGE_REDIS_CONNECT_TIMEOUT_SECONDS` | `2` | Backend Redis connection timeout |
+| `ROADFORGE_REDIS_SOCKET_TIMEOUT_SECONDS` | `2` | Backend Redis command timeout |
 | `ROADFORGE_API_WORKERS` | `1` | Backend Uvicorn worker count; values greater than `1` require `ROADFORGE_REALTIME_BACKEND=redis` |
 
 ---
@@ -273,7 +275,7 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 - **Rate limiting** — app-level rate limiting is active. It is shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`.
 - **Content Security Policy** — a report-only policy is active; enforcement remains deferred.
 - **No CRDT merge UI** — conflict recovery reloads the server version; there is no three-way merge.
-- **Memory backend is single-worker only** — `ROADFORGE_API_WORKERS>1` requires `ROADFORGE_REALTIME_BACKEND=redis`.
+- **Memory backend is single-process only** — multiple workers or API instances require `ROADFORGE_REALTIME_BACKEND=redis`.
 
 ---
 

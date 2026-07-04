@@ -952,4 +952,7 @@ supported for existing roadmap files. New exports currently retain
 ## Deployment notes
 
 - Releases at or after `apps/api/alembic/versions/0005_add_public_viewer_tokens.py` must run `make migrate` / `alembic upgrade head`. That migration adds storage for active public viewer tokens.
-- Running multiple Uvicorn workers requires `ROADFORGE_REALTIME_BACKEND=redis`. The container startup refuses `ROADFORGE_API_WORKERS > 1` without Redis.
+- Running multiple Uvicorn workers requires `ROADFORGE_REALTIME_BACKEND=redis`.
+  Application and container startup refuse `ROADFORGE_API_WORKERS > 1` in
+  memory mode. Redis mode also requires `REDIS_URL` and a successful startup
+  ping. Multiple one-worker API instances must not use memory mode.

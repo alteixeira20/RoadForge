@@ -41,6 +41,7 @@ class Settings(BaseSettings):
         default=2,
         alias="ROADFORGE_REDIS_SOCKET_TIMEOUT_SECONDS",
     )
+    api_workers: int = Field(default=1, gt=0, alias="ROADFORGE_API_WORKERS")
     cors_origins: Union[list[str], str] = Field(
         default=["http://localhost:3020", "http://127.0.0.1:3020", "http://localhost:3000"],
         alias="ROADFORGE_CORS_ORIGINS",
@@ -107,6 +108,17 @@ class Settings(BaseSettings):
             self.database_url,
             allow_local=self.allow_local_database_in_production,
         )
+
+    def validate_startup_realtime(self) -> None:
+        if self.realtime_backend == "memory" and self.api_workers != 1:
+            raise RuntimeError(
+                "ROADFORGE_API_WORKERS must be 1 when "
+                "ROADFORGE_REALTIME_BACKEND=memory."
+            )
+        if self.realtime_backend == "redis" and not (self.redis_url or "").strip():
+            raise RuntimeError(
+                "REDIS_URL is required when ROADFORGE_REALTIME_BACKEND=redis."
+            )
 
 
 def _validate_production_secret(secret_key: str | None) -> None:

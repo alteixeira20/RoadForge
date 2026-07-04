@@ -591,7 +591,13 @@ Stop QA and file a blocker if any of the following are true:
 ## Known acceptable limitations
 
 - **No CRDT / three-way merge.** Conflict recovery (§25) offers structured review, keep-local retry, and reload-server fallback. It does not automatically merge fields or silently discard local edits.
-- **Memory backend is single-worker only.** Running multiple Uvicorn workers with `ROADFORGE_REALTIME_BACKEND=memory` would break realtime features. Container startup refuses that configuration. Multi-worker mode requires `ROADFORGE_REALTIME_BACKEND=redis` and successful RF-886 validation.
+- **Memory backend is single-process only.** Running multiple Uvicorn workers
+  or API instances with `ROADFORGE_REALTIME_BACKEND=memory` would break
+  realtime features. Application and container startup reject a configured
+  memory worker count other than one; operators must also avoid multiple
+  one-worker memory instances. Multi-worker mode requires
+  `ROADFORGE_REALTIME_BACKEND=redis`, a successful startup ping, and successful
+  RF-886 validation.
 - **No accounts / OAuth.** Session tokens in localStorage are the auth primitive. There is no login page, no password reset, and no user dashboard.
 - **Link revoke does not kick active participants.** Revoking a share link prevents new joins via that link but does not terminate existing sessions. To remove an active participant, use participant revoke (§7).
 - **Password gate not enforced on existing sessions.** A participant who already holds a session token is not re-prompted if the owner later enables a password.
