@@ -1,0 +1,70 @@
+/* ─── Shared slide panel shell ──────────────────────────────────────────────── */
+/* Both ActivityPanel and VersionsPanel use .slide-panel as the root class.     */
+/* .activity-panel and .versions-panel are modifier classes for panel-specific  */
+/* overrides only.                                                               */
+.slide-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 360px;
+  background: var(--panel);
+  border-left: 1px solid var(--border-strong);
+  z-index: var(--z-panel);
+  display: flex; flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  animation: slideIn 240ms cubic-bezier(.2,.8,.2,1);
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* Panel header — flex row: title area, optional actions, close button */
+.slide-panel .panel-head {
+  height: var(--header-h);
+  padding: 0 22px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.slide-panel h3 { font-size: 15px; font-weight: 600; color: var(--ink-2); margin: 0; flex: 1; }
+/* .panel-head-actions holds optional action buttons before the close button */
+.slide-panel .panel-head-actions {
+  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+}
+.slide-panel .close-btn {
+  color: var(--ink-4); transition: color 160ms; cursor: pointer;
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm);
+  padding: 4px; display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.slide-panel .close-btn:hover { color: var(--ink); background: var(--bg-2); border-color: var(--border); }
+
+.slide-panel .panel-body { flex: 1; overflow-y: auto; }
+
+.slide-panel .state-msg {
+  padding: 64px 32px; text-align: center; color: var(--ink-4);
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+}
+.slide-panel .state-msg p { margin: 0; font-size: 14px; }
+.slide-panel .state-msg small {
+  display: block;
+  margin-top: -8px;
+  color: var(--ink-4);
+  font-size: 12px;
+}
+.slide-panel .state-msg.error { color: var(--ember); }
+.slide-panel .state-msg.offline { color: var(--ink-3); }
+
+/* ─── Animations ───────────────────────────────────────────────────────────── */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spin { animation: spin 2s linear infinite; }
+
+/* ─── Responsive ───────────────────────────────────────────────────────────── */
+
+/* ── 600px — mobile: full-width panel ──────────────────────────────────── */
+@media (max-width: 600px) {
+  .slide-panel {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border-strong);
+  }
+}

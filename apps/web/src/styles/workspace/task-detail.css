@@ -1,0 +1,34 @@
+/* ─── Task detail panel ────────────────────────────────────────────────────── */
+.task-detail {
+  padding: 2px 22px 18px 56px;
+  display: flex; flex-direction: column;
+  gap: 12px;
+  animation: detailIn 240ms cubic-bezier(.2,.8,.2,1);
+  position: relative;
+}
+
+/* ─── Task detail sections ─────────────────────────────────────────────────── */
+.task-detail-section { margin-top: 4px; }
+.section-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-4); margin-bottom: 8px;
+}
+
+/* ─── Animations ───────────────────────────────────────────────────────────── */
+@keyframes detailIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Responsive ───────────────────────────────────────────────────────────── */
+
+/* ── 760px — tablet: tighten task detail layout ─────────────────────────── */
+@media (max-width: 760px) {
+  .task-detail { padding-left: 16px; padding-right: 16px; }
+}
+
+/* ── 600px — mobile: compact task detail density ────────────────────────── */
+@media (max-width: 600px) {
+  .task-detail { gap: 10px; }
+}

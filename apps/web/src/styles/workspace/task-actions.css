@@ -1,0 +1,116 @@
+/* ─── Task claim row ───────────────────────────────────────────────────────── */
+.task-claim-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.task-claim-row .claim-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px;
+  color: var(--sage);
+  flex: 1;
+}
+.task-claim-row .claim-btn {
+  flex-shrink: 0;
+}
+
+/* ─── Task actions ─────────────────────────────────────────────────────────── */
+.task-action-area {
+  width: fit-content;
+  max-width: min(100%, 720px);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.task-action-area.has-form {
+  width: min(100%, 720px);
+}
+
+.task-detail .actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+.task-detail .actions .btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  gap: 6px;
+}
+.task-detail .actions .task-details-action {
+  color: var(--ember);
+  border-color: color-mix(in srgb, var(--ember), transparent 68%);
+  background: var(--lava-glow);
+}
+.task-detail .actions .btn:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+.task-action-note {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--ink-3);
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
+
+/* ─── Task action forms ────────────────────────────────────────────────────── */
+.task-action-form {
+  margin-top: 0;
+  padding: 16px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
+  border-radius: 10px;
+  display: flex; flex-direction: column; gap: 12px;
+  animation: detailIn 200ms ease-out;
+  width: 100%;
+}
+
+.task-action-form .form-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14.5px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 160ms;
+}
+.task-action-form .form-input:focus { border-color: var(--ember); }
+
+.task-action-form .search-wrap {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 12px;
+  height: 38px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink-3);
+}
+.task-action-form .form-input-clean {
+  flex: 1; border: none; background: transparent; outline: none;
+  font-size: 14px; color: var(--ink);
+}
+
+.task-action-form .empty-state {
+  padding: 24px; text-align: center; font-size: 13px; color: var(--ink-4);
+}
+
+.form-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+
+/* ─── Responsive ───────────────────────────────────────────────────────────── */
+
+/* ── 600px — mobile: full-width task actions ───────────────────────────── */
+@media (max-width: 600px) {
+  .task-action-area,
+  .task-detail .actions { width: 100%; }
+  .task-detail .actions .btn {
+    flex: 1 1 140px;
+    justify-content: center;
+  }
+}

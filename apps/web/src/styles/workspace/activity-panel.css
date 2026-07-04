@@ -1,0 +1,15 @@
+/* ─── Activity panel ───────────────────────────────────────────────────────── */
+.activity-list { display: flex; flex-direction: column; }
+.activity-row {
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border-faint);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.activity-row:hover { background: var(--bg-2); }
+.activity-row .row-main { display: flex; gap: 8px; align-items: baseline; font-size: 14px; }
+.activity-row .actor { font-weight: 600; color: var(--ink-2); }
+.activity-row .action { color: var(--ink-3); }
+.activity-row .row-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.activity-row .details { color: var(--ember); font-family: var(--font-mono); }
+.activity-row .details .dim { color: var(--ink-4); font-family: var(--font-sans); font-size: 11px; }
+.activity-row .time { color: var(--ink-4); }
