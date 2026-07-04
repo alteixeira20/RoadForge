@@ -56,13 +56,18 @@ RF-821 is complete when all of the following are true:
     projection rows without rebuilding.
   - The report includes checked roadmaps, successful parity count, drift/error
     count, and whether projection reads can be considered safe to enable.
-- Automated tests split across three files:
+- Automated projection suites and focused write tests cover:
   - `apps/api/tests/test_roadmap_projection_roundtrip.py` — phase/task field preservation,
     source_json passthrough, invalid dep/parent normalization (RF-1906).
-  - `apps/api/tests/test_roadmap_projection_parity.py` — parity after create, update,
-    restore, drift reporting, and backfill verification reporting (RF-1907).
+  - `apps/api/tests/test_roadmap_projection_parity.py` — parity after create,
+    full update/import-style replacement, restore, claim-field drift reporting,
+    and backfill verification reporting (RF-1907).
   - `apps/api/tests/test_roadmap_projection_read_flag.py` — disabled-by-default check,
     parity-OK path, parity-failure fallback, and serialization-failure fallback (RF-1910).
+  - Task PATCH, done PATCH, and claim/unclaim tests verify title, description,
+    estimate, tags, ordered assignees, completion, claim identity/time,
+    dependencies, and parent links. Dependency edge order remains intentionally
+    non-canonical; parity compares dependency membership.
 
 ## Remaining
 

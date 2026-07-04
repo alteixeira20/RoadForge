@@ -392,6 +392,7 @@ async def test_projection_matches_scalar_tags_and_assignees_after_patch(
     response = await _patch(
         client,
         roadmap,
+        title="Projected title",
         desc="Projected description",
         est="8h",
         tags=["api"],
@@ -405,6 +406,7 @@ async def test_projection_matches_scalar_tags_and_assignees_after_patch(
     assert parity.ok is True
     projection = await serialize_projection_to_snapshot(db_session, roadmap["id"])
     projected = _task(projection)
+    assert projected["title"] == "Projected title"
     assert projected["desc"] == "Projected description"
     assert projected["est"] == "8h"
     assert projected["tags"] == ["api"]

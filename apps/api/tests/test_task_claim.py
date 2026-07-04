@@ -11,7 +11,10 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import Roadmap
-from api.services.roadmap_projection_service import validate_projection_parity
+from api.services.roadmap_projection_service import (
+    serialize_projection_to_snapshot,
+    validate_projection_parity,
+)
 from tests.helpers_projection import PHASES_WITH_TASKS, auth, create_with_phases
 
 pytestmark = pytest.mark.asyncio
@@ -300,6 +303,10 @@ async def test_projection_parity_after_claim(client: AsyncClient, db_session: As
     assert roadmap is not None
     parity = await validate_projection_parity(db_session, roadmap)
     assert parity.ok is True
+    projection = await serialize_projection_to_snapshot(db_session, body["id"])
+    assert _task_field(projection, "tk_a1", "claimedBy") == "Owner"
+    assert _task_field(projection, "tk_a1", "claimedById") is not None
+    assert _task_field(projection, "tk_a1", "claimedAt") is not None
 
 
 async def test_projection_parity_after_unclaim(client: AsyncClient, db_session: AsyncSession):
@@ -311,3 +318,7 @@ async def test_projection_parity_after_unclaim(client: AsyncClient, db_session: 
     assert roadmap is not None
     parity = await validate_projection_parity(db_session, roadmap)
     assert parity.ok is True
+    projection = await serialize_projection_to_snapshot(db_session, body["id"])
+    assert _task_field(projection, "tk_a1", "claimedBy") is None
+    assert _task_field(projection, "tk_a1", "claimedById") is None
+    assert _task_field(projection, "tk_a1", "claimedAt") is None

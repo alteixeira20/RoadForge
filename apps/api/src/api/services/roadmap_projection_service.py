@@ -410,9 +410,13 @@ def _task_scalar_value(task: dict[str, Any], key: str) -> Any:
     if key == "next":
         value = task.get("next")
         return value if isinstance(value, bool) else None
-    if key in {"est", "desc"}:
+    if key in {"est", "desc", "claimedBy", "claimedById"}:
         value = task.get(key)
         return value if isinstance(value, str) else None
+    if key == "claimedAt":
+        value = task.get(key)
+        parsed = _parse_claimed_at(value)
+        return parsed if parsed is not None else value
     return str(task.get(key, ""))
 
 
@@ -477,13 +481,23 @@ async def validate_projection_parity(db: AsyncSession, roadmap: Roadmap) -> Proj
             if snapshot_task.get("id") != projection_task.get("id"):
                 issues.append(f"task order/id mismatch at {phase_index}/{task_index}")
             task_owner = f"task {task_id}"
-            for key in ("id", "title", "done", "next", "est", "desc"):
+            for key in (
+                "id",
+                "title",
+                "done",
+                "next",
+                "est",
+                "desc",
+                "claimedBy",
+                "claimedById",
+                "claimedAt",
+            ):
                 _compare_scalar(
                     issues,
                     key,
                     task_owner,
                     _task_scalar_value(snapshot_task, key),
-                    projection_task.get(key),
+                    _task_scalar_value(projection_task, key),
                 )
             snapshot_parent = snapshot_task.get("parentId")
             if snapshot_parent not in snapshot_task_ids:

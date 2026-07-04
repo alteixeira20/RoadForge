@@ -13,9 +13,10 @@ Groups:
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.roadmap import Roadmap
+from api.models.roadmap import Roadmap, RoadmapTask
 from api.services.id_service import generate_id
 from api.services.roadmap_projection_service import (
     backfill_and_report_projection_drift,
@@ -29,11 +30,26 @@ from tests.helpers_projection import auth, create_with_phases
 pytestmark = pytest.mark.asyncio
 
 
-async def _put_phases(client, roadmap_id, token, phases, updated_at):
+async def _put_phases(
+    client,
+    roadmap_id,
+    token,
+    phases,
+    updated_at,
+    *,
+    action=None,
+):
+    payload = {"phases": phases, "last_updated_at": updated_at}
+    if action is not None:
+        payload["change_summary"] = {
+            "action": action,
+            "entity_type": "roadmap",
+            "entity_id": roadmap_id,
+        }
     resp = await client.put(
         f"/api/roadmaps/{roadmap_id}",
         headers=auth(token),
-        json={"phases": phases, "last_updated_at": updated_at},
+        json=payload,
     )
     assert resp.status_code == 200, resp.text
     return resp.json()
@@ -62,7 +78,10 @@ async def test_parity_ok_after_create(client, db_session: AsyncSession):
 # ─── Group F — Parity after update ───────────────────────────────────────────
 
 
-async def test_parity_ok_after_update(client, db_session: AsyncSession):
+async def test_parity_ok_after_full_update_import_style_replace(
+    client,
+    db_session: AsyncSession,
+):
     body = await create_with_phases(client)
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
@@ -75,10 +94,38 @@ async def test_parity_ok_after_update(client, db_session: AsyncSession):
             "color": "blue",
             "status": "done",
             "progress": 100,
-            "tasks": [{"id": "tk_a1", "title": "Task Updated", "done": True}],
+            "tasks": [
+                {
+                    "id": "tk_a1",
+                    "title": "Task Updated",
+                    "done": True,
+                    "next": False,
+                    "est": "3d",
+                    "desc": "Updated through the aggregate write path",
+                    "tags": ["backend", "projection"],
+                    "assignees": ["Owner", "Editor"],
+                    "claimedBy": "Owner",
+                    "claimedById": "pt_owner",
+                    "claimedAt": "2026-07-04T12:00:00Z",
+                },
+                {
+                    "id": "tk_a2",
+                    "title": "Child task",
+                    "done": False,
+                    "parentId": "tk_a1",
+                    "deps": ["tk_a1"],
+                },
+            ],
         }
     ]
-    await _put_phases(client, roadmap_id, owner_token, new_phases, body["updated_at"])
+    await _put_phases(
+        client,
+        roadmap_id,
+        owner_token,
+        new_phases,
+        body["updated_at"],
+        action="import.replaced",
+    )
 
     roadmap = await db_session.get(Roadmap, roadmap_id)
     assert roadmap is not None
@@ -88,7 +135,7 @@ async def test_parity_ok_after_update(client, db_session: AsyncSession):
     assert parity.ok is True
     assert parity.issues == []
     assert parity.phase_count_snapshot == 1
-    assert parity.task_count_snapshot == 1
+    assert parity.task_count_snapshot == 2
 
 
 # ─── Group G — Parity after restore ──────────────────────────────────────────
@@ -233,6 +280,32 @@ async def test_drift_report_detects_parity_failure(client, db_session: AsyncSess
     assert report.findings[0].roadmap_id == body["id"]
     assert report.findings[0].ok is False
     assert "phase count mismatch" in report.findings[0].issues
+
+
+async def test_parity_detects_claim_field_drift(client, db_session: AsyncSession):
+    body = await create_with_phases(client)
+    claim = await client.patch(
+        f"/api/roadmaps/{body['id']}/tasks/tk_a1/claim",
+        headers=auth(body["owner_session_token"]),
+    )
+    assert claim.status_code == 200, claim.text
+
+    task = await db_session.scalar(
+        select(RoadmapTask).where(
+            RoadmapTask.roadmap_id == body["id"],
+            RoadmapTask.client_task_id == "tk_a1",
+        )
+    )
+    assert task is not None
+    task.claimed_by_display_name = "Drifted owner"
+    await db_session.flush()
+
+    roadmap = await db_session.get(Roadmap, body["id"])
+    assert roadmap is not None
+    parity = await validate_projection_parity(db_session, roadmap)
+
+    assert parity.ok is False
+    assert "task tk_a1 claimedBy mismatch" in parity.issues
 
 
 # ─── Group J — Backfill verification report ──────────────────────────────────
