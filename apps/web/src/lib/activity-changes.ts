@@ -1,4 +1,27 @@
-import type { ActivityAction, ActivityChange, ChangeSummary } from '@/types/roadmap'
+import { getTaskAssignees, getVisibleTaskTags } from '@/lib/task-assignment'
+import type {
+  ActivityAction,
+  ActivityChange,
+  ChangeSummary,
+  Task,
+  TaskActivityField,
+} from '@/types/roadmap'
+
+const taskActivityFields: TaskActivityField[] = [
+  'title',
+  'desc',
+  'est',
+  'assignees',
+  'tags',
+]
+
+const taskActivityFieldLabels: Record<TaskActivityField, string> = {
+  title: 'title',
+  desc: 'description',
+  est: 'estimate',
+  assignees: 'assignees',
+  tags: 'tags',
+}
 
 const changePriority: Record<ActivityAction, number> = {
   'roadmap.imported': 1,
@@ -57,6 +80,68 @@ export function areOppositeActions(a: ActivityAction, b: ActivityAction): boolea
   )
 }
 
+function stringListsMatch(left: string[], right: string[]): boolean {
+  return left.length === right.length
+    && left.every((item, index) => item === right[index])
+}
+
+export function getChangedTaskFields(
+  task: Task,
+  updates: Partial<Task>,
+): TaskActivityField[] {
+  return taskActivityFields.filter((field) => {
+    if (!(field in updates)) return false
+    if (field === 'assignees') {
+      return !stringListsMatch(getTaskAssignees(task), updates.assignees ?? [])
+    }
+    if (field === 'tags') {
+      return !stringListsMatch(getVisibleTaskTags(task), updates.tags ?? [])
+    }
+    return (task[field] ?? '') !== (updates[field] ?? '')
+  })
+}
+
+function readChangedTaskFields(
+  metadata: Record<string, unknown> | null,
+): TaskActivityField[] {
+  const changedFields = metadata?.changedFields
+  if (!Array.isArray(changedFields)) return []
+  return taskActivityFields.filter((field) => changedFields.includes(field))
+}
+
+export function getTaskUpdateLabel(metadata: Record<string, unknown> | null): string {
+  const fields = readChangedTaskFields(metadata)
+  if (fields.length === 1 && fields[0] === 'title') return 'Renamed task'
+  if (fields.length === 1 && fields[0] === 'desc') return 'Updated task description'
+  if (fields.length > 0 && fields.every((field) => (
+    field === 'est' || field === 'assignees' || field === 'tags'
+  ))) {
+    return 'Updated task details'
+  }
+  return 'Updated task'
+}
+
+export function getTaskUpdateFieldSummary(
+  metadata: Record<string, unknown> | null,
+): string | null {
+  const labels = readChangedTaskFields(metadata).map((field) => taskActivityFieldLabels[field])
+  if (labels.length === 0) return null
+  if (labels.length === 1) return `${labels[0]} changed`
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]} changed`
+  return `${labels.slice(0, -1).join(', ')}, and ${labels.at(-1)} changed`
+}
+
+function mergeTaskUpdateFields(
+  existing: ActivityChange,
+  change: ActivityChange,
+): ActivityChange {
+  if (!existing.changedFields || !change.changedFields) return change
+  const changedFields = taskActivityFields.filter((field) => (
+    existing.changedFields?.includes(field) || change.changedFields?.includes(field)
+  ))
+  return { ...change, changedFields }
+}
+
 export function mergePendingActivityChange(prev: ActivityChange[], change: ActivityChange): ActivityChange[] {
   const key = dedupeKey(change)
   const existing = prev.find((item) => dedupeKey(item) === key)
@@ -69,7 +154,10 @@ export function mergePendingActivityChange(prev: ActivityChange[], change: Activ
     ))
   }
   if (existing && existing.action === change.action) {
-    return prev.map((item) => (dedupeKey(item) === key ? change : item))
+    const merged = change.action === 'task.updated'
+      ? mergeTaskUpdateFields(existing, change)
+      : change
+    return prev.map((item) => (dedupeKey(item) === key ? merged : item))
   }
   return [...prev, change]
 }

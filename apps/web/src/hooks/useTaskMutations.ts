@@ -3,6 +3,7 @@
 import type { Phase, Task, ActivityChange } from '@/types/roadmap'
 import { generateTaskId, generateSubtaskId, hasCycle as hasCycleGraph } from '@/lib/task-graph'
 import { getTaskCompletionBlocker } from '@/lib/task-completion'
+import { getChangedTaskFields } from '@/lib/activity-changes'
 import {
   buildTaskDoneActivityChanges,
   buildTaskDonePhases,
@@ -205,6 +206,10 @@ export function createTaskMutations({
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {
     if (readOnly) return
     const task = allTasks.find((t) => t.id === id)
+    if (!task) return
+    const changedFields = getChangedTaskFields(task, updates)
+    if (changedFields.length === 0) return
+
     const phase = findPhaseForTask(phases, id)
     setPhases(
       phases.map((p) => ({
@@ -212,17 +217,16 @@ export function createTaskMutations({
         tasks: p.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
       })),
     )
-    if (task) {
-      addActivity({
-        action: 'task.updated',
-        entity_type: 'task',
-        entity_id: id,
-        taskId: id,
-        taskTitle: updates.title ?? task.title,
-        phaseId: phase?.id,
-        phaseName: phase?.name,
-      })
-    }
+    addActivity({
+      action: 'task.updated',
+      entity_type: 'task',
+      entity_id: id,
+      taskId: id,
+      taskTitle: updates.title ?? task.title,
+      changedFields,
+      phaseId: phase?.id,
+      phaseName: phase?.name,
+    })
     setSaved(false)
   }
 

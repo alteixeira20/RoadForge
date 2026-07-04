@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { getRoadmapActivity } from '@/services/roadmap-realtime.service'
 import { isApiConnectionError } from '@/services/roadmap-http'
+import {
+  getTaskUpdateFieldSummary,
+  getTaskUpdateLabel,
+} from '@/lib/activity-changes'
 import type { ActivityLog } from '@/types/roadmap'
 
 interface ActivityPanelProps {
@@ -77,7 +81,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
       case 'task.created': return 'Added task'
       case 'task.completed': return 'Completed task'
       case 'task.reopened': return 'Reopened task'
-      case 'task.updated': return 'Updated task'
+      case 'task.updated': return getTaskUpdateLabel(metadata)
       case 'task.dependency.linked': return 'Linked dependency'
       case 'task.dependency.unlinked': return 'Unlinked dependency'
       case 'task.reordered': return 'Reordered tasks'
@@ -174,7 +178,11 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
     if (action === 'task.completed' || action === 'task.reopened' || action === 'task.created' || action === 'task.updated') {
       const task = [metadata_json?.taskId, metadata_json?.taskTitle].filter(Boolean).map(String).join(' — ')
       const phase = metadata_json?.phaseName ? ` · ${String(metadata_json.phaseName)}` : ''
-      return <span>{task}{phase}</span>
+      const fields = action === 'task.updated'
+        ? getTaskUpdateFieldSummary(metadata_json)
+        : null
+      const fieldDetails = fields ? ` · ${fields}` : ''
+      return <span>{task}{phase}{fieldDetails}</span>
     }
     if (action === 'task.dependency.linked' || action === 'task.dependency.unlinked') {
       return <span>{String(metadata_json?.taskId)} depends on {String(metadata_json?.dependencyId)}</span>

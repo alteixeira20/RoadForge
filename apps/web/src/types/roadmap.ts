@@ -137,12 +137,15 @@ export type ActivityAction =
   | 'task.claimed'
   | 'task.unclaimed'
 
+export type TaskActivityField = 'title' | 'desc' | 'est' | 'assignees' | 'tags'
+
 export interface ActivityChange {
   action: ActivityAction
   entity_type?: string
   entity_id?: string
   taskId?: string
   taskTitle?: string
+  changedFields?: TaskActivityField[]
   phaseId?: string
   phaseName?: string
   phaseNum?: string
