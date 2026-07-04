@@ -4,6 +4,7 @@ import {
   createRoadmapCheckpoint,
   deleteTaskClaim,
   exportRoadmap,
+  patchTask,
   patchTaskClaim,
   patchTaskDone,
 } from '@/services/roadmap-crud.service'
@@ -200,6 +201,83 @@ describe('patchTaskDone', () => {
       isConflictError(error) &&
       error.code === 'roadmap_conflict' &&
       error.conflict?.roadmap_id === 'rm_1'
+    ))
+  })
+})
+
+describe('patchTask', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('PATCHes only provided task fields with the mapped concurrency timestamp', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => apiRoadmap,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const roadmap = await patchTask({
+      roadmapId: 'rm_1',
+      taskId: 'tk_1',
+      updates: {
+        est: '2d',
+        assignees: ['Alex'],
+        tags: ['frontend'],
+      },
+      sessionToken: 'session-token',
+      lastUpdatedAt: '2026-05-29T10:00:00Z',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:7878/api/roadmaps/rm_1/tasks/tk_1',
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          est: '2d',
+          assignees: ['Alex'],
+          tags: ['frontend'],
+          last_updated_at: '2026-05-29T10:00:00Z',
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer session-token',
+        },
+      },
+    )
+    expect(roadmap.updatedAt).toBe('2026-05-29T10:01:00Z')
+  })
+
+  it('preserves structured conflicts for the shared conflict handler', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      statusText: 'Conflict',
+      json: async () => ({
+        detail: 'Roadmap has changed',
+        code: 'roadmap_conflict',
+        conflict: {
+          roadmap_id: 'rm_1',
+          server_updated_at: '2026-05-29T10:02:00Z',
+          client_last_updated_at: '2026-05-29T10:00:00Z',
+          server: { name: 'Launch', phases: [] },
+          summary: null,
+        },
+      }),
+    }))
+
+    await expect(patchTask({
+      roadmapId: 'rm_1',
+      taskId: 'tk_1',
+      updates: { title: 'Preserved draft' },
+      sessionToken: 'session-token',
+      lastUpdatedAt: '2026-05-29T10:00:00Z',
+    })).rejects.toSatisfy((error: unknown) => (
+      error instanceof ApiError
+      && isConflictError(error)
+      && error.conflict?.client_last_updated_at === '2026-05-29T10:00:00Z'
     ))
   })
 })

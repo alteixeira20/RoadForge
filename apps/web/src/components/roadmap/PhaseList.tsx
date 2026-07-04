@@ -22,6 +22,7 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { SortablePhaseItem } from './SortablePhaseItem'
 import type { ToastTone } from '@/hooks/useToastState'
+import type { TaskUpdateHandler } from '@/hooks/taskMutationHelpers'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 
 interface PhaseListProps {
@@ -37,7 +38,7 @@ interface PhaseListProps {
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
   pendingTaskDoneIds: ReadonlySet<string>
-  onUpdateTask: (id: string, updates: Partial<Task>) => void
+  onUpdateTask: TaskUpdateHandler
   onUpdatePhaseColor: (phaseId: string, color: string) => void
   onUpdatePhaseColorMode: (phaseId: string, mode: 'auto' | 'manual') => void
   onUpdatePhaseName: (phaseId: string, name: string) => void

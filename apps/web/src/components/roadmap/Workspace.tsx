@@ -29,6 +29,7 @@ import { useParticipantRevocation } from '@/hooks/useParticipantRevocation'
 import { createTaskMutations } from '@/hooks/useTaskMutations'
 import { usePhaseMutations } from '@/hooks/usePhaseMutations'
 import { useTaskDonePatch } from '@/hooks/useTaskDonePatch'
+import { useTaskPatch } from '@/hooks/useTaskPatch'
 import { useExpandedTaskState } from '@/hooks/useExpandedTaskState'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import type { ImportMode } from '@/lib/import-merge/types'
@@ -66,6 +67,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     phases,
     setPhases,
     tagRegistry,
+    setTagRegistry,
     saved,
     setSaved,
     ownerDisplayName,
@@ -207,12 +209,13 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   const {
     pendingTaskDoneIds,
-    partialWriteInFlight,
+    partialWriteInFlight: taskDonePatchInFlight,
     isTaskDonePatchInFlight,
     patchSyncedTaskDone,
   } = useTaskDonePatch({
     phases,
     setPhases,
+    setTagRegistry,
     saved,
     setSaved,
     serverRoadmapId,
@@ -224,6 +227,25 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     onConflict: (metadata) => taskDoneConflictRef.current(metadata),
     onSessionExpired: () => taskDoneSessionExpiredRef.current(),
   })
+  const {
+    taskPatchInFlight,
+    patchSyncedTask,
+  } = useTaskPatch({
+    phases,
+    setPhases,
+    setTagRegistry,
+    saved,
+    setSaved,
+    serverRoadmapId,
+    sessionToken,
+    updatedAt,
+    setUpdatedAt,
+    showToast,
+    onSuccess: () => taskDoneSuccessRef.current(),
+    onConflict: (metadata) => taskDoneConflictRef.current(metadata),
+    onSessionExpired: () => taskDoneSessionExpiredRef.current(),
+  })
+  const partialWriteInFlight = taskDonePatchInFlight || taskPatchInFlight
 
   const {
     syncStatus,
@@ -332,6 +354,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     readOnly,
     isTaskDonePatchInFlight,
     patchSyncedTaskDone,
+    patchSyncedTask,
   })
 
   const {

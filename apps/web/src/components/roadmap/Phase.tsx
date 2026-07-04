@@ -32,6 +32,7 @@ import { useRoadmapSession } from '@/context/RoadmapContext'
 import { computeTaskDisplayNumbers } from '@/lib/task-display'
 import { getPhaseDisplayColor } from '@/lib/phase-color'
 import type { ToastTone } from '@/hooks/useToastState'
+import type { TaskUpdateHandler } from '@/hooks/taskMutationHelpers'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 import type { ForgeStyle } from '@/types/ui'
 
@@ -43,7 +44,7 @@ interface PhaseProps {
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
   pendingTaskDoneIds: ReadonlySet<string>
-  onUpdateTask: (id: string, updates: Partial<Task>) => void
+  onUpdateTask: TaskUpdateHandler
   onUpdatePhaseColor: (phaseId: string, color: string) => void
   onUpdatePhaseColorMode: (phaseId: string, mode: 'auto' | 'manual') => void
   onUpdatePhaseName: (phaseId: string, name: string) => void

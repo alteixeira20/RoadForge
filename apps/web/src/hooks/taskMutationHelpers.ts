@@ -1,6 +1,10 @@
 import type { ActivityChange, Phase, Task } from '@/types/roadmap'
 
 export type InlineTaskField = 'title' | 'desc'
+export type TaskUpdateHandler = (
+  taskId: string,
+  updates: Partial<Task>,
+) => void | Promise<boolean>
 
 export type CommitTaskFieldResult =
   | {

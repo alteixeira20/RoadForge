@@ -9,11 +9,13 @@ import {
   isConflictError,
   isSessionExpiredError,
 } from '@/services/roadmap-http'
-import type { Phase, RoadmapConflictMetadata, Task } from '@/types/roadmap'
+import { applyPartialWriteResult } from './partialWriteHelpers'
+import type { Phase, RoadmapConflictMetadata, TagDefinition, Task } from '@/types/roadmap'
 
 interface UseTaskDonePatchParams {
   phases: Phase[]
   setPhases: (phases: Phase[]) => void
+  setTagRegistry: (registry: TagDefinition[]) => void
   saved: boolean
   setSaved: (saved: boolean) => void
   serverRoadmapId: string | null
@@ -43,6 +45,7 @@ interface UseTaskDonePatchResult {
 export function useTaskDonePatch({
   phases,
   setPhases,
+  setTagRegistry,
   saved,
   setSaved,
   serverRoadmapId,
@@ -119,9 +122,15 @@ export function useTaskDonePatch({
         sessionToken,
         lastUpdatedAt: updatedAt,
       })
-      if (wasSaved && savedRef.current) setPhases(roadmap.phases)
-      setUpdatedAt(roadmap.updatedAt)
-      if (wasSaved && savedRef.current) setSaved(true)
+      applyPartialWriteResult({
+        roadmap,
+        wasSaved,
+        currentSaved: savedRef.current,
+        setPhases,
+        setTagRegistry,
+        setUpdatedAt,
+        setSaved,
+      })
       onSuccess()
     } catch (err) {
       const currentSaved = savedRef.current
@@ -142,6 +151,7 @@ export function useTaskDonePatch({
     sessionToken,
     setPhases,
     setSaved,
+    setTagRegistry,
     setUpdatedAt,
     updatedAt,
   ])

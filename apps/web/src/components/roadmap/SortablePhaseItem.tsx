@@ -3,6 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Phase } from './Phase'
+import type { TaskUpdateHandler } from '@/hooks/taskMutationHelpers'
 import type { Phase as PhaseType, Task } from '@/types/roadmap'
 
 interface SortablePhaseItemProps {
@@ -14,7 +15,7 @@ interface SortablePhaseItemProps {
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
   pendingTaskDoneIds: ReadonlySet<string>
-  onUpdateTask: (id: string, updates: Partial<Task>) => void
+  onUpdateTask: TaskUpdateHandler
   onUpdatePhaseColor: (phaseId: string, color: string) => void
   onUpdatePhaseColorMode: (phaseId: string, mode: 'auto' | 'manual') => void
   onUpdatePhaseName: (phaseId: string, name: string) => void

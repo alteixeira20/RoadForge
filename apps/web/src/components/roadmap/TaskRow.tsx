@@ -16,6 +16,7 @@ import { TaskSubtaskSection } from './task-row/TaskSubtaskSection'
 import { useEditLock } from '@/hooks/useEditLock'
 import { useIdleEditPause } from '@/hooks/useIdleEditPause'
 import { useInlineTaskEdit } from '@/hooks/useInlineTaskEdit'
+import type { TaskUpdateHandler } from '@/hooks/taskMutationHelpers'
 import { useTaskClaim } from '@/hooks/useTaskClaim'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ensureRegistryForTagIds } from '@/lib/tag-registry'
@@ -36,7 +37,7 @@ interface TaskRowProps {
   onToggle: (id: string) => void
   onCheck: (id: string) => void
   pendingTaskDoneIds: ReadonlySet<string>
-  onUpdateTask: (id: string, updates: Partial<Task>) => void
+  onUpdateTask: TaskUpdateHandler
   onAddTask: (phaseId: string) => void
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
@@ -449,15 +450,17 @@ export function TaskRow({
               isNested={isNested}
               availableAssignees={availableAssignees}
               registry={tagRegistry}
-              onSave={(updates) => {
+              onSave={async (updates) => {
                 if (!canCommitEdit) return
-                if (updates.tags) {
+                const isSyncedUpdate = Boolean(serverRoadmapId && sessionToken)
+                const updateSucceeded = await onUpdateTask(task.id, updates)
+                if (updateSucceeded === false) return
+                if (!isSyncedUpdate && updates.tags) {
                   const nextRegistry = ensureRegistryForTagIds(updates.tags, tagRegistry)
                   if (nextRegistry.length !== tagRegistry.length) {
                     setTagRegistry(nextRegistry)
                   }
                 }
-                onUpdateTask(task.id, updates)
                 setIsEditing(false)
                 setEditDirty(false)
                 onToast('Task updated', 'success')

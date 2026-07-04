@@ -5,6 +5,7 @@ import {
   commitTaskField,
   type CommitTaskFieldResult,
   type InlineTaskField,
+  type TaskUpdateHandler,
 } from '@/hooks/taskMutationHelpers'
 import { useEditLock } from '@/hooks/useEditLock'
 import { useIdleEditPause } from '@/hooks/useIdleEditPause'
@@ -16,7 +17,7 @@ export interface UseInlineTaskEditParams {
   lockedByOther?: boolean
   serverRoadmapId: string | null
   sessionToken: string | null
-  onUpdateTask: (taskId: string, updates: Partial<Task>) => void
+  onUpdateTask: TaskUpdateHandler
   onAcquireError?: (isConflict: boolean) => void
 }
 
@@ -104,7 +105,10 @@ export function useInlineTaskEdit({
     const result = commitTaskField(task, activeField, value)
     if (!result.ok) return result
 
-    if (result.changed) onUpdateTask(task.id, result.updates)
+    if (result.changed) {
+      const updateSucceeded = await onUpdateTask(task.id, result.updates)
+      if (updateSucceeded === false) return null
+    }
     setActiveField(null)
     await release()
     return result

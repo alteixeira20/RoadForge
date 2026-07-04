@@ -3,6 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { TaskRow } from './TaskRow'
+import type { TaskUpdateHandler } from '@/hooks/taskMutationHelpers'
 import type { Task } from '@/types/roadmap'
 
 interface SortableTaskItemProps {
@@ -15,7 +16,7 @@ interface SortableTaskItemProps {
   onToggle: (id: string) => void
   onCheck: (id: string) => void
   pendingTaskDoneIds: ReadonlySet<string>
-  onUpdateTask: (id: string, updates: Partial<Task>) => void
+  onUpdateTask: TaskUpdateHandler
   onAddTask: (phaseId: string) => void
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void

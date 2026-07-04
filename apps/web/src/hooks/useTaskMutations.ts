@@ -10,12 +10,18 @@ import {
   findPhaseForTask,
   isPhaseComplete,
 } from './taskMutationHelpers'
+import type { PatchTaskUpdates } from '@/services/roadmap-crud.service'
 
 interface PatchSyncedTaskDoneParams {
   task: Task
   done: boolean
   nextPhases: Phase[]
   revertPhases: (taskId: string, done: boolean, phases: Phase[]) => Phase[]
+}
+
+interface PatchSyncedTaskParams {
+  task: Task
+  updates: PatchTaskUpdates
 }
 
 interface CreateTaskMutationsParams {
@@ -31,6 +37,7 @@ interface CreateTaskMutationsParams {
   readOnly: boolean
   isTaskDonePatchInFlight: (taskId: string) => boolean
   patchSyncedTaskDone: (params: PatchSyncedTaskDoneParams) => Promise<boolean>
+  patchSyncedTask: (params: PatchSyncedTaskParams) => Promise<boolean>
 }
 
 export interface TaskMutations {
@@ -39,7 +46,7 @@ export interface TaskMutations {
   handleAddTask: (phaseId: string, title?: string) => string
   handleAddSubtask: (parentId: string, title: string) => void
   handleDeleteSubtask: (subtaskId: string) => void
-  handleUpdateTask: (id: string, updates: Partial<Task>) => void
+  handleUpdateTask: (id: string, updates: Partial<Task>) => Promise<boolean>
   handleLinkDependency: (taskId: string, depId: string) => void
   handleUnlinkDependency: (taskId: string, depId: string) => void
   handleReorderTasks: (phaseId: string, taskIds: string[]) => void
@@ -59,6 +66,7 @@ export function createTaskMutations({
   readOnly,
   isTaskDonePatchInFlight,
   patchSyncedTaskDone,
+  patchSyncedTask,
 }: CreateTaskMutationsParams): TaskMutations {
   const allTasks = phases.flatMap((p) => p.tasks)
 
@@ -203,12 +211,26 @@ export function createTaskMutations({
     return newId
   }
 
-  const handleUpdateTask = (id: string, updates: Partial<Task>) => {
-    if (readOnly) return
+  const handleUpdateTask = async (
+    id: string,
+    updates: Partial<Task>,
+  ): Promise<boolean> => {
+    if (readOnly) return false
     const task = allTasks.find((t) => t.id === id)
-    if (!task) return
+    if (!task) return false
     const changedFields = getChangedTaskFields(task, updates)
-    if (changedFields.length === 0) return
+    if (changedFields.length === 0) return true
+
+    if (serverRoadmapId && sessionToken) {
+      if (!updatedAt) {
+        showToast('Reload the server roadmap before updating tasks.')
+        return false
+      }
+      const patchUpdates = Object.fromEntries(
+        changedFields.map((field) => [field, updates[field]]),
+      ) as PatchTaskUpdates
+      return patchSyncedTask({ task, updates: patchUpdates })
+    }
 
     const phase = findPhaseForTask(phases, id)
     setPhases(
@@ -228,6 +250,7 @@ export function createTaskMutations({
       phaseName: phase?.name,
     })
     setSaved(false)
+    return true
   }
 
   const handleLinkDependency = (taskId: string, depId: string) => {

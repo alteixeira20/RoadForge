@@ -3,7 +3,7 @@
 // Import / export helpers that run client-side are included here because they
 // map directly to roadmap data structures with no domain-specific concerns.
 
-import type { Roadmap, Phase, ShareRole, TagDefinition, ExportFormat, ChangeSummary, RoadmapVersionDetail, RoadmapVersionSummary } from '@/types/roadmap'
+import type { Roadmap, Phase, ShareRole, TagDefinition, ExportFormat, ChangeSummary, RoadmapVersionDetail, RoadmapVersionSummary, Task } from '@/types/roadmap'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
@@ -163,6 +163,19 @@ export interface PatchTaskDoneParams {
   lastUpdatedAt: string
 }
 
+export type PatchTaskUpdates = Partial<Pick<
+  Task,
+  'title' | 'desc' | 'est' | 'assignees' | 'tags'
+>>
+
+export interface PatchTaskParams {
+  roadmapId: string
+  taskId: string
+  updates: PatchTaskUpdates
+  sessionToken: string
+  lastUpdatedAt: string
+}
+
 export interface PatchTaskClaimParams {
   roadmapId: string
   taskId: string
@@ -223,6 +236,27 @@ export async function createRoadmapCheckpoint(
 }
 
 // ─── Task mutations ────────────────────────────────────────────────────────────
+
+export async function patchTask({
+  roadmapId,
+  taskId,
+  updates,
+  sessionToken,
+  lastUpdatedAt,
+}: PatchTaskParams): Promise<Roadmap> {
+  const data = await requestJson<ApiRoadmapResponse>(
+    `/api/roadmaps/${roadmapId}/tasks/${taskId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...updates,
+        last_updated_at: lastUpdatedAt,
+      }),
+    },
+    sessionToken,
+  )
+  return toRoadmap(data)
+}
 
 /**
  * Toggle a task's done state through the first partial roadmap write endpoint.

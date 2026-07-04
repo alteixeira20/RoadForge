@@ -20,7 +20,7 @@ interface TaskEditFormProps {
   isNested: boolean
   availableAssignees: string[]
   registry?: TagDefinition[]
-  onSave: (updates: Partial<Task>) => void
+  onSave: (updates: Partial<Task>) => void | Promise<void>
   onCancel: () => void
   onDirtyChange?: (dirty: boolean) => void
   canCommit?: boolean

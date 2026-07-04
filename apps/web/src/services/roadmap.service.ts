@@ -18,6 +18,8 @@ export {
 export type {
   CheckpointResult,
   PatchTaskClaimParams,
+  PatchTaskParams,
+  PatchTaskUpdates,
 } from './roadmap-crud.service'
 
 export {
@@ -25,6 +27,7 @@ export {
   getRoadmap,
   deleteRoadmap,
   saveToServer,
+  patchTask,
   patchTaskDone,
   patchTaskClaim,
   deleteTaskClaim,
