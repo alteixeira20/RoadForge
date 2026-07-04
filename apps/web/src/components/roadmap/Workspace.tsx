@@ -15,7 +15,11 @@ import { ActivityPanel } from './ActivityPanel'
 import { TeamPanel } from './TeamPanel'
 import { VersionsPanel } from './VersionsPanel'
 import { SyncStatusIndicator } from './SyncStatusIndicator'
-import { useRoadmap } from '@/context/RoadmapContext'
+import {
+  useRoadmapData,
+  useRoadmapLifecycle,
+  useRoadmapSession,
+} from '@/context/RoadmapContext'
 import { useWorkspaceModals } from '@/hooks/useWorkspaceModals'
 import { useWorkspaceViewModel } from '@/hooks/useWorkspaceViewModel'
 import { useToastState } from '@/hooks/useToastState'
@@ -64,6 +68,12 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     tagRegistry,
     saved,
     setSaved,
+    ownerDisplayName,
+    setOwnerDisplayName,
+    updatedAt,
+    setUpdatedAt,
+  } = useRoadmapData()
+  const {
     serverRoadmapId,
     setServerRoadmapId,
     sessionToken,
@@ -72,10 +82,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setParticipantId,
     role,
     setRole,
-    ownerDisplayName,
-    setOwnerDisplayName,
-    updatedAt,
-    setUpdatedAt,
+  } = useRoadmapSession()
+  const {
     activeRoadmapId,
     accessRevokedEvent,
     clearAccessRevokedEvent,
@@ -84,7 +92,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     roadmapUpgradeNotice,
     dismissRoadmapUpgradeNotice,
     realtimeStatus,
-  } = useRoadmap()
+  } = useRoadmapLifecycle()
   const readOnly = mode === 'viewer' || role === 'viewer'
   const canManageShare = role === 'owner'
   const canRenameRoadmap = !readOnly
