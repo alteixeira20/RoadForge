@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-assignment'
@@ -8,18 +8,17 @@ import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
 import { TaskDescriptionEditor } from './TaskDescriptionEditor'
-import { TaskInlineField } from './TaskInlineField'
-import { TaskSubtaskList } from './TaskSubtaskList'
+import { TaskClaimRow } from './task-row/TaskClaimRow'
+import { TaskDependencySection } from './task-row/TaskDependencySection'
+import { TaskDetailActions } from './task-row/TaskDetailActions'
+import { TaskRowHeader } from './task-row/TaskRowHeader'
+import { TaskSubtaskSection } from './task-row/TaskSubtaskSection'
 import { useEditLock } from '@/hooks/useEditLock'
 import { useIdleEditPause } from '@/hooks/useIdleEditPause'
 import { useInlineTaskEdit } from '@/hooks/useInlineTaskEdit'
 import { useTaskClaim } from '@/hooks/useTaskClaim'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import {
-  ensureRegistryForTagIds,
-  resolveTagColor,
-  resolveTagDisplay,
-} from '@/lib/tag-registry'
+import { ensureRegistryForTagIds } from '@/lib/tag-registry'
 import {
   deriveTaskStatus,
   getBlockingTasks,
@@ -272,6 +271,21 @@ export function TaskRow({
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
+  const handleOpenEditDetails = async () => {
+    const success = await tryAcquireEditLock()
+    if (success) setIsEditing(true)
+  }
+
+  const handleOpenSubtaskForm = async () => {
+    const success = await tryAcquireEditLock()
+    if (success) setShowSubtaskForm(true)
+  }
+
+  const handleOpenDependencyPicker = async () => {
+    const success = await tryAcquireEditLock()
+    if (success) setShowDepPicker(true)
+  }
+
   const handleBeginInlineEdit = async (field: 'title' | 'desc') => {
     if (activeForm || effectivelyReadOnly || inlineEdit.isEditing) return
     if (field === 'title') {
@@ -353,88 +367,47 @@ export function TaskRow({
         .filter(Boolean)
         .join(' ')}
     >
-      <div className="task-row">
-        <div
-          className={`drag-handle ${canDragTask ? '' : 'disabled'}`}
-          title={dragHandleTitle}
-          aria-hidden={!canDragTask}
-          {...(canDragTask ? dragHandleProps : {})}
-        >
-          <Icon name="grip" size={14} />
-        </div>
-        <div
-          className={`check${effectivelyReadOnly ? ' task-check-disabled' : ''}`}
-          aria-disabled={effectivelyReadOnly}
-          title={checkTitle}
-          onClick={(e) => {
-            e.stopPropagation()
-            if (!effectivelyReadOnly) onCheck(task.id)
-          }}
-        />
-        <TaskInlineField
-          field="title"
-          value={task.title}
-          draft={titleDraft}
-          active={expanded && inlineEdit.activeField === 'title'}
-          editable={expanded && !activeForm && !effectivelyReadOnly && !inlineEdit.isEditing}
-          busy={inlineEdit.isAcquiring || inlineEdit.isReleasing}
-          canCommit={inlineEdit.canCommit}
-          error={titleError ?? undefined}
-          errorId={`${task.id}-title-error`}
-          onBegin={() => { void handleBeginInlineEdit('title') }}
-          onDraftChange={(value) => {
+      <TaskRowHeader
+        task={task}
+        expanded={expanded}
+        status={taskStatus}
+        statusTitle={statusTitle}
+        visibleTags={visibleTags}
+        registry={tagRegistry}
+        lockedByOther={isLockedByOther}
+        lockHolderName={lockHolderName}
+        showEstimate={Boolean(task.est && blockedBy.length === 0 && !isNested)}
+        displayNumber={displayNumber}
+        canDrag={canDragTask}
+        dragHandleTitle={dragHandleTitle}
+        dragHandleProps={dragHandleProps}
+        checkDisabled={effectivelyReadOnly}
+        checkTitle={checkTitle}
+        titleEditor={{
+          draft: titleDraft,
+          active: expanded && inlineEdit.activeField === 'title',
+          editable: expanded && !activeForm && !effectivelyReadOnly && !inlineEdit.isEditing,
+          busy: inlineEdit.isAcquiring || inlineEdit.isReleasing,
+          canCommit: inlineEdit.canCommit,
+          error: titleError ?? undefined,
+          onBegin: () => { void handleBeginInlineEdit('title') },
+          onDraftChange: (value) => {
             setTitleDraft(value)
             if (value.trim()) setTitleError(null)
-          }}
-          onCommit={() => { void handleCommitInlineEdit() }}
-          onCancel={() => { void handleCancelInlineEdit() }}
-          onInteraction={handleInlineInteraction}
-        />
-        <span
-          className={`task-status-badge is-${taskStatus}`}
-          title={statusTitle}
-        >
-          {TASK_STATUS_LABELS[taskStatus]}
-        </span>
-        {visibleTags.slice(0, 2).map((tagId) => (
-          <span
-            key={tagId}
-            className="tag-pill task-row-tag"
-            style={{ '--tag-bg': resolveTagColor(tagId, tagRegistry) } as CSSProperties}
-          >
-            {resolveTagDisplay(tagId, tagRegistry).label}
-          </span>
-        ))}
-        {visibleTags.length > 2 && (
-          <span className="meta-pill">+{visibleTags.length - 2}</span>
-        )}
-        {isLockedByOther && (
-          <span className="meta-pill meta-pill-lock">
-            <Icon name="shield" size={11} /> {lockHolderName} is editing
-          </span>
-        )}
-        {task.est && blockedBy.length === 0 && !isNested && (
-          <span className="meta-pill">{task.est}</span>
-        )}
-        {displayNumber && <span className="task-num">{displayNumber}</span>}
-        <span className="id">{task.id}</span>
-        <button
-          type="button"
-          className="toggle-btn"
-          onClick={(e) => {
-            e.stopPropagation()
-            if ((isEditing && editDirty) || inlineEdit.isEditing) {
-              onToast('Save or discard your edits first.')
-              return
-            }
-            onToggle(task.id)
-          }}
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse task' : 'Expand task'}
-        >
-          <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={18} />
-        </button>
-      </div>
+          },
+          onCommit: () => { void handleCommitInlineEdit() },
+          onCancel: () => { void handleCancelInlineEdit() },
+          onInteraction: handleInlineInteraction,
+        }}
+        onCheck={() => onCheck(task.id)}
+        onToggle={() => {
+          if ((isEditing && editDirty) || inlineEdit.isEditing) {
+            onToast('Save or discard your edits first.')
+            return
+          }
+          onToggle(task.id)
+        }}
+      />
 
       {expanded && (
         <div
@@ -554,129 +527,51 @@ export function TaskRow({
                     onCancel={() => setShowDepPicker(false)}
                   />
                 ) : (
-                  <div className="actions" role="group" aria-label="Task actions">
-                    {!inlineEdit.isEditing && (
-                      <button
-                        type="button"
-                        className="btn sm task-details-action"
-                        onClick={async () => {
-                          const success = await tryAcquireEditLock()
-                          if (success) setIsEditing(true)
-                        }}
-                      >
-                        <Icon name="pencil" size={13} /> Edit details
-                      </button>
-                    )}
-                    {!isNested && (
-                      <button type="button" className="btn sm" disabled={inlineEdit.isEditing} onClick={async () => {
-                        const success = await tryAcquireEditLock()
-                        if (success) setShowSubtaskForm(true)
-                      }}>
-                        <Icon name="plus" size={13} /> Add subtask
-                      </button>
-                    )}
-                    {!isNested && (
-                      <button type="button" className="btn sm" disabled={inlineEdit.isEditing} onClick={async () => {
-                        const success = await tryAcquireEditLock()
-                        if (success) setShowDepPicker(true)
-                      }}>
-                        <Icon name="link" size={13} /> Link dependency
-                      </button>
-                    )}
-                  </div>
+                  <TaskDetailActions
+                    showEditDetails={!inlineEdit.isEditing}
+                    showChildActions={!isNested}
+                    childActionsDisabled={inlineEdit.isEditing}
+                    onEditDetails={() => { void handleOpenEditDetails() }}
+                    onAddSubtask={() => { void handleOpenSubtaskForm() }}
+                    onLinkDependency={() => { void handleOpenDependencyPicker() }}
+                  />
                 )}
               </div>
 
-              {depTasks.length > 0 && (
-                <div className="task-detail-section">
-                  <div className="section-label">Depends on</div>
-                  <div className="deps">
-                    {depTasks.map((d) => (
-                      <div key={d.id} className="dep-row" onClick={() => navigateToTask(d.id)}>
-                        <Icon
-                          name={d.done ? 'circle-check' : 'circle'}
-                          size={14}
-                          stroke={d.done ? 'var(--ink-3)' : 'var(--ember)'}
-                        />
-                        <span className="title">{d.title}</span>
-                        <span className="did">{d.id}</span>
-                        <span className={`dst ${d.done ? 'done' : 'ready'}`}>
-                          {d.done ? 'done' : 'ready'}
-                        </span>
-                        {!effectivelyReadOnly && (
-                          <button
-                            className="btn-remove"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onUnlinkDependency(task.id, d.id)
-                              onToast('Dependency removed', 'success')
-                            }}
-                            title="Unlink dependency"
-                          >
-                            <Icon name="x" size={12} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <TaskDependencySection
+                dependencies={depTasks}
+                readOnly={effectivelyReadOnly}
+                onNavigate={navigateToTask}
+                onUnlink={(dependencyId) => {
+                  onUnlinkDependency(task.id, dependencyId)
+                  onToast('Dependency removed', 'success')
+                }}
+              />
 
-              {subtasks.length > 0 && (
-                <div className="task-detail-section">
-                  <div className="section-label">Subtasks</div>
-                  <div className="subtasks">
-                    <TaskSubtaskList
-                      parentId={task.id}
-                      subtasks={subtasks}
-                      readOnly={readOnly}
-                      pendingTaskDoneIds={pendingTaskDoneIds}
-                      onCheck={onCheck}
-                      onDelete={onDeleteSubtask}
-                      onReorder={onReorderSubtasks}
-                      parentDisplayNumber={displayNumber}
-                    />
-                  </div>
-                </div>
-              )}
+              <TaskSubtaskSection
+                parentId={task.id}
+                subtasks={subtasks}
+                readOnly={readOnly}
+                pendingTaskDoneIds={pendingTaskDoneIds}
+                onCheck={onCheck}
+                onDelete={onDeleteSubtask}
+                onReorder={onReorderSubtasks}
+                parentDisplayNumber={displayNumber}
+              />
 
               {!isEditing && !task.done && (
-                <div className="task-claim-row">
-                  {claimer ? (
-                    <>
-                      <span className="claim-status">
-                        <Icon name="user" size={13} />
-                        {isClaimedByMe ? 'Working on this' : `${claimer} is working on this`}
-                      </span>
-                      {!readOnly && (isClaimedByMe || canOverrideClaim) && (
-                        <button
-                          type="button"
-                          className="btn sm ghost claim-btn"
-                          onClick={() => {
-                            if (isClaimedByMe) void handleUnclaim()
-                            else handleClaimOverride()
-                          }}
-                          disabled={isClaiming}
-                          title={isClaimedByMe ? 'Stop working on this' : 'Owner override'}
-                        >
-                          {isClaimedByMe ? 'Stop working' : 'Override claim'}
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    !readOnly && (
-                      <button
-                        type="button"
-                        className="btn sm ghost claim-btn"
-                        onClick={() => { void handleClaim() }}
-                        disabled={isClaiming}
-                        title="Claim this task as yours"
-                      >
-                        <Icon name="user" size={13} /> Work on this
-                      </button>
-                    )
-                  )}
-                </div>
+                <TaskClaimRow
+                  claimer={claimer}
+                  claimedByMe={isClaimedByMe}
+                  readOnly={readOnly}
+                  canOverride={canOverrideClaim}
+                  isClaiming={isClaiming}
+                  onClaim={() => { void handleClaim() }}
+                  onClaimAction={() => {
+                    if (isClaimedByMe) void handleUnclaim()
+                    else handleClaimOverride()
+                  }}
+                />
               )}
 
             </>
