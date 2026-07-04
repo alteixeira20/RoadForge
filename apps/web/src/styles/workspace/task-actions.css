@@ -27,22 +27,22 @@
 
 .task-detail .actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-start;
 }
 .task-detail .actions .btn {
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 7px;
-  font-size: 12.5px;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 6px;
+  font-size: 12px;
   gap: 6px;
 }
 .task-detail .actions .task-details-action {
-  color: var(--ember);
-  border-color: color-mix(in srgb, var(--ember), transparent 68%);
-  background: var(--lava-glow);
+  color: var(--ink-2);
+  border-color: var(--border-faint);
+  background: var(--bg-2);
 }
 .task-detail .actions .btn:focus-visible {
   outline: 2px solid var(--ember);

@@ -490,7 +490,6 @@ export function TaskRow({
                 assignedNames={assignedNames}
                 visibleTags={visibleTags}
                 registry={tagRegistry}
-                showDescription={false}
               />
 
               <div
