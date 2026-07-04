@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useRef, type ReactNode } from 'react'
 import type {
   Phase,
   RealtimeConnectionStatus,
@@ -324,7 +324,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
 
   // ─── Slice values ──────────────────────────────────────────────────────────
 
-  const dataValue: RoadmapDataContextValue = {
+  const dataValue = useMemo<RoadmapDataContextValue>(() => ({
     displayName, setDisplayName,
     roadmapName, setRoadmapName,
     phases, setPhases,
@@ -333,17 +333,44 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     ownerDisplayName, setOwnerDisplayName,
     updatedAt, setUpdatedAt,
     tagRegistry, setTagRegistry,
-  }
+  }), [
+    displayName,
+    setDisplayName,
+    roadmapName,
+    setRoadmapName,
+    phases,
+    setPhases,
+    saved,
+    setSaved,
+    isPasswordEnabled,
+    setIsPasswordEnabled,
+    ownerDisplayName,
+    setOwnerDisplayName,
+    updatedAt,
+    setUpdatedAt,
+    tagRegistry,
+    setTagRegistry,
+  ])
 
-  const sessionValue: RoadmapSessionContextValue = {
+  const sessionValue = useMemo<RoadmapSessionContextValue>(() => ({
     serverRoadmapId, setServerRoadmapId,
     sessionToken, setSessionToken,
     participantId, setParticipantId,
     role, setRole,
     locks,
-  }
+  }), [
+    serverRoadmapId,
+    setServerRoadmapId,
+    sessionToken,
+    setSessionToken,
+    participantId,
+    setParticipantId,
+    role,
+    setRole,
+    locks,
+  ])
 
-  const lifecycleValue: RoadmapLifecycleContextValue = {
+  const lifecycleValue = useMemo<RoadmapLifecycleContextValue>(() => ({
     activeRoadmapId,
     activateRoadmap,
     createLocalRoadmap,
@@ -356,13 +383,26 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     roadmapUpgradeNotice,
     dismissRoadmapUpgradeNotice,
     realtimeStatus,
-  }
+  }), [
+    activeRoadmapId,
+    activateRoadmap,
+    createLocalRoadmap,
+    resetToSample,
+    removeRoadmapFromBrowser,
+    accessRevokedEvent,
+    clearAccessRevokedEvent,
+    sessionExpiredRoadmapId,
+    clearSessionExpiredNotice,
+    roadmapUpgradeNotice,
+    dismissRoadmapUpgradeNotice,
+    realtimeStatus,
+  ])
 
-  const combinedValue: RoadmapContextValue = {
+  const combinedValue = useMemo<RoadmapContextValue>(() => ({
     ...dataValue,
     ...sessionValue,
     ...lifecycleValue,
-  }
+  }), [dataValue, sessionValue, lifecycleValue])
 
   return (
     <RoadmapDataContext.Provider value={dataValue}>
