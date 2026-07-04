@@ -2,6 +2,9 @@
 
 RoadForge is a local-first, accountless roadmap application from Anvilary.
 
+Roadmap planning, external implementation artifacts, credentials, and portable
+data follow the [source-of-truth rules](source-of-truth-rules.md).
+
 ## Browser
 
 The Next.js client edits roadmap state immediately and caches each roadmap in scoped

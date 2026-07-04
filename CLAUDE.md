@@ -203,6 +203,9 @@ Current roadmap upgrade behavior also repairs older phase/task shapes: missing/n
 
 ## Local-first behavior — preserve this
 
+- Follow the architecture
+  [source-of-truth rules](docs/architecture/source-of-truth-rules.md) for
+  roadmap state, external implementation links, credentials, and portable data.
 - The frontend works fully without the backend running
 - `RoadmapContext` falls back to `SAMPLE_ROADMAP` when no localStorage state exists
 - Backend calls happen only after user-initiated actions (Save, Share rotate/revoke, Join)
