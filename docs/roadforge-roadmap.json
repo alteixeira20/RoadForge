@@ -2,455 +2,1063 @@
   "schema": "anvilary.roadmap.import",
   "version": 1,
   "roadmap": {
-    "name": "RoadForge Inline Task Editing"
+    "name": "RoadForge Public Alpha Readiness + GitHub Links"
   },
   "tagRegistry": [
-    { "id": "size-xs", "label": "size:XS", "color": "#8a9aa8" },
-    { "id": "size-s", "label": "size:S", "color": "#7d9c6e" },
-    { "id": "size-m", "label": "size:M", "color": "#c9a15a" },
-    { "id": "size-l", "label": "size:L", "color": "#c47a4f" },
-    { "id": "risk-low", "label": "risk:low", "color": "#5f8f5f" },
-    { "id": "risk-med", "label": "risk:medium", "color": "#c9903a" },
-    { "id": "risk-high", "label": "risk:high", "color": "#c05545" },
-    { "id": "frontend", "label": "frontend" },
-    { "id": "backend", "label": "backend" },
-    { "id": "css", "label": "css" },
-    { "id": "docs", "label": "docs" },
-    { "id": "tests", "label": "tests" },
-    { "id": "ux", "label": "ux" },
-    { "id": "beta", "label": "beta" }
+    {
+      "id": "size-xs",
+      "label": "size:XS",
+      "color": "#8a9aa8"
+    },
+    {
+      "id": "size-s",
+      "label": "size:S",
+      "color": "#7d9c6e"
+    },
+    {
+      "id": "size-m",
+      "label": "size:M",
+      "color": "#c9a15a"
+    },
+    {
+      "id": "size-l",
+      "label": "size:L",
+      "color": "#c47a4f"
+    },
+    {
+      "id": "risk-low",
+      "label": "risk:low",
+      "color": "#5f8f5f"
+    },
+    {
+      "id": "risk-med",
+      "label": "risk:medium",
+      "color": "#c9903a"
+    },
+    {
+      "id": "risk-high",
+      "label": "risk:high",
+      "color": "#c05545"
+    },
+    {
+      "id": "frontend",
+      "label": "frontend"
+    },
+    {
+      "id": "backend",
+      "label": "backend"
+    },
+    {
+      "id": "css",
+      "label": "css"
+    },
+    {
+      "id": "docs",
+      "label": "docs"
+    },
+    {
+      "id": "tests",
+      "label": "tests"
+    },
+    {
+      "id": "ux",
+      "label": "ux"
+    },
+    {
+      "id": "security",
+      "label": "security"
+    },
+    {
+      "id": "deploy",
+      "label": "deploy"
+    },
+    {
+      "id": "realtime",
+      "label": "realtime"
+    },
+    {
+      "id": "github",
+      "label": "github"
+    },
+    {
+      "id": "architecture",
+      "label": "architecture"
+    },
+    {
+      "id": "refactor",
+      "label": "refactor"
+    },
+    {
+      "id": "data-model",
+      "label": "data-model"
+    },
+    {
+      "id": "source-of-truth",
+      "label": "source-of-truth"
+    },
+    {
+      "id": "alpha",
+      "label": "alpha"
+    },
+    {
+      "id": "beta",
+      "label": "beta"
+    }
   ],
   "phases": [
     {
       "id": "phase-01",
       "num": "01",
-      "name": "Public Alpha polish blockers",
-      "color": "#c05545",
+      "name": "Architecture modularization and source-of-truth cleanup",
+      "color": "#5b8bab",
       "colorMode": "manual",
       "status": "active",
       "progress": 0,
       "tasks": [
         {
-          "id": "IE-101",
-          "title": "Restore bullet markers in Markdown lists",
+          "id": "RF-101",
+          "title": "Audit large files and define refactor boundaries",
           "done": false,
           "next": true,
-          "est": "1h",
-          "tags": ["css", "size-xs", "risk-low"],
+          "est": "4h",
+          "tags": [
+            "architecture",
+            "refactor",
+            "docs",
+            "size-s",
+            "risk-low"
+          ],
           "deps": [],
-          "desc": "**Problem:** `- item` lists in task descriptions render without bullet dots. Tailwind preflight resets `list-style` to `none` on `ul`/`ol`, and `.markdown-description ul, ol` in `apps/web/src/styles/workspace/task-row.css` (~line 137) only restores margin/padding, never `list-style`.\n\n**Fix:** add `list-style: disc` for `ul` and `list-style: decimal` for `ol` scoped under `.markdown-description`. Keep the existing `.task-list-item { list-style: none }` override so checkbox items stay marker-free. Do not rename any CSS class.\n\n**Acceptance criteria**\n- [ ] `- item` renders with a visible bullet dot\n- [ ] `1. item` renders with numbers\n- [ ] `- [ ] item` checkbox lists still show no marker\n- [ ] Nothing else in task detail layout shifts\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`, then manually open a task whose description contains all three list types in light and dark theme."
+          "desc": "Create a read-only map of current large frontend/backend files and where responsibilities are mixed.\n\n\n**Scope**\n- Identify files that act as orchestration hubs, especially Workspace, TaskRow, save/sync hooks, roadmap services, router modules, and CSS ownership.\n- Mark what should be split now versus deferred until after alpha.\n- Document invariants that must not break: local-first cache, whole-task lock safety, autosync, import/export compatibility, role gates.\n\n\n**Acceptance criteria**\n- [ ] File responsibility map exists in docs/architecture or an implementation note.\n- [ ] Each proposed split has a concrete target module and rollback-safe slice.\n- [ ] No code changes in this audit slice.\n\n\n**Validation**\n`pnpm lint && pnpm typecheck && pnpm build` if docs imports or references are touched; otherwise review only."
         },
         {
-          "id": "IE-102",
-          "title": "Remove shortcut badge from the search input",
+          "id": "RF-102",
+          "title": "Split Workspace orchestration into focused containers and hooks",
           "done": false,
-          "next": true,
-          "est": "30m",
-          "tags": ["frontend", "size-xs", "risk-low"],
-          "deps": [],
-          "desc": "**Problem:** the toolbar search box shows a `⌘ K` badge (`<span className=\"kbd\">` in `apps/web/src/components/roadmap/WorkspaceToolbar.tsx`, ~line 153). Product decision: the badge should not be shown.\n\n**Fix:** remove the badge span only. Keep the Ctrl/Cmd+K focus handler (the `useEffect` keydown listener) working exactly as today. Check whether the `.kbd` rule in `src/styles/workspace-toolbar.css` is used elsewhere before deleting it; if it is shared, leave the CSS alone.\n\n**Acceptance criteria**\n- [ ] No shortcut badge visible in the search field\n- [ ] Ctrl/Cmd+K still focuses the search input\n- [ ] Search placeholder and icon unchanged\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`, manual check of search focus shortcut."
+          "est": "1d",
+          "tags": [
+            "architecture",
+            "refactor",
+            "frontend",
+            "size-l",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-101"
+          ],
+          "desc": "Reduce Workspace.tsx from a central conductor into smaller ownership-based pieces.\n\n\n**Scope**\n- Extract view/panel orchestration, participant/team operations, restore/version panel coordination, and task mutation wiring only where it reduces complexity.\n- Preserve existing route behavior and localStorage UI state behavior.\n- Do not change product behavior.\n\n\n**Acceptance criteria**\n- [ ] Workspace becomes easier to scan and does not own unrelated panel internals.\n- [ ] Roadmap/Team/Activity/Versions behavior remains unchanged.\n- [ ] No new monolithic replacement file is introduced.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`."
         },
         {
-          "id": "IE-103",
-          "title": "Persist dismissal of the roadmap-updated notice",
+          "id": "RF-103",
+          "title": "Split TaskRow into header, description, metadata, actions, and child sections",
           "done": false,
-          "next": true,
+          "est": "1d",
+          "tags": [
+            "architecture",
+            "refactor",
+            "frontend",
+            "ux",
+            "size-l",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-101"
+          ],
+          "desc": "TaskRow still carries too much UI and state logic. Split it into small components without changing behavior.\n\n\n**Scope**\n- Keep title inline editing and description inline editing intact.\n- Keep Estimate, Assignees, and Tags as read-only metadata edited via Edit details.\n- Keep Add subtask, Link dependency, claim row, dependencies, subtasks, locks, and read-only states intact.\n- Avoid introducing a new all-purpose TaskDetail monolith.\n\n\n**Acceptance criteria**\n- [ ] TaskRow becomes a composition shell with clear subcomponents.\n- [ ] Each extracted file has a narrow responsibility.\n- [ ] No regression in expanded task behavior.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual check one expanded task."
+        },
+        {
+          "id": "RF-104",
+          "title": "Split save, autosync, conflict, and realtime status ownership",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "architecture",
+            "refactor",
+            "frontend",
+            "realtime",
+            "size-l",
+            "risk-high"
+          ],
+          "deps": [
+            "RF-102"
+          ],
+          "desc": "Make save/sync/conflict behavior easier to maintain before adding GitHub link mutations.\n\n\n**Scope**\n- Separate debounced autosync, explicit save, conflict review, session expiry, and activity refresh responsibilities where practical.\n- Keep existing conflict behavior and draft preservation.\n- Do not change backend APIs.\n\n\n**Acceptance criteria**\n- [ ] Autosync and explicit save flows are easier to test independently.\n- [ ] Conflict review still opens for 409 metadata.\n- [ ] Offline/session-expired behavior remains unchanged.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual conflict smoke if touched."
+        },
+        {
+          "id": "RF-105",
+          "title": "Clarify RoadmapContext and remove legacy combined usage where practical",
+          "done": false,
+          "est": "5h",
+          "tags": [
+            "architecture",
+            "refactor",
+            "frontend",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-102"
+          ],
+          "desc": "RoadmapContext is already split internally, but many consumers may still use the legacy combined hook.\n\n\n**Scope**\n- Prefer focused hooks for new/refactored components.\n- Remove legacy combined usage only where it is safe and improves subscription clarity.\n- Keep the legacy hook exported until all major consumers are migrated.\n\n\n**Acceptance criteria**\n- [ ] No component subscribes to more roadmap state than it needs in newly touched areas.\n- [ ] No behavior change in hydration or realtime subscription.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`."
+        },
+        {
+          "id": "RF-106",
+          "title": "Modularize workspace CSS by component ownership",
+          "done": false,
+          "est": "5h",
+          "tags": [
+            "architecture",
+            "refactor",
+            "css",
+            "ux",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-103"
+          ],
+          "desc": "Reduce CSS sprawl by moving task-detail, toolbar, editor, and panel rules into ownership-based files.\n\n\n**Scope**\n- Do not rename public class names unless every usage is updated in the same slice.\n- Prefer additive cleanup with before/after screenshots.\n- Keep mobile rules close to their owning component when possible.\n\n\n**Acceptance criteria**\n- [ ] CSS files are easier to navigate.\n- [ ] Expanded task detail remains visually unchanged or improved.\n- [ ] No broad global resets are introduced.\n\n\n**Validation**\n`pnpm lint && pnpm typecheck && pnpm build`; manual desktop/mobile screenshot check."
+        },
+        {
+          "id": "RF-107",
+          "title": "Write architecture decision records for source-of-truth rules",
+          "done": false,
           "est": "3h",
-          "tags": ["frontend", "size-s", "risk-low"],
-          "deps": [],
-          "desc": "**Problem:** the \"Roadmap updated\" upgrade notice (`WorkspaceUpgradeNotice`) reappears after a page refresh even when dismissed. `dismissRoadmapUpgradeNotice` in `apps/web/src/context/RoadmapContext.tsx` (~line 302) only sets React state to `null`; nothing is persisted, and hydration recreates the notice.\n\n**Fix:** persist a dismissal marker in the per-roadmap UI state (`storage.getRoadmapUiState` / `setRoadmapUiState`). Key the marker by an upgrade signature (for example the sorted upgrade codes plus the roadmap `updatedAt` at upgrade time) so a *new* upgrade still shows a fresh notice. On hydration, skip setting the notice when the current signature is already dismissed.\n\n**Acceptance criteria**\n- [ ] Dismissing the notice, then refreshing, keeps it hidden\n- [ ] A genuinely new upgrade (different repair codes) shows the notice again\n- [ ] Dismissal is scoped per roadmap, not global\n- [ ] `storage.ts` stays SSR-safe and parse-safe\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`, plus manual QA: import an old-format roadmap, dismiss the notice, refresh."
-        },
-        {
-          "id": "IE-103-S1",
-          "title": "Add dismissedUpgradeSignature to roadmap UI state schema",
-          "done": false,
-          "tags": ["frontend", "size-xs", "risk-low"],
-          "deps": [],
-          "parentId": "IE-103",
-          "desc": "Extend the `RoadmapUiState` shape in `apps/web/src/lib/storage.ts` with an optional `dismissedUpgradeSignature?: string` field. Additive and optional, so no migration of existing stored state is needed. Unit-test that old stored JSON without the field still parses.\n\n**Validation:** `pnpm --filter web test` (storage tests) and `pnpm typecheck`."
+          "tags": [
+            "architecture",
+            "docs",
+            "source-of-truth",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-101"
+          ],
+          "desc": "Document the rules that protect RoadForge from turning into an issue tracker or fragile sync layer.\n\n\n**Scope**\n- RoadForge owns roadmap intent, sequencing, and task planning.\n- GitHub owns implementation artifacts.\n- Imports/exports must stay portable and credential-free.\n- Task links are references, not automatic status drivers.\n\n\n**Acceptance criteria**\n- [ ] ADR exists and is referenced by GitHub implementation tasks.\n- [ ] Future agents have clear do/don't guidance.\n\n\n**Validation**\nReview only; no runtime validation required."
         }
       ]
     },
     {
       "id": "phase-02",
       "num": "02",
-      "name": "Inline editing architecture foundation",
-      "color": "#f5853f",
+      "name": "Frontend state and task UX consolidation",
+      "color": "#6e9c8f",
       "colorMode": "manual",
       "status": "next",
       "progress": 0,
       "tasks": [
         {
-          "id": "IE-201",
-          "title": "Add commitTaskField helper for single-field task updates",
+          "id": "RF-201",
+          "title": "Finalize compact expanded task detail layout",
+          "done": false,
+          "next": true,
+          "est": "4h",
+          "tags": [
+            "frontend",
+            "ux",
+            "css",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-103"
+          ],
+          "desc": "Consolidate the current task detail UX after the metadata regression patch.\n\n\n**Scope**\n- Description inline editing remains available without a noisy text button.\n- Estimate, Assignees, and Tags are compact read-only metadata edited through Edit details.\n- Action buttons are compact and visually integrated.\n- Do one last desktop and mobile visual pass.\n\n\n**Acceptance criteria**\n- [ ] No large full-width metadata boxes.\n- [ ] No inline metadata inputs for estimate/assignees/tags.\n- [ ] Edit details reliably opens TaskEditForm and preserves lock behavior.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; browser check at desktop and 600px."
+        },
+        {
+          "id": "RF-202",
+          "title": "Confirm task edit mode coverage after metadata simplification",
           "done": false,
           "est": "3h",
-          "tags": ["frontend", "size-s", "risk-low"],
-          "deps": [],
-          "desc": "**Goal:** one normalized path for inline field commits, reusing today's mutation flow.\n\n`createTaskMutations.handleUpdateTask` already merges `Partial<Task>` into phases, records a `task.updated` activity change, and marks `saved=false` (autosync then persists via snapshot PUT). Add a thin `commitTaskField(taskId, field, value)` helper (suggested home: `apps/web/src/hooks/taskMutationHelpers.ts`) that:\n\n- trims/normalizes per field: `title` must stay non-empty, `est` trimmed (empty clears), `tags` through `splitAndNormalizeTags`, `assignees` through `dedupeNames`\n- no-ops when the normalized value equals the current value (no dirty flag, no activity row)\n- delegates to `handleUpdateTask` for the actual write\n\nPure logic slice: no UI change yet.\n\n**Acceptance criteria**\n- [ ] Unit tests cover normalization and the unchanged-value no-op\n- [ ] No behavior change in existing edit form\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
+          "tags": [
+            "frontend",
+            "tests",
+            "ux",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-201"
+          ],
+          "desc": "Audit which fields are edited inline versus via Edit details and remove dead inline metadata code.\n\n\n**Scope**\n- Title and description remain inline.\n- Estimate, assignees, tags use Edit details.\n- Remove unused TaskTagEditor/TaskAssigneeEditor/TagInput props only if no remaining imports need them.\n\n\n**Acceptance criteria**\n- [ ] No dead imports or unused files.\n- [ ] TaskEditForm remains the canonical metadata editor.\n- [ ] Tests updated if helpers were simplified.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`."
         },
         {
-          "id": "IE-202",
-          "title": "Create useInlineTaskEdit hook (field state + task lock)",
-          "done": false,
-          "est": "1d",
-          "tags": ["frontend", "size-m", "risk-med"],
-          "deps": ["IE-201"],
-          "desc": "**Goal:** the collaboration-safe core of inline editing.\n\nNew hook `apps/web/src/hooks/useInlineTaskEdit.ts` owning, per task: which field is being edited (`title | est | desc | tags | assignees | null`), per-field draft value, dirty flag, and the lock lifecycle. Lock model decision (alpha): **one whole-task lock**, reusing `useEditLock` with target `task:{id}` — same target the current edit form and other participants' lock badges already use, so no backend change and no new lock semantics.\n\nAPI: `beginEdit(field): Promise<boolean>` (acquires the lock on first activation; resolves false on 409 so the caller can toast \"X is editing this task\"), `commit(field)` (delegates to `commitTaskField`, keeps lock while another field is active), `cancelEdit(field)`, plus `isFieldEditing`, `isDirty`. Lock stays held while any field editor is open (the existing 20s refresh vs 30s TTL keeps it alive) and is released when the last field editor closes or the task collapses.\n\nLocal-first: with no `serverRoadmapId`, `useEditLock.tryAcquire` already grants ownership locally — preserve that so everything works offline.\n\n**Acceptance criteria**\n- [ ] Lock acquired once on first field edit, released on collapse/cancel\n- [ ] 409 surfaces as a toast-able failure, field stays read-only\n- [ ] Works with no backend running\n- [ ] Unit tests for the state machine\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
-        },
-        {
-          "id": "IE-203",
-          "title": "Inline-editable task title in expanded task",
-          "done": false,
-          "est": "4h",
-          "tags": ["frontend", "ux", "size-s", "risk-med"],
-          "deps": ["IE-202"],
-          "desc": "**Goal:** first visible inline field. In the expanded task detail, the title becomes click-to-edit: a static span normally, swapping to a text input after `beginEdit('title')` succeeds.\n\nBehavior:\n- Enter or blur commits via `commitTaskField` (title must stay non-empty; empty reverts with a toast)\n- Escape reverts to the original value\n- `readOnly`, locked-by-other, and pending-done states keep the static text\n- The collapsed row title rendering is untouched\n- Max length matches the import limit (160 chars)\n\n**Acceptance criteria**\n- [ ] Click title in expanded task → input with current value focused\n- [ ] Enter/blur saves, Esc reverts, empty title rejected\n- [ ] Viewer role and lock-held-by-other cannot enter edit mode\n- [ ] Activity log shows `task.updated` after save-and-sync\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA with two browser sessions on a synced roadmap to confirm the lock toast."
-        },
-        {
-          "id": "IE-204",
-          "title": "Inline estimate editor chip",
-          "done": false,
-          "est": "3h",
-          "tags": ["frontend", "ux", "size-s", "risk-low"],
-          "deps": ["IE-202", "IE-203"],
-          "desc": "**Goal:** estimate edited in place as a small chip control in the task detail meta.\n\nBehavior: display the estimate as a chip (or an \"Add estimate\" ghost chip when empty). Click → small inline input after `beginEdit('est')`. Enter/blur commits, Esc reverts, clearing the input removes the estimate. Hidden for nested subtasks (matching today's `isNested` behavior). Max 64 chars (import limit).\n\n**Acceptance criteria**\n- [ ] Estimate editable in place, empty state has an add affordance\n- [ ] Clearing removes `est` from the task\n- [ ] Lock/readOnly rules identical to title\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`, manual QA on a task with and without an estimate."
-        },
-        {
-          "id": "IE-205",
-          "title": "Keyboard and touch pass for inline field editors",
+          "id": "RF-203",
+          "title": "Tighten task lock UX around Edit details and description editing",
           "done": false,
           "est": "4h",
-          "tags": ["frontend", "ux", "size-s", "risk-low"],
-          "deps": ["IE-203", "IE-204"],
-          "desc": "**Goal:** consistent interaction rules across all inline editors shipped so far.\n\n- Enter commits, Esc reverts — everywhere, honoring IME composition (`e.nativeEvent.isComposing`) like `TaskEditForm` does today\n- Visible focus outline on every editable control\n- Touch targets at least 40px on coarse pointers\n- Inline inputs use font-size ≥ 16px at mobile widths so iOS Safari does not zoom on focus\n- Responsive rules go at the bottom of the owning CSS file, per project convention\n\n**Acceptance criteria**\n- [ ] Keyboard-only round trip: expand task, edit title, save, edit estimate, cancel\n- [ ] 375px viewport: all editors reachable and usable by touch\n- [ ] No iOS focus zoom\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA per `docs/workspace-responsive-manual-qa.md` flow at 375px and 768px."
+          "tags": [
+            "frontend",
+            "realtime",
+            "ux",
+            "size-s",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-201"
+          ],
+          "desc": "Make lock behavior obvious but not noisy.\n\n\n**Scope**\n- Edit details, title edit, description edit, Add subtask, and Link dependency all use the same whole-task lock rules.\n- Other-user lock shows a concise hint.\n- Idle pause never softlocks the team.\n\n\n**Acceptance criteria**\n- [ ] Second user cannot enter edit flows while lock is active.\n- [ ] Idle release lets another user eventually edit.\n- [ ] Original user's draft is not silently lost.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; two-browser manual QA."
+        },
+        {
+          "id": "RF-204",
+          "title": "Add focused helper tests for task metadata and description editor behavior",
+          "done": false,
+          "est": "5h",
+          "tags": [
+            "frontend",
+            "tests",
+            "size-m",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-202"
+          ],
+          "desc": "Backfill tests for the areas most likely to regress during refactors.\n\n\n**Scope**\n- Pure tests for task metadata display helpers if introduced.\n- Description editor behavior tests only if current test setup supports component tests cleanly.\n- Avoid brittle screenshot-style tests.\n\n\n**Acceptance criteria**\n- [ ] Description draft preservation, dirty cancel, and keyboard save are covered where practical.\n- [ ] Metadata simplification does not regress import/export fields.\n\n\n**Validation**\n`pnpm --filter web test` plus full web validation."
+        },
+        {
+          "id": "RF-205",
+          "title": "Normalize activity labels for task updates and metadata edits",
+          "done": false,
+          "est": "4h",
+          "tags": [
+            "frontend",
+            "backend",
+            "ux",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-202"
+          ],
+          "desc": "Activity should remain useful after the editing model changed.\n\n\n**Scope**\n- Ensure title/description/Edit details changes generate understandable activity.\n- Avoid activity spam for no-op saves.\n- Do not introduce a new activity model unless necessary.\n\n\n**Acceptance criteria**\n- [ ] Activity panel distinguishes meaningful task updates.\n- [ ] No duplicate rows for a single user action.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual Activity panel check."
+        },
+        {
+          "id": "RF-206",
+          "title": "Clean up local UI state persistence boundaries",
+          "done": false,
+          "est": "4h",
+          "tags": [
+            "frontend",
+            "architecture",
+            "size-s",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-105"
+          ],
+          "desc": "Ensure per-roadmap UI state stores only UI preferences, not source-of-truth data.\n\n\n**Scope**\n- Expanded task, open phases, dismissed notices belong in UI state.\n- Roadmap data, auth, and session state stay separate.\n- Parse errors and stale state remain safe.\n\n\n**Acceptance criteria**\n- [ ] Storage schema remains backward compatible.\n- [ ] Invalid UI state does not crash hydration.\n\n\n**Validation**\n`pnpm --filter web test -- src/lib/__tests__/storage.test.ts && pnpm typecheck`."
         }
       ]
     },
     {
       "id": "phase-03",
       "num": "03",
-      "name": "Inline description editing",
+      "name": "Backend write model, realtime, and data integrity hardening",
       "color": "#c9903a",
       "colorMode": "manual",
       "status": "future",
       "progress": 0,
       "tasks": [
         {
-          "id": "IE-301",
-          "title": "Build DescriptionEditor with Preview and Markdown tabs",
-          "done": false,
-          "est": "1d",
-          "tags": ["frontend", "ux", "size-m", "risk-med"],
-          "deps": ["IE-202"],
-          "desc": "**Goal:** GitHub-style description editing. New component `apps/web/src/components/roadmap/DescriptionEditor.tsx` with two tabs:\n\n- **Preview** (default): renders the draft through the existing `MarkdownDescription` component — same safe parser, no raw HTML execution\n- **Markdown**: plain `<textarea>` with the existing `MarkdownToolbar` above it — no contenteditable; the raw text is the source of truth so humans and coding agents can write exact Markdown\n\nBehavior: explicit **Save / Cancel** buttons (description is multiline and high-value, so no autosave-on-blur). Ctrl/Cmd+Enter saves. Esc with a dirty draft opens the existing `ConfirmDialog` discard prompt. Show a character counter against the 2000-char limit (`TASK_DESC_MAX` in `roadmap-validation.ts`) and block save when over.\n\nThis slice builds the component in isolation (props: `value`, `onSave`, `onCancel`); wiring comes in IE-302.\n\n**Acceptance criteria**\n- [ ] Preview is the default tab and re-renders the current draft\n- [ ] Markdown tab round-trips raw text exactly (no normalization)\n- [ ] Save disabled over 2000 chars, counter visible near the limit\n- [ ] Cmd/Ctrl+Enter saves, Esc guards dirty state\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
-        },
-        {
-          "id": "IE-302",
-          "title": "Wire DescriptionEditor into the expanded task detail",
+          "id": "RF-301",
+          "title": "Design partial task write API shape before implementation",
           "done": false,
           "est": "4h",
-          "tags": ["frontend", "size-s", "risk-med"],
-          "deps": ["IE-301"],
-          "desc": "**Goal:** description becomes editable in place. In `TaskDetailMeta` (or its successor), the rendered description gets an \"Edit\" affordance; activating it calls `beginEdit('desc')` (task lock) and swaps in `DescriptionEditor` in Markdown mode with Preview available. Save commits via `commitTaskField('desc', ...)` and returns to the rendered view; Cancel restores the read view.\n\nDirty-state safety: while the description editor is dirty, collapsing the task must warn (reuse the existing `onDirtyChange` plumbing TaskRow already has for the legacy edit form).\n\n**Acceptance criteria**\n- [ ] Edit → modify → Save persists and re-renders Markdown\n- [ ] Cancel discards, dirty cancel prompts\n- [ ] Collapse guard works while dirty\n- [ ] Lock respected: second participant sees read-only description with a lock hint\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; two-session manual QA on a synced roadmap."
+          "tags": [
+            "backend",
+            "architecture",
+            "data-model",
+            "docs",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-107"
+          ],
+          "desc": "Define the partial task write model to reduce full-snapshot conflicts.\n\n\n**Scope**\n- Document endpoint shape, optimistic concurrency, activity metadata, version policy, SSE event behavior, and validation limits.\n- Use existing task done/claim routes as the style reference.\n- Keep local-first import/export model unchanged.\n\n\n**Acceptance criteria**\n- [ ] Design is small enough to implement in reviewable slices.\n- [ ] No task field can be silently overwritten by stale clients.\n\n\n**Validation**\nReview only; no runtime validation required."
         },
         {
-          "id": "IE-303",
-          "title": "Empty-description affordance",
+          "id": "RF-302",
+          "title": "Add task-level PATCH endpoint for title, description, and metadata",
           "done": false,
-          "est": "2h",
-          "tags": ["frontend", "ux", "size-xs", "risk-low"],
-          "deps": ["IE-302"],
-          "desc": "When a task has no description, the expanded detail currently renders nothing. Add a ghost \"Add description\" button that opens `DescriptionEditor` directly in the Markdown tab (after lock acquire). Hidden for viewers and while locked by another participant.\n\n**Acceptance criteria**\n- [ ] Empty task shows the affordance; tasks with text show rendered Markdown\n- [ ] Saving a first description works end to end\n- [ ] Not shown in read-only mode\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`, manual QA."
+          "est": "2d",
+          "tags": [
+            "backend",
+            "data-model",
+            "realtime",
+            "size-l",
+            "risk-high"
+          ],
+          "deps": [
+            "RF-301"
+          ],
+          "desc": "Implement a focused task PATCH endpoint for scalar task fields and metadata.\n\n\n**Scope**\n- Owner/editor only.\n- Accept title, desc, est, assignees, tags plus required last_updated_at.\n- Validate with existing limits and normalized helpers.\n- Return full RoadmapResponse for frontend compatibility.\n- Emit task.updated activity and roadmap.updated SSE.\n\n\n**Acceptance criteria**\n- [ ] Partial update touches only provided task fields.\n- [ ] Stale last_updated_at returns 409 conflict metadata.\n- [ ] Viewer is 403; owner/editor are 200.\n- [ ] Tests cover title, desc, est, tags, assignees.\n\n\n**Validation**\nRun full apps/api pytest plus web typecheck."
+        },
+        {
+          "id": "RF-303",
+          "title": "Route synced title and description commits through task PATCH",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "frontend",
+            "backend",
+            "realtime",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-302",
+            "RF-203"
+          ],
+          "desc": "Stop using full roadmap PUT for title and description commits on synced roadmaps.\n\n\n**Scope**\n- Local roadmaps keep current local mutation path.\n- Synced roadmaps call task PATCH and apply returned roadmap/updatedAt.\n- Conflict feeds existing conflict handling while preserving draft state.\n\n\n**Acceptance criteria**\n- [ ] Single title/description edit issues one task PATCH.\n- [ ] No full PUT for these edits.\n- [ ] Offline/session-expired/conflict paths remain recoverable.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; two-session conflict QA."
+        },
+        {
+          "id": "RF-304",
+          "title": "Keep Edit details metadata writes safe with the new PATCH path",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "frontend",
+            "backend",
+            "data-model",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-302",
+            "RF-202"
+          ],
+          "desc": "Route Estimate, Assignees, and Tags through task PATCH when edited via Edit details on synced roadmaps.\n\n\n**Scope**\n- Keep TaskEditForm UI unchanged.\n- No reintroduction of inline metadata editing.\n- No-op saves should not generate activity.\n\n\n**Acceptance criteria**\n- [ ] Edit details updates metadata without full roadmap PUT on synced roadmaps.\n- [ ] Tag registry behavior remains compatible.\n- [ ] Local roadmaps still work without backend.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; API focused tests."
+        },
+        {
+          "id": "RF-305",
+          "title": "Projection-read readiness and drift tests",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "backend",
+            "data-model",
+            "testing",
+            "size-l",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-302"
+          ],
+          "desc": "Make the relational projection trustworthy before considering it for reads.\n\n\n**Scope**\n- Verify projection matches snapshot for phases, tasks, tags, deps, subtasks, claim fields.\n- Add drift tests around create/update/restore/import flows.\n- Do not flip production reads yet unless the test evidence is strong.\n\n\n**Acceptance criteria**\n- [ ] Projection drift test fails if snapshot and relational projection diverge.\n- [ ] Restore/import paths included.\n\n\n**Validation**\nRun full apps/api pytest."
+        },
+        {
+          "id": "RF-306",
+          "title": "Redis-backed realtime deployment check",
+          "done": false,
+          "est": "4h",
+          "tags": [
+            "backend",
+            "realtime",
+            "deploy",
+            "size-s",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-302"
+          ],
+          "desc": "Confirm the deployed realtime mode is safe for current worker count and future scaling.\n\n\n**Scope**\n- Document memory vs Redis realtime behavior.\n- Verify startup guard prevents unsafe multi-worker memory mode.\n- Run a deploy smoke with Redis mode if target stack supports it.\n\n\n**Acceptance criteria**\n- [ ] Realtime docs match environment variables.\n- [ ] No multi-worker unsafe config can start silently.\n\n\n**Validation**\nAPI tests plus deployment smoke."
         }
       ]
     },
     {
       "id": "phase-04",
       "num": "04",
-      "name": "Tags, assignees, and team suggestions",
+      "name": "Testing, CI, and release gates",
       "color": "#7d9c6e",
       "colorMode": "manual",
       "status": "future",
       "progress": 0,
       "tasks": [
         {
-          "id": "IE-401",
-          "title": "Tag pills: remove on hover/touch in expanded detail",
+          "id": "RF-401",
+          "title": "Restore automatic CI triggers before external alpha sharing",
+          "done": false,
+          "est": "3h",
+          "tags": [
+            "testing",
+            "deploy",
+            "alpha",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-204"
+          ],
+          "desc": "CI is currently manual-only. Restore push/PR triggers before wider alpha use.\n\n\n**Scope**\n- Keep workflow_dispatch.\n- Add push/pull_request triggers for main and active PR branches.\n- Avoid expensive jobs on irrelevant docs-only changes only if simple.\n\n\n**Acceptance criteria**\n- [ ] Every PR runs web, API, migration, and audit gates.\n- [ ] Manual dispatch remains available.\n\n\n**Validation**\nOpen a test PR or workflow dispatch and verify jobs."
+        },
+        {
+          "id": "RF-402",
+          "title": "Add one-command full local release gate",
           "done": false,
           "est": "4h",
-          "tags": ["frontend", "ux", "size-s", "risk-low"],
-          "deps": ["IE-202"],
-          "desc": "**Goal:** users remove tags directly from the expanded task. In the detail-meta tag pills, show an X affordance on hover; on coarse pointers (`@media (pointer: coarse)`) the X is always visible. Clicking X calls `beginEdit('tags')` if no lock is held yet, removes the tag id from `task.tags`, and commits via `commitTaskField('tags', ...)`.\n\nScope guards: collapsed-row tag pills stay untouched (no X there — avoids clutter). Removal is blocked in read-only mode and while locked by another participant. Removing a tag does **not** delete it from the tag registry.\n\n**Acceptance criteria**\n- [ ] Hover shows X on desktop, X always visible on touch\n- [ ] Removal persists and syncs; registry entry survives\n- [ ] Viewer/locked states show plain pills\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA on desktop hover and a touch viewport."
+          "tags": [
+            "testing",
+            "deploy",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-401"
+          ],
+          "desc": "Make the final release check hard to forget.\n\n\n**Scope**\n- One command should run web tests, lint, typecheck, build, API lint, API tests, migration check where practical, and diff check notes.\n- Document expected runtime and failure handling.\n\n\n**Acceptance criteria**\n- [ ] Release gate command exists and is documented.\n- [ ] It matches what we manually run today.\n\n\n**Validation**\nRun the new command locally."
         },
         {
-          "id": "IE-402",
-          "title": "Inline add-tag control in task detail",
-          "done": false,
-          "est": "4h",
-          "tags": ["frontend", "size-s", "risk-med"],
-          "deps": ["IE-401"],
-          "desc": "**Goal:** add tags without the edit form. A \"+ Tag\" ghost chip next to the tag pills opens the existing `TagInput` inline (registry-aware suggestions). Committing runs the same registry flow the legacy form uses today: `ensureRegistryForTagIds(updates.tags, tagRegistry)` then `setTagRegistry` when new ids appear, then `commitTaskField('tags', ...)`.\n\nRespect limits: max 20 tags per task, 40 chars per tag (import limits). Respect the task lock like every other inline editor.\n\n**Acceptance criteria**\n- [ ] Existing registry tags suggested; free text creates a new registry entry\n- [ ] New tag immediately usable in toolbar tag filters\n- [ ] Tag count/length limits enforced with a friendly message\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
-        },
-        {
-          "id": "IE-403",
-          "title": "Inline assignee chips with add/remove",
-          "done": false,
-          "est": "5h",
-          "tags": ["frontend", "ux", "size-m", "risk-med"],
-          "deps": ["IE-202"],
-          "desc": "**Goal:** assignment edited in place. Assignee pills in the detail meta get an X (same hover/touch rules as tags), plus a \"+ Assign\" control opening a small combobox: suggestions from `taskEditorAssigneeNames` (already aggregates participants where available, existing assignees, and the user's display name) with free-text entry preserved for local roadmaps.\n\nCommits go through `commitTaskField('assignees', ...)` with `dedupeNames` (case-insensitive dedupe, as `TaskEditForm.toggleAssignee` does today). Do not touch claim state — claims (`claimedBy/claimedById`) remain a separate server-managed concept.\n\n**Acceptance criteria**\n- [ ] Add and remove assignees inline, synced and local roadmaps both work\n- [ ] Free-text assignment still possible with no backend\n- [ ] Claim badge/behavior unchanged\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual QA with backend stopped (local-first check)."
-        },
-        {
-          "id": "IE-404",
-          "title": "Backend: expose participant names to editors",
+          "id": "RF-403",
+          "title": "Backfill tests for lock, idle, and partial-write conflict paths",
           "done": false,
           "est": "1d",
-          "tags": ["backend", "size-m", "risk-med"],
-          "deps": [],
-          "desc": "**Problem:** `GET /api/roadmaps/{id}/participants` is owner-only (`_OWNER_ONLY` in `apps/api/src/api/routers/roadmaps.py`), so editors get no real team names for assignment suggestions.\n\n**Slice:** allow `{owner, editor}` on that GET. When the caller is an editor, return a reduced projection: `id`, `displayName`, `role` only — omit `lastSeenAt`, `sessionExpiresAt`, `revokedAt`, `shareLinkId`, `joinedViaRole`, `accessSourceLabel`, and exclude revoked participants entirely. Owner response stays byte-identical to today. Implement the projection in `sharing_service.get_participants` keyed off the caller's role; make the omitted response fields optional in the Pydantic schema.\n\nViewer stays 403. No new endpoint, no auth-model change.\n\n**Acceptance criteria**\n- [ ] Editor gets names+roles of active participants only\n- [ ] Owner response unchanged (existing tests still pass)\n- [ ] Viewer still rejected\n- [ ] New API tests cover all three roles\n\n**Validation:** run the `apps/api` pytest suite; smoke-check with `docker compose up --build api postgres` and a curl as editor per `docs/backend-smoke-tests.md`."
+          "tags": [
+            "testing",
+            "realtime",
+            "frontend",
+            "backend",
+            "size-m",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-303"
+          ],
+          "desc": "Cover the collaboration paths most likely to regress.\n\n\n**Scope**\n- Lock acquire/release/idle pause.\n- Task PATCH 409 conflict.\n- Description draft preservation on conflict where practical.\n- Viewer/editor/owner permission matrix.\n\n\n**Acceptance criteria**\n- [ ] Automated tests cover lock and conflict basics.\n- [ ] Manual QA checklist remains for browser-only behavior.\n\n\n**Validation**\nRun full web tests and full API tests."
         },
         {
-          "id": "IE-405",
-          "title": "Frontend: editor-visible team suggestions in assignment",
+          "id": "RF-404",
+          "title": "Maximal import/export round-trip fixture",
           "done": false,
           "est": "4h",
-          "tags": ["frontend", "size-s", "risk-low"],
-          "deps": ["IE-403", "IE-404"],
-          "desc": "**Goal:** editors see real team members as assignment suggestions. Update `useWorkspaceParticipants` to fetch the participant list for editors as well as owners (it is currently gated to owner because the endpoint was owner-only). Feed active participant display names into `taskEditorAssigneeNames` for the inline assignee combobox from IE-403.\n\nGuards: viewers never fetch; local roadmaps (no `serverRoadmapId`) keep pure free-text suggestions; a failed fetch degrades silently to today's behavior (names from existing assignees + own display name).\n\n**Acceptance criteria**\n- [ ] Editor session shows teammate names as suggestions\n- [ ] Local roadmap unchanged\n- [ ] Fetch failure does not break the editor UI\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA joining a roadmap via an editor link."
+          "tags": [
+            "testing",
+            "data-model",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-107"
+          ],
+          "desc": "Add a compatibility fixture that catches missed task fields.\n\n\n**Scope**\n- Markdown desc with lists/checkboxes/links.\n- Assignees, tags, tag registry colors.\n- Deps, subtasks, claim fields.\n- Future task.links once GitHub v1 lands.\n\n\n**Acceptance criteria**\n- [ ] Round trip preserves fields byte-for-byte where intended.\n- [ ] Test fails when a new task field lacks import/export support.\n\n\n**Validation**\n`pnpm --filter web test`."
+        },
+        {
+          "id": "RF-405",
+          "title": "Manual browser smoke checklist automation candidate",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "testing",
+            "ux",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-201",
+            "RF-403"
+          ],
+          "desc": "Identify the minimal browser automation worth adding before alpha.\n\n\n**Scope**\n- Owner/editor/viewer join flow.\n- Expanded task edit flow.\n- Import/export replace checkpoint.\n- Version read/restore owner-only.\n- Realtime update between two sessions if automation setup supports it.\n\n\n**Acceptance criteria**\n- [ ] Recommendation written: Playwright now or after alpha.\n- [ ] If implemented, it covers only high-value smoke paths.\n\n\n**Validation**\nReview only or run browser smoke tests if implemented."
+        },
+        {
+          "id": "RF-406",
+          "title": "Release checklist document for Public Alpha candidate",
+          "done": false,
+          "est": "3h",
+          "tags": [
+            "testing",
+            "docs",
+            "alpha",
+            "deploy",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-402",
+            "RF-405"
+          ],
+          "desc": "Prepare the checklist used in the final alpha QA phase.\n\n\n**Scope**\n- Local validation commands.\n- Deploy commands.\n- Owner/editor/viewer browser QA.\n- Rollback/backup checks.\n- Known limitations.\n\n\n**Acceptance criteria**\n- [ ] Final QA can be executed once at the end without rediscovering the process.\n- [ ] Checklist references current product behavior.\n\n\n**Validation**\nReview only."
         }
       ]
     },
     {
       "id": "phase-05",
       "num": "05",
-      "name": "Workspace navigation and task layout polish",
-      "color": "#5b8bab",
-      "colorMode": "manual",
-      "status": "future",
-      "progress": 0,
-      "tasks": [
-        {
-          "id": "IE-501",
-          "title": "Unify workspace navigation into one tab model",
-          "done": false,
-          "est": "1d",
-          "tags": ["frontend", "ux", "size-m", "risk-med"],
-          "deps": [],
-          "desc": "**Problem:** navigation is split across two idioms in `WorkspaceToolbar`: Roadmap/Team are view tabs on the left, while Activity/Versions/Tags are loose action buttons on the right.\n\n**Target:** one coherent nav row — **Roadmap / Team / Activity / Versions** — while **Tags** moves next to the search/filter cluster (it configures filtering vocabulary, not a view). Keep every existing visibility gate: Team only when `canViewTeam`, Versions per `canViewVersions`, Activity disabled until server sync with its helper text. Activity and Versions may keep rendering as panels initially; this slice unifies the triggers, not the panel architecture.\n\nDo not rename existing CSS classes; extend `workspace-toolbar.css` additively.\n\n**Acceptance criteria**\n- [ ] Single visual tab group for the four destinations\n- [ ] Tags trigger sits beside Filters\n- [ ] All role/sync gating identical to before\n- [ ] Responsive: usable at 375px\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; responsive manual QA."
-        },
-        {
-          "id": "IE-501-S1",
-          "title": "Move Tags trigger next to search and filters",
-          "done": false,
-          "tags": ["frontend", "size-xs", "risk-low"],
-          "deps": [],
-          "parentId": "IE-501",
-          "desc": "Relocate the Tags (tag registry) button from `toolbar-end` into `toolbar-start` beside the Filters trigger in `WorkspaceToolbar.tsx`. Behavior unchanged — still opens `TagRegistryModal`.\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`."
-        },
-        {
-          "id": "IE-501-S2",
-          "title": "Render Activity and Versions as nav tabs",
-          "done": false,
-          "tags": ["frontend", "size-s", "risk-low"],
-          "deps": [],
-          "parentId": "IE-501",
-          "desc": "Convert the Activity and Versions buttons into entries of the workspace view tab group, preserving disabled/gated states and their panel-open behavior. Keep `aria-expanded`/`aria-describedby` semantics for the disabled Activity helper.\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; keyboard navigation check across tabs."
-        },
-        {
-          "id": "IE-502",
-          "title": "Redesign task detail meta as chip rows",
-          "done": false,
-          "est": "5h",
-          "tags": ["frontend", "ux", "css", "size-m", "risk-med"],
-          "deps": ["IE-204", "IE-402", "IE-403"],
-          "desc": "**Problem:** the Estimate / Assigned / Tags block is an awkward 80px label-column grid (`.task-detail .grid` in `task-row.css`).\n\n**Target:** compact chip rows — each meta group as a small inline label plus its chips/inline controls, wrapping naturally. This is the layout home for the inline editors already built: estimate chip (IE-204), assignee pills with add/remove (IE-403), tag pills with X and + Tag (IE-402/401).\n\nAdd new CSS classes rather than renaming existing ones; keep the old `.grid` rules until the last consumer is gone.\n\n**Acceptance criteria**\n- [ ] No label column; chips wrap on narrow widths\n- [ ] All inline editors keep working inside the new layout\n- [ ] Nested subtasks still hide the estimate group\n- [ ] Light/dark themes both checked\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA at 375px/768px/desktop."
-        },
-        {
-          "id": "IE-503",
-          "title": "Relocate Add-subtask and Link-dependency into their sections",
-          "done": false,
-          "est": "4h",
-          "tags": ["frontend", "ux", "size-s", "risk-low"],
-          "deps": ["IE-502"],
-          "desc": "**Problem:** \"Add subtask\" and \"Link dependency\" live in a generic actions footer, disconnected from the content they affect.\n\n**Target:** move each trigger into its own section: a \"+ Add subtask\" affordance in the Subtasks section (section renders with just the affordance when empty, for editors) and a \"+ Link dependency\" affordance in the Depends-on section. Both still acquire the task lock before opening their forms (`SubtaskForm`, `DependencyPicker`), exactly as today. Remove the old footer buttons once relocated; keep the locked/read-only note behavior.\n\n**Acceptance criteria**\n- [ ] Empty sections show ghost add affordances for editors, nothing for viewers\n- [ ] Lock acquisition still gates both forms\n- [ ] Cycle guard toast on circular dependency unchanged\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; manual QA add-subtask and link-dep flows."
-        },
-        {
-          "id": "IE-504",
-          "title": "Remove the global task edit button and legacy edit form path",
-          "done": false,
-          "est": "5h",
-          "tags": ["frontend", "size-m", "risk-med"],
-          "deps": ["IE-203", "IE-204", "IE-302", "IE-402", "IE-403", "IE-503"],
-          "desc": "**Goal:** the target UX — no pencil button; the expanded task *is* the editor.\n\nRemove the pencil `iconbtn` and the `isEditing`/`TaskEditForm` swap from `TaskRow.tsx` now that every field (title, estimate, description, tags, assignees) edits inline. Before deleting `TaskEditForm.tsx`, check remaining consumers — `DraftTaskRow.tsx` may reuse it for new-task drafts; if so, keep the component and only remove the TaskRow entry point. Clean up now-dead dirty-state plumbing that existed solely for the form, but keep `onDirtyChange` wiring used by the description editor's collapse guard.\n\n**Acceptance criteria**\n- [ ] No pencil button anywhere in the task UI\n- [ ] Every previously editable field still editable inline\n- [ ] New-task draft flow unaffected\n- [ ] No unused exports/dead code left behind\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; full manual edit pass over one task."
-        },
-        {
-          "id": "IE-505",
-          "title": "Mobile and touch QA pass for the full inline editing surface",
-          "done": false,
-          "est": "4h",
-          "tags": ["frontend", "ux", "tests", "size-s", "risk-low"],
-          "deps": ["IE-504"],
-          "desc": "End-to-end manual QA of inline editing on touch devices, fixing small issues found (each fix stays a small commit).\n\n**Checklist**\n- [ ] 375px: expand task, edit title, estimate, description (both tabs), tags, assignees\n- [ ] Tag/assignee X targets comfortably tappable\n- [ ] No layout overflow in the chip rows\n- [ ] Two-device lock test: second device sees lock hints, cannot edit\n- [ ] Update `docs/workspace-responsive-manual-qa.md` with the inline-editing checklist\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build` after any fixes; documented QA results in the PR/commit description."
-        }
-      ]
-    },
-    {
-      "id": "phase-06",
-      "num": "06",
-      "name": "Permissions, versions, and invite model",
+      "name": "Security and deployment hardening",
       "color": "#8a6bab",
       "colorMode": "manual",
       "status": "future",
       "progress": 0,
       "tasks": [
         {
-          "id": "IE-601",
-          "title": "Document the alpha permission matrix and beta targets",
-          "done": false,
-          "est": "3h",
-          "tags": ["docs", "size-s", "risk-low"],
-          "deps": ["IE-404"],
-          "desc": "Update `docs/access-model.md` with the *actual current* matrix (verified against `routers/roadmaps.py`): viewers read + SSE + activity + locks-read; editors edit (PUT/PATCH), claim, tags CRUD, checkpoint, and (after IE-404) participant names; owners additionally manage share links, participants, versions list/read/restore, delete.\n\nThen record the target model and what is deliberately deferred to beta: owner invites multiple users via per-user invite links, owner manages/annotates team members, generic view-only link stays, groups/permission templates only if a concrete need appears.\n\n**Acceptance criteria**\n- [ ] Matrix matches code, not stale docs\n- [ ] Each beta deferral has a one-line justification\n\n**Validation:** cross-check every row against route `require_participant` role sets."
-        },
-        {
-          "id": "IE-602",
-          "title": "Allow editors to view version history (restore stays owner-only)",
-          "done": false,
-          "est": "5h",
-          "tags": ["backend", "frontend", "size-m", "risk-med"],
-          "deps": ["IE-601"],
-          "desc": "**Goal:** editors can see what changed, without gaining restore power.\n\nBackend: relax `GET /versions` and `GET /versions/{version_id}` from `_OWNER_ONLY` to `{owner, editor}` in `routers/roadmaps.py`. `POST /versions/{vid}/restore` and checkpoint policy stay as they are (restore owner-only; checkpoint already owner+editor). Add API tests for editor list/read and editor-restore-403.\n\nFrontend: update the `canViewVersions` gate in `Workspace.tsx` (currently `role === 'owner' && ...`) and hide the Restore button inside `VersionsPanel` for non-owners.\n\n**Acceptance criteria**\n- [ ] Editor sees the Versions tab and version details\n- [ ] Editor cannot restore (no button; API returns 403)\n- [ ] Owner flow unchanged\n\n**Validation:** apps/api pytest suite; `pnpm lint && pnpm typecheck && pnpm build`; manual editor-session QA."
-        },
-        {
-          "id": "IE-603",
-          "title": "Design doc: per-user invite links and team management",
-          "done": false,
-          "est": "1d",
-          "tags": ["docs", "backend", "beta", "size-m", "risk-low"],
-          "deps": ["IE-601"],
-          "desc": "**Design-only slice** (no implementation): a doc under `docs/architecture/` covering the beta invite model on top of the existing accountless system:\n\n- multiple named invite links per roadmap (per-invitee), each individually revocable, alongside today's single owner/editor/viewer links\n- generic view-only link retained\n- owner UI for naming/annotating participants and mapping them to invite links\n- explicit non-goals: accounts, email flows, groups/permission templates (defer until a real customer need is documented)\n- data-model sketch (ShareLink rows with labels vs a new invite table), token/rotation semantics, and migration/compat notes for existing share links\n\n**Acceptance criteria**\n- [ ] Doc reviewed against `models/roadmap.py` and `sharing_service.py` realities\n- [ ] Slice list at the end, each item commit-sized\n\n**Validation:** review only; no code changes."
-        },
-        {
-          "id": "IE-604",
-          "title": "Recovery safety check: import, replace, and restore paths",
+          "id": "RF-501",
+          "title": "Proxy and app log review for invite-token leakage",
           "done": false,
           "est": "4h",
-          "tags": ["tests", "backend", "size-s", "risk-med"],
-          "deps": [],
-          "desc": "**Goal:** confirm inline editing changed nothing about data-safety guarantees.\n\nAudit + test pass over the three destructive-ish flows: JSON import (replace mode creates a checkpoint first — verify against `version_service._should_create_version` and the import flow), version restore (owner-only, snapshot round-trip), and full-snapshot PUT conflict handling (409 + conflict metadata + review panel). Add any missing regression tests, especially: an inline field commit racing a concurrent PUT produces the conflict flow rather than silent data loss.\n\n**Acceptance criteria**\n- [ ] Checkpoint-before-replace verified by a test\n- [ ] Restore round-trip test covers tags/assignees/deps/parentId\n- [ ] Conflict path test for a stale `last_updated_at` write\n\n**Validation:** apps/api pytest suite green; `pnpm --filter web test` green."
+          "tags": [
+            "security",
+            "deploy",
+            "size-s",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-406"
+          ],
+          "desc": "Invite tokens are URL credentials. Confirm logs do not expose them casually.\n\n\n**Scope**\n- Review nginx/proxy access logs.\n- Review app logs and browser error paths.\n- Document safe logging guidance.\n\n\n**Acceptance criteria**\n- [ ] Join URLs are not written to public/shared logs.\n- [ ] Operational doc explains remaining risk.\n\n\n**Validation**\nManual server log review plus docs update."
+        },
+        {
+          "id": "RF-502",
+          "title": "Database backup and restore drill",
+          "done": false,
+          "est": "4h",
+          "tags": [
+            "security",
+            "deploy",
+            "testing",
+            "size-s",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-406"
+          ],
+          "desc": "Prove recovery before sharing alpha more widely.\n\n\n**Scope**\n- Take a Postgres backup.\n- Restore into a disposable DB or container.\n- Verify roadmaps, participants, versions, and activity exist.\n\n\n**Acceptance criteria**\n- [ ] Backup command documented.\n- [ ] Restore command documented.\n- [ ] One real restore drill completed.\n\n\n**Validation**\nManual ops validation."
+        },
+        {
+          "id": "RF-503",
+          "title": "Move CSP from report-only plan toward enforceable policy",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "security",
+            "deploy",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-201"
+          ],
+          "desc": "Review CSP violations and decide what can be enforced safely.\n\n\n**Scope**\n- Do not break Next.js assets or current Markdown rendering.\n- Keep report-only if evidence is insufficient.\n- Document any required exceptions.\n\n\n**Acceptance criteria**\n- [ ] Decision recorded.\n- [ ] If enforced, browser smoke passes.\n\n\n**Validation**\n`pnpm build` and browser QA if policy changes."
+        },
+        {
+          "id": "RF-504",
+          "title": "Invite and session expiry review",
+          "done": false,
+          "est": "4h",
+          "tags": [
+            "security",
+            "backend",
+            "size-s",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-301"
+          ],
+          "desc": "Review accountless sharing risk before GitHub links increase team usage.\n\n\n**Scope**\n- Owner/editor/viewer token lifecycle.\n- Rotate/revoke behavior.\n- Participant session expiry.\n- Public viewer link expectations.\n\n\n**Acceptance criteria**\n- [ ] Docs and UI warnings match actual behavior.\n- [ ] No route grants more than intended.\n\n\n**Validation**\nAPI auth/share-link tests."
+        },
+        {
+          "id": "RF-505",
+          "title": "Operational monitoring and health check polish",
+          "done": false,
+          "est": "4h",
+          "tags": [
+            "deploy",
+            "backend",
+            "security",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-306"
+          ],
+          "desc": "Make hosted alpha easier to monitor.\n\n\n**Scope**\n- Health endpoint and reverse proxy behavior.\n- Container restart/update behavior.\n- Basic error log checklist.\n\n\n**Acceptance criteria**\n- [ ] Health check proves API is up.\n- [ ] Deploy/runbook includes what to inspect when RoadForge is down.\n\n\n**Validation**\nManual deploy smoke."
+        }
+      ]
+    },
+    {
+      "id": "phase-06",
+      "num": "06",
+      "name": "GitHub links v1 - URL-only source-of-truth layer",
+      "color": "#f5853f",
+      "colorMode": "manual",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-601",
+          "title": "Design task external-link model and GitHub source-of-truth rules",
+          "done": false,
+          "est": "4h",
+          "tags": [
+            "github",
+            "architecture",
+            "source-of-truth",
+            "data-model",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-107"
+          ],
+          "desc": "Define the first GitHub layer without credentials or bidirectional sync.\n\n\n**Scope**\n- RoadForge task owns planning intent.\n- GitHub issue/PR/discussion is linked work evidence.\n- No automatic task completion from GitHub state.\n- No credentials in exports/imports/localStorage.\n\n\n**Acceptance criteria**\n- [ ] TaskExternalLink shape is documented.\n- [ ] URL-only v1 behavior is clear.\n- [ ] Future metadata cache is explicitly separate from roadmap truth.\n\n\n**Validation**\nReview only."
+        },
+        {
+          "id": "RF-602",
+          "title": "Add task.links import/export and validation support",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "github",
+            "frontend",
+            "data-model",
+            "testing",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-601",
+            "RF-404"
+          ],
+          "desc": "Add portable task link storage to roadmap JSON.\n\n\n**Scope**\n- Support provider='github' and kind issue/pull/discussion/commit/release/url.\n- Keep links credential-free.\n- Preserve links through import/export round trips.\n- Unknown/invalid links repair safely.\n\n\n**Acceptance criteria**\n- [ ] Import/export preserves task.links.\n- [ ] Existing roadmaps without links still import cleanly.\n- [ ] Maximal fixture includes links.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`."
+        },
+        {
+          "id": "RF-603",
+          "title": "Build GitHub URL parser and normalizer",
+          "done": false,
+          "est": "5h",
+          "tags": [
+            "github",
+            "frontend",
+            "testing",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-602"
+          ],
+          "desc": "Parse pasted GitHub URLs into stable task link references.\n\n\n**Scope**\n- Support issue, pull request, discussion, commit, release, and generic GitHub URL forms.\n- Reject non-GitHub URLs unless explicitly attached as generic URL later.\n- Normalize owner/repo/number/kind.\n\n\n**Acceptance criteria**\n- [ ] Parser has table-driven tests.\n- [ ] Malformed URLs return friendly errors.\n\n\n**Validation**\n`pnpm --filter web test`."
+        },
+        {
+          "id": "RF-604",
+          "title": "Add Link GitHub modal for pasted URLs",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "github",
+            "frontend",
+            "ux",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-603",
+            "RF-201"
+          ],
+          "desc": "Let users attach GitHub work to a RoadForge task with the simplest possible UX.\n\n\n**Scope**\n- Button: Link GitHub.\n- Paste URL input.\n- Preview parsed type and repo.\n- Attach as URL-only link.\n- No GitHub account connection yet.\n\n\n**Acceptance criteria**\n- [ ] Editor/owner can attach links.\n- [ ] Viewer cannot attach links.\n- [ ] Works on local roadmaps and synced roadmaps.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; browser QA."
+        },
+        {
+          "id": "RF-605",
+          "title": "Render Linked work cards in expanded task detail",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "github",
+            "frontend",
+            "ux",
+            "size-m",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-604"
+          ],
+          "desc": "Show attached GitHub work as compact cards in task detail.\n\n\n**Scope**\n- Cards show kind, repo, number/hash, title fallback from URL if metadata unavailable.\n- Click opens GitHub in a new tab.\n- Collapsed rows show only a subtle linked-work count/icon if useful.\n\n\n**Acceptance criteria**\n- [ ] Linked work is visible but does not dominate task detail.\n- [ ] Empty state is quiet.\n\n\n**Validation**\n`pnpm lint && pnpm typecheck && pnpm build`; visual browser check."
+        },
+        {
+          "id": "RF-606",
+          "title": "Add/remove GitHub links through task lock and partial write safety",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "github",
+            "frontend",
+            "backend",
+            "realtime",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-304",
+            "RF-605"
+          ],
+          "desc": "Make task links collaborative-safe.\n\n\n**Scope**\n- Use whole-task lock before add/remove.\n- On synced roadmaps use task PATCH if implemented; otherwise use safe current mutation with conflict handling.\n- Remove link requires confirmation only if accidental deletion risk is high.\n\n\n**Acceptance criteria**\n- [ ] Two-session add/remove does not silently overwrite.\n- [ ] Activity records task link changes clearly.\n- [ ] Realtime updates other collaborators.\n\n\n**Validation**\nFull web/API validation plus two-session manual QA."
+        },
+        {
+          "id": "RF-607",
+          "title": "Manual QA and docs for GitHub links v1",
+          "done": false,
+          "est": "4h",
+          "tags": [
+            "github",
+            "docs",
+            "testing",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-606"
+          ],
+          "desc": "Document GitHub URL-only linking and what it deliberately does not do.\n\n\n**Scope**\n- How to attach issue/PR/discussion URLs.\n- RoadForge remains source of truth.\n- No automatic sync or task completion.\n- Export/import behavior.\n\n\n**Acceptance criteria**\n- [ ] Docs match UI.\n- [ ] Manual QA checklist covers links.\n\n\n**Validation**\nReview plus browser QA."
         }
       ]
     },
     {
       "id": "phase-07",
       "num": "07",
-      "name": "Import, export, schema, and docs cleanup",
-      "color": "#6e9c8f",
+      "name": "GitHub public metadata and private-repo integration design",
+      "color": "#5f8f5f",
       "colorMode": "manual",
       "status": "future",
       "progress": 0,
       "tasks": [
         {
-          "id": "IE-701",
-          "title": "Refresh the AI roadmap template (fields, Markdown, typos)",
+          "id": "RF-701",
+          "title": "Design metadata cache separate from roadmap source of truth",
           "done": false,
-          "est": "3h",
-          "tags": ["docs", "size-s", "risk-low"],
-          "deps": [],
-          "desc": "Keep `apps/web/src/lib/ai-roadmap-template.ts` (the in-app copyable template) and `docs/roadforge-ai-roadmap-template.txt` aligned:\n\n- use correct RoadForge product copy\n- document the `assignees` array and top-level `tagRegistry`\n- state that `desc` supports Markdown (paragraphs, bold/italic/code, links, lists, checkboxes) with a 2000-char limit\n- keep the existing security note about tokens/secrets\n\n**Acceptance criteria**\n- [ ] Template example imports cleanly with zero repair warnings\n- [ ] Both copies (lib + docs) say the same thing\n\n**Validation:** paste the template's example JSON into the import modal and confirm no warnings; `pnpm lint && pnpm typecheck && pnpm build`."
+          "est": "4h",
+          "tags": [
+            "github",
+            "backend",
+            "data-model",
+            "architecture",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-607"
+          ],
+          "desc": "Prevent volatile GitHub state from polluting roadmap snapshots.\n\n\n**Scope**\n- Metadata cache stores title/state/labels/assignees/checks separately.\n- Task links remain stable references.\n- Exports do not include cache or credentials.\n\n\n**Acceptance criteria**\n- [ ] Cache schema and invalidation rules are documented.\n- [ ] No source-of-truth ambiguity.\n\n\n**Validation**\nReview only."
         },
         {
-          "id": "IE-702",
-          "title": "Accept roadforge.* schema ids on import (legacy ids kept)",
+          "id": "RF-702",
+          "title": "Public GitHub metadata fetch endpoint",
           "done": false,
-          "est": "3h",
-          "tags": ["frontend", "size-s", "risk-low"],
-          "deps": [],
-          "desc": "**Step 1 of the schema-id rename.** Add `roadforge.roadmap.import` and `roadforge.roadmap.export` to `KNOWN_SCHEMAS` in `apps/web/src/lib/roadmap-validation.ts`. The legacy `anvilary.*` ids remain accepted indefinitely — files in the wild must never start warning. Export keeps writing the legacy id in this slice (flip happens in IE-702-S1 only after this ships), so older deployments can still import fresh exports during the transition.\n\n**Acceptance criteria**\n- [ ] Files with either id import with no `schema_unknown` warning\n- [ ] Unknown ids still warn as today\n- [ ] Tests cover both ids plus an unknown id\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
+          "est": "1d",
+          "tags": [
+            "github",
+            "backend",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-701"
+          ],
+          "desc": "Fetch lightweight public metadata for linked GitHub work.\n\n\n**Scope**\n- No authentication required.\n- Gracefully handles rate limits, deleted/private repos, and network failures.\n- Caches results to avoid repeated requests.\n\n\n**Acceptance criteria**\n- [ ] Public issue/PR/discussion cards can show title/state.\n- [ ] Private repo links fall back to URL-only until GitHub App exists.\n\n\n**Validation**\nAPI tests with mocked GitHub responses."
         },
         {
-          "id": "IE-702-S1",
-          "title": "Flip export writer and templates to the roadforge schema id",
+          "id": "RF-703",
+          "title": "Render GitHub title, state, labels, and assignees on linked-work cards",
           "done": false,
-          "tags": ["frontend", "docs", "size-xs", "risk-med"],
-          "deps": ["IE-702", "IE-701"],
-          "parentId": "IE-702",
-          "desc": "After IE-702 has shipped (and, for self-hosters, after a release window so import-side acceptance is deployed), switch the export payload in `services/roadmap-crud.service.ts` from `anvilary.roadmap.export` to `roadforge.roadmap.export`, and update the AI template's example to `roadforge.roadmap.import`. Update export/import round-trip tests.\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual export→import round trip."
+          "est": "1d",
+          "tags": [
+            "github",
+            "frontend",
+            "ux",
+            "size-m",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-702"
+          ],
+          "desc": "Make linked work more useful without taking over RoadForge.\n\n\n**Scope**\n- Show metadata when available.\n- Show stale/fetch-failed state subtly.\n- Do not let GitHub state auto-change task done status.\n\n\n**Acceptance criteria**\n- [ ] Cards improve context.\n- [ ] Fallback remains clean when metadata unavailable.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`."
         },
         {
-          "id": "IE-703",
-          "title": "Sync CLAUDE.md and backend-api docs with real routes",
+          "id": "RF-704",
+          "title": "PR checks and review status summary",
           "done": false,
-          "est": "3h",
-          "tags": ["docs", "size-s", "risk-low"],
-          "deps": [],
-          "desc": "The route list in `CLAUDE.md` and `docs/backend-api.md` is stale: it omits `PATCH /tasks/{task_id}/done`, `PATCH|DELETE /tasks/{task_id}/claim`, and the tag registry CRUD (`GET|POST /tags`, `PUT|DELETE /tags/{tag_id}`). The frontend wiring table also predates markdown descriptions, task claiming, and the versions/activity panels.\n\nRegenerate both from `routers/roadmaps.py` as the source of truth, and refresh the CLAUDE.md folder/hook/service listings that have drifted (e.g. `useEditLock`, `useTaskClaim`, split services). Do this **after** IE-404/IE-602 land so the documented role sets are final, or note pending changes explicitly.\n\n**Acceptance criteria**\n- [ ] Every documented route exists with the correct method and role set\n- [ ] No documented route is missing from code\n\n**Validation:** line-by-line diff against `routers/roadmaps.py`."
+          "est": "1d",
+          "tags": [
+            "github",
+            "backend",
+            "frontend",
+            "size-m",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-702"
+          ],
+          "desc": "For PR links, summarize implementation readiness.\n\n\n**Scope**\n- Open/closed/merged/draft state.\n- Latest check conclusion.\n- Review state if available through public API.\n\n\n**Acceptance criteria**\n- [ ] PR cards show useful status without requiring GitHub login for public repos.\n- [ ] Failures are non-blocking UI state, not roadmap errors.\n\n\n**Validation**\nAPI tests with mocked states; browser card QA."
         },
         {
-          "id": "IE-704",
-          "title": "Export/import round-trip regression test",
+          "id": "RF-705",
+          "title": "Linked-work filters",
           "done": false,
-          "est": "3h",
-          "tags": ["tests", "size-s", "risk-low"],
-          "deps": [],
-          "desc": "Add a vitest that builds a maximal roadmap (markdown desc with lists/checkboxes/links, assignees, tags + tagRegistry with colors, deps, subtasks via parentId, claimed fields), serializes it through the export payload builder, re-parses via `parseImportedRoadmapJson`, and asserts deep equality with zero warnings and zero repairs.\n\nThis is the compatibility safety net for all later schema work (IE-702 family) and for any inline-editing field additions.\n\n**Acceptance criteria**\n- [ ] Round trip preserves every field byte-for-byte\n- [ ] Test fails loudly if a new Task field is added without export/import support\n\n**Validation:** `pnpm --filter web test`"
+          "est": "5h",
+          "tags": [
+            "github",
+            "frontend",
+            "ux",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-703"
+          ],
+          "desc": "Add lightweight filters once metadata exists.\n\n\n**Scope**\n- Has linked work.\n- No linked work.\n- Open PR / merged PR if metadata is available.\n- Failed checks if metadata is available.\n\n\n**Acceptance criteria**\n- [ ] Filters do not hide links without metadata incorrectly.\n- [ ] Local roadmaps still work.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`."
+        },
+        {
+          "id": "RF-706",
+          "title": "GitHub App private-repo integration design doc",
+          "done": false,
+          "est": "1d",
+          "tags": [
+            "github",
+            "architecture",
+            "security",
+            "docs",
+            "size-m",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-701"
+          ],
+          "desc": "Design the future GitHub App integration before any credentialed implementation.\n\n\n**Scope**\n- Installation-based auth, not PATs in localStorage.\n- Roadmap-level connection records.\n- Allowed repository scoping.\n- No credentials in exports/imports.\n- Webhook/cache refresh path.\n\n\n**Acceptance criteria**\n- [ ] Security model reviewed before implementation.\n- [ ] Implementation split is commit-sized.\n\n\n**Validation**\nReview only."
+        },
+        {
+          "id": "RF-707",
+          "title": "Evaluate create-GitHub-issue-from-task as a beta feature",
+          "done": false,
+          "est": "4h",
+          "tags": [
+            "github",
+            "beta",
+            "source-of-truth",
+            "ux",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-703"
+          ],
+          "desc": "Decide whether RoadForge should write to GitHub later.\n\n\n**Scope**\n- Assess whether creating issues from tasks helps or harms source-of-truth clarity.\n- If yes, define one-way creation only.\n- Do not implement in alpha.\n\n\n**Acceptance criteria**\n- [ ] Go/no-go decision recorded.\n- [ ] No bidirectional sync implied.\n\n\n**Validation**\nReview only."
         }
       ]
     },
     {
       "id": "phase-08",
       "num": "08",
-      "name": "Beta hardening",
-      "color": "#8a9aa8",
+      "name": "Alpha stabilization and final release QA",
+      "color": "#c05545",
       "colorMode": "manual",
       "status": "future",
       "progress": 0,
       "tasks": [
         {
-          "id": "IE-801",
-          "title": "Backend: task-level PATCH for scalar task fields",
+          "id": "RF-801",
+          "title": "Freeze feature work and create alpha release candidate",
           "done": false,
-          "est": "2d",
-          "tags": ["backend", "beta", "size-l", "risk-high"],
-          "deps": ["IE-604"],
-          "desc": "**Goal:** shrink the write surface for inline edits. New endpoint `PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}` accepting a partial body of `title`, `est`, `desc`, `tags`, `assignees` plus a required `last_updated_at` for optimistic concurrency — mirroring the existing `patch_task_done` pattern in `roadmap_task_service.py` (409 `RoadmapConflictError` with conflict metadata on stale timestamps).\n\nRequirements: owner+editor roles; field validation reuses `schemas/limits.py` constants; emits a `task.updated` activity row with changed-field metadata; publishes the SSE roadmap event like other task patches; respects the version-checkpoint policy (`_should_create_version`); rate limit in line with `task.done.patch`.\n\nSplit into review-sized commits if needed: schema+service, then router+tests.\n\n**Acceptance criteria**\n- [ ] Partial update touches only provided fields\n- [ ] Stale `last_updated_at` → 409 with conflict payload\n- [ ] Viewer 403, editor/owner 200\n- [ ] Activity + SSE + version behavior covered by tests\n\n**Validation:** apps/api pytest suite; smoke per `docs/backend-smoke-tests.md`."
+          "est": "2h",
+          "tags": [
+            "alpha",
+            "deploy",
+            "ux",
+            "size-xs",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-607",
+            "RF-703",
+            "RF-406",
+            "RF-505"
+          ],
+          "desc": "Stop feature changes and produce a single release candidate for final QA.\n\n\n**Scope**\n- Confirm all previous implementation phases are merged and deployed to the target environment.\n- Only regression fixes are allowed after this point.\n- Record commit SHA and deployment timestamp.\n\n\n**Acceptance criteria**\n- [ ] Working tree is clean.\n- [ ] Release candidate commit is known.\n- [ ] No more planned feature work remains before alpha.\n\n\n**Validation**\n`git status -sb`, full local release gate, then deploy."
         },
         {
-          "id": "IE-802",
-          "title": "Frontend: route inline commits through task PATCH when synced",
-          "done": false,
-          "est": "1d",
-          "tags": ["frontend", "beta", "size-m", "risk-med"],
-          "deps": ["IE-801"],
-          "desc": "**Goal:** synced roadmaps stop shipping full snapshots for single-field edits. Add the service function (only in `roadmap.service`/`roadmap-crud.service` per the fetch rule), then make `commitTaskField` call PATCH when `serverRoadmapId && sessionToken`, applying the returned roadmap/updatedAt like `useTaskClaim` does. Local/unsynced roadmaps keep the existing context mutation + autosync PUT path unchanged.\n\nFailure handling: 409 feeds the existing conflict flow (`handlePartialWriteConflict`), auth errors surface the session-expired path, connection errors fall back to marking `saved=false` so autosync retries — never silently drop an edit.\n\n**Acceptance criteria**\n- [ ] Single-field edit on a synced roadmap issues one PATCH, no full PUT\n- [ ] Conflict opens the review flow with the draft preserved\n- [ ] Offline edit still lands via autosync when the server returns\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; two-session conflict QA."
-        },
-        {
-          "id": "IE-803",
-          "title": "Evaluate field-level presence hints on task locks",
+          "id": "RF-802",
+          "title": "Run full owner/editor/viewer browser QA pass once",
           "done": false,
           "est": "4h",
-          "tags": ["frontend", "beta", "ux", "size-s", "risk-low"],
-          "deps": ["IE-802"],
-          "desc": "**Evaluation slice, may conclude \"not needed\".** Today the whole-task lock shows \"X is editing\" on the row. Assess whether beta needs finer hints (which *field* is being edited) using the existing lock SSE payloads — e.g. encoding the active field in the lock target (`task:{id}:desc`) versus keeping one task lock and adding a lightweight hint channel.\n\nDeliverable: a short written recommendation (in `docs/architecture/`) with complexity/benefit trade-offs. Field-level *locking* is explicitly out of scope for alpha and probably beta; the whole-task lock remains the safety mechanism.\n\n**Acceptance criteria**\n- [ ] Recommendation documented with a go/no-go\n- [ ] If no-go, ticket closed with rationale — no code\n\n**Validation:** review only."
+          "tags": [
+            "alpha",
+            "testing",
+            "ux",
+            "size-s",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-801"
+          ],
+          "desc": "Perform the final end-to-end human QA after all codebase improvements and GitHub v1 work are done.\n\n\n**Scope**\n- Owner create/save/share.\n- Editor join/edit/link GitHub work.\n- Viewer read-only shared view.\n- Import/export/replace/version visibility.\n- Mobile sanity pass.\n\n\n**Acceptance criteria**\n- [ ] All critical alpha paths pass.\n- [ ] Defects are logged with severity.\n- [ ] No repeated QA loop required unless a regression fix lands.\n\n\n**Validation**\nManual QA using docs/manual-qa.md and release checklist."
         },
         {
-          "id": "IE-804",
-          "title": "Conflict UX polish for inline edits",
+          "id": "RF-803",
+          "title": "Two-session realtime, lock, and GitHub link QA",
           "done": false,
-          "est": "1d",
-          "tags": ["frontend", "beta", "ux", "size-m", "risk-med"],
-          "deps": ["IE-802"],
-          "desc": "**Goal:** an inline edit that hits a 409 should feel recoverable, not scary. When a task PATCH conflicts: keep the user's draft in the field editor, show a focused prompt (\"This task changed on the server\") offering *Reload task and reapply my edit* or *Review full conflict*, and reuse `SyncConflictReviewPanel` for the full path. For the common case (the other change touched a different field), reapplying after reload should just work.\n\n**Acceptance criteria**\n- [ ] Draft text never lost on conflict\n- [ ] One-click reload-and-reapply for non-overlapping changes\n- [ ] Overlapping-field conflict routes to the review panel\n\n**Validation:** `pnpm lint && pnpm typecheck && pnpm build`; scripted two-session conflict QA (both editing the same task)."
+          "est": "3h",
+          "tags": [
+            "alpha",
+            "realtime",
+            "github",
+            "testing",
+            "size-s",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-802"
+          ],
+          "desc": "Verify collaboration safety with the new GitHub link layer included.\n\n\n**Scope**\n- Two participants edit different tasks.\n- One participant locks a task; the other is blocked gracefully.\n- GitHub link add/remove appears live to the other participant.\n- Offline/reconnect status remains stable.\n\n\n**Acceptance criteria**\n- [ ] No softlocks.\n- [ ] No silent overwrite.\n- [ ] Realtime updates arrive without refresh.\n\n\n**Validation**\nTwo-browser manual QA."
         },
         {
-          "id": "IE-805",
-          "title": "Automated test coverage for the inline editing surface",
+          "id": "RF-804",
+          "title": "Final security and deployment smoke",
+          "done": false,
+          "est": "3h",
+          "tags": [
+            "alpha",
+            "security",
+            "deploy",
+            "size-s",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-802",
+            "RF-501",
+            "RF-502",
+            "RF-505"
+          ],
+          "desc": "Confirm production assumptions before sharing the alpha.\n\n\n**Scope**\n- Health check.\n- Reverse proxy/TLS.\n- Invite-token logging review.\n- Backup exists.\n- Rollback notes ready.\n\n\n**Acceptance criteria**\n- [ ] Hosted alpha is reachable.\n- [ ] Backup/restore procedure is documented.\n- [ ] No obvious credential leakage.\n\n\n**Validation**\nManual ops checklist."
+        },
+        {
+          "id": "RF-805",
+          "title": "Alpha defect triage and stabilization patch window",
           "done": false,
           "est": "1d",
-          "tags": ["tests", "beta", "size-m", "risk-low"],
-          "deps": ["IE-504"],
-          "desc": "Backfill automated coverage so smaller agents can refactor safely later:\n\n- vitest unit tests for `useInlineTaskEdit` (lock acquire/release, dirty transitions, local-first grant)\n- component tests for `DescriptionEditor` (tab switch preserves draft, char limit, Cmd+Enter, Esc guard)\n- tests for `commitTaskField` normalization edge cases (empty title, dup assignees case-insensitive, tag limits)\n- API tests already added in IE-801 verified green in CI\n\n**Acceptance criteria**\n- [ ] `pnpm --filter web test` covers every inline editor behavior listed above\n- [ ] CI (`.github/workflows/ci.yml`) runs the suite\n\n**Validation:** `pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`"
+          "tags": [
+            "alpha",
+            "ux",
+            "testing",
+            "size-s",
+            "risk-med"
+          ],
+          "deps": [
+            "RF-802",
+            "RF-803",
+            "RF-804"
+          ],
+          "desc": "Patch only defects found during final QA.\n\n\n**Scope**\n- No new features.\n- Small commits.\n- Each fix gets focused validation.\n- If a fix touches a critical flow, rerun only that flow plus smoke.\n\n\n**Acceptance criteria**\n- [ ] All blocking defects resolved or explicitly deferred.\n- [ ] No known data-loss/security blocker remains.\n\n\n**Validation**\nFocused validation per patch plus final smoke."
+        },
+        {
+          "id": "RF-806",
+          "title": "Prepare alpha release notes and known limitations",
+          "done": false,
+          "est": "3h",
+          "tags": [
+            "alpha",
+            "docs",
+            "size-s",
+            "risk-low"
+          ],
+          "deps": [
+            "RF-805"
+          ],
+          "desc": "Write what users need to know before they try RoadForge.\n\n\n**Scope**\n- What works.\n- What is intentionally alpha.\n- GitHub linking limitations.\n- Source-available/non-commercial future note.\n- Backup/export recommendation.\n\n\n**Acceptance criteria**\n- [ ] Release notes are honest and clear.\n- [ ] Known limitations do not overpromise.\n\n\n**Validation**\nReview only."
         }
       ]
     }
