@@ -72,12 +72,23 @@ describe('storage', () => {
       expect(storage.getRoadmapCache('rm-1')).toEqual(cache)
     })
 
-    it('clearRoadmapCache removes the roadmap, auth, and UI state entries', () => {
+    it('clearRoadmapCache removes only roadmap source data', () => {
       const uiState = { schemaVersion: 1 as const, openPhaseIds: ['ph-1'], expandedTaskId: null, updatedAt: '' }
       storage.setRoadmapCache('rm-1', makeRoadmapCache())
       storage.setAuthCache('rm-1', makeAuthCache())
       storage.setRoadmapUiState('rm-1', uiState)
       storage.clearRoadmapCache('rm-1')
+      expect(storage.getRoadmapCache('rm-1')).toBeNull()
+      expect(storage.getAuthCache('rm-1')).not.toBeNull()
+      expect(storage.getRoadmapUiState('rm-1')).not.toBeNull()
+    })
+
+    it('clearRoadmapStorage removes all roadmap-scoped entries', () => {
+      const uiState = { schemaVersion: 1 as const, openPhaseIds: ['ph-1'], expandedTaskId: null, updatedAt: '' }
+      storage.setRoadmapCache('rm-1', makeRoadmapCache())
+      storage.setAuthCache('rm-1', makeAuthCache())
+      storage.setRoadmapUiState('rm-1', uiState)
+      storage.clearRoadmapStorage('rm-1')
       expect(storage.getRoadmapCache('rm-1')).toBeNull()
       expect(storage.getAuthCache('rm-1')).toBeNull()
       expect(storage.getRoadmapUiState('rm-1')).toBeNull()
@@ -174,6 +185,45 @@ describe('storage', () => {
       }
       window.localStorage.setItem('rf:ui:rm-1', JSON.stringify(state))
       expect(storage.getRoadmapUiState('rm-1')).toEqual(state)
+    })
+
+    it('drops non-UI fields from saved state while preserving version 1 fields', () => {
+      const state = {
+        schemaVersion: 1 as const,
+        openPhaseIds: ['ph-1'],
+        expandedTaskId: 'task-1',
+        updatedAt: '2025-01-01T00:00:00Z',
+        roadmapName: 'Must not be UI state',
+        phases: [{ id: 'ph-1' }],
+        sessionToken: 'must-not-persist',
+      }
+
+      storage.setRoadmapUiState('rm-1', state)
+
+      expect(JSON.parse(window.localStorage.getItem('rf:ui:rm-1') ?? '')).toEqual({
+        schemaVersion: 1,
+        openPhaseIds: ['ph-1'],
+        expandedTaskId: 'task-1',
+        updatedAt: '2025-01-01T00:00:00Z',
+      })
+    })
+
+    it('sanitizes extra fields from existing version 1 state', () => {
+      window.localStorage.setItem('rf:ui:rm-1', JSON.stringify({
+        schemaVersion: 1,
+        openPhaseIds: ['ph-1'],
+        expandedTaskId: null,
+        updatedAt: '2025-01-01T00:00:00Z',
+        roadmapName: 'Must not hydrate from UI state',
+        sessionToken: 'must-not-hydrate',
+      }))
+
+      expect(storage.getRoadmapUiState('rm-1')).toEqual({
+        schemaVersion: 1,
+        openPhaseIds: ['ph-1'],
+        expandedTaskId: null,
+        updatedAt: '2025-01-01T00:00:00Z',
+      })
     })
 
     it('persists an upgrade dismissal marker without replacing existing UI state', () => {

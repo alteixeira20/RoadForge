@@ -45,19 +45,29 @@ export interface RoadmapUiState {
   updatedAt: string
 }
 
-function isValidRoadmapUiState(value: unknown): value is RoadmapUiState {
-  if (typeof value !== 'object' || value === null) return false
+function parseRoadmapUiState(value: unknown): RoadmapUiState | null {
+  if (typeof value !== 'object' || value === null) return null
   const v = value as Record<string, unknown>
-  if (v.schemaVersion !== 1) return false
-  if (!Array.isArray(v.openPhaseIds)) return false
-  if (!(v.openPhaseIds as unknown[]).every((id) => typeof id === 'string')) return false
-  if (v.expandedTaskId !== null && typeof v.expandedTaskId !== 'string') return false
+  if (v.schemaVersion !== 1) return null
+  if (!Array.isArray(v.openPhaseIds)) return null
+  if (!(v.openPhaseIds as unknown[]).every((id) => typeof id === 'string')) return null
+  if (v.expandedTaskId !== null && typeof v.expandedTaskId !== 'string') return null
   if (
     v.dismissedUpgradeNoticeSignature !== undefined &&
     typeof v.dismissedUpgradeNoticeSignature !== 'string'
-  ) return false
-  if (typeof v.updatedAt !== 'string') return false
-  return true
+  ) return null
+  if (typeof v.updatedAt !== 'string') return null
+
+  const state: RoadmapUiState = {
+    schemaVersion: 1,
+    openPhaseIds: v.openPhaseIds as string[],
+    expandedTaskId: v.expandedTaskId as string | null,
+    updatedAt: v.updatedAt,
+  }
+  if (typeof v.dismissedUpgradeNoticeSignature === 'string') {
+    state.dismissedUpgradeNoticeSignature = v.dismissedUpgradeNoticeSignature
+  }
+  return state
 }
 
 function getLocal(key: string): string | null {
@@ -180,12 +190,16 @@ export const storage = {
 
   clearRoadmapCache(id: string): void {
     removeLocal(`rf:roadmap:${id}`)
+  },
+
+  clearRoadmapStorage(id: string): void {
+    this.clearRoadmapCache(id)
     removeLocal(`rf:auth:${id}`)
     removeLocal(`rf:ui:${id}`)
   },
 
   removeRoadmap(id: string): void {
-    this.clearRoadmapCache(id)
+    this.clearRoadmapStorage(id)
     if (this.getActiveRoadmapId() === id) this.setActiveRoadmapId(null)
     if (this.getLastRoadmapId() === id) {
       const next = this.listRoadmapCaches()[0]?.id ?? null
@@ -221,14 +235,14 @@ export const storage = {
     if (!raw) return null
     try {
       const parsed: unknown = JSON.parse(raw)
-      if (!isValidRoadmapUiState(parsed)) return null
-      return parsed
+      return parseRoadmapUiState(parsed)
     } catch {
       return null
     }
   },
   setRoadmapUiState(id: string, state: RoadmapUiState): void {
-    setLocal(`rf:ui:${id}`, JSON.stringify(state))
+    const parsed = parseRoadmapUiState(state)
+    if (parsed) setLocal(`rf:ui:${id}`, JSON.stringify(parsed))
   },
   setDismissedUpgradeNoticeSignature(id: string, signature: string): void {
     const current = this.getRoadmapUiState(id) ?? {

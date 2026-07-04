@@ -226,7 +226,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       const ac = storage.getAuthCache(currentActiveId)
       if (ac) storage.setAuthCache(id, ac)
 
-      storage.clearRoadmapCache(currentActiveId)
+      storage.clearRoadmapStorage(currentActiveId)
       storage.setActiveRoadmapId(id)
       storage.setLastRoadmapId(id)
       setActiveRoadmapIdState(id)
