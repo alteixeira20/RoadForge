@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { isTaskDescriptionDirty } from '@/lib/task-edit'
 import { MarkdownDescription } from './MarkdownDescription'
 import { MarkdownToolbar } from './MarkdownToolbar'
 
@@ -39,7 +40,7 @@ export function TaskDescriptionEditor({
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false)
   const composingRef = useRef(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const isDirty = draft !== value
+  const isDirty = isTaskDescriptionDirty(value, draft)
 
   // Default to source mode each time editing (re)starts, since the user just clicked to edit.
   useEffect(() => {

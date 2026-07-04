@@ -113,4 +113,14 @@ describe('commitTaskField', () => {
     expect(result.updates).toEqual({ title: 'Original title' })
   })
 
+  it('treats an empty draft as unchanged when description is missing', () => {
+    const task = { ...EDITABLE_TASK, desc: undefined }
+    const result = commitTaskField(task, 'desc', '')
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.changed).toBe(false)
+    expect(result.task).toBe(task)
+    expect(result.updates).toEqual({ desc: '' })
+  })
 })

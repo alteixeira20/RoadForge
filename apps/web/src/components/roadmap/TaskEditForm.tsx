@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 import {
   cleanAssigneeName,
   dedupeNames,
-  getTaskAssignees,
-  getVisibleTaskTags,
 } from '@/lib/task-assignment'
 import { TagInput, splitAndNormalizeTags } from './TagInput'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { MarkdownToolbar } from './MarkdownToolbar'
+import {
+  createTaskEditDraft,
+  isTaskEditDraftDirty,
+  type TaskEditDraft,
+} from '@/lib/task-edit'
 import type { Task, TagDefinition } from '@/types/roadmap'
 
 interface TaskEditFormProps {
@@ -23,37 +26,6 @@ interface TaskEditFormProps {
   canCommit?: boolean
 }
 
-interface EditDraft {
-  title: string
-  est: string
-  desc: string
-  assignees: string[]
-  tags: string[]
-}
-
-function initialDraft(task: Task): EditDraft {
-  return {
-    title: task.title,
-    est: task.est ?? '',
-    desc: task.desc ?? '',
-    assignees: getTaskAssignees(task),
-    tags: getVisibleTaskTags(task),
-  }
-}
-
-function isDraftDirty(draft: EditDraft, task: Task): boolean {
-  if (draft.title !== task.title) return true
-  if (draft.est !== (task.est ?? '')) return true
-  if (draft.desc !== (task.desc ?? '')) return true
-  const origAssignees = getTaskAssignees(task).join(',')
-  const draftAssignees = draft.assignees.join(',')
-  if (origAssignees !== draftAssignees) return true
-  const origTags = getVisibleTaskTags(task).join(',')
-  const draftTags = draft.tags.join(',')
-  if (origTags !== draftTags) return true
-  return false
-}
-
 export function TaskEditForm({
   task,
   isNested,
@@ -64,12 +36,12 @@ export function TaskEditForm({
   onDirtyChange,
   canCommit = true,
 }: TaskEditFormProps) {
-  const [draft, setDraft] = useState<EditDraft>(() => initialDraft(task))
+  const [draft, setDraft] = useState<TaskEditDraft>(() => createTaskEditDraft(task))
   const [assigneeDraft, setAssigneeDraft] = useState('')
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
 
-  const isDirty = isDraftDirty(draft, task)
+  const isDirty = isTaskEditDraftDirty(draft, task)
 
   useEffect(() => {
     onDirtyChange?.(isDirty)
