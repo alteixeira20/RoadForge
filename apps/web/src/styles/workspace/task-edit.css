@@ -188,10 +188,6 @@
   width: 100%;
   font-size: 15.5px;
 }
-.inline-task-field.is-est .inline-task-input {
-  width: min(160px, 42vw);
-  font-size: 13px;
-}
 .inline-title-trigger {
   min-width: 0;
   min-height: 36px;
@@ -234,15 +230,6 @@
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1;
-}
-.inline-estimate-trigger {
-  cursor: text;
-}
-.inline-estimate-trigger:hover,
-.inline-estimate-trigger:focus-visible {
-  color: var(--ember);
-  border-color: var(--border);
-  outline: none;
 }
 .estimate-chip.is-empty {
   color: var(--ink-4);
@@ -416,7 +403,6 @@
 @media (max-width: 600px) {
   .edit-form { padding: 10px; gap: 10px; }
   .inline-title-trigger,
-  .estimate-chip,
   .inline-task-input {
     min-height: 44px;
   }

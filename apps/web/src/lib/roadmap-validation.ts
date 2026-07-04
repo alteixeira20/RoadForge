@@ -64,9 +64,11 @@ const REPAIR_MESSAGES: Record<ImportRepairCode, string> = {
     'Invalid or duplicate tag registry definitions were removed or normalized.',
 }
 
-// ─── Constants (mirrored from apps/api/src/api/schemas/limits.py) ─────────────
+// Import files are parsed locally, so this can exceed the API request-body cap.
 
-export const IMPORT_MAX_BYTES = 512 * 1024
+export const IMPORT_MAX_BYTES = 5 * 1024 * 1024
+
+// Validation limits mirrored from apps/api/src/api/schemas/limits.py.
 const PHASES_MAX = 50
 const TASKS_PER_PHASE_MAX = 200
 const TASK_TITLE_MAX = 160

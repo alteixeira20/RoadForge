@@ -4,7 +4,7 @@ import { useRef, type KeyboardEvent } from 'react'
 import type { InlineTaskField } from '@/hooks/taskMutationHelpers'
 
 interface TaskInlineFieldProps {
-  field: Extract<InlineTaskField, 'title' | 'est'>
+  field: Extract<InlineTaskField, 'title'>
   value: string
   draft: string
   active: boolean
@@ -38,9 +38,6 @@ export function TaskInlineField({
 }: TaskInlineFieldProps) {
   const composingRef = useRef(false)
   const skipBlurCommitRef = useRef(false)
-  const isTitle = field === 'title'
-  const inputLabel = isTitle ? 'Task title' : 'Task estimate'
-
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing || composingRef.current) return
     if (event.key === 'Enter') {
@@ -62,7 +59,7 @@ export function TaskInlineField({
         <input
           className="inline-task-input"
           value={draft}
-          aria-label={inputLabel}
+          aria-label="Task title"
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
           autoFocus
@@ -87,24 +84,19 @@ export function TaskInlineField({
     )
   }
 
-  const displayValue = value || (editable ? 'Add estimate' : 'No estimate')
   if (!editable) {
-    return (
-      <span className={isTitle ? 'title' : `estimate-chip${value ? '' : ' is-empty'}`}>
-        {displayValue}
-      </span>
-    )
+    return <span className="title">{value}</span>
   }
 
   return (
     <button
       type="button"
-      className={isTitle ? 'title inline-title-trigger' : `estimate-chip inline-estimate-trigger${value ? '' : ' is-empty'}`}
+      className="title inline-title-trigger"
       onClick={onBegin}
       disabled={busy}
-      aria-label={isTitle ? `Edit task title: ${value}` : 'Edit task estimate'}
+      aria-label={`Edit task title: ${value}`}
     >
-      {displayValue}
+      {value}
     </button>
   )
 }

@@ -9,8 +9,6 @@ import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
 import { TaskDescriptionEditor } from './TaskDescriptionEditor'
 import { TaskInlineField } from './TaskInlineField'
-import { TaskTagEditor } from './TaskTagEditor'
-import { TaskAssigneeEditor } from './TaskAssigneeEditor'
 import { TaskSubtaskList } from './TaskSubtaskList'
 import { useEditLock } from '@/hooks/useEditLock'
 import { useIdleEditPause } from '@/hooks/useIdleEditPause'
@@ -99,7 +97,6 @@ export function TaskRow({
   const [editDirty, setEditDirty] = useState(false)
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
   const [titleDraft, setTitleDraft] = useState(task.title)
-  const [estimateDraft, setEstimateDraft] = useState(task.est ?? '')
   const [descDraft, setDescDraft] = useState(task.desc ?? '')
   const [titleError, setTitleError] = useState<string | null>(null)
 
@@ -275,13 +272,11 @@ export function TaskRow({
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
-  const handleBeginInlineEdit = async (field: 'title' | 'est' | 'desc') => {
+  const handleBeginInlineEdit = async (field: 'title' | 'desc') => {
     if (activeForm || effectivelyReadOnly || inlineEdit.isEditing) return
     if (field === 'title') {
       setTitleDraft(task.title)
       setTitleError(null)
-    } else if (field === 'est') {
-      setEstimateDraft(task.est ?? '')
     } else {
       setDescDraft(task.desc ?? '')
     }
@@ -291,9 +286,7 @@ export function TaskRow({
   const handleCommitInlineEdit = async () => {
     const value = inlineEdit.activeField === 'title'
       ? titleDraft
-      : inlineEdit.activeField === 'est'
-        ? estimateDraft
-        : descDraft
+      : descDraft
     const result = await inlineEdit.commitEdit(value)
     if (result?.ok === false && result.reason === 'empty-title') {
       setTitleError('Title cannot be empty.')
@@ -307,27 +300,10 @@ export function TaskRow({
 
   const handleCancelInlineEdit = async () => {
     setTitleDraft(task.title)
-    setEstimateDraft(task.est ?? '')
     setDescDraft(task.desc ?? '')
     setTitleError(null)
     onDirtyChange?.(task.id, false)
     await inlineEdit.cancelEdit()
-  }
-
-  const handleTagsChange = async (nextTags: string[]) => {
-    if (effectivelyReadOnly) return
-    const acquired = await inlineEdit.beginEdit('tags')
-    if (!acquired) return
-    const nextRegistry = ensureRegistryForTagIds(nextTags, tagRegistry)
-    if (nextRegistry.length !== tagRegistry.length) setTagRegistry(nextRegistry)
-    await inlineEdit.commitEdit(nextTags)
-  }
-
-  const handleAssigneesChange = async (nextAssignees: string[]) => {
-    if (effectivelyReadOnly) return
-    const acquired = await inlineEdit.beginEdit('assignees')
-    if (!acquired) return
-    await inlineEdit.commitEdit(nextAssignees)
   }
 
   const navigateToTask = (id: string) => {
@@ -349,15 +325,6 @@ export function TaskRow({
     ...assignedNames,
     displayName,
   ]).sort((a, b) => a.localeCompare(b))
-
-  const tagsEditable = !activeForm && !effectivelyReadOnly
-    && (!inlineEdit.isEditing || inlineEdit.activeField === 'tags')
-  const assigneesEditable = !activeForm && !effectivelyReadOnly
-    && (!inlineEdit.isEditing || inlineEdit.activeField === 'assignees')
-  const tagsBusy = inlineEdit.activeField === 'tags'
-    && (inlineEdit.isAcquiring || inlineEdit.isReleasing)
-  const assigneesBusy = inlineEdit.activeField === 'assignees'
-    && (inlineEdit.isAcquiring || inlineEdit.isReleasing)
 
   const taskStatus = deriveTaskStatus(task, allTasks)
   const blockedBy = getBlockingTasks(task, allTasks)
@@ -551,38 +518,6 @@ export function TaskRow({
                 visibleTags={visibleTags}
                 registry={tagRegistry}
                 showDescription={false}
-                estimateControl={!isNested ? (
-                  <TaskInlineField
-                    field="est"
-                    value={task.est ?? ''}
-                    draft={estimateDraft}
-                    active={inlineEdit.activeField === 'est'}
-                    editable={!activeForm && !effectivelyReadOnly && !inlineEdit.isEditing}
-                    busy={inlineEdit.isAcquiring || inlineEdit.isReleasing}
-                    canCommit={inlineEdit.canCommit}
-                    onBegin={() => { void handleBeginInlineEdit('est') }}
-                    onDraftChange={setEstimateDraft}
-                    onCommit={() => { void handleCommitInlineEdit() }}
-                    onCancel={() => { void handleCancelInlineEdit() }}
-                    onInteraction={handleInlineInteraction}
-                  />
-                ) : undefined}
-                tagsControl={tagsEditable ? (
-                  <TaskTagEditor
-                    tags={visibleTags}
-                    registry={tagRegistry}
-                    busy={tagsBusy}
-                    onChange={(next) => { void handleTagsChange(next) }}
-                  />
-                ) : undefined}
-                assigneesControl={assigneesEditable ? (
-                  <TaskAssigneeEditor
-                    assignees={assignedNames}
-                    availableAssignees={availableAssignees}
-                    busy={assigneesBusy}
-                    onChange={(next) => { void handleAssigneesChange(next) }}
-                  />
-                ) : undefined}
               />
 
               {depTasks.length > 0 && (
@@ -711,6 +646,18 @@ export function TaskRow({
                     />
                   ) : (
                     <div className="actions" role="group" aria-label="Task actions">
+                      {!inlineEdit.isEditing && (
+                        <button
+                          type="button"
+                          className="btn sm"
+                          onClick={async () => {
+                            const success = await tryAcquireEditLock()
+                            if (success) setIsEditing(true)
+                          }}
+                        >
+                          <Icon name="pencil" size={13} /> Edit details
+                        </button>
+                      )}
                       {!isNested && (
                         <button className="btn sm" disabled={inlineEdit.isEditing} onClick={async () => {
                           const success = await tryAcquireEditLock()

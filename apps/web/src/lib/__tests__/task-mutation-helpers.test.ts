@@ -95,14 +95,6 @@ describe('commitTaskField', () => {
     expect(result.task).toBe(EDITABLE_TASK)
   })
 
-  it('trims estimates and clears an estimate with empty input', () => {
-    const trimmed = commitTaskField(EDITABLE_TASK, 'est', '  5h ')
-    const cleared = commitTaskField(EDITABLE_TASK, 'est', '   ')
-
-    expect(trimmed.ok && trimmed.updates).toEqual({ est: '5h' })
-    expect(cleared.ok && cleared.updates).toEqual({ est: '' })
-  })
-
   it('preserves description Markdown source exactly', () => {
     const markdown = '  ## Heading\n\n- item  \n'
     const result = commitTaskField(EDITABLE_TASK, 'desc', markdown)
@@ -121,74 +113,4 @@ describe('commitTaskField', () => {
     expect(result.updates).toEqual({ title: 'Original title' })
   })
 
-  it('sets tags and reports changed', () => {
-    const result = commitTaskField(EDITABLE_TASK, 'tags', ['frontend', 'urgent'])
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.changed).toBe(true)
-    expect(result.updates).toEqual({ tags: ['frontend', 'urgent'] })
-    expect(result.task.tags).toEqual(['frontend', 'urgent'])
-  })
-
-  it('reports tags unchanged when next tags match visible tags', () => {
-    const result = commitTaskField(EDITABLE_TASK, 'tags', ['frontend'])
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.changed).toBe(false)
-  })
-
-  it('compares tags against visible tags only, ignoring legacy assignment tags', () => {
-    const taskWithLegacyTag: Task = { ...EDITABLE_TASK, tags: ['owner:Alice', 'frontend'] }
-    const result = commitTaskField(taskWithLegacyTag, 'tags', ['frontend'])
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.changed).toBe(false)
-  })
-
-  it('drops legacy assignment tags once tags are committed', () => {
-    const taskWithLegacyTag: Task = { ...EDITABLE_TASK, tags: ['owner:Alice', 'frontend'] }
-    const result = commitTaskField(taskWithLegacyTag, 'tags', ['frontend', 'design'])
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.task.tags).toEqual(['frontend', 'design'])
-  })
-
-  it('handles removing all tags', () => {
-    const result = commitTaskField(EDITABLE_TASK, 'tags', [])
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.changed).toBe(true)
-    expect(result.task.tags).toEqual([])
-  })
-
-  it('sets assignees and reports changed', () => {
-    const result = commitTaskField(EDITABLE_TASK, 'assignees', ['Alice', 'Bob'])
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.changed).toBe(true)
-    expect(result.task.assignees).toEqual(['Alice', 'Bob'])
-  })
-
-  it('reports assignees unchanged when next assignees match current', () => {
-    const result = commitTaskField(EDITABLE_TASK, 'assignees', ['Alice'])
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.changed).toBe(false)
-  })
-
-  it('compares assignees against names derived from legacy assignment tags', () => {
-    const taskWithLegacyAssignee: Task = { id: 'tk_legacy', title: 'Legacy', done: false, tags: ['owner:Carol'] }
-    const result = commitTaskField(taskWithLegacyAssignee, 'assignees', ['Carol'])
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.changed).toBe(false)
-  })
-
-  it('handles removing all assignees', () => {
-    const result = commitTaskField(EDITABLE_TASK, 'assignees', [])
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.changed).toBe(true)
-    expect(result.task.assignees).toEqual([])
-  })
 })
