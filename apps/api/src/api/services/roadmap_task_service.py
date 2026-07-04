@@ -2,6 +2,7 @@
 Task partial-write operations for a roadmap.
 
 This module handles:
+- Updating task planning fields (patch_task)
 - Marking a task as done / reopening it (patch_task_done)
 - Claiming a task (patch_task_claim)
 - Releasing a task claim (delete_task_claim)
@@ -14,7 +15,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant
-from api.schemas.roadmap import PatchTaskDoneRequest, RoadmapResponse
+from api.schemas.roadmap import PatchTaskDoneRequest, PatchTaskRequest, RoadmapResponse
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.roadmap_helpers import (
@@ -22,6 +23,7 @@ from api.services.roadmap_helpers import (
     _fetch_active_roadmap_for_update,
     _patch_task_claim_snapshot,
     _patch_task_done_snapshot,
+    _patch_task_fields_in_snapshot,
     _phases_from_snapshot,
     _roadmap_conflict_response,
     _roadmap_response,
@@ -30,6 +32,77 @@ from api.services.roadmap_projection_service import sync_roadmap_projection_best
 from api.services.session_policy import ensure_aware_utc
 
 logger = logging.getLogger(__name__)
+
+
+async def patch_task(
+    db: AsyncSession,
+    roadmap_id: str,
+    task_id: str,
+    payload: PatchTaskRequest,
+    participant: Participant,
+) -> RoadmapResponse:
+    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+
+    client_ts = ensure_aware_utc(payload.last_updated_at)
+    if roadmap.updated_at > client_ts:
+        raise RoadmapConflictError(_roadmap_conflict_response(roadmap, client_ts, None))
+
+    updates = payload.model_dump(
+        exclude={"last_updated_at"},
+        exclude_unset=True,
+    )
+    patched = _patch_task_fields_in_snapshot(roadmap.snapshot_json, task_id, updates)
+    if patched is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if not patched.changed_fields:
+        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+
+    before_json = {
+        field: patched.before_task.get(field) for field in patched.changed_fields
+    }
+    after_json = {
+        field: patched.after_task.get(field) for field in patched.changed_fields
+    }
+    roadmap.snapshot_json = patched.snapshot_json
+    roadmap.updated_at = datetime.now(timezone.utc)
+
+    db.add(ActivityLog(
+        id=generate_id("al_"),
+        roadmap_id=roadmap_id,
+        participant_id=participant.id,
+        actor_name=participant.display_name,
+        action="task.updated",
+        entity_type="task",
+        entity_id=task_id,
+        before_json=before_json,
+        after_json=after_json,
+        metadata_json={
+            "taskId": task_id,
+            "taskTitle": patched.after_task.get("title"),
+            "phaseId": patched.phase.get("id"),
+            "phaseName": patched.phase.get("name"),
+            "changedFields": patched.changed_fields,
+        },
+    ))
+    await sync_roadmap_projection_best_effort(db, roadmap, "task_update_patch")
+
+    await db.commit()
+    await db.refresh(roadmap)
+
+    await event_bus.publish(Event(
+        roadmap_id=roadmap_id,
+        action="roadmap.updated",
+        payload={
+            "roadmap_id": roadmap_id,
+            "updated_at": roadmap.updated_at.isoformat(),
+            "participant_id": participant.id,
+            "task_id": task_id,
+            "action": "task.updated",
+            "changed_fields": patched.changed_fields,
+        },
+    ))
+
+    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
 
 
 async def patch_task_done(

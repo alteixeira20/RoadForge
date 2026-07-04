@@ -41,6 +41,7 @@ from api.schemas.tags import (
 )
 from api.schemas.tasks import (
     PatchTaskDoneRequest,
+    PatchTaskRequest,
     PhaseDTO,
     RoadmapSnapshotDTO,
     TaskDTO,
@@ -90,6 +91,7 @@ __all__ = [
     "UpdateTagRequest",
     "validate_tag_registry_uniqueness",
     # Tasks
+    "PatchTaskRequest",
     "PatchTaskDoneRequest",
     "PhaseDTO",
     "RoadmapSnapshotDTO",

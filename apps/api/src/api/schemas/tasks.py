@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from api.schemas.limits import (
     ASSIGNEE_MAX,
@@ -25,6 +25,22 @@ from api.schemas.limits import (
 )
 from api.schemas.shared import PhaseStatus
 from api.schemas.validators import clean_optional_text, clean_required_text
+
+
+def _clean_task_tags(values: list[object]) -> list[object]:
+    return [
+        clean_required_text(value, "tag", TAG_MAX) if isinstance(value, str) else value
+        for value in values
+    ]
+
+
+def _clean_task_assignees(values: list[object]) -> list[object]:
+    return [
+        clean_required_text(value, "assignee", ASSIGNEE_MAX)
+        if isinstance(value, str)
+        else value
+        for value in values
+    ]
 
 
 class TaskDTO(BaseModel):
@@ -63,17 +79,14 @@ class TaskDTO(BaseModel):
     def _validate_tags(cls, v: object) -> object:
         if not isinstance(v, list):
             return v
-        return [clean_required_text(s, "tag", TAG_MAX) if isinstance(s, str) else s for s in v]
+        return _clean_task_tags(v)
 
     @field_validator("assignees", mode="before")
     @classmethod
     def _validate_assignees(cls, v: object) -> object:
         if not isinstance(v, list):
             return v
-        return [
-            clean_required_text(s, "assignee", ASSIGNEE_MAX) if isinstance(s, str) else s
-            for s in v
-        ]
+        return _clean_task_assignees(v)
 
     @field_validator("deps", mode="before")
     @classmethod
@@ -117,3 +130,52 @@ class PatchTaskDoneRequest(BaseModel):
 
     done: bool
     last_updated_at: datetime
+
+
+class PatchTaskRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    last_updated_at: datetime
+    title: str | None = Field(default=None, max_length=TASK_TITLE_MAX)
+    desc: str | None = Field(default=None, max_length=TASK_DESC_MAX)
+    est: str | None = Field(default=None, max_length=TASK_EST_MAX)
+    assignees: list[str] | None = Field(default=None, max_length=TASK_ASSIGNEES_MAX)
+    tags: list[str] | None = Field(default=None, max_length=TASK_TAGS_MAX)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _validate_title(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("title must not be null")
+        if not isinstance(value, str):
+            return value
+        return clean_required_text(value, "title", TASK_TITLE_MAX)
+
+    @field_validator("est", "desc", mode="before")
+    @classmethod
+    def _validate_optional(cls, value: object, info) -> object:
+        if not isinstance(value, (str, type(None))):
+            return value
+        limits = {"est": TASK_EST_MAX, "desc": TASK_DESC_MAX}
+        return clean_optional_text(value, info.field_name, limits[info.field_name])
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _validate_tags(cls, value: object) -> object:
+        if not isinstance(value, list):
+            return value
+        return _clean_task_tags(value)
+
+    @field_validator("assignees", mode="before")
+    @classmethod
+    def _validate_assignees(cls, value: object) -> object:
+        if not isinstance(value, list):
+            return value
+        return _clean_task_assignees(value)
+
+    @model_validator(mode="after")
+    def _require_mutable_field(self) -> PatchTaskRequest:
+        mutable_fields = {"title", "desc", "est", "assignees", "tags"}
+        if not self.model_fields_set.intersection(mutable_fields):
+            raise ValueError("at least one task field must be provided")
+        return self

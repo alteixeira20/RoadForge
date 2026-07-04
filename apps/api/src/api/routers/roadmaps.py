@@ -21,6 +21,7 @@ from api.schemas.roadmap import (
     ParticipantResponse,
     ParticipantSummaryResponse,
     PatchTaskDoneRequest,
+    PatchTaskRequest,
     RoadmapConflictResponse,
     RoadmapResponse,
     RoadmapVersionDetailResponse,
@@ -53,6 +54,7 @@ from api.services.roadmap_tag_service import (
 )
 from api.services.roadmap_task_service import (
     delete_task_claim,
+    patch_task,
     patch_task_claim,
     patch_task_done,
 )
@@ -144,6 +146,31 @@ async def put_roadmap(
     )
     try:
         return await update_roadmap(db, roadmap_id, payload, participant)
+    except RoadmapConflictError as exc:
+        return JSONResponse(status_code=409, content=exc.response.model_dump(mode="json"))
+
+
+@router.patch(
+    "/{roadmap_id}/tasks/{task_id}",
+    response_model=RoadmapResponse,
+    responses={409: {"model": RoadmapConflictResponse}},
+)
+async def patch_roadmap_task(
+    roadmap_id: str,
+    task_id: str,
+    payload: PatchTaskRequest,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapResponse | JSONResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
+    await rate_limiter.enforce(
+        "task.update.patch",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=120,
+        window_seconds=60,
+    )
+    try:
+        return await patch_task(db, roadmap_id, task_id, payload, participant)
     except RoadmapConflictError as exc:
         return JSONResponse(status_code=409, content=exc.response.model_dump(mode="json"))
 

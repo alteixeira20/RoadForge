@@ -8,6 +8,7 @@ sub-modules to avoid circular imports.
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -31,6 +32,8 @@ from api.services.roadmap_projection_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+_TASK_PATCH_FIELDS = ("title", "desc", "est", "assignees", "tags")
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +76,86 @@ def _change_summary_fields(
 # ---------------------------------------------------------------------------
 # Snapshot patching for task partial writes
 # ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class TaskSnapshotPatch:
+    snapshot_json: dict[str, Any]
+    phase: dict[str, Any]
+    before_task: dict[str, Any]
+    after_task: dict[str, Any]
+    changed_fields: list[str]
+
+
+def _optional_task_value(task: dict[str, Any], field: str) -> Any:
+    value = task.get(field)
+    if field in {"assignees", "tags"}:
+        return value if isinstance(value, list) and value else None
+    return None if value is None or value == "" else value
+
+
+def _set_task_patch_value(task: dict[str, Any], field: str, value: Any) -> None:
+    if value is None:
+        task.pop(field, None)
+    else:
+        task[field] = value
+
+
+def _changed_task_patch_fields(
+    task: dict[str, Any],
+    updates: dict[str, Any],
+) -> list[str]:
+    changed_fields: list[str] = []
+    for field in _TASK_PATCH_FIELDS:
+        if field not in updates:
+            continue
+        before = task.get(field) if field == "title" else _optional_task_value(task, field)
+        after = updates[field] if field == "title" else _optional_task_value(updates, field)
+        if before != after:
+            changed_fields.append(field)
+    return changed_fields
+
+
+def _patch_task_fields_in_snapshot(
+    snapshot_json: dict[str, Any],
+    task_id: str,
+    updates: dict[str, Any],
+) -> TaskSnapshotPatch | None:
+    phases = snapshot_json.get("phases", [])
+    if not isinstance(phases, list):
+        return None
+
+    for phase_index, phase in enumerate(phases):
+        if not isinstance(phase, dict) or not isinstance(phase.get("tasks"), list):
+            continue
+        for task_index, task in enumerate(phase["tasks"]):
+            if not isinstance(task, dict) or task.get("id") != task_id:
+                continue
+
+            changed_fields = _changed_task_patch_fields(task, updates)
+            next_task = dict(task)
+            for field in changed_fields:
+                _set_task_patch_value(next_task, field, updates[field])
+
+            if not changed_fields:
+                return TaskSnapshotPatch(snapshot_json, phase, task, task, [])
+
+            next_tasks = list(phase["tasks"])
+            next_tasks[task_index] = next_task
+            next_phase = dict(phase)
+            next_phase["tasks"] = next_tasks
+            next_phases = list(phases)
+            next_phases[phase_index] = next_phase
+            next_snapshot = dict(snapshot_json)
+            next_snapshot["phases"] = next_phases
+            return TaskSnapshotPatch(
+                next_snapshot,
+                phase,
+                task,
+                next_task,
+                changed_fields,
+            )
+    return None
 
 
 def _legacy_task_assignees(task: dict[str, Any]) -> list[str]:
