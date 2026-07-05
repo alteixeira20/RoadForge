@@ -97,11 +97,14 @@ Before self-hosting or releasing RoadForge publicly:
 - **Do not expose `make dev`** — always run a production build (`pnpm build`) and start the production server (`pnpm --filter web start`).
 - **Use a reverse proxy** — terminate TLS (HTTPS) at a proxy like Caddy or Nginx.
 - **Enable HSTS** — configure HTTP Strict Transport Security at the proxy level.
-- **Configure proxy logs** — invite tokens appear in URLs; ensure your proxy is configured not to log full query strings if possible, or restrict log access.
+- **Configure proxy logs** — join URLs are credentials. Omit query strings and
+  `Referer` from access logs, restrict error-log access, and review upstream
+  provider logging. The hosting-bay nginx template includes a safe access format.
 - **Run security audits** — regularly run `make audit` and address high-severity vulnerabilities.
-- **Review CSP reports** — the current application emits a report-only Content
-  Security Policy. Review violations and move to enforcement only after the release
-  candidate works without required exceptions.
+- **Review CSP violations** — the current application emits a report-only Content
+  Security Policy. There is no report collector, so use a production-build browser
+  pass and move to enforcement only after the release candidate works without
+  required exceptions.
 - **API worker mode** — the API defaults to one Uvicorn worker. Set `ROADFORGE_API_WORKERS` above `1` only with `ROADFORGE_REALTIME_BACKEND=redis`; application and container startup refuse unsafe memory-backed multi-worker mode.
 - **Run `make check` before deploying** — this runs `pnpm lint`, `pnpm typecheck`, and `pnpm build`. All three must pass with zero errors and zero warnings.
 - **Database migrations before rollback** — Alembic migrations are not reversible by default. Take a Postgres snapshot before any release that includes new files under `apps/api/alembic/versions/`.

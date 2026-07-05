@@ -39,6 +39,11 @@ The API sets `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, 
 
 SSE responses at `/api/roadmaps/{id}/events` keep their streaming headers and are not forced into `no-store` by the roadmap response rule.
 
+The frontend CSP remains report-only for Public Alpha. Enforcement is blocked on
+a recorded production-build browser pass across Next.js bootstrap, styled
+JSX/inline styles, Markdown, API calls, import/export, and SSE. There is no CSP
+report collector, so browser console and Network inspection are authoritative.
+
 ## Rate limiting
 
 Main app-level and service-level rate limits include:
@@ -115,6 +120,16 @@ projection serialization fails for a roadmap, the API falls back to
 ## Reverse proxy and HTTPS
 
 Terminate HTTPS at the public edge or reverse proxy and forward only to the API over a private network. Public deployments should use HSTS-capable HTTPS for all browser traffic. Do not expose the API directly behind an untrusted proxy that preserves client-supplied forwarding headers.
+
+Join URLs and SSE tickets are query credentials. FastAPI access logs contain only
+method, path, and status. The hosting-bay nginx access format additionally omits
+query strings and `Referer`. Retained old logs, nginx error logs, Cloudflare, and
+other upstream providers still require an operator review; follow the
+[credential-safe log commands](../deploy/hosting-bay/README.md#credential-safe-log-review).
+
+`GET /api/health` is liveness only and returns status/version without dependency
+or environment details. Check PostgreSQL directly and Redis when configured;
+multi-worker realtime still requires the RF-886 staging checklist.
 
 ## Local development differences
 

@@ -138,7 +138,10 @@ This adds a second factor without requiring accounts. It is purely opt-in per ro
   share management, events, locks, versions, and tags use action-specific limits.
   Limits are process-local in memory mode and shared across workers in Redis mode.
 - **No HTTPS enforcement** — the Docker setup serves plain HTTP. Production deployment must terminate TLS at a reverse proxy and configure HSTS.
-- **Tokens in URLs** — invite tokens appear in the URL query string and will be logged by proxies or browsers. Self-hosters should configure reverse proxy logs to exclude query strings or strictly control log access.
+- **Tokens in URLs** — invite tokens appear in the URL query string and remain in
+  browser history. The RoadForge application and hosting-bay access-log format
+  omit query strings, headers, and `Referer`, but upstream proxies and error logs
+  may still record them. Self-hosters must review and restrict every logging layer.
 - **Soft deletes only** — `Roadmap.deleted_at` is set on delete; no hard purge yet.
 - **No development server exposure** — `next dev` (or `make dev`) should never be exposed publicly. Use a production build for hosting.
 - **Content Security Policy** — RoadForge currently reports CSP violations without
