@@ -309,6 +309,43 @@ describe('patchTask', () => {
     expect(roadmap.updatedAt).toBe('2026-05-29T10:01:00Z')
   })
 
+  it('PATCHes task links through the focused task endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => apiRoadmap,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const links = [{
+      id: 'link-604',
+      provider: 'github' as const,
+      kind: 'issue' as const,
+      url: 'https://github.com/anvilary/roadforge/issues/604',
+      owner: 'anvilary',
+      repo: 'roadforge',
+      number: 604,
+    }]
+
+    await patchTask({
+      roadmapId: 'rm_1',
+      taskId: 'tk_1',
+      updates: { links },
+      sessionToken: 'session-token',
+      lastUpdatedAt: '2026-05-29T10:00:00Z',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:7878/api/roadmaps/rm_1/tasks/tk_1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          links,
+          last_updated_at: '2026-05-29T10:00:00Z',
+        }),
+      }),
+    )
+  })
+
   it('preserves structured conflicts for the shared conflict handler', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,

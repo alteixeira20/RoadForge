@@ -33,7 +33,7 @@ from api.services.roadmap_projection_service import (
 
 logger = logging.getLogger(__name__)
 
-_TASK_PATCH_FIELDS = ("title", "desc", "est", "assignees", "tags")
+_TASK_PATCH_FIELDS = ("title", "desc", "est", "assignees", "tags", "links")
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +91,8 @@ def _optional_task_value(task: dict[str, Any], field: str) -> Any:
     value = task.get(field)
     if field in {"assignees", "tags"}:
         return value if isinstance(value, list) and value else None
+    if field == "links":
+        return value if isinstance(value, list) else None
     return None if value is None or value == "" else value
 
 

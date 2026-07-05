@@ -13,6 +13,7 @@ const taskActivityFields: TaskActivityField[] = [
   'est',
   'assignees',
   'tags',
+  'links',
 ]
 
 const taskActivityFieldLabels: Record<TaskActivityField, string> = {
@@ -21,6 +22,7 @@ const taskActivityFieldLabels: Record<TaskActivityField, string> = {
   est: 'estimate',
   assignees: 'assignees',
   tags: 'tags',
+  links: 'GitHub links',
 }
 
 const changePriority: Record<ActivityAction, number> = {
@@ -97,6 +99,9 @@ export function getChangedTaskFields(
     if (field === 'tags') {
       return !stringListsMatch(getVisibleTaskTags(task), updates.tags ?? [])
     }
+    if (field === 'links') {
+      return JSON.stringify(task.links ?? []) !== JSON.stringify(updates.links ?? [])
+    }
     return (task[field] ?? '') !== (updates[field] ?? '')
   })
 }
@@ -114,7 +119,7 @@ export function getTaskUpdateLabel(metadata: Record<string, unknown> | null): st
   if (fields.length === 1 && fields[0] === 'title') return 'Renamed task'
   if (fields.length === 1 && fields[0] === 'desc') return 'Updated task description'
   if (fields.length > 0 && fields.every((field) => (
-    field === 'est' || field === 'assignees' || field === 'tags'
+    field === 'est' || field === 'assignees' || field === 'tags' || field === 'links'
   ))) {
     return 'Updated task details'
   }

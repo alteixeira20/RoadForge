@@ -341,6 +341,7 @@ class PatchTaskRequest(BaseModel):
     est: str | None = Field(default=None, max_length=TASK_EST_MAX)
     assignees: list[str] | None = Field(default=None, max_length=TASK_ASSIGNEES_MAX)
     tags: list[str] | None = Field(default=None, max_length=TASK_TAGS_MAX)
+    links: list[TaskExternalLinkDTO] | None = Field(default=None, max_length=TASK_LINKS_MAX)
 
     @field_validator("title", mode="before")
     @classmethod
@@ -373,9 +374,23 @@ class PatchTaskRequest(BaseModel):
             return value
         return _clean_task_assignees(value)
 
+    @field_validator("links")
+    @classmethod
+    def _validate_links(
+        cls,
+        value: list[TaskExternalLinkDTO] | None,
+    ) -> list[TaskExternalLinkDTO]:
+        if value is None:
+            raise ValueError("links must not be null")
+        ids = [link.id for link in value]
+        urls = [link.url for link in value]
+        if len(ids) != len(set(ids)) or len(urls) != len(set(urls)):
+            raise ValueError("task links must have unique ids and URLs")
+        return value
+
     @model_validator(mode="after")
     def _require_mutable_field(self) -> PatchTaskRequest:
-        mutable_fields = {"title", "desc", "est", "assignees", "tags"}
+        mutable_fields = {"title", "desc", "est", "assignees", "tags", "links"}
         if not self.model_fields_set.intersection(mutable_fields):
             raise ValueError("at least one task field must be provided")
         return self

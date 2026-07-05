@@ -161,7 +161,13 @@ export type ActivityAction =
   | 'task.claimed'
   | 'task.unclaimed'
 
-export type TaskActivityField = 'title' | 'desc' | 'est' | 'assignees' | 'tags'
+export type TaskActivityField =
+  | 'title'
+  | 'desc'
+  | 'est'
+  | 'assignees'
+  | 'tags'
+  | 'links'
 
 export interface ActivityChange {
   action: ActivityAction

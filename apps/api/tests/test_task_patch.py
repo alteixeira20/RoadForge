@@ -51,6 +51,25 @@ def _patched_task(result) -> dict:
         ({"est": "5d"}, "est", "5d"),
         ({"assignees": ["Carol", "Dan"]}, "assignees", ["Carol", "Dan"]),
         ({"tags": ["backend", "api"]}, "tags", ["backend", "api"]),
+        ({
+            "links": [{
+                "id": "link-604",
+                "provider": "github",
+                "kind": "issue",
+                "url": "https://github.com/anvilary/roadforge/issues/604",
+                "owner": "anvilary",
+                "repo": "roadforge",
+                "number": 604,
+            }]
+        }, "links", [{
+            "id": "link-604",
+            "provider": "github",
+            "kind": "issue",
+            "url": "https://github.com/anvilary/roadforge/issues/604",
+            "owner": "anvilary",
+            "repo": "roadforge",
+            "number": 604,
+        }]),
     ],
 )
 def test_snapshot_helper_updates_each_supported_field(updates, field, expected):
@@ -121,6 +140,26 @@ def test_snapshot_helper_treats_missing_null_and_empty_optional_values_as_equal(
     assert result.snapshot_json is snapshot
 
 
+def test_snapshot_helper_same_links_are_a_noop():
+    snapshot = _snapshot()
+    links = _updates(links=[{
+        "id": "link-604",
+        "provider": "github",
+        "kind": "issue",
+        "url": "https://github.com/anvilary/roadforge/issues/604",
+        "owner": "anvilary",
+        "repo": "roadforge",
+        "number": 604,
+    }])["links"]
+    snapshot["phases"][0]["tasks"][0]["links"] = links
+
+    result = _patch_task_fields_in_snapshot(snapshot, "tk_a1", _updates(links=links))
+
+    assert result is not None
+    assert result.changed_fields == []
+    assert result.snapshot_json is snapshot
+
+
 def test_snapshot_helper_missing_task_returns_none():
     assert (
         _patch_task_fields_in_snapshot(_snapshot(), "missing", _updates(title="New title"))
@@ -155,6 +194,28 @@ def test_snapshot_helper_preserves_unrelated_fields_and_inputs():
     assert result.snapshot_json["phases"][1] is snapshot["phases"][1]
 
 
+def test_snapshot_helper_clears_links_without_removing_unrelated_fields():
+    snapshot = _snapshot()
+    task = snapshot["phases"][0]["tasks"][0]
+    task["links"] = _updates(links=[{
+        "id": "link-604",
+        "provider": "github",
+        "kind": "pull",
+        "url": "https://github.com/anvilary/roadforge/pull/604",
+        "owner": "anvilary",
+        "repo": "roadforge",
+        "number": 604,
+    }])["links"]
+    original_title = task["title"]
+
+    result = _patch_task_fields_in_snapshot(snapshot, "tk_a1", _updates(links=[]))
+
+    assert result is not None
+    assert _patched_task(result)["links"] == []
+    assert _patched_task(result)["title"] == original_title
+    assert result.changed_fields == ["links"]
+
+
 @pytest.mark.parametrize(
     "values",
     [
@@ -167,6 +228,7 @@ def test_snapshot_helper_preserves_unrelated_fields_and_inputs():
         {"tags": ["x" * 41]},
         {"title": "   "},
         {"title": None},
+        {"links": None},
     ],
 )
 def test_patch_task_request_validates_existing_task_limits(values):
@@ -230,6 +292,38 @@ async def test_owner_can_patch_title_and_preserve_unrelated_fields(client: Async
     assert after["title"] == "Updated title"
     for field in ("done", "next", "est", "desc", "tags", "assignees"):
         assert after.get(field) == before.get(field)
+
+
+async def test_owner_can_patch_links_and_activity_reports_links(
+    client: AsyncClient,
+    db_session: AsyncSession,
+):
+    roadmap = await create_with_phases(client)
+    links = [{
+        "id": "link-604",
+        "provider": "github",
+        "kind": "discussion",
+        "url": "https://github.com/anvilary/roadforge/discussions/604",
+        "owner": "anvilary",
+        "repo": "roadforge",
+        "number": 604,
+    }]
+
+    response = await _patch(client, roadmap, links=links)
+
+    assert response.status_code == 200, response.text
+    response_link = _task(response.json())["links"][0]
+    assert {field: response_link[field] for field in links[0]} == links[0]
+    model = await db_session.get(Roadmap, roadmap["id"])
+    assert model is not None
+    assert (await validate_projection_parity(db_session, model)).ok is True
+
+    activity = await client.get(
+        f"/api/roadmaps/{roadmap['id']}/activity",
+        headers=auth(roadmap["owner_session_token"]),
+    )
+    updated = [log for log in activity.json()["logs"] if log["action"] == "task.updated"]
+    assert updated[0]["metadata_json"]["changedFields"] == ["links"]
 
 
 async def test_editor_can_patch_description_and_metadata(client: AsyncClient):
