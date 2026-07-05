@@ -17,6 +17,7 @@ interface TaskLinksSectionProps {
   onBeginAdd: () => Promise<boolean>
   onCancelAdd: () => void
   onUpdateLinks: (links: TaskExternalLink[]) => Promise<boolean>
+  onRemoveLink: (linkId: string) => Promise<boolean>
 }
 
 function createLinkId(): string {
@@ -31,6 +32,7 @@ export function TaskLinksSection({
   onBeginAdd,
   onCancelAdd,
   onUpdateLinks,
+  onRemoveLink,
 }: TaskLinksSectionProps) {
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -52,9 +54,7 @@ export function TaskLinksSection({
   }
 
   const handleRemove = async (linkId: string) => {
-    const updated = await onUpdateLinks(
-      (task.links ?? []).filter((link) => link.id !== linkId),
-    )
+    const updated = await onRemoveLink(linkId)
     if (!updated) return
     setError(null)
   }
@@ -87,6 +87,12 @@ export function TaskLinksSection({
               <a href={link.url} target="_blank" rel="noopener noreferrer">
                 <Icon name="github" size={14} />
                 {getGitHubTaskLinkLabel(link)}
+                <span
+                  className="task-link-repo"
+                  title={`${link.owner}/${link.repo}`}
+                >
+                  {link.owner}/{link.repo}
+                </span>
               </a>
               {!readOnly && (
                 <button
