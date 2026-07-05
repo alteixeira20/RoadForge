@@ -19,6 +19,10 @@ operator, environment, and result beside the release ticket.
   production secrets, URLs, trusted proxies, HTTPS, and health checks are valid.
 - [ ] Back up PostgreSQL and prove the restore procedure using
   [self-hosting backup guidance](../docs/self-hosting.md#backups-and-updates).
+- [ ] Run the credential-safe
+  [proxy and application log review](../deploy/hosting-bay/README.md#credential-safe-log-review).
+  Record the reviewed time range and upstream providers; do not paste matching
+  credentials into the release ticket.
 - [ ] Migration upgrade, drift check, and projection backfill/parity complete;
   `roadmaps.snapshot_json` remains canonical and projections remain derivative.
 - [ ] Confirm `ROADFORGE_API_WORKERS=1` for memory mode. For multiple workers or
@@ -57,3 +61,5 @@ operator, environment, and result beside the release ticket.
   rollback does not reverse migrations, so restore PostgreSQL when required.
 - [ ] Post-deploy health, owner create/save/share, editor join/edit, viewer
   read-only, and realtime checks pass on the public environment.
+- [ ] Confirm `/api/health` plus PostgreSQL and the configured realtime backend;
+  the liveness response alone does not prove dependency or cross-worker health.

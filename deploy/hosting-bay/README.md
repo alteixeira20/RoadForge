@@ -45,6 +45,12 @@ Install nginx config:
 cp deploy/hosting-bay/nginx/roadforge.conf /opt/data/proxy/nginx/conf.d/roadforge.conf
 ```
 
+The vhost uses a dedicated `roadforge_safe` access format. It logs method, path,
+status, and user agent, but omits query strings and `Referer`; both can contain
+invite or short-lived SSE credentials. The format declaration must remain in an
+nginx `http` context (the normal `conf.d` include location). Validate the central
+proxy before reloading it.
+
 Add `deploy/hosting-bay/cloudflared-ingress-snippet.yml` to the Cloudflare
 Tunnel ingress config before the final `http_status:404` rule.
 
@@ -96,10 +102,16 @@ memory backend.
 
 ```bash
 docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge ps
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge exec roadforge-postgres pg_isready -U roadforge -d roadforge
 docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge exec roadforge-redis redis-cli ping
-curl -I https://roadforge.alexandreteixeira.dev
-curl -s https://roadforge.alexandreteixeira.dev/api/health
+curl -fsSI https://roadforge.alexandreteixeira.dev
+curl -fsS https://roadforge.alexandreteixeira.dev/api/health
 ```
+
+`/api/health` is a non-sensitive API liveness check. It returns only application
+status and version; it does not prove PostgreSQL, Redis, cross-worker realtime, or
+the browser application is healthy. The explicit checks above and the browser
+checks below remain required. In memory mode, Redis may be healthy but unused.
 
 Browser checks:
 
@@ -118,6 +130,101 @@ make migrate
 make restart
 make doctor
 ```
+
+All stack services use `restart: unless-stopped`, so Docker restarts them after a
+daemon/host restart unless an operator explicitly stopped them. `make restart`
+restarts PostgreSQL, API, and Web without rebuilding or migrating. `make update`
+pulls, rebuilds, recreates services, applies migrations, and is the release update
+path. Neither command replaces a pre-update backup and restore drill; use
+[the backup procedure](../../docs/self-hosting.md#backups-and-updates).
+
+### First failure checks
+
+Run these in order when RoadForge is down:
+
+```bash
+cd /opt/stacks/roadforge/src
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge ps
+curl -fsS https://roadforge.alexandreteixeira.dev/api/health
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge logs --since 30m --tail=200 roadforge-web roadforge-api
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge logs --since 30m --tail=200 roadforge-postgres roadforge-redis
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge exec roadforge-postgres pg_isready -U roadforge -d roadforge
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge exec roadforge-redis redis-cli ping
+```
+
+- A failed public request with healthy containers points first to Cloudflare
+  Tunnel, the central nginx config/network, DNS, or TLS.
+- A failed API health check with a healthy Web container points first to API
+  startup/configuration and PostgreSQL logs.
+- In Redis realtime mode, a failed Redis ping or Redis errors in API logs make
+  tickets, locks, Pub/Sub, and shared rate limits unavailable; the API does not
+  fall back to memory. Complete the
+  [RF-886 checks](../../docs/manual-qa.md#30b--rf-886-multi-worker-realtime-regression-checklist)
+  after recovery.
+- In memory mode, confirm exactly one worker and one API instance. Health alone
+  cannot detect an accidentally duplicated one-worker API deployment.
+
+### Credential-safe log review
+
+The application emits method/path/status access records and never intentionally
+logs request headers, bodies, query strings, or full request URLs. Browser error
+messages do not echo invite/session values. This is a local code/config audit,
+not evidence about existing production logs or upstream Cloudflare logging.
+
+Review stack logs for credential-shaped values without printing matches:
+
+```bash
+cd /opt/stacks/roadforge/src
+docker compose \
+  --env-file /opt/stacks/roadforge/.env \
+  -f deploy/hosting-bay/compose.yaml \
+  --project-name roadforge \
+  logs --since 168h roadforge-api roadforge-web 2>&1 \
+  | grep -Eoc '(token=|ticket=|Bearer[[:space:]%]+|(sess_|ow_|ed_|vi_)[A-Za-z0-9_-]{8,})' \
+  || true
+```
+
+Expected after this release: `0`. To inspect any historical matches, redact them
+before display:
+
+```bash
+docker compose \
+  --env-file /opt/stacks/roadforge/.env \
+  -f deploy/hosting-bay/compose.yaml \
+  --project-name roadforge \
+  logs --since 168h roadforge-api roadforge-web 2>&1 \
+  | sed -E \
+    -e 's/((token|ticket)=)[^ &"]+/\1[REDACTED]/g' \
+    -e 's/(Bearer[[:space:]%]+)[A-Za-z0-9._~-]+/\1[REDACTED]/g' \
+    -e 's/(sess_|ow_|ed_|vi_)[A-Za-z0-9_-]+/\1[REDACTED]/g'
+```
+
+Find the central nginx container that has the installed RoadForge vhost, then
+count credential-shaped values in current access and error logs:
+
+```bash
+PROXY_CONTAINER=$(
+  docker ps --format '{{.Names}}' |
+  while read -r container; do
+    docker exec "$container" test -f /etc/nginx/conf.d/roadforge.conf 2>/dev/null &&
+      { echo "$container"; break; }
+  done
+)
+test -n "$PROXY_CONTAINER"
+docker exec "$PROXY_CONTAINER" nginx -T 2>&1 \
+  | grep -F 'access_log /var/log/nginx/roadforge.access.log roadforge_safe;'
+docker exec "$PROXY_CONTAINER" sh -c \
+  'cat /var/log/nginx/roadforge.access.log /var/log/nginx/error.log 2>/dev/null' \
+  | grep -Eoc '([?&](token|ticket)=|Bearer[[:space:]%]+|(sess_|ow_|ed_|vi_)[A-Za-z0-9_-]{8,})' \
+  || true
+```
+
+The count must be investigated, not assumed to be caused by current code. Nginx
+error messages and retained logs from the old format may still contain full
+request targets. If a real credential is found, restrict log access, rotate the
+affected invite or revoke the affected participant session, and apply the normal
+retention/deletion policy. Also review Cloudflare Tunnel/provider logs separately;
+their configuration is outside this repository.
 
 ## Rollback Notes
 

@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from api.config import get_settings
+from api.middleware.access_log import add_safe_access_log
 from api.middleware.body_limit import add_body_limit
 from api.middleware.cors import add_cors
 from api.middleware.security_headers import add_security_headers
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     add_cors(app)
     add_body_limit(app)
     add_security_headers(app)
+    add_safe_access_log(app)
     app.include_router(health.router, prefix="/api")
     app.include_router(roadmaps.router, prefix="/api/roadmaps")
     return app

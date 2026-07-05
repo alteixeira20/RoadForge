@@ -35,6 +35,15 @@ EDITOR_PID=
 VIEWER_INVITE_URL=
 ```
 
+These variables contain live credentials. Run the guide with shell tracing
+disabled (`set +x`), do not paste the variable values into tickets or chat, and
+finish with:
+
+```bash
+unset RESPONSE OWNER_TOKEN EDITOR_INVITE_URL EDITOR_RAW_TOKEN EDITOR_TOKEN
+unset VIEWER_INVITE_URL JOIN_RESPONSE ROTATE_RESPONSE TICKET TICKET_RESPONSE
+```
+
 ---
 
 ## Step 1 — Health check
@@ -48,7 +57,17 @@ Expected:
 {"status": "ok", "version": "0.1.0"}
 ```
 
-A non-200 response or connection refused means the stack is not ready. Check `docker compose logs --tail=40 api`.
+A non-200 response or connection refused means the API process is not ready.
+This liveness response intentionally does not expose or verify PostgreSQL, Redis,
+environment configuration, or worker topology. Check:
+
+```bash
+docker compose ps
+docker compose logs --since 30m --tail=100 api postgres redis
+docker compose exec postgres pg_isready -U roadforge -d roadforge
+```
+
+Then complete the realtime preflight below.
 
 ---
 
@@ -98,7 +117,12 @@ RESPONSE=$(curl -s -X POST http://localhost:7878/api/roadmaps \
     "password": null
   }')
 
-echo "$RESPONSE" | jq .
+echo "$RESPONSE" | jq '{
+  id,
+  name,
+  share_roles: [.share_links[].role],
+  owner_session_token_present: (.owner_session_token != null)
+}'
 
 ROADMAP_ID=$(echo "$RESPONSE" | jq -r '.id')
 OWNER_TOKEN=$(echo "$RESPONSE" | jq -r '.owner_session_token')
@@ -106,9 +130,9 @@ EDITOR_INVITE_URL=$(echo "$RESPONSE" | jq -r '.share_links[] | select(.role == "
 VIEWER_INVITE_URL=$(echo "$RESPONSE" | jq -r '.share_links[] | select(.role == "viewer") | .url')
 
 echo "ROADMAP_ID=$ROADMAP_ID"
-echo "OWNER_TOKEN=$OWNER_TOKEN"
-echo "EDITOR_INVITE_URL=$EDITOR_INVITE_URL"
-echo "VIEWER_INVITE_URL=$VIEWER_INVITE_URL"
+test -n "$OWNER_TOKEN"
+test -n "$EDITOR_INVITE_URL"
+test -n "$VIEWER_INVITE_URL"
 ```
 
 Expected:
@@ -158,10 +182,15 @@ ROTATE_RESPONSE=$(curl -s -X POST \
   "http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links/editor/rotate" \
   -H "Authorization: Bearer $OWNER_TOKEN")
 
-echo "$ROTATE_RESPONSE" | jq .
+echo "$ROTATE_RESPONSE" | jq '{
+  role,
+  is_active,
+  rotated_at,
+  url_present: (.url != null)
+}'
 
 EDITOR_INVITE_URL=$(echo "$ROTATE_RESPONSE" | jq -r '.url')
-echo "EDITOR_INVITE_URL=$EDITOR_INVITE_URL"
+test -n "$EDITOR_INVITE_URL"
 ```
 
 Expected:
@@ -187,13 +216,19 @@ JOIN_RESPONSE=$(curl -s -X POST http://localhost:7878/api/roadmaps/join \
     \"password\": null
   }")
 
-echo "$JOIN_RESPONSE" | jq .
+echo "$JOIN_RESPONSE" | jq '{
+  roadmap_id,
+  roadmap_name,
+  role,
+  participant_id,
+  session_token_present: (.session_token != null)
+}'
 
 EDITOR_TOKEN=$(echo "$JOIN_RESPONSE" | jq -r '.session_token')
 EDITOR_PID=$(echo "$JOIN_RESPONSE" | jq -r '.participant_id')
 
-echo "EDITOR_TOKEN=$EDITOR_TOKEN"
 echo "EDITOR_PID=$EDITOR_PID"
+test -n "$EDITOR_TOKEN"
 ```
 
 Expected:
@@ -355,9 +390,9 @@ TICKET_RESPONSE=$(curl -s -X POST \
   http://localhost:7878/api/roadmaps/$ROADMAP_ID/events/ticket \
   -H "Authorization: Bearer $OWNER_TOKEN")
 
-echo "$TICKET_RESPONSE" | jq .
 TICKET=$(echo "$TICKET_RESPONSE" | jq -r '.ticket')
-echo "TICKET=$TICKET"
+echo "$TICKET_RESPONSE" | jq '{expires_in, ticket_present: (.ticket != null)}'
+test -n "$TICKET"
 ```
 
 Expected:
