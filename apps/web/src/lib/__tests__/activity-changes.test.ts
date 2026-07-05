@@ -65,6 +65,7 @@ describe('task update activity text', () => {
     [['title'], 'Renamed task', 'title changed'],
     [['desc'], 'Updated task description', 'description changed'],
     [['est', 'assignees', 'tags'], 'Updated task details', 'estimate, assignees, and tags changed'],
+    [['links'], 'Updated task details', 'GitHub links changed'],
     [['title', 'desc'], 'Updated task', 'title and description changed'],
   ] as const)('formats %j updates', (changedFields, label, summary) => {
     const metadata = { changedFields: [...changedFields] }

@@ -74,12 +74,12 @@ For synced roadmaps, `roadmaps.snapshot_json` remains canonical. The current
 relational projection carries `links` through task `source_json`; it does not
 make external links relational truth and requires no migration.
 
-## RF-604 UI scope
+## RF-604–RF-606 UI and write scope
 
 The first task-link UI deliberately accepts and displays only GitHub issue,
 pull request, and discussion URLs. Maintainers paste one URL in the expanded
-task detail and can remove individual displayed links. Links open in a new tab
-with `noopener noreferrer`.
+task detail and can remove individual displayed links. Compact labels include
+repository context, and links open in a new tab with `noopener noreferrer`.
 
 Commit, release, generic, and unsupported GitHub URLs remain valid portable
 model data where supported by the parser and import pipeline, but RF-604 does
@@ -88,7 +88,10 @@ existing records in `Task.links`.
 
 Local roadmaps update `task.links` through the normal local dirty-state path.
 Synced owner/editor updates use the existing task PATCH endpoint with
-`last_updated_at`; no GitHub-specific endpoint or provider call is involved.
+`last_updated_at`; add and remove operations use the existing whole-task edit
+lock. Lock refusal prevents the mutation, while stale PATCHes use the standard
+conflict flow instead of silently replacing newer task links. No GitHub-specific
+endpoint or provider call is involved.
 
 ## Metadata and authentication boundary
 

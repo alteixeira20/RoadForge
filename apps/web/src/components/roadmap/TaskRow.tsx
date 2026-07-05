@@ -21,6 +21,7 @@ import type { TaskUpdateHandler } from '@/hooks/taskMutationHelpers'
 import { useTaskClaim } from '@/hooks/useTaskClaim'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ensureRegistryForTagIds } from '@/lib/tag-registry'
+import { removeTaskLinkWithLock } from '@/lib/task-link-mutations'
 import {
   deriveTaskStatus,
   getBlockingTasks,
@@ -515,6 +516,15 @@ export function TaskRow({
                   if (showGitHubLinkForm && !canCommitEdit) return false
                   return (await onUpdateTask(task.id, { links })) !== false
                 }}
+                onRemoveLink={(linkId) => removeTaskLinkWithLock({
+                  links: task.links ?? [],
+                  linkId,
+                  acquireLock: tryAcquireEditLock,
+                  releaseLock: releaseEditLock,
+                  onUpdateLinks: async (links) => (
+                    (await onUpdateTask(task.id, { links })) !== false
+                  ),
+                })}
               />
 
               <div

@@ -139,6 +139,23 @@ describe('createTaskMutations task updates', () => {
     expect(params.setPhases).not.toHaveBeenCalled()
   })
 
+  it('does not patch a synced task when links are unchanged', async () => {
+    const params = createParams({
+      serverRoadmapId: 'rm_1',
+      sessionToken: 'session-token',
+      updatedAt: '2026-07-04T10:00:00Z',
+    })
+    const mutations = createTaskMutations(params)
+
+    await expect(mutations.handleUpdateTask('RF-303', {
+      links: phases[0].tasks[0].links,
+    })).resolves.toBe(true)
+
+    expect(params.patchSyncedTask).not.toHaveBeenCalled()
+    expect(params.setPhases).not.toHaveBeenCalled()
+    expect(params.setSaved).not.toHaveBeenCalled()
+  })
+
   it('does not patch or dirty a no-op Edit details save', async () => {
     const params = createParams({
       serverRoadmapId: 'rm_1',
