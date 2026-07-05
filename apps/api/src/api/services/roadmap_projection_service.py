@@ -524,6 +524,10 @@ async def validate_projection_parity(db: AsyncSession, roadmap: Roadmap) -> Proj
                 issues, "tags", task_id,
                 snapshot_task.get("tags"), projection_task.get("tags"),
             )
+            _compare_optional_list(
+                issues, "links", task_id,
+                snapshot_task.get("links"), projection_task.get("links"),
+            )
 
     return ProjectionParityResult(
         ok=not issues,

@@ -48,7 +48,6 @@ describe('exportRoadmap', () => {
       '- [x] Completed check',
       '- [ ] Pending check',
     ].join('\n')
-    // Add task.links here when RF-602 introduces that Task field.
     const maximalTask = {
       id: 'RF-3',
       title: 'Intentionally maximal subtask',
@@ -63,6 +62,25 @@ describe('exportRoadmap', () => {
       claimedBy: 'Alex',
       claimedById: 'pt_alex',
       claimedAt: '2026-07-03T09:00:00.000Z',
+      links: [
+        {
+          id: 'link-rf-3-issue',
+          provider: 'github',
+          kind: 'issue',
+          url: 'https://github.com/anvilary/roadforge/issues/601',
+          owner: 'anvilary',
+          repo: 'roadforge',
+          number: 601,
+          label: 'Foundation issue',
+        },
+        {
+          id: 'link-rf-3-spec',
+          provider: 'url',
+          kind: 'url',
+          url: 'https://example.com/spec',
+          label: 'External specification',
+        },
+      ],
     } satisfies Required<Task>
     const phases: Phase[] = [
       {

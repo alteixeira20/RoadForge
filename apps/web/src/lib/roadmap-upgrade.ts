@@ -135,6 +135,7 @@ function canonicalizeTask(
   if (task.claimedBy) next.claimedBy = task.claimedBy
   if (task.claimedById) next.claimedById = task.claimedById
   if (task.claimedAt) next.claimedAt = task.claimedAt
+  if (task.links !== undefined) next.links = task.links
   if (task.parentId && taskIds.has(task.parentId)) {
     next.parentId = task.parentId
   } else if (task.parentId) {

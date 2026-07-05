@@ -200,5 +200,24 @@ describe('roadmap-upgrade', () => {
       expect(task.claimedById).toBeUndefined()
       expect(task.claimedAt).toBeUndefined()
     })
+
+    it('preserves normalized task links through canonicalization', () => {
+      const links = [{
+        id: 'link-1',
+        provider: 'github' as const,
+        kind: 'pull' as const,
+        url: 'https://github.com/anvilary/roadforge/pull/602',
+        owner: 'anvilary',
+        repo: 'roadforge',
+        number: 602,
+      }]
+      const phase = makePhase({
+        tasks: [{ id: 't1', title: 'Linked task', done: false, links }],
+      })
+
+      const result = upgradeRoadmapSnapshot({ phases: [phase] })
+
+      expect(result.phases[0].tasks[0].links).toEqual(links)
+    })
   })
 })

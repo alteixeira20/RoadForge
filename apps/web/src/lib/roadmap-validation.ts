@@ -1,5 +1,9 @@
 import { isAssignmentTag, assignmentNameFromTag } from '@/lib/task-assignment'
 import {
+  isCredentialLikeFieldName,
+  parseTaskExternalLinkUrl,
+} from '@/lib/github-links'
+import {
   normalizeTagColor,
   normalizeTagLabel,
   normalizedTagLabelKey,
@@ -7,7 +11,13 @@ import {
   TAG_ID_PATTERN,
   TAG_REGISTRY_MAX,
 } from '@/lib/tag-registry'
-import type { Phase, PhaseStatus, TagDefinition, Task } from '@/types/roadmap'
+import type {
+  Phase,
+  PhaseStatus,
+  TagDefinition,
+  Task,
+  TaskExternalLink,
+} from '@/types/roadmap'
 
 // ─── Compatibility warnings ───────────────────────────────────────────────────
 
@@ -35,6 +45,7 @@ export type ImportRepairCode =
   | 'duplicate_ids'
   | 'stale_parent_removed'
   | 'tag_registry_repaired'
+  | 'task_links_repaired'
 
 export interface ImportRepair {
   code: ImportRepairCode
@@ -49,7 +60,7 @@ const REPAIR_MESSAGES: Record<ImportRepairCode, string> = {
   null_optional:
     'Null values on optional fields were cleared.',
   coerced_array:
-    'Non-array fields (tags, deps, assignees, or tasks) were replaced with empty arrays.',
+    'Non-array fields (tags, deps, assignees, links, or tasks) were replaced with empty arrays.',
   progress_recalculated:
     'Phase progress percentages were recalculated from task completion.',
   inferred_phase_field:
@@ -62,6 +73,8 @@ const REPAIR_MESSAGES: Record<ImportRepairCode, string> = {
     'parentId references to non-existent tasks were removed.',
   tag_registry_repaired:
     'Invalid or duplicate tag registry definitions were removed or normalized.',
+  task_links_repaired:
+    'Invalid, duplicate, credential-shaped, or unsupported task links were removed or normalized.',
 }
 
 // Import files are parsed locally, so this can exceed the API request-body cap.
@@ -77,12 +90,16 @@ const TASK_EST_MAX = 64
 const TASK_TAGS_MAX = 20
 const TASK_ASSIGNEES_MAX = 20
 const TASK_DEPS_MAX = 50
+const TASK_LINKS_MAX = 20
 const TAG_MAX = 40
 const ASSIGNEE_MAX = 128
 const ID_MAX = 80
 const PHASE_NAME_MAX = 120
 const PHASE_NUM_MAX = 12
 const PHASE_COLOR_MAX = 64
+const TASK_LINK_KEYS = new Set([
+  'id', 'provider', 'kind', 'url', 'owner', 'repo', 'number', 'sha', 'tag', 'label',
+])
 
 // ─── Low-level guards ─────────────────────────────────────────────────────────
 
@@ -147,6 +164,77 @@ function validateStringArray(
 
 // ─── Domain validators ────────────────────────────────────────────────────────
 
+function normalizeLinkRecord(value: unknown): TaskExternalLink | null {
+  if (!isPlainObject(value)) return null
+  assertNoUnsafeKeys(value)
+  if (Object.keys(value).some(isCredentialLikeFieldName)) return null
+  if (
+    typeof value.id !== 'string'
+    || typeof value.url !== 'string'
+    || typeof value.provider !== 'string'
+    || typeof value.kind !== 'string'
+    || (value.label !== undefined && typeof value.label !== 'string')
+  ) {
+    return null
+  }
+
+  const result = parseTaskExternalLinkUrl(value.url, value.id, value.label)
+  if (!result.ok) return null
+  if (result.link.provider !== value.provider || result.link.kind !== value.kind) {
+    return null
+  }
+  return result.link
+}
+
+function linkRecordMatches(
+  raw: Record<string, unknown>,
+  normalized: TaskExternalLink,
+): boolean {
+  const normalizedEntries = Object.entries(normalized)
+  return Object.keys(raw).length === normalizedEntries.length
+    && normalizedEntries.every(([key, value]) => raw[key] === value)
+}
+
+function normalizeTaskLinks(value: unknown[]): {
+  links: TaskExternalLink[]
+  repaired: boolean
+} {
+  const links: TaskExternalLink[] = []
+  const ids = new Set<string>()
+  const urls = new Set<string>()
+  let repaired = value.length > TASK_LINKS_MAX
+
+  for (const raw of value.slice(0, TASK_LINKS_MAX)) {
+    const link = normalizeLinkRecord(raw)
+    if (!link || ids.has(link.id) || urls.has(link.url)) {
+      repaired = true
+      continue
+    }
+    if (
+      !isPlainObject(raw)
+      || Object.keys(raw).some((key) => !TASK_LINK_KEYS.has(key))
+      || !linkRecordMatches(raw, link)
+    ) {
+      repaired = true
+    }
+    links.push(link)
+    ids.add(link.id)
+    urls.add(link.url)
+  }
+  return { links, repaired }
+}
+
+function validateTaskLinks(value: unknown): TaskExternalLink[] | undefined {
+  if (value === undefined || value === null) return undefined
+  if (!Array.isArray(value)) throw new Error('task.links must be an array')
+  if (value.length > TASK_LINKS_MAX) {
+    throw new Error(`task.links exceeds ${TASK_LINKS_MAX} items`)
+  }
+  const normalized = normalizeTaskLinks(value)
+  if (normalized.repaired) throw new Error('task.links contains an invalid link')
+  return normalized.links
+}
+
 function validateTask(value: unknown): Task {
   if (!isPlainObject(value)) throw new Error('task must be an object')
   assertNoUnsafeKeys(value)
@@ -177,6 +265,8 @@ function validateTask(value: unknown): Task {
   if (typeof value.claimedAt === 'string' && !isNaN(Date.parse(value.claimedAt))) {
     task.claimedAt = value.claimedAt
   }
+  const links = validateTaskLinks(value.links)
+  if (links !== undefined) task.links = links
   return task
 }
 
@@ -231,7 +321,7 @@ const KNOWN_PHASE_KEYS = new Set([
 ])
 const KNOWN_TASK_KEYS = new Set([
   'id', 'title', 'done', 'next', 'est', 'tags', 'assignees', 'deps', 'desc', 'parentId',
-  'claimedBy', 'claimedById', 'claimedAt',
+  'claimedBy', 'claimedById', 'claimedAt', 'links',
 ])
 
 function detectCompatibilityWarnings(raw: unknown): CompatibilityWarning[] {
@@ -440,6 +530,21 @@ function repairTaskRaw(
     } else if (!Array.isArray(t.deps)) {
       bump(counts, 'coerced_array')
       t.deps = typeof t.deps === 'string' ? [t.deps] : []
+    }
+  }
+
+  // links: preserve an explicit empty array; normalize valid records and discard unsafe ones
+  if (t.links !== undefined) {
+    if (t.links === null) {
+      bump(counts, 'null_optional')
+      delete t.links
+    } else if (!Array.isArray(t.links)) {
+      bump(counts, 'coerced_array')
+      t.links = []
+    } else {
+      const normalized = normalizeTaskLinks(t.links)
+      if (normalized.repaired) bump(counts, 'task_links_repaired')
+      t.links = normalized.links
     }
   }
 

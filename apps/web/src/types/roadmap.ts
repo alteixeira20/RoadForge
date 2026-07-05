@@ -27,6 +27,28 @@ export type RealtimeConnectionStatus =
   | 'offline'
 export type TaskStatusFilter = 'all' | 'open' | 'done'
 export type TaskClaimFilter = 'all' | 'mine' | 'claimed' | 'unclaimed'
+export type TaskExternalLinkProvider = 'github' | 'url'
+export type TaskExternalLinkKind =
+  | 'issue'
+  | 'pull'
+  | 'discussion'
+  | 'commit'
+  | 'release'
+  | 'url'
+
+export interface TaskExternalLink {
+  /** Stable RoadForge-local identifier; not a provider credential or remote ID. */
+  id: string
+  provider: TaskExternalLinkProvider
+  kind: TaskExternalLinkKind
+  url: string
+  owner?: string
+  repo?: string
+  number?: number
+  sha?: string
+  tag?: string
+  label?: string
+}
 
 export interface FilterState {
   query: string
@@ -57,6 +79,8 @@ export interface Task {
   claimedById?: string
   /** ISO timestamp when the task was claimed */
   claimedAt?: string
+  /** Credential-free references to external implementation evidence. */
+  links?: TaskExternalLink[]
 }
 
 export interface Phase {

@@ -268,6 +268,37 @@ describe('applySafeAdditions', () => {
     })
   })
 
+  it('preserves current links and reports differing imported links', () => {
+    const currentTask = makeTask({
+      links: [{
+        id: 'current-link',
+        provider: 'url',
+        kind: 'url',
+        url: 'https://example.com/current',
+      }],
+    })
+    const importedTask = makeTask({
+      links: [{
+        id: 'imported-link',
+        provider: 'url',
+        kind: 'url',
+        url: 'https://example.com/imported',
+      }],
+    })
+
+    const { phases, preview } = applySafeAdditions(
+      [makePhase({ tasks: [currentTask] })],
+      [makePhase({ tasks: [importedTask] })],
+    )
+
+    expect(phases[0].tasks[0].links).toEqual(currentTask.links)
+    expect(preview.conflicts[0].fieldDiffs).toContainEqual({
+      field: 'links',
+      current: 'https://example.com/current',
+      imported: 'https://example.com/imported',
+    })
+  })
+
   it('skips task ID collisions from another current phase', () => {
     const existingTask = makeTask({ id: 'shared-id', title: 'Original' })
     const current = [

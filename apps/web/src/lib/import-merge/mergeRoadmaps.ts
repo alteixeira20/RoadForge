@@ -20,6 +20,10 @@ function fmtClaim(task: Task): string {
   return task.claimedAt ? `${task.claimedBy} since ${task.claimedAt}` : task.claimedBy
 }
 
+function fmtLinks(task: Task): string {
+  return (task.links ?? []).map((link) => link.label ?? link.url).join(', ') || '—'
+}
+
 function claimFieldsMatch(a: Task, b: Task): boolean {
   return (
     (a.claimedBy ?? '') === (b.claimedBy ?? '') &&
@@ -54,6 +58,9 @@ function computeTaskFieldDiffs(a: Task, b: Task): TaskFieldDiff[] {
   if (!claimFieldsMatch(a, b)) {
     diffs.push({ field: 'claim', current: fmtClaim(a), imported: fmtClaim(b) })
   }
+  if (JSON.stringify(a.links ?? []) !== JSON.stringify(b.links ?? [])) {
+    diffs.push({ field: 'links', current: fmtLinks(a), imported: fmtLinks(b) })
+  }
   return diffs
 }
 
@@ -66,7 +73,8 @@ function taskFieldsMatch(a: Task, b: Task): boolean {
     (a.desc ?? '') === (b.desc ?? '') &&
     JSON.stringify(a.tags ?? []) === JSON.stringify(b.tags ?? []) &&
     JSON.stringify(a.assignees ?? []) === JSON.stringify(b.assignees ?? []) &&
-    claimFieldsMatch(a, b)
+    claimFieldsMatch(a, b) &&
+    JSON.stringify(a.links ?? []) === JSON.stringify(b.links ?? [])
   )
 }
 

@@ -45,6 +45,7 @@ from api.schemas.tasks import (
     PhaseDTO,
     RoadmapSnapshotDTO,
     TaskDTO,
+    TaskExternalLinkDTO,
 )
 from api.schemas.versions import (
     CheckpointResponse,
@@ -95,6 +96,7 @@ __all__ = [
     "PatchTaskDoneRequest",
     "PhaseDTO",
     "RoadmapSnapshotDTO",
+    "TaskExternalLinkDTO",
     "TaskDTO",
     # Versions
     "CheckpointResponse",

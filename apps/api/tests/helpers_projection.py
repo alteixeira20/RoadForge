@@ -33,6 +33,18 @@ PHASES_WITH_TASKS = [
                 "desc": "First task description",
                 "tags": ["tag-a", "tag-b"],
                 "assignees": ["Alice", "Bob"],
+                "links": [
+                    {
+                        "id": "link-a1",
+                        "provider": "github",
+                        "kind": "issue",
+                        "url": "https://github.com/anvilary/roadforge/issues/601",
+                        "owner": "anvilary",
+                        "repo": "roadforge",
+                        "number": 601,
+                        "label": "Foundation issue",
+                    }
+                ],
             },
             {
                 "id": "tk_a2",

@@ -83,6 +83,18 @@ async def test_round_trip_preserves_task_scalars_and_relationships(client, db_se
     assert tk_a1["desc"] == "First task description"
     assert tk_a1["tags"] == ["tag-a", "tag-b"]
     assert tk_a1["assignees"] == ["Alice", "Bob"]
+    assert tk_a1["links"] == [
+        {
+            "id": "link-a1",
+            "provider": "github",
+            "kind": "issue",
+            "url": "https://github.com/anvilary/roadforge/issues/601",
+            "owner": "anvilary",
+            "repo": "roadforge",
+            "number": 601,
+            "label": "Foundation issue",
+        }
+    ]
     assert "deps" not in tk_a1
 
     tk_a2 = tasks_a[1]
@@ -156,6 +168,41 @@ async def test_round_trip_preserves_extra_task_keys_via_source_json(db_session):
     assert task["id"] == "tk_y1"
     assert task["custom_field"] == "preserved"
     assert task["priority"] == 3
+
+
+async def test_api_rejects_credential_shaped_task_link_query(client):
+    phases = [
+        {
+            "id": "ph_links",
+            "num": "1",
+            "name": "Links",
+            "color": "blue",
+            "status": "active",
+            "progress": 0,
+            "tasks": [
+                {
+                    "id": "tk_links",
+                    "title": "Linked task",
+                    "done": False,
+                    "links": [
+                        {
+                            "id": "link-unsafe",
+                            "provider": "url",
+                            "kind": "url",
+                            "url": "https://example.com/work?access_token=redacted",
+                        }
+                    ],
+                }
+            ],
+        }
+    ]
+
+    response = await client.post(
+        "/api/roadmaps",
+        json={"name": "Unsafe link", "owner_display_name": "Owner", "phases": phases},
+    )
+
+    assert response.status_code == 422
 
 
 # ─── Group D — Invalid dep/parent refs normalize consistently ─────────────────
