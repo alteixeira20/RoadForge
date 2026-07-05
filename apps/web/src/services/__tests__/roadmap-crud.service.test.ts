@@ -9,7 +9,7 @@ import {
   patchTaskDone,
 } from '@/services/roadmap-crud.service'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
-import type { Phase, TagDefinition } from '@/types/roadmap'
+import type { Phase, TagDefinition, Task } from '@/types/roadmap'
 
 const apiRoadmap = {
   id: 'rm_1',
@@ -33,58 +33,99 @@ const apiRoadmap = {
 }
 
 describe('exportRoadmap', () => {
-  it('round-trips the complete portable roadmap shape without warnings or repairs', async () => {
-    const phases: Phase[] = [{
-      id: 'phase-1',
-      num: '01',
-      name: 'Implementation',
-      color: '#f97316',
-      colorMode: 'manual',
-      status: 'active',
-      progress: 50,
-      tasks: [
-        {
+  it('round-trips every supported task field in a maximal portable fixture', async () => {
+    const description = [
+      'Opening paragraph with **bold**, *italic*, and `inline code`.',
+      '',
+      'Second paragraph with a [RoadForge link](https://example.com/roadforge).',
+      '',
+      '- First bullet',
+      '- Second bullet',
+      '',
+      '1. First numbered item',
+      '2. Second numbered item',
+      '',
+      '- [x] Completed check',
+      '- [ ] Pending check',
+    ].join('\n')
+    // Add task.links here when RF-602 introduces that Task field.
+    const maximalTask = {
+      id: 'RF-3',
+      title: 'Intentionally maximal subtask',
+      done: false,
+      next: true,
+      est: '3d',
+      assignees: ['Alex', 'Sam'],
+      tags: ['delivery', 'frontend'],
+      deps: ['RF-1'],
+      desc: description,
+      parentId: 'RF-2',
+      claimedBy: 'Alex',
+      claimedById: 'pt_alex',
+      claimedAt: '2026-07-03T09:00:00.000Z',
+    } satisfies Required<Task>
+    const phases: Phase[] = [
+      {
+        id: 'phase-1',
+        num: '01',
+        name: 'Discovery',
+        color: '#f97316',
+        colorMode: 'manual',
+        status: 'done',
+        progress: 100,
+        tasks: [{
           id: 'RF-1',
-          title: 'Parent task',
+          title: 'Completed dependency',
           done: true,
           next: false,
-          est: '2d',
           tags: ['planning'],
-          assignees: ['Alex'],
+          assignees: [],
           deps: [],
-          desc: 'Intro with **bold**.\\n\\n- [x] Complete\\n- [ ] Follow up',
-          claimedBy: 'Alex',
-          claimedById: 'pt_alex',
-          claimedAt: '2026-07-03T09:00:00.000Z',
-        },
-        {
-          id: 'RF-2',
-          title: 'Nested task',
-          done: false,
-          next: true,
-          est: '1d',
-          tags: ['delivery'],
-          assignees: ['Sam'],
-          deps: ['RF-1'],
-          desc: 'See [context](https://example.com) and use `pnpm test`.',
-          parentId: 'RF-1',
-        },
-      ],
-    }]
+        }],
+      },
+      {
+        id: 'phase-2',
+        num: '02',
+        name: 'Implementation',
+        color: '#38bdf8',
+        colorMode: 'auto',
+        status: 'active',
+        progress: 0,
+        tasks: [
+          {
+            id: 'RF-2',
+            title: 'Parent task',
+            done: false,
+            next: false,
+            est: '5d',
+            tags: ['delivery'],
+            assignees: [],
+            deps: [],
+          },
+          maximalTask,
+        ],
+      },
+    ]
     const tagRegistry: TagDefinition[] = [
       { id: 'planning', label: 'Planning', color: '#f97316' },
       { id: 'delivery', label: 'Delivery', color: '#38bdf8' },
+      { id: 'frontend', label: 'Frontend', color: '#a78bfa' },
     ]
 
     const blob = await exportRoadmap(phases, 'json', {
-      roadmapName: 'Round-trip',
+      roadmapName: 'Public Alpha Compatibility',
       tagRegistry,
     })
     const exported = JSON.parse(await blob.text()) as { schema: string }
     const imported = parseImportedRoadmapJson(JSON.stringify(exported))
+    const importedMaximalTask = imported.phases[1].tasks[1]
 
     expect(exported.schema).toBe('anvilary.roadmap.export')
+    expect(imported.roadmapName).toBe('Public Alpha Compatibility')
     expect(imported.phases).toEqual(phases)
+    expect(Object.keys(importedMaximalTask).sort())
+      .toEqual(Object.keys(maximalTask).sort())
+    expect(importedMaximalTask).toEqual(maximalTask)
     expect(imported.tagRegistry).toEqual(tagRegistry)
     expect(imported.warnings).toEqual([])
     expect(imported.repairs).toEqual([])
