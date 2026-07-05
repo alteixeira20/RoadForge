@@ -15,6 +15,88 @@
   color: var(--ink-4); margin-bottom: 8px;
 }
 
+.task-links-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+}
+.task-links-heading .section-label { margin: 0; }
+.task-link-add { padding-inline: 6px; }
+.task-link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.task-link-list li {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border-faint);
+  border-radius: 6px;
+  background: var(--bg-2);
+}
+.task-link-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  text-decoration: none;
+}
+.task-link-list a:hover { color: var(--ember); }
+.task-link-list a:focus-visible,
+.task-link-remove:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: -2px;
+}
+.task-link-remove {
+  display: inline-grid;
+  place-items: center;
+  align-self: stretch;
+  padding: 0 6px;
+  border: 0;
+  border-left: 1px solid var(--border-faint);
+  background: transparent;
+  color: var(--ink-4);
+  cursor: pointer;
+}
+.task-link-remove:hover { color: var(--red); }
+.task-link-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  max-width: 720px;
+  margin-top: 6px;
+}
+.task-link-form .form-input {
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.task-link-form .form-input:focus {
+  border-color: var(--ember);
+  outline: none;
+}
+.task-link-form-actions {
+  display: flex;
+  gap: 6px;
+}
+.task-link-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--red);
+  font-size: 12px;
+}
+
 /* ─── Animations ───────────────────────────────────────────────────────────── */
 @keyframes detailIn {
   from { opacity: 0; transform: translateY(-4px); }
@@ -31,4 +113,6 @@
 /* ── 600px — mobile: compact task detail density ────────────────────────── */
 @media (max-width: 600px) {
   .task-detail { gap: 8px; }
+  .task-link-form { grid-template-columns: 1fr; }
+  .task-link-form-actions { justify-content: flex-end; }
 }

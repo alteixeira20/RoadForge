@@ -11,6 +11,7 @@ import { TaskDescriptionEditor } from './TaskDescriptionEditor'
 import { TaskClaimRow } from './task-row/TaskClaimRow'
 import { TaskDependencySection } from './task-row/TaskDependencySection'
 import { TaskDetailActions } from './task-row/TaskDetailActions'
+import { TaskLinksSection } from './task-row/TaskLinksSection'
 import { TaskRowHeader } from './task-row/TaskRowHeader'
 import { TaskSubtaskSection } from './task-row/TaskSubtaskSection'
 import { useEditLock } from '@/hooks/useEditLock'
@@ -93,6 +94,7 @@ export function TaskRow({
 
   const [showSubtaskForm, setShowSubtaskForm] = useState(false)
   const [showDepPicker, setShowDepPicker] = useState(false)
+  const [showGitHubLinkForm, setShowGitHubLinkForm] = useState(false)
   const [isEditing, setIsEditing] = useState(startEditing)
   const [editDirty, setEditDirty] = useState(false)
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
@@ -110,7 +112,7 @@ export function TaskRow({
 
   // ─── Lock lifecycle ──────────────────────────────────────────────────────────
 
-  const activeForm = isEditing || showSubtaskForm || showDepPicker
+  const activeForm = isEditing || showSubtaskForm || showDepPicker || showGitHubLinkForm
   const {
     isIdlePaused,
     recordInteraction,
@@ -195,6 +197,7 @@ export function TaskRow({
     if (!expanded) {
       setShowSubtaskForm(false)
       setShowDepPicker(false)
+      setShowGitHubLinkForm(false)
       setIsEditing(false)
       setEditDirty(false)
       if (!inlineEdit.isEditing) onDirtyChange?.(task.id, false)
@@ -285,6 +288,12 @@ export function TaskRow({
   const handleOpenDependencyPicker = async () => {
     const success = await tryAcquireEditLock()
     if (success) setShowDepPicker(true)
+  }
+
+  const handleOpenGitHubLinkForm = async () => {
+    const success = await tryAcquireEditLock()
+    if (success) setShowGitHubLinkForm(true)
+    return success
   }
 
   const handleBeginInlineEdit = async (field: 'title' | 'desc') => {
@@ -493,6 +502,19 @@ export function TaskRow({
                 assignedNames={assignedNames}
                 visibleTags={visibleTags}
                 registry={tagRegistry}
+              />
+
+              <TaskLinksSection
+                task={task}
+                readOnly={effectivelyReadOnly}
+                adding={showGitHubLinkForm}
+                canCommit={canCommitEdit}
+                onBeginAdd={handleOpenGitHubLinkForm}
+                onCancelAdd={() => setShowGitHubLinkForm(false)}
+                onUpdateLinks={async (links) => {
+                  if (showGitHubLinkForm && !canCommitEdit) return false
+                  return (await onUpdateTask(task.id, { links })) !== false
+                }}
               />
 
               <div

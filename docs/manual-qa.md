@@ -175,6 +175,18 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ---
 
+## 11a — Task GitHub links
+
+- [ ] Expand a task, click **Add GitHub link**, paste an issue URL, and save → an `Issue #<number>` link appears and opens GitHub in a new tab.
+- [ ] Repeat with a pull request and discussion → concise `PR #<number>` and `Discussion #<number>` links appear.
+- [ ] Paste an invalid URL, commit, release, generic URL, unsupported GitHub page, credential query, or URL username/password → a friendly error appears and the pasted input remains.
+- [ ] Paste a URL already attached to the task → duplicate feedback appears and the task is unchanged.
+- [ ] Remove one link → only that link is removed; other links and task fields remain.
+- [ ] Open the roadmap as a Viewer → links remain visible and openable, while add/remove controls are absent.
+- [ ] On a synced roadmap, make a concurrent server edit before saving a pasted link → the standard structured conflict flow appears and the pasted input remains available for review.
+
+---
+
 ## 11b — Task claim and override (styled confirmation)
 
 - [ ] Every task row shows exactly one status badge: **Done**, **In progress**, **Blocked**, **Ready to start**, or **Planned**. The badge remains visible when the task is expanded and at 375px width.

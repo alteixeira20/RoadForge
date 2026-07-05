@@ -23,6 +23,16 @@ export type ExternalLinkParseResult =
     }
   }
 
+export type GitHubTaskLinkUiResult =
+  | { ok: true; link: TaskExternalLink }
+  | {
+    ok: false
+    error: {
+      code: 'duplicate' | 'invalid' | 'limit'
+      message: string
+    }
+  }
+
 const GITHUB_HOST = 'github.com'
 const GITHUB_OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/
 const GITHUB_REPO_RE = /^[A-Za-z0-9_.-]{1,100}$/
@@ -51,6 +61,13 @@ const CREDENTIAL_QUERY_KEYS = new Set([
   'token',
 ])
 const CREDENTIAL_VALUE_RE = /^(?:bearer\s+|gh[pousr]_|github_pat_)/i
+const UI_GITHUB_KINDS = new Set<TaskExternalLinkKind>([
+  'issue',
+  'pull',
+  'discussion',
+])
+const TASK_LINKS_MAX = 20
+const UI_GITHUB_URL_MESSAGE = 'Paste a GitHub issue, pull request, or discussion URL.'
 
 function failure(
   code: ExternalLinkParseErrorCode,
@@ -223,4 +240,66 @@ export function parseTaskExternalLinkUrl(
       ...(cleanLabel ? { label: cleanLabel } : {}),
     },
   }
+}
+
+export function parseGitHubTaskLinkForUi(
+  input: string,
+  id: string,
+  existingLinks: TaskExternalLink[] = [],
+): GitHubTaskLinkUiResult {
+  if (existingLinks.length >= TASK_LINKS_MAX) {
+    return {
+      ok: false,
+      error: {
+        code: 'limit',
+        message: `A task can have up to ${TASK_LINKS_MAX} links.`,
+      },
+    }
+  }
+
+  const parsed = parseTaskExternalLinkUrl(input, id)
+  if (!parsed.ok) {
+    const message = parsed.error.code === 'malformed_github_url'
+      ? UI_GITHUB_URL_MESSAGE
+      : parsed.error.message
+    return {
+      ok: false,
+      error: { code: 'invalid', message },
+    }
+  }
+  if (
+    parsed.link.provider !== 'github'
+    || !UI_GITHUB_KINDS.has(parsed.link.kind)
+  ) {
+    return {
+      ok: false,
+      error: {
+        code: 'invalid',
+        message: UI_GITHUB_URL_MESSAGE,
+      },
+    }
+  }
+  if (existingLinks.some((link) => link.url === parsed.link.url)) {
+    return {
+      ok: false,
+      error: {
+        code: 'duplicate',
+        message: 'This GitHub link is already attached.',
+      },
+    }
+  }
+  return parsed
+}
+
+export function isUiGitHubTaskLink(
+  link: TaskExternalLink,
+): boolean {
+  return link.provider === 'github' && UI_GITHUB_KINDS.has(link.kind)
+}
+
+export function getGitHubTaskLinkLabel(link: TaskExternalLink): string {
+  const number = link.number ?? ''
+  if (link.kind === 'pull') return `PR #${number}`
+  if (link.kind === 'discussion') return `Discussion #${number}`
+  return `Issue #${number}`
 }

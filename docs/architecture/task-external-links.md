@@ -1,6 +1,6 @@
 # Task External Links
 
-Status: Accepted for RF-601–RF-603  
+Status: Accepted for RF-601–RF-604
 Date: 2026-07-05
 
 ## Decision
@@ -74,6 +74,22 @@ For synced roadmaps, `roadmaps.snapshot_json` remains canonical. The current
 relational projection carries `links` through task `source_json`; it does not
 make external links relational truth and requires no migration.
 
+## RF-604 UI scope
+
+The first task-link UI deliberately accepts and displays only GitHub issue,
+pull request, and discussion URLs. Maintainers paste one URL in the expanded
+task detail and can remove individual displayed links. Links open in a new tab
+with `noopener noreferrer`.
+
+Commit, release, generic, and unsupported GitHub URLs remain valid portable
+model data where supported by the parser and import pipeline, but RF-604 does
+not offer them as task-link UI. Updating the visible links preserves any such
+existing records in `Task.links`.
+
+Local roadmaps update `task.links` through the normal local dirty-state path.
+Synced owner/editor updates use the existing task PATCH endpoint with
+`last_updated_at`; no GitHub-specific endpoint or provider call is involved.
+
 ## Metadata and authentication boundary
 
 If RoadForge later fetches GitHub metadata, the fetched data must live in a
@@ -97,7 +113,6 @@ never be stored in:
 
 This phase does not add:
 
-- a GitHub linking modal or other task-link UI;
 - GitHub API calls or metadata fetching;
 - OAuth, a GitHub App, backend provider credentials, or tokens;
 - bidirectional synchronization;

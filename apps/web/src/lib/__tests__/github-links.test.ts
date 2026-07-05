@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { parseTaskExternalLinkUrl } from '@/lib/github-links'
+import {
+  parseGitHubTaskLinkForUi,
+  parseTaskExternalLinkUrl,
+} from '@/lib/github-links'
 
 describe('parseTaskExternalLinkUrl', () => {
   it.each([
@@ -130,6 +133,73 @@ describe('parseTaskExternalLinkUrl', () => {
     expect(parseTaskExternalLinkUrl(input, 'link-1')).toEqual({
       ok: false,
       error: { code, message },
+    })
+  })
+})
+
+describe('parseGitHubTaskLinkForUi', () => {
+  it.each([
+    ['issues', 'issue'],
+    ['pull', 'pull'],
+    ['discussions', 'discussion'],
+  ])('accepts GitHub %s URLs', (route, kind) => {
+    const result = parseGitHubTaskLinkForUi(
+      `https://github.com/anvilary/roadforge/${route}/604`,
+      `link-${kind}`,
+    )
+
+    expect(result).toEqual({
+      ok: true,
+      link: expect.objectContaining({ provider: 'github', kind, number: 604 }),
+    })
+  })
+
+  it.each([
+    'https://github.com/anvilary/roadforge/commit/abcdef0123456789',
+    'https://github.com/anvilary/roadforge/releases/tag/v1.0.0',
+    'https://example.com/spec',
+    'https://github.com/anvilary/roadforge/actions',
+  ])('rejects unsupported v1 UI URL %s', (input) => {
+    expect(parseGitHubTaskLinkForUi(input, 'link-1')).toEqual({
+      ok: false,
+      error: {
+        code: 'invalid',
+        message: 'Paste a GitHub issue, pull request, or discussion URL.',
+      },
+    })
+  })
+
+  it('uses the v1 UI guidance for malformed GitHub artifact URLs', () => {
+    expect(parseGitHubTaskLinkForUi(
+      'https://github.com/anvilary/roadforge/issues/not-a-number',
+      'link-1',
+    )).toEqual({
+      ok: false,
+      error: {
+        code: 'invalid',
+        message: 'Paste a GitHub issue, pull request, or discussion URL.',
+      },
+    })
+  })
+
+  it('detects duplicate canonical URLs', () => {
+    const input = 'https://github.com/anvilary/roadforge/issues/604?tab=activity'
+    const existing = [{
+      id: 'existing',
+      provider: 'github' as const,
+      kind: 'issue' as const,
+      url: 'https://github.com/anvilary/roadforge/issues/604',
+      owner: 'anvilary',
+      repo: 'roadforge',
+      number: 604,
+    }]
+
+    expect(parseGitHubTaskLinkForUi(input, 'duplicate', existing)).toEqual({
+      ok: false,
+      error: {
+        code: 'duplicate',
+        message: 'This GitHub link is already attached.',
+      },
     })
   })
 })
