@@ -75,7 +75,8 @@ Open four browser contexts and keep them active throughout:
 - [ ] Public viewer link explains that anyone with the link can view read-only.
 - [ ] Click **Rotate link** on Editor row → URL appears. Copy it (editor link).
 - [ ] Click **Reset link** or **Generate public link** on Viewer row → URL appears. Copy it (viewer link).
-- [ ] Owner row: only shows current session info; no join URL exposed.
+- [ ] Owner row: active link metadata is visible, but no raw join URL is exposed
+  until **Rotate link** generates a new owner invite.
 - [ ] Close and reopen Share modal. Editor row shows "Active link" but NOT the raw URL. Viewer row still shows a copyable public read-only URL.
 - [ ] Copy the viewer URL after reopening the modal and save it somewhere temporary. It should be the stable public read-only demo link for this roadmap.
 
@@ -555,7 +556,12 @@ or staging stack are available. Do not mark these as complete until you run them
 - [ ] Invalid-token join attempts and roadmap creation are rate-limited by client IP.
 - [ ] Event ticket requests allow normal page load/reconnect, then repeated direct calls return `429`.
 - [ ] Owner share rotate/revoke works normally, then rapid repeated calls return `429`.
-- [ ] CSP is Report-Only and does not block app load, save, join, import/export, fonts, icons, or SSE.
+- [ ] CSP response header is `Content-Security-Policy-Report-Only`, not
+  `Content-Security-Policy`.
+- [ ] With a production build, inspect browser console CSP violations while
+  loading every route and exercising save, join, Markdown rendering,
+  import/export, fonts, icons, API calls, and SSE. Record violations before
+  proposing enforcement.
 - [ ] Realtime SSE still works after the header changes.
 - [ ] Sensitive roadmap API JSON responses include `Cache-Control: no-store`.
 - [ ] API responses include `X-Content-Type-Options: nosniff`.
@@ -606,7 +612,14 @@ Stop QA and file a blocker if any of the following are true:
   `ROADFORGE_REALTIME_BACKEND=redis`, a successful startup ping, and successful
   RF-886 validation.
 - **No accounts / OAuth.** Session tokens in localStorage are the auth primitive. There is no login page, no password reset, and no user dashboard.
+- **Invite links have no timer expiry.** Owner/editor links remain usable until
+  rotated or revoked. The public viewer link is stable until reset/disabled.
+  Participant sessions expire after 30 days of inactivity and active use renews
+  that sliding window.
 - **Link revoke does not kick active participants.** Revoking a share link prevents new joins via that link but does not terminate existing sessions. To remove an active participant, use participant revoke (§7).
 - **Password gate not enforced on existing sessions.** A participant who already holds a session token is not re-prompted if the owner later enables a password.
 - **Rate limiting is backend-dependent.** The limiter is shared across workers only with `ROADFORGE_REALTIME_BACKEND=redis`. Memory-backed rate limiting is single-worker only.
-- **CSP is report-only.** Content Security Policy is observable but not enforced yet. Do not treat report-only CSP as blocking protection.
+- **CSP is report-only.** Enforcement is deferred until a production-build
+  browser pass shows no required Next.js bootstrap, styled JSX/inline style,
+  Markdown, API, or SSE violations. There is no CSP report collector. Do not
+  treat report-only CSP as blocking protection.
