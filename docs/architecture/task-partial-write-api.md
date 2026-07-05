@@ -147,7 +147,7 @@ Current limits:
 | Field | Limit |
 |---|---:|
 | `title` | 160 characters |
-| `desc` | 2,000 characters |
+| `desc` | 5,000 characters |
 | `est` | 64 characters |
 | `assignees` | 20 values, 128 characters each |
 | `tags` | 20 values, 40 characters each |
@@ -305,7 +305,7 @@ Do not claim those costs are solved by RF-302.
   full response; reuse task-done's clean-state reconciliation guard.
 - Global timestamps cause intentional false-positive conflicts.
 - Best-effort projection sync can leave drift, though snapshot fallback remains.
-- Activity before/after can duplicate up to 2,000 description characters per
+- Activity before/after can duplicate up to 5,000 description characters per
   side; measure before changing the existing audit convention.
 - Optional-value normalization can create representation-only noise unless
   no-op tests cover omitted/null/empty cases.

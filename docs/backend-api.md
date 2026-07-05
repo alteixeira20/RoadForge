@@ -911,7 +911,7 @@ Task
   assignees string[] | null     task-local names (not participants), max 20 items
   tags      string[] | null     max 20 items, each max 40 chars
   deps      string[] | null     task IDs this task depends on, max 50 items
-  desc      string | null       max 2000 chars
+  desc      string | null       max 5000 chars
   parentId  string | null       ID of parent task, max 80 chars
   claimedBy string | null       claim owner display name
   claimedById string | null     claim owner participant ID

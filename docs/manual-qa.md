@@ -165,6 +165,7 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 - [ ] **Inline assignees:** add, select, and remove assignees from the expanded task → names update and persist.
 - [ ] **Full edit form:** change title, description, estimate, tags, assignees, and dependencies → save → values persist after reload.
 - [ ] **Markdown description:** use the toolbar or type paragraphs, bold, italic, inline code, links, bullet/numbered lists, and `- [ ]` / `- [x]` items → save → compact formatted content renders in the task detail.
+- [ ] **Description limit:** save a 5,000-character description → it persists after reload; verify a 5,001-character task PATCH or import is rejected.
 - [ ] **Markdown safety:** enter `<b>raw HTML</b>` and a `vbscript:` link → raw HTML displays as text and the unsafe link is not clickable.
 - [ ] **Legacy description:** load a plain-text description with line breaks → it remains readable without conversion.
 - [ ] **Done:** Tick checkbox → phase progress bar updates → save → state persists.

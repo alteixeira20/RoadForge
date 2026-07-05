@@ -34,7 +34,7 @@ const apiRoadmap = {
 
 describe('exportRoadmap', () => {
   it('round-trips every supported task field in a maximal portable fixture', async () => {
-    const description = [
+    const markdownDescription = [
       'Opening paragraph with **bold**, *italic*, and `inline code`.',
       '',
       'Second paragraph with a [RoadForge link](https://example.com/roadforge).',
@@ -48,6 +48,7 @@ describe('exportRoadmap', () => {
       '- [x] Completed check',
       '- [ ] Pending check',
     ].join('\n')
+    const description = markdownDescription.padEnd(5_000, 'x')
     const maximalTask = {
       id: 'RF-3',
       title: 'Intentionally maximal subtask',
@@ -144,6 +145,7 @@ describe('exportRoadmap', () => {
     expect(Object.keys(importedMaximalTask).sort())
       .toEqual(Object.keys(maximalTask).sort())
     expect(importedMaximalTask).toEqual(maximalTask)
+    expect(importedMaximalTask.desc).toHaveLength(5_000)
     expect(imported.tagRegistry).toEqual(tagRegistry)
     expect(imported.warnings).toEqual([])
     expect(imported.repairs).toEqual([])

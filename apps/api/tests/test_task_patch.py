@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import api.services.roadmap_task_service as task_service
 from api.models.roadmap import ActivityLog, Roadmap, RoadmapVersion
-from api.schemas.roadmap import PatchTaskRequest
+from api.schemas.roadmap import PatchTaskRequest, TaskDTO
 from api.services.roadmap_helpers import _patch_task_fields_in_snapshot
 from api.services.roadmap_projection_service import (
     serialize_projection_to_snapshot,
@@ -220,7 +220,7 @@ def test_snapshot_helper_clears_links_without_removing_unrelated_fields():
     "values",
     [
         {"title": "x" * 161},
-        {"desc": "x" * 2_001},
+        {"desc": "x" * 5_001},
         {"est": "x" * 65},
         {"assignees": ["x"] * 21},
         {"assignees": ["x" * 129]},
@@ -237,6 +237,19 @@ def test_patch_task_request_validates_existing_task_limits(values):
             last_updated_at="2026-07-04T10:00:00Z",
             **values,
         )
+
+
+def test_task_dto_accepts_description_at_limit():
+    description = "x" * 5_000
+
+    task = TaskDTO(id="tk_limit", title="Limit", done=False, desc=description)
+
+    assert task.desc == description
+
+
+def test_task_dto_rejects_description_over_limit():
+    with pytest.raises(ValidationError):
+        TaskDTO(id="tk_limit", title="Limit", done=False, desc="x" * 5_001)
 
 
 async def _patch(
@@ -346,6 +359,24 @@ async def test_editor_can_patch_description_and_metadata(client: AsyncClient):
     assert task["est"] == "4d"
     assert task["assignees"] == ["Editor", "Alice"]
     assert task["tags"] == ["backend", "api"]
+
+
+async def test_patch_accepts_description_at_limit(client: AsyncClient):
+    roadmap = await create_with_phases(client)
+    description = "x" * 5_000
+
+    response = await _patch(client, roadmap, desc=description)
+
+    assert response.status_code == 200, response.text
+    assert _task(response.json())["desc"] == description
+
+
+async def test_patch_rejects_description_over_limit(client: AsyncClient):
+    roadmap = await create_with_phases(client)
+
+    response = await _patch(client, roadmap, desc="x" * 5_001)
+
+    assert response.status_code == 422
 
 
 async def test_viewer_cannot_patch_task(client: AsyncClient):

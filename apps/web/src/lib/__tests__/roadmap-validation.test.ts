@@ -100,6 +100,22 @@ describe('roadmap-validation', () => {
       expect(result.phases[0].tasks[0].desc).toBe(desc)
     })
 
+    it('accepts a task description at the 5000-character import limit', () => {
+      const desc = 'x'.repeat(5_000)
+      const phase = { ...MINIMAL_PHASE, tasks: [{ ...MINIMAL_TASK, desc }] }
+      const result = parseImportedRoadmapJson(JSON.stringify({ phases: [phase] }))
+
+      expect(result.phases[0].tasks[0].desc).toBe(desc)
+    })
+
+    it('rejects a task description over the import limit', () => {
+      const desc = 'x'.repeat(5_001)
+      const phase = { ...MINIMAL_PHASE, tasks: [{ ...MINIMAL_TASK, desc }] }
+
+      expect(() => parseImportedRoadmapJson(JSON.stringify({ phases: [phase] })))
+        .toThrow('Import failed: task.desc exceeds 5000 characters')
+    })
+
     it('accepts an empty phases array', () => {
       const input = JSON.stringify({ phases: [] })
       const result = parseImportedRoadmapJson(input)

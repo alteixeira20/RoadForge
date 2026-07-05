@@ -86,7 +86,7 @@ Priority rules:
 - Subtasks use parentId set to another task ID.
 - Top-level tagRegistry entries define stable tag IDs, labels, and optional #rrggbb colors.
 - Task tags reference tagRegistry IDs. Task assignees are names in an assignees array.
-- desc supports Markdown paragraphs, bold, italic, inline code, links, lists, and checkboxes, up to 2000 characters.
+- desc supports Markdown paragraphs, bold, italic, inline code, links, lists, and checkboxes, up to 5000 characters.
 - Optional task fields: next, est, tags, assignees, deps, desc, parentId.
 - Use double quotes and do not include trailing commas.
 - Do not include session tokens, invite tokens, passwords, auth cache, or browser storage data.
