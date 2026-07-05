@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +10,36 @@ from api.config import Settings, get_settings
 from api.main import create_app
 from api.services import realtime_startup
 from api.services.client_ip_service import extract_client_ip
+
+
+async def test_health_response_is_minimal_and_has_security_headers(client):
+    response = await client.get("/api/health")
+
+    assert response.status_code == 200
+    assert set(response.json()) == {"status", "version"}
+    assert response.json()["status"] == "ok"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert "authorization" not in response.text.lower()
+    assert "database" not in response.text.lower()
+    assert "redis" not in response.text.lower()
+
+
+async def test_access_log_excludes_query_credentials(client, caplog):
+    credential = "ticket_should_never_be_logged"
+
+    with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+        response = await client.get(f"/api/health?ticket={credential}")
+
+    assert response.status_code == 200
+    messages = [record.getMessage() for record in caplog.records]
+    assert any(
+        "method=GET path=/api/health status=200" in message
+        for message in messages
+    )
+    assert all(credential not in message for message in messages)
+    assert all("ticket=" not in message for message in messages)
 
 
 def test_docs_are_disabled_outside_development(monkeypatch):

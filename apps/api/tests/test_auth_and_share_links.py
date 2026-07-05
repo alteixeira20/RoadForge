@@ -137,6 +137,19 @@ async def test_invite_link_returns_correct_role(client: AsyncClient, role: str):
     assert data["roadmap_id"] == roadmap_id
 
 
+async def test_owner_invite_link_returns_owner_role(client: AsyncClient):
+    body = await create_roadmap(client)
+    owner_url = next(
+        link["url"] for link in body["share_links"] if link["role"] == "owner"
+    )
+
+    resp = await _join(client, owner_url, display_name="SecondOwner")
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["role"] == "owner"
+    assert resp.json()["roadmap_id"] == body["id"]
+
+
 async def test_invalid_invite_token_returns_401(client: AsyncClient):
     resp = await client.post(
         "/api/roadmaps/join",
@@ -255,6 +268,27 @@ async def test_revoked_viewer_link_cannot_join(client: AsyncClient):
     # Attempt to join with old URL should fail
     resp = await _join(client, viewer_url, display_name="LateViewer")
     assert resp.status_code == 401
+
+
+async def test_revoking_invite_does_not_revoke_existing_session(client: AsyncClient):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+    links = await _get_share_links(client, roadmap_id, owner_token)
+    join_resp = await _join(client, links["viewer"]["url"], display_name="ActiveViewer")
+    viewer_token = join_resp.json()["session_token"]
+
+    revoke_resp = await client.delete(
+        f"/api/roadmaps/{roadmap_id}/share-links/viewer",
+        headers=_auth(owner_token),
+    )
+    assert revoke_resp.status_code == 204
+
+    resp = await client.get(
+        f"/api/roadmaps/{roadmap_id}",
+        headers=_auth(viewer_token),
+    )
+    assert resp.status_code == 200
 
 
 # ─── Group D — Revoke participant ────────────────────────────────────────────
@@ -406,3 +440,32 @@ async def test_expired_session_returns_401(client: AsyncClient, db_session: Asyn
     resp = await client.get(f"/api/roadmaps/{roadmap_id}", headers=_auth(editor_token))
     assert resp.status_code == 401
     assert resp.json()["detail"] == "Session expired"
+
+
+async def test_stale_active_session_renews_expiry(
+    client: AsyncClient,
+    db_session: AsyncSession,
+):
+    body = await create_roadmap(client)
+    owner_token = body["owner_session_token"]
+    now = datetime.now(timezone.utc)
+
+    result = await db_session.execute(
+        select(Participant).where(
+            Participant.roadmap_id == body["id"],
+            Participant.role == "owner",
+        )
+    )
+    participant = result.scalar_one()
+    participant.last_seen_at = now - timedelta(minutes=2)
+    participant.session_expires_at = now + timedelta(days=1)
+    await db_session.commit()
+
+    resp = await client.get(
+        f"/api/roadmaps/{body['id']}",
+        headers=_auth(owner_token),
+    )
+
+    assert resp.status_code == 200
+    assert participant.last_seen_at >= now
+    assert participant.session_expires_at >= now + timedelta(days=29)
