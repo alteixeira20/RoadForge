@@ -1,7 +1,8 @@
-# Beta Release Checklist
+# Public Alpha Release Checklist
 
+- [ ] `make release-check` passes for the release candidate
 - [ ] Version and changelog updated
-- [ ] Beta/WIP wording visible in README, metadata, landing page, and hosted app
+- [ ] Public Alpha/WIP wording visible in README, metadata, landing page, and hosted app
 - [ ] License and source-available terminology reviewed
 - [ ] Secret/generated-artifact scan reviewed
 - [ ] Frontend lint, typecheck, unit tests, and production build pass

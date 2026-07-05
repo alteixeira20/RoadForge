@@ -120,6 +120,7 @@ Before self-hosting or releasing RoadForge publicly:
 | `make logs` | Follow all logs (API, Postgres, Web) |
 | `make reset` | Destructive reset: wipe DB and start fresh |
 | `make check` | Run linting, typechecking, and production build |
+| `make release-check` | Run web tests/lint/typecheck/build, API lint/tests/migration drift, and `git diff --check` |
 | `make audit` | Run dependency security audit |
 | `make audit-prod` | Run dependency security audit (production only) |
 | `make dev` | Run Next.js frontend in the foreground (standard dev) |

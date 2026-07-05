@@ -1,4 +1,4 @@
-.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-check-fast api-check-prepare api-lint api-test api-test-prepare api-test-fast api-audit api-backfill-projection web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-check-fast api-check-prepare api-lint api-test api-test-prepare api-test-fast api-audit api-backfill-projection web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check release-check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -26,6 +26,7 @@ help:
 	@echo "  (Frontend commands auto-bootstrap pnpm and install dependencies when missing)"
 	@echo "  make dev           Run Next.js frontend in the foreground"
 	@echo "  make check         Run linting, typechecking, and production build"
+	@echo "  make release-check Run the full local pre-release validation gate"
 	@echo "  make diff          Show full diff and copy it to clipboard when possible"
 	@echo "  make audit         Run JS dependency security audit"
 	@echo "  make audit-prod    Run JS dependency security audit (production only, high+)"
@@ -129,6 +130,14 @@ check: ensure-deps
 
 web-test: ensure-deps
 	pnpm --filter web test
+
+release-check:
+	$(MAKE) web-test
+	$(MAKE) check
+	$(MAKE) api-lint
+	$(MAKE) api-test
+	$(MAKE) api-check
+	git diff --check
 
 diff:
 	@mkdir -p "$$(dirname "$(DIFF_OUT)")"
