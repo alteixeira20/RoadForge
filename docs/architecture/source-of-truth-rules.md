@@ -15,6 +15,9 @@ Focused task write endpoints are also replacing some aggregate saves. That work
 must reduce full-snapshot write amplification without changing which data is
 canonical or changing portable import/export behavior.
 
+The concrete URL-only task link model and its validation/security boundary are
+defined in [Task External Links](task-external-links.md).
+
 ## Decision
 
 ### RoadForge owns roadmap planning

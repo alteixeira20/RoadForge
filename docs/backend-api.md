@@ -916,9 +916,25 @@ Task
   claimedBy string | null       claim owner display name
   claimedById string | null     claim owner participant ID
   claimedAt string | null       ISO timestamp for the claim
+  links     TaskExternalLink[] | null  credential-free external references, max 20
+
+TaskExternalLink
+  id        string              stable RoadForge-local ID, max 80 chars
+  provider  "github" | "url"
+  kind      "issue" | "pull" | "discussion" | "commit" | "release" | "url"
+  url       string              normalized HTTP(S) URL, max 2048 chars
+  owner     string | null       GitHub owner
+  repo      string | null       GitHub repository
+  number    integer | null      issue, pull request, or discussion number
+  sha       string | null       commit SHA
+  tag       string | null       release tag
+  label     string | null       optional display label
 ```
 
 Max 50 phases per roadmap. All text fields are server-sanitized (control characters stripped; suspiciously long values rejected).
+Task links never contain credentials or fetched GitHub metadata. See
+[Task External Links](architecture/task-external-links.md) for source-of-truth
+and normalization rules.
 
 Client compatibility: the browser auto-upgrades older local or server snapshots before rendering. Repairs include null booleans and arrays, legacy `owner:` / `review:` assignment tags migrated to `assignees`, recomputed progress, and stale dependency/parent references. This is client-side handling only; there is no backend import endpoint.
 

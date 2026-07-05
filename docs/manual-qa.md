@@ -353,7 +353,7 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 **Auto-repair** (safe structural fixes applied silently before validation):
 - [ ] Create a JSON with a task where `"done": 1` (integer, not boolean) → Import notice lists "Boolean task fields (done, next) were coerced from non-boolean values."
 - [ ] Create a JSON with a task where `"tags": null` → Import notice lists "Null values on optional fields were cleared."
-- [ ] Create a JSON with a task where `"tags": "planning"` (string, not array) → Import notice lists "Non-array fields (tags, deps, assignees, or tasks) were replaced with empty arrays."
+- [ ] Create a JSON with a task where `"tags": "planning"` (string, not array) → Import notice lists "Non-array fields (tags, deps, assignees, links, or tasks) were replaced with empty arrays."
 - [ ] Create a JSON with two tasks sharing the same `id` → Import notice lists "Duplicate task IDs were renamed to be unique."
 - [ ] Create a JSON with a task `"parentId"` referencing a non-existent task ID → Import notice lists "parentId references to non-existent tasks were removed."
 - [ ] Create a JSON with a task using legacy assignment tags (`"tags": ["owner:Alice"]`) → Import notice lists "Assignment tags (owner:, review:) were migrated to the assignees field."

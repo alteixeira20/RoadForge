@@ -45,8 +45,8 @@ operator, environment, and result beside the release ticket.
 - [ ] Browser automation is deferred per the
   [Public Alpha recommendation](../docs/architecture/browser-smoke-automation.md);
   this manual QA is authoritative.
-- [ ] GitHub task links: deferred placeholder for RF-607; do not block Public
-  Alpha and do not expect `task.links` in import/export.
+- [ ] GitHub task-link UI remains deferred; URL-only `task.links` records may
+  round-trip through import/export without credentials or fetched metadata.
 
 ## Release decision and rollback
 
