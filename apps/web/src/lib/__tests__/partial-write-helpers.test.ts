@@ -74,4 +74,26 @@ describe('partial write response helpers', () => {
       desc: 'Local description',
     })
   })
+
+  it('advances concurrency state without replacing unrelated dirty state', () => {
+    const setPhases = vi.fn()
+    const setTagRegistry = vi.fn<(registry: TagDefinition[]) => void>()
+    const setUpdatedAt = vi.fn()
+    const setSaved = vi.fn()
+
+    expect(applyPartialWriteResult({
+      roadmap: returnedRoadmap,
+      wasSaved: true,
+      currentSaved: false,
+      setPhases,
+      setTagRegistry,
+      setUpdatedAt,
+      setSaved,
+    })).toBe(false)
+
+    expect(setUpdatedAt).toHaveBeenCalledWith(returnedRoadmap.updatedAt)
+    expect(setPhases).not.toHaveBeenCalled()
+    expect(setTagRegistry).not.toHaveBeenCalled()
+    expect(setSaved).not.toHaveBeenCalled()
+  })
 })

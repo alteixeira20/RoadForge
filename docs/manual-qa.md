@@ -408,6 +408,13 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 - [ ] Open roadmap in two Owner tabs (same session or two owner participants).
 - [ ] Tab 2: save a change → success.
 - [ ] Tab 1: save a different change → 409 toast says the roadmap changed elsewhere and local edits are preserved.
+- [ ] Repeat with the same task edit form open in both tabs. Tab 2 saves a
+  title/description/estimate/tag/assignee change first; Tab 1 then saves its
+  stale draft → structured conflict feedback appears and Tab 1's draft remains
+  available for review/retry.
+- [ ] While a task PATCH is in flight, make an unrelated local phase/task change.
+  When the PATCH response arrives, its timestamp and patched task fields apply
+  without replacing that unrelated dirty state.
 - [ ] Tab 1: conflict banner shows **Review conflict** and **Reload server version**.
 - [ ] Click **Review conflict**. Panel shows server updated time, local unsynced state, server state, and name/phase/task differences.
 - [ ] Click **Keep editing locally**. Panel closes, badge remains **CONFLICT**, and local unsynced edits remain visible.

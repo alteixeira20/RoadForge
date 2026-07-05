@@ -279,9 +279,18 @@ async def test_stale_patch_returns_structured_conflict(client: AsyncClient):
     body = stale.json()
     assert body["code"] == "roadmap_conflict"
     assert body["conflict"]["roadmap_id"] == roadmap["id"]
+    assert body["conflict"]["server_updated_at"] == first.json()["updated_at"]
+    assert body["conflict"]["client_last_updated_at"] == roadmap["updated_at"]
     assert body["conflict"]["summary"]["phase_ids"] == []
     assert body["conflict"]["summary"]["task_ids"] == []
     assert _task(body["conflict"]["server"])["title"] == "First update"
+
+    current = await client.get(
+        f"/api/roadmaps/{roadmap['id']}",
+        headers=auth(roadmap["owner_session_token"]),
+    )
+    assert current.status_code == 200, current.text
+    assert _task(current.json())["title"] == "First update"
 
 
 async def test_missing_task_returns_project_not_found_shape(client: AsyncClient):
