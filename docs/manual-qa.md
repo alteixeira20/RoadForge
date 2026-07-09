@@ -178,6 +178,12 @@ _(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no
 
 ## 11a — Task GitHub links
 
+RoadForge remains the source of truth for task state. A linked GitHub issue, pull
+request, or discussion is a reference only — there is no automatic sync, no
+metadata fetch, and no automatic task completion from GitHub activity. See
+[Task External Links](architecture/task-external-links.md) for the full
+source-of-truth decision.
+
 - [ ] Expand a task, click **Add GitHub link**, paste an issue URL, and save → an `Issue #<number>` link appears and opens GitHub in a new tab.
 - [ ] Repeat with a pull request and discussion → concise `PR #<number>` and `Discussion #<number>` links appear.
 - [ ] Attach links from two repositories → each compact link shows enough `owner/repo` context to distinguish them.
@@ -325,6 +331,7 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 - [ ] Inspect file: contains `"schema": "anvilary.roadmap.export"`, `"version": 1`, phases, tasks. The legacy schema ID is intentionally retained so older RoadForge deployments can import new exports.
 - [ ] Markdown descriptions remain plain JSON strings, and each phase includes its `colorMode`.
 - [ ] **No session tokens, invite tokens, or auth data** in the exported file.
+- [ ] A task with GitHub/URL links (§11a) exports with its `links` array intact — no credentials, only the fields listed in [Task External Links](architecture/task-external-links.md).
 - [ ] Re-import that same file (§19) → no compatibility warning (known schema/version).
 
 ---
@@ -340,6 +347,7 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 - [ ] Import a file with an old/unknown schema → **Import notice** appears listing the compatibility warning → click "Replace current roadmap" → import proceeds.
 - [ ] Import a file with auto-repaired issues (see §21) → **Import notice** appears listing what was repaired → confirm → roadmap loads.
 - [ ] Import an older file with plain-text descriptions and no phase `colorMode` → descriptions render readably and phases use Auto colors.
+- [ ] Import the file from §18 → the task's GitHub/URL links reappear unchanged (same `owner`/`repo`/`number`/`kind`), confirming links survive an export/import round trip.
 
 ---
 
