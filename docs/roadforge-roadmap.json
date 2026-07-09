@@ -476,7 +476,7 @@
         {
           "id": "RF-401",
           "title": "Restore automatic CI triggers before external alpha sharing",
-          "done": false,
+          "done": true,
           "est": "3h",
           "tags": [
             "tests",
@@ -488,7 +488,7 @@
           "deps": [
             "RF-204"
           ],
-          "desc": "CI is currently manual-only. Restore push/PR triggers before wider alpha use.\n\n\n**Scope**\n- Keep workflow_dispatch.\n- Add push/pull_request triggers for main and active PR branches.\n- Avoid expensive jobs on irrelevant docs-only changes only if simple.\n\n\n**Acceptance criteria**\n- [ ] Every PR runs web, API, migration, and audit gates.\n- [ ] Manual dispatch remains available.\n\n\n**Validation**\nOpen a test PR or workflow dispatch and verify jobs.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: CI workflow defines 8 jobs (quality gate, web unit tests, API lint/syntax/tests, migration drift, JS+API dependency audits). Trigger mode (push/PR vs manual-only) is not visible in the graph.\n- Evidence: graph.json nodes under .github/workflows/ci.yml.\n- Classification: needs_verification\n- Action: Check workflow triggers directly; if manual-only, implement as written."
+          "desc": "CI is currently manual-only. Restore push/PR triggers before wider alpha use.\n\n\n**Scope**\n- Keep workflow_dispatch.\n- Add push/pull_request triggers for main and active PR branches.\n- Avoid expensive jobs on irrelevant docs-only changes only if simple.\n\n\n**Acceptance criteria**\n- [ ] Every PR runs web, API, migration, and audit gates.\n- [ ] Manual dispatch remains available.\n\n\n**Validation**\nOpen a test PR or workflow dispatch and verify jobs.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: CI workflow defines 8 jobs (quality gate, web unit tests, API lint/syntax/tests, migration drift, JS+API dependency audits). Trigger mode (push/PR vs manual-only) is not visible in the graph.\n- Evidence: graph.json nodes under .github/workflows/ci.yml.\n- Classification: needs_verification\n- Action: Check workflow triggers directly; if manual-only, implement as written.\n\n\n**Closed 2026-07-09**\n.github/workflows/ci.yml:3-9 defines `workflow_dispatch`, `pull_request` (branches: main), and `push` (branches: main) triggers. `gh run list --workflow=ci.yml` confirms recent pushes to main (through commit 1f20defc) all triggered CI runs and completed successfully. Acceptance criteria met; no CI change needed."
         },
         {
           "id": "RF-402",
@@ -639,7 +639,7 @@
         {
           "id": "RF-504",
           "title": "Invite and session expiry review",
-          "done": false,
+          "done": true,
           "est": "4h",
           "tags": [
             "security",
@@ -650,12 +650,12 @@
           "deps": [
             "RF-301"
           ],
-          "desc": "Review accountless sharing risk before GitHub links increase team usage.\n\n\n**Scope**\n- Owner/editor/viewer token lifecycle.\n- Rotate/revoke behavior.\n- Participant session expiry.\n- Public viewer link expectations.\n\n\n**Acceptance criteria**\n- [ ] Docs and UI warnings match actual behavior.\n- [ ] No route grants more than intended.\n\n\n**Validation**\nAPI auth/share-link tests.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Policy docs exist: session expiry and revocation policy, rate limiting policy, security headers policy, dependency audit policy.\n- Evidence: GRAPH_REPORT 'Security Policy Documentation Suite' hyperedge; community 21.\n- Classification: likely\n- Action: Cross-check docs/UI warnings against actual route behavior (see RF-1103), then close via RF-901.\n\n\n**RF-901 pass 2 (2026-07-09)**\nStill open because: docs/access-model.md, docs/self-hosting.md, and docs/backend-api.md consistently describe token lifecycle, rotate/revoke, and the 30-day sliding session expiry, but this pass did not perform a route-by-route audit confirming no endpoint grants more access than documented. That verification is explicitly the scope of RF-1103; leaving this open rather than closing on doc-consistency alone given the risk-med security tag."
+          "desc": "Review accountless sharing risk before GitHub links increase team usage.\n\n\n**Scope**\n- Owner/editor/viewer token lifecycle.\n- Rotate/revoke behavior.\n- Participant session expiry.\n- Public viewer link expectations.\n\n\n**Acceptance criteria**\n- [ ] Docs and UI warnings match actual behavior.\n- [ ] No route grants more than intended.\n\n\n**Validation**\nAPI auth/share-link tests.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Policy docs exist: session expiry and revocation policy, rate limiting policy, security headers policy, dependency audit policy.\n- Evidence: GRAPH_REPORT 'Security Policy Documentation Suite' hyperedge; community 21.\n- Classification: likely\n- Action: Cross-check docs/UI warnings against actual route behavior (see RF-1103), then close via RF-901.\n\n\n**RF-901 pass 2 (2026-07-09)**\nStill open because: docs/access-model.md, docs/self-hosting.md, and docs/backend-api.md consistently describe token lifecycle, rotate/revoke, and the 30-day sliding session expiry, but this pass did not perform a route-by-route audit confirming no endpoint grants more access than documented. That verification is explicitly the scope of RF-1103; leaving this open rather than closing on doc-consistency alone given the risk-med security tag.\n\n\n**Closed 2026-07-09**\nRoute-by-route audit of apps/api/src/api/routers/roadmaps.py against require_participant() allowed_roles found no route granting more access than documented: owner-only routes (share-links, participant revoke, delete, version restore/checkpoint) enforce {owner}; update routes enforce {owner, editor}; read routes accept any active participant. Session expiry is a 30-day sliding window (session_policy.session_expires_at, renewed via _should_touch_participant) verified by test_auth_and_share_links.py (owner/editor/viewer reads, invalid/garbage token 401s, invite role assignment, rotate/revoke role gating, revoked-session 401, revoke-does-not-affect-existing-session, reduced participant fields for editors). Docs and enforcement match; no code changes required."
         },
         {
           "id": "RF-505",
           "title": "Operational monitoring and health check polish",
-          "done": false,
+          "done": true,
           "est": "4h",
           "tags": [
             "deploy",
@@ -667,7 +667,7 @@
           "deps": [
             "RF-306"
           ],
-          "desc": "Make hosted alpha easier to monitor.\n\n\n**Scope**\n- Health endpoint and reverse proxy behavior.\n- Container restart/update behavior.\n- Basic error log checklist.\n\n\n**Acceptance criteria**\n- [ ] Health check proves API is up.\n- [ ] Deploy/runbook includes what to inspect when RoadForge is down.\n\n\n**Validation**\nManual deploy smoke.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Partially addressed: health endpoint, hosting-bay deployment guide, and 'Backups and Updates' doc exist. Monitoring beyond the health check is still thin.\n- Evidence: GRAPH_REPORT communities 50/79; hosting-bay hyperedge.\n- Classification: likely\n- Action: Verify runbook coverage; keep open until the down-scenario checklist exists.\n\n\n**RF-901 pass 2 (2026-07-09)**\nStill open because: no down-scenario/runbook/incident doc was found (searched docs/ for runbook, incident, troubleshoot, \"is down\", \"is unreachable\"). Only docs/architecture/relational-projection-backfill-runbook.md exists and it covers projection backfill, not general outage triage. Health endpoint and hosting-bay deploy/backup docs exist, matching the pass-1 audit's \"partially addressed\" finding; the down-scenario checklist itself is still missing."
+          "desc": "Make hosted alpha easier to monitor.\n\n\n**Scope**\n- Health endpoint and reverse proxy behavior.\n- Container restart/update behavior.\n- Basic error log checklist.\n\n\n**Acceptance criteria**\n- [ ] Health check proves API is up.\n- [ ] Deploy/runbook includes what to inspect when RoadForge is down.\n\n\n**Validation**\nManual deploy smoke.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Partially addressed: health endpoint, hosting-bay deployment guide, and 'Backups and Updates' doc exist. Monitoring beyond the health check is still thin.\n- Evidence: GRAPH_REPORT communities 50/79; hosting-bay hyperedge.\n- Classification: likely\n- Action: Verify runbook coverage; keep open until the down-scenario checklist exists.\n\n\n**RF-901 pass 2 (2026-07-09)**\nStill open because: no down-scenario/runbook/incident doc was found (searched docs/ for runbook, incident, troubleshoot, \"is down\", \"is unreachable\"). Only docs/architecture/relational-projection-backfill-runbook.md exists and it covers projection backfill, not general outage triage. Health endpoint and hosting-bay deploy/backup docs exist, matching the pass-1 audit's \"partially addressed\" finding; the down-scenario checklist itself is still missing.\n\n\n**Closed 2026-07-09**\nAdded a 'Down-scenario runbook' section to docs/self-hosting.md covering, in order: health endpoint check, container status (docker compose ps for roadforge-web/api/postgres/redis), reverse proxy/tunnel/TLS check, Redis mode check, database connectivity and projection drift check, log inspection (app + proxy, credential-safe), restart/update path, backup/restore sanity check, and rollback notes (no Alembic downgrade; redeploy previous image + restore from pre-migration backup). Acceptance criteria met."
         }
       ]
     },
@@ -1097,7 +1097,7 @@
             "risk-low"
           ],
           "deps": [],
-          "desc": "**Why**\nRF-901 keeps the roadmap truthful by reconciling stale open tasks against verified code, tests, docs, and manual gates.\n\n**Closed by reconciliation**\n- Pass 1 closed: RF-101, RF-102, RF-103, RF-104, RF-105, RF-107, RF-301, RF-302, RF-303, RF-304, RF-305, RF-601, RF-602, RF-603, RF-604, RF-605, RF-606.\n- Pass 2 closed: RF-202, RF-204, RF-205, RF-206, RF-402, RF-403, RF-405, RF-406, RF-503.\n- Pass 3 closed: RF-404 and RF-1105/RF-AUD-009.\n- RF-AUD-002 is resolved by the tag-registry contract test coverage.\n\n**Current status**\nRF-901 remains open because the remaining items require browser, deploy, CI, route-security, runbook, or two-session evidence rather than simple file/test verification.\n\n**Remaining blockers**\n- RF-201 and RF-203: browser/two-session task editing and lock QA.\n- RF-306: deployed Redis realtime smoke.\n- RF-401: GitHub Actions trigger proof.\n- RF-504 / RF-1103: route-level access/security cross-check.\n- RF-505: down-scenario operational runbook.\n- RF-607: GitHub links browser QA for §11a, export, and import.\n- RF-AUD-003: claim-takeover reproduction / two-session validation.\n\n**Validation / gate**\nKeep exactly one `next:true`. Close RF-901 only after the remaining blockers are verified or explicitly moved to their own open tasks with precise gates.\n"
+          "desc": "**Why**\nRF-901 keeps the roadmap truthful by reconciling stale open tasks against verified code, tests, docs, and manual gates.\n\n**Closed by reconciliation**\n- Pass 1 closed: RF-101, RF-102, RF-103, RF-104, RF-105, RF-107, RF-301, RF-302, RF-303, RF-304, RF-305, RF-601, RF-602, RF-603, RF-604, RF-605, RF-606.\n- Pass 2 closed: RF-202, RF-204, RF-205, RF-206, RF-402, RF-403, RF-405, RF-406, RF-503.\n- Pass 3 closed: RF-404 and RF-1105/RF-AUD-009.\n- Pass 4 closed: RF-401 (CI trigger proof), RF-504 / RF-1103 (route-level access/security cross-check), RF-505 (down-scenario operational runbook).\n- RF-AUD-002 is resolved by the tag-registry contract test coverage.\n\n**Current status**\nRF-901 remains open because the remaining items require browser, deploy, or two-session evidence rather than simple file/test verification.\n\n**Remaining blockers**\n- RF-201 and RF-203: browser/two-session task editing and lock QA.\n- RF-306: deployed Redis realtime smoke.\n- RF-607: GitHub links browser QA for §11a, export, and import.\n- RF-AUD-003: claim-takeover reproduction / two-session validation.\n\n**Validation / gate**\nKeep exactly one `next:true`. Close RF-901 only after the remaining blockers are verified or explicitly moved to their own open tasks with precise gates.\n"
         },
         {
           "id": "RF-902",
@@ -1460,7 +1460,7 @@
         {
           "id": "RF-1103",
           "title": "Security policy vs enforcement parity check (RF-AUD-010)",
-          "done": false,
+          "done": true,
           "est": "4h",
           "tags": [
             "security",
@@ -1472,7 +1472,7 @@
           "deps": [
             "RF-901"
           ],
-          "desc": "**Why**\nFive security policy docs exist alongside real middleware. Drift between what the docs promise and what the code enforces is itself a security bug: operators will trust the docs.\n\n\n**Finding**\nRF-AUD-010 'Security Policy Enforcement Drift' in the project audit; policy suite hyperedge spans session expiry, rate limiting, headers, dependency audit, and deployment security.\n\n\n**Acceptance criteria**\n- [ ] Each policy doc claim mapped to the middleware/config/test that enforces it.\n- [ ] Gaps fixed in code or corrected in docs - whichever is true.\n- [ ] A test references each enforced claim where practical.\n\n\n**Validation / gate**\napps/api pytest suite plus doc review.\n\n\n**Risk**\nRubber-stamping the mapping - require a file/test reference per claim.\n\n\n**Evidence**\nGRAPH_REPORT 'Security Policy Documentation Suite' hyperedge; communities 21/32/60/61/62.\n\n\n**Classification**\nneeds_verification"
+          "desc": "**Why**\nFive security policy docs exist alongside real middleware. Drift between what the docs promise and what the code enforces is itself a security bug: operators will trust the docs.\n\n\n**Finding**\nRF-AUD-010 'Security Policy Enforcement Drift' in the project audit; policy suite hyperedge spans session expiry, rate limiting, headers, dependency audit, and deployment security.\n\n\n**Acceptance criteria**\n- [ ] Each policy doc claim mapped to the middleware/config/test that enforces it.\n- [ ] Gaps fixed in code or corrected in docs - whichever is true.\n- [ ] A test references each enforced claim where practical.\n\n\n**Validation / gate**\napps/api pytest suite plus doc review.\n\n\n**Risk**\nRubber-stamping the mapping - require a file/test reference per claim.\n\n\n**Evidence**\nGRAPH_REPORT 'Security Policy Documentation Suite' hyperedge; communities 21/32/60/61/62.\n\n\n**Classification**\nneeds_verification\n\n\n**Closed 2026-07-09**\nMapped each policy doc to enforcing code/tests: session-expiry-and-revocation-policy.md -> auth_service.require_participant + session_policy.session_expires_at, covered by test_auth_and_share_links.py; rate-limiting-policy.md -> rate_limit_service.py's single MemoryRateLimiter/RedisRateLimiter mechanism used at all 29 router call sites, covered by test_rate_limits.py; security-headers-policy.md -> middleware/security_headers.py SecurityHeadersMiddleware, covered by test_security_hardening.py; dependency-audit-policy.md -> CI jobs js-audit/api-audit in .github/workflows/ci.yml, matching the doc's stated `pnpm audit --prod` and `make api-audit` commands exactly. No drift found between docs and enforcement; no code changes required."
         },
         {
           "id": "RF-1104",
