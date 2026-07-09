@@ -113,12 +113,12 @@
       "color": "#5b8bab",
       "colorMode": "manual",
       "status": "future",
-      "progress": 0,
+      "progress": 86,
       "tasks": [
         {
           "id": "RF-101",
           "title": "Audit large files and define refactor boundaries",
-          "done": false,
+          "done": true,
           "est": "4h",
           "tags": [
             "architecture",
@@ -128,12 +128,12 @@
             "risk-low"
           ],
           "deps": [],
-          "desc": "Create a read-only map of current large frontend/backend files and where responsibilities are mixed.\n\n\n**Scope**\n- Identify files that act as orchestration hubs, especially Workspace, TaskRow, save/sync hooks, roadmap services, router modules, and CSS ownership.\n- Mark what should be split now versus deferred until after alpha.\n- Document invariants that must not break: local-first cache, whole-task lock safety, autosync, import/export compatibility, role gates.\n\n\n**Acceptance criteria**\n- [ ] File responsibility map exists in docs/architecture or an implementation note.\n- [ ] Each proposed split has a concrete target module and rollback-safe slice.\n- [ ] No code changes in this audit slice.\n\n\n**Validation**\n`pnpm lint && pnpm typecheck && pnpm build` if docs imports or references are touched; otherwise review only.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Largely superseded: architecture docs (service split plan, source-of-truth rules, partial-write decision) and this Graphify audit already provide the map.\n- Evidence: graphify query 'architecture coupling god nodes'; GRAPH_REPORT communities 15/23/45/67.\n- Classification: likely\n- Action: Confirm the file map is current, then close via RF-901."
+          "desc": "Create a read-only map of current large frontend/backend files and where responsibilities are mixed.\n\n\n**Scope**\n- Identify files that act as orchestration hubs, especially Workspace, TaskRow, save/sync hooks, roadmap services, router modules, and CSS ownership.\n- Mark what should be split now versus deferred until after alpha.\n- Document invariants that must not break: local-first cache, whole-task lock safety, autosync, import/export compatibility, role gates.\n\n\n**Acceptance criteria**\n- [ ] File responsibility map exists in docs/architecture or an implementation note.\n- [ ] Each proposed split has a concrete target module and rollback-safe slice.\n- [ ] No code changes in this audit slice.\n\n\n**Validation**\n`pnpm lint && pnpm typecheck && pnpm build` if docs imports or references are touched; otherwise review only.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Largely superseded: architecture docs (service split plan, source-of-truth rules, partial-write decision) and this Graphify audit already provide the map.\n- Evidence: graphify query 'architecture coupling god nodes'; GRAPH_REPORT communities 15/23/45/67.\n- Classification: likely\n- Action: Confirm the file map is current, then close via RF-901.\n\n\n**RF-901 close-out 2026-07-09**\nClosed as superseded: the planned splits (RF-102-RF-105) shipped and were verified directly; refactor boundaries are recorded in docs/architecture (backend-roadmap-service-split-plan.md, source-of-truth-rules.md, task-partial-write-api.md)."
         },
         {
           "id": "RF-102",
           "title": "Split Workspace orchestration into focused containers and hooks",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "architecture",
@@ -145,12 +145,12 @@
           "deps": [
             "RF-101"
           ],
-          "desc": "Reduce Workspace.tsx from a central conductor into smaller ownership-based pieces.\n\n\n**Scope**\n- Extract view/panel orchestration, participant/team operations, restore/version panel coordination, and task mutation wiring only where it reduces complexity.\n- Preserve existing route behavior and localStorage UI state behavior.\n- Do not change product behavior.\n\n\n**Acceptance criteria**\n- [ ] Workspace becomes easier to scan and does not own unrelated panel internals.\n- [ ] Roadmap/Team/Activity/Versions behavior remains unchanged.\n- [ ] No new monolithic replacement file is introduced.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Workspace decomposition appears implemented: WorkspaceBanners, useAutoSync, useSaveFlow, useTaskMutations, usePhaseMutations, useRoadmapHydration all exist as focused modules.\n- Evidence: graphify explain Workspace(); GRAPH_REPORT communities 13/15/22.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Reduce Workspace.tsx from a central conductor into smaller ownership-based pieces.\n\n\n**Scope**\n- Extract view/panel orchestration, participant/team operations, restore/version panel coordination, and task mutation wiring only where it reduces complexity.\n- Preserve existing route behavior and localStorage UI state behavior.\n- Do not change product behavior.\n\n\n**Acceptance criteria**\n- [ ] Workspace becomes easier to scan and does not own unrelated panel internals.\n- [ ] Roadmap/Team/Activity/Versions behavior remains unchanged.\n- [ ] No new monolithic replacement file is introduced.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Workspace decomposition appears implemented: WorkspaceBanners, useAutoSync, useSaveFlow, useTaskMutations, usePhaseMutations, useRoadmapHydration all exist as focused modules.\n- Evidence: graphify explain Workspace(); GRAPH_REPORT communities 13/15/22.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: Workspace.tsx (592 lines) delegates to WorkspaceToolbar/WorkspaceBanners/WorkspaceHead/WorkspaceModals plus useWorkspaceViewModel, useAutoSync, useSaveFlow, useTaskMutations, usePhaseMutations, useRoadmapHydration; panels are separate components. Web suite green (303 tests)."
         },
         {
           "id": "RF-103",
           "title": "Split TaskRow into header, description, metadata, actions, and child sections",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "architecture",
@@ -163,12 +163,12 @@
           "deps": [
             "RF-101"
           ],
-          "desc": "TaskRow still carries too much UI and state logic. Split it into small components without changing behavior.\n\n\n**Scope**\n- Keep title inline editing and description inline editing intact.\n- Keep Estimate, Assignees, and Tags as read-only metadata edited via Edit details.\n- Keep Add subtask, Link dependency, claim row, dependencies, subtasks, locks, and read-only states intact.\n- Avoid introducing a new all-purpose TaskDetail monolith.\n\n\n**Acceptance criteria**\n- [ ] TaskRow becomes a composition shell with clear subcomponents.\n- [ ] Each extracted file has a narrow responsibility.\n- [ ] No regression in expanded task behavior.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual check one expanded task.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: TaskRow split appears implemented: TaskRowHeader, TaskDetailMeta, TaskDetailActions, TaskDependencySection, TaskSubtaskSection, TaskClaimRow, SubtaskRow exist.\n- Evidence: GRAPH_REPORT communities 29/47/53/58.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "TaskRow still carries too much UI and state logic. Split it into small components without changing behavior.\n\n\n**Scope**\n- Keep title inline editing and description inline editing intact.\n- Keep Estimate, Assignees, and Tags as read-only metadata edited via Edit details.\n- Keep Add subtask, Link dependency, claim row, dependencies, subtasks, locks, and read-only states intact.\n- Avoid introducing a new all-purpose TaskDetail monolith.\n\n\n**Acceptance criteria**\n- [ ] TaskRow becomes a composition shell with clear subcomponents.\n- [ ] Each extracted file has a narrow responsibility.\n- [ ] No regression in expanded task behavior.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual check one expanded task.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: TaskRow split appears implemented: TaskRowHeader, TaskDetailMeta, TaskDetailActions, TaskDependencySection, TaskSubtaskSection, TaskClaimRow, SubtaskRow exist.\n- Evidence: GRAPH_REPORT communities 29/47/53/58.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: TaskRow composes task-row/ subcomponents (TaskRowHeader, TaskDetailActions, TaskDependencySection, TaskSubtaskSection, TaskClaimRow, TaskLinksSection) plus TaskDetailMeta, TaskDescriptionEditor, SubtaskRow; no TaskDetail monolith was introduced."
         },
         {
           "id": "RF-104",
           "title": "Split save, autosync, conflict, and realtime status ownership",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "architecture",
@@ -181,12 +181,12 @@
           "deps": [
             "RF-102"
           ],
-          "desc": "Make save/sync/conflict behavior easier to maintain before adding GitHub link mutations.\n\n\n**Scope**\n- Separate debounced autosync, explicit save, conflict review, session expiry, and activity refresh responsibilities where practical.\n- Keep existing conflict behavior and draft preservation.\n- Do not change backend APIs.\n\n\n**Acceptance criteria**\n- [ ] Autosync and explicit save flows are easier to test independently.\n- [ ] Conflict review still opens for 409 metadata.\n- [ ] Offline/session-expired behavior remains unchanged.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual conflict smoke if touched.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Save/sync ownership split appears implemented: useAutoSync, useSaveFlow, SyncStatusIndicator, SyncConflictReviewPanel are separate modules.\n- Evidence: GRAPH_REPORT communities 13/63/72.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Make save/sync/conflict behavior easier to maintain before adding GitHub link mutations.\n\n\n**Scope**\n- Separate debounced autosync, explicit save, conflict review, session expiry, and activity refresh responsibilities where practical.\n- Keep existing conflict behavior and draft preservation.\n- Do not change backend APIs.\n\n\n**Acceptance criteria**\n- [ ] Autosync and explicit save flows are easier to test independently.\n- [ ] Conflict review still opens for 409 metadata.\n- [ ] Offline/session-expired behavior remains unchanged.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual conflict smoke if touched.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Save/sync ownership split appears implemented: useAutoSync, useSaveFlow, SyncStatusIndicator, SyncConflictReviewPanel are separate modules.\n- Evidence: GRAPH_REPORT communities 13/63/72.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: useAutoSync and useSaveFlow are separate hooks; 409 conflict metadata opens conflict review (onConflictMetadata -> openConflict, SyncConflictReviewPanel/SyncStatusIndicator); session-expired handling present in useAutoSync and useTaskPatch."
         },
         {
           "id": "RF-105",
           "title": "Clarify RoadmapContext and remove legacy combined usage where practical",
-          "done": false,
+          "done": true,
           "est": "5h",
           "tags": [
             "architecture",
@@ -198,7 +198,7 @@
           "deps": [
             "RF-102"
           ],
-          "desc": "RoadmapContext is already split internally, but many consumers may still use the legacy combined hook.\n\n\n**Scope**\n- Prefer focused hooks for new/refactored components.\n- Remove legacy combined usage only where it is safe and improves subscription clarity.\n- Keep the legacy hook exported until all major consumers are migrated.\n\n\n**Acceptance criteria**\n- [ ] No component subscribes to more roadmap state than it needs in newly touched areas.\n- [ ] No behavior change in hydration or realtime subscription.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Context split appears implemented: RoadmapDataContext, RoadmapLifecycleContext, RoadmapSessionContext exist alongside the legacy combined value.\n- Evidence: graphify query 'RoadmapContext'; GRAPH_REPORT community 23.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "RoadmapContext is already split internally, but many consumers may still use the legacy combined hook.\n\n\n**Scope**\n- Prefer focused hooks for new/refactored components.\n- Remove legacy combined usage only where it is safe and improves subscription clarity.\n- Keep the legacy hook exported until all major consumers are migrated.\n\n\n**Acceptance criteria**\n- [ ] No component subscribes to more roadmap state than it needs in newly touched areas.\n- [ ] No behavior change in hydration or realtime subscription.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Context split appears implemented: RoadmapDataContext, RoadmapLifecycleContext, RoadmapSessionContext exist alongside the legacy combined value.\n- Evidence: graphify query 'RoadmapContext'; GRAPH_REPORT community 23.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: RoadmapDataContext/RoadmapSessionContext/RoadmapLifecycleContext exist with focused hooks useRoadmapData/useRoadmapSession/useRoadmapLifecycle; legacy useRoadmap remains exported by design and migrated consumers use the focused hooks."
         },
         {
           "id": "RF-106",
@@ -221,7 +221,7 @@
         {
           "id": "RF-107",
           "title": "Write architecture decision records for source-of-truth rules",
-          "done": false,
+          "done": true,
           "est": "3h",
           "tags": [
             "architecture",
@@ -233,7 +233,7 @@
           "deps": [
             "RF-101"
           ],
-          "desc": "Document the rules that protect RoadForge from turning into an issue tracker or fragile sync layer.\n\n\n**Scope**\n- RoadForge owns roadmap intent, sequencing, and task planning.\n- GitHub owns implementation artifacts.\n- Imports/exports must stay portable and credential-free.\n- Task links are references, not automatic status drivers.\n\n\n**Acceptance criteria**\n- [ ] ADR exists and is referenced by GitHub implementation tasks.\n- [ ] Future agents have clear do/don't guidance.\n\n\n**Validation**\nReview only; no runtime validation required.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: docs/architecture/source-of-truth-rules.md exists and is referenced by import/GitHub-link docs (snapshot-canonical doctrine hyperedge).\n- Evidence: GRAPH_REPORT hyperedge 'Canonical Snapshot-First Doctrine'.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Document the rules that protect RoadForge from turning into an issue tracker or fragile sync layer.\n\n\n**Scope**\n- RoadForge owns roadmap intent, sequencing, and task planning.\n- GitHub owns implementation artifacts.\n- Imports/exports must stay portable and credential-free.\n- Task links are references, not automatic status drivers.\n\n\n**Acceptance criteria**\n- [ ] ADR exists and is referenced by GitHub implementation tasks.\n- [ ] Future agents have clear do/don't guidance.\n\n\n**Validation**\nReview only; no runtime validation required.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: docs/architecture/source-of-truth-rules.md exists and is referenced by import/GitHub-link docs (snapshot-canonical doctrine hyperedge).\n- Evidence: GRAPH_REPORT hyperedge 'Canonical Snapshot-First Doctrine'.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: docs/architecture/source-of-truth-rules.md exists and is referenced by docs/architecture/overview.md and CLAUDE.md; task-external-links.md applies the doctrine for GitHub link work."
         }
       ]
     },
@@ -266,7 +266,7 @@
         {
           "id": "RF-202",
           "title": "Confirm task edit mode coverage after metadata simplification",
-          "done": false,
+          "done": true,
           "est": "3h",
           "tags": [
             "frontend",
@@ -278,7 +278,7 @@
           "deps": [
             "RF-201"
           ],
-          "desc": "Audit which fields are edited inline versus via Edit details and remove dead inline metadata code.\n\n\n**Scope**\n- Title and description remain inline.\n- Estimate, assignees, tags use Edit details.\n- Remove unused TaskTagEditor/TaskAssigneeEditor/TagInput props only if no remaining imports need them.\n\n\n**Acceptance criteria**\n- [ ] No dead imports or unused files.\n- [ ] TaskEditForm remains the canonical metadata editor.\n- [ ] Tests updated if helpers were simplified.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`."
+          "desc": "Audit which fields are edited inline versus via Edit details and remove dead inline metadata code.\n\n\n**Scope**\n- Title and description remain inline.\n- Estimate, assignees, tags use Edit details.\n- Remove unused TaskTagEditor/TaskAssigneeEditor/TagInput props only if no remaining imports need them.\n\n\n**Acceptance criteria**\n- [ ] No dead imports or unused files.\n- [ ] TaskEditForm remains the canonical metadata editor.\n- [ ] Tests updated if helpers were simplified.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**RF-901 close-out 2026-07-09 (pass 2)**\nVerified in RF-901 pass 2: no file in apps/web/src references TaskTagEditor or TaskAssigneeEditor (grep found zero matches); TagInput.tsx and TaskEditForm.tsx exist as the canonical Edit-details editor (apps/web/src/components/roadmap/TaskEditForm.tsx, TagInput.tsx)."
         },
         {
           "id": "RF-203",
@@ -300,7 +300,7 @@
         {
           "id": "RF-204",
           "title": "Add focused helper tests for task metadata and description editor behavior",
-          "done": false,
+          "done": true,
           "est": "5h",
           "tags": [
             "frontend",
@@ -311,12 +311,12 @@
           "deps": [
             "RF-202"
           ],
-          "desc": "Backfill tests for the areas most likely to regress during refactors.\n\n\n**Scope**\n- Pure tests for task metadata display helpers if introduced.\n- Description editor behavior tests only if current test setup supports component tests cleanly.\n- Avoid brittle screenshot-style tests.\n\n\n**Acceptance criteria**\n- [ ] Description draft preservation, dirty cancel, and keyboard save are covered where practical.\n- [ ] Metadata simplification does not regress import/export fields.\n\n\n**Validation**\n`pnpm --filter web test` plus full web validation."
+          "desc": "Backfill tests for the areas most likely to regress during refactors.\n\n\n**Scope**\n- Pure tests for task metadata display helpers if introduced.\n- Description editor behavior tests only if current test setup supports component tests cleanly.\n- Avoid brittle screenshot-style tests.\n\n\n**Acceptance criteria**\n- [ ] Description draft preservation, dirty cancel, and keyboard save are covered where practical.\n- [ ] Metadata simplification does not regress import/export fields.\n\n\n**Validation**\n`pnpm --filter web test` plus full web validation.\n\n\n**RF-901 close-out 2026-07-09 (pass 2)**\nVerified in RF-901 pass 2: apps/web/src/lib/__tests__/task-edit.test.ts covers dirty-draft detection (isTaskEditDraftDirty, isTaskDescriptionDirty preserving exact Markdown/whitespace) and metadata normalization; markdown-description.test.ts covers description parsing; import-merge.test.ts exercises metadata fields (assignees, tags, claim) through import so simplification does not silently drop fields."
         },
         {
           "id": "RF-205",
           "title": "Normalize activity labels for task updates and metadata edits",
-          "done": false,
+          "done": true,
           "est": "4h",
           "tags": [
             "frontend",
@@ -328,12 +328,12 @@
           "deps": [
             "RF-202"
           ],
-          "desc": "Activity should remain useful after the editing model changed.\n\n\n**Scope**\n- Ensure title/description/Edit details changes generate understandable activity.\n- Avoid activity spam for no-op saves.\n- Do not introduce a new activity model unless necessary.\n\n\n**Acceptance criteria**\n- [ ] Activity panel distinguishes meaningful task updates.\n- [ ] No duplicate rows for a single user action.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual Activity panel check."
+          "desc": "Activity should remain useful after the editing model changed.\n\n\n**Scope**\n- Ensure title/description/Edit details changes generate understandable activity.\n- Avoid activity spam for no-op saves.\n- Do not introduce a new activity model unless necessary.\n\n\n**Acceptance criteria**\n- [ ] Activity panel distinguishes meaningful task updates.\n- [ ] No duplicate rows for a single user action.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; manual Activity panel check.\n\n\n**RF-901 close-out 2026-07-09 (pass 2)**\nVerified in RF-901 pass 2: apps/web/src/lib/__tests__/activity-changes.test.ts covers getChangedTaskFields (stable field ordering, treats normalized legacy assignment metadata as unchanged so no-op saves don't spam) and mergePendingActivityChange ('merges repeated task edits into one row and retains all changed fields', preventing duplicate rows for one user action)."
         },
         {
           "id": "RF-206",
           "title": "Clean up local UI state persistence boundaries",
-          "done": false,
+          "done": true,
           "est": "4h",
           "tags": [
             "frontend",
@@ -344,7 +344,7 @@
           "deps": [
             "RF-105"
           ],
-          "desc": "Ensure per-roadmap UI state stores only UI preferences, not source-of-truth data.\n\n\n**Scope**\n- Expanded task, open phases, dismissed notices belong in UI state.\n- Roadmap data, auth, and session state stay separate.\n- Parse errors and stale state remain safe.\n\n\n**Acceptance criteria**\n- [ ] Storage schema remains backward compatible.\n- [ ] Invalid UI state does not crash hydration.\n\n\n**Validation**\n`pnpm --filter web test -- src/lib/__tests__/storage.test.ts && pnpm typecheck`."
+          "desc": "Ensure per-roadmap UI state stores only UI preferences, not source-of-truth data.\n\n\n**Scope**\n- Expanded task, open phases, dismissed notices belong in UI state.\n- Roadmap data, auth, and session state stay separate.\n- Parse errors and stale state remain safe.\n\n\n**Acceptance criteria**\n- [ ] Storage schema remains backward compatible.\n- [ ] Invalid UI state does not crash hydration.\n\n\n**Validation**\n`pnpm --filter web test -- src/lib/__tests__/storage.test.ts && pnpm typecheck`.\n\n\n**RF-901 close-out 2026-07-09 (pass 2)**\nVerified in RF-901 pass 2: apps/web/src/lib/storage.ts defines a dedicated RoadmapUiState (schemaVersion, expandedTaskId, open phases, dismissed notices) kept separate from RoadmapCache/AuthCache; parseRoadmapUiState checks schemaVersion and field types and returns null on any mismatch instead of throwing, so invalid/stale UI state degrades safely."
         }
       ]
     },
@@ -355,12 +355,12 @@
       "color": "#c9903a",
       "colorMode": "manual",
       "status": "future",
-      "progress": 0,
+      "progress": 83,
       "tasks": [
         {
           "id": "RF-301",
           "title": "Design partial task write API shape before implementation",
-          "done": false,
+          "done": true,
           "est": "4h",
           "tags": [
             "backend",
@@ -373,12 +373,12 @@
           "deps": [
             "RF-107"
           ],
-          "desc": "Define the partial task write model to reduce full-snapshot conflicts.\n\n\n**Scope**\n- Document endpoint shape, optimistic concurrency, activity metadata, version policy, SSE event behavior, and validation limits.\n- Use existing task done/claim routes as the style reference.\n- Keep local-first import/export model unchanged.\n\n\n**Acceptance criteria**\n- [ ] Design is small enough to implement in reviewable slices.\n- [ ] No task field can be silently overwritten by stale clients.\n\n\n**Validation**\nReview only; no runtime validation required.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Design doc exists: task partial-write API decision plus partial-write endpoint pattern docs (done/claim/tags/PATCH).\n- Evidence: GRAPH_REPORT community 7 and 'Partial Write Endpoint Pattern' hyperedge.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Define the partial task write model to reduce full-snapshot conflicts.\n\n\n**Scope**\n- Document endpoint shape, optimistic concurrency, activity metadata, version policy, SSE event behavior, and validation limits.\n- Use existing task done/claim routes as the style reference.\n- Keep local-first import/export model unchanged.\n\n\n**Acceptance criteria**\n- [ ] Design is small enough to implement in reviewable slices.\n- [ ] No task field can be silently overwritten by stale clients.\n\n\n**Validation**\nReview only; no runtime validation required.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Design doc exists: task partial-write API decision plus partial-write endpoint pattern docs (done/claim/tags/PATCH).\n- Evidence: GRAPH_REPORT community 7 and 'Partial Write Endpoint Pattern' hyperedge.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: docs/architecture/task-partial-write-api.md documents the endpoint contract, optimistic concurrency, activity, request limits, and the done/claim precedents; implementation landed as reviewable slices (RF-302)."
         },
         {
           "id": "RF-302",
           "title": "Add task-level PATCH endpoint for title, description, and metadata",
-          "done": false,
+          "done": true,
           "est": "2d",
           "tags": [
             "backend",
@@ -390,12 +390,12 @@
           "deps": [
             "RF-301"
           ],
-          "desc": "Implement a focused task PATCH endpoint for scalar task fields and metadata.\n\n\n**Scope**\n- Owner/editor only.\n- Accept title, desc, est, assignees, tags plus required last_updated_at.\n- Validate with existing limits and normalized helpers.\n- Return full RoadmapResponse for frontend compatibility.\n- Emit task.updated activity and roadmap.updated SSE.\n\n\n**Acceptance criteria**\n- [ ] Partial update touches only provided task fields.\n- [ ] Stale last_updated_at returns 409 conflict metadata.\n- [ ] Viewer is 403; owner/editor are 200.\n- [ ] Tests cover title, desc, est, tags, assignees.\n\n\n**Validation**\nRun full apps/api pytest plus web typecheck.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Endpoint exists: patch_task route, PatchTaskRequest schema, _patch_task_fields_in_snapshot, and test_task_patch.py (35 graph nodes).\n- Evidence: graphify path useTaskPatch() -> PatchTaskRequest; communities 0/6/12.\n- Classification: confirmed (existence; acceptance-criteria coverage unverified)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Implement a focused task PATCH endpoint for scalar task fields and metadata.\n\n\n**Scope**\n- Owner/editor only.\n- Accept title, desc, est, assignees, tags plus required last_updated_at.\n- Validate with existing limits and normalized helpers.\n- Return full RoadmapResponse for frontend compatibility.\n- Emit task.updated activity and roadmap.updated SSE.\n\n\n**Acceptance criteria**\n- [ ] Partial update touches only provided task fields.\n- [ ] Stale last_updated_at returns 409 conflict metadata.\n- [ ] Viewer is 403; owner/editor are 200.\n- [ ] Tests cover title, desc, est, tags, assignees.\n\n\n**Validation**\nRun full apps/api pytest plus web typecheck.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Endpoint exists: patch_task route, PatchTaskRequest schema, _patch_task_fields_in_snapshot, and test_task_patch.py (35 graph nodes).\n- Evidence: graphify path useTaskPatch() -> PatchTaskRequest; communities 0/6/12.\n- Classification: confirmed (existence; acceptance-criteria coverage unverified)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: patch_roadmap_task + PatchTaskRequest with test_task_patch.py covering title/desc/metadata/links, viewer 403, stale 409 structured conflict, unrelated-field preservation, no-op no-write, precise activity fields, SSE publish, and projection sync."
         },
         {
           "id": "RF-303",
           "title": "Route synced title and description commits through task PATCH",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "frontend",
@@ -408,12 +408,12 @@
             "RF-302",
             "RF-203"
           ],
-          "desc": "Stop using full roadmap PUT for title and description commits on synced roadmaps.\n\n\n**Scope**\n- Local roadmaps keep current local mutation path.\n- Synced roadmaps call task PATCH and apply returned roadmap/updatedAt.\n- Conflict feeds existing conflict handling while preserving draft state.\n\n\n**Acceptance criteria**\n- [ ] Single title/description edit issues one task PATCH.\n- [ ] No full PUT for these edits.\n- [ ] Offline/session-expired/conflict paths remain recoverable.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; two-session conflict QA.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Frontend wiring exists: useTaskPatch -> patchTask (roadmap-crud.service.ts) with commitTaskField and conflict handlers.\n- Evidence: graphify path useTaskPatch() -> PatchTaskRequest (2-hop frontend leg EXTRACTED); community 48.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Stop using full roadmap PUT for title and description commits on synced roadmaps.\n\n\n**Scope**\n- Local roadmaps keep current local mutation path.\n- Synced roadmaps call task PATCH and apply returned roadmap/updatedAt.\n- Conflict feeds existing conflict handling while preserving draft state.\n\n\n**Acceptance criteria**\n- [ ] Single title/description edit issues one task PATCH.\n- [ ] No full PUT for these edits.\n- [ ] Offline/session-expired/conflict paths remain recoverable.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; two-session conflict QA.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Frontend wiring exists: useTaskPatch -> patchTask (roadmap-crud.service.ts) with commitTaskField and conflict handlers.\n- Evidence: graphify path useTaskPatch() -> PatchTaskRequest (2-hop frontend leg EXTRACTED); community 48.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: handleUpdateTask routes synced edits through patchSyncedTask with only changed fields (no full PUT); useTaskPatch handles conflict and session-expired paths; local roadmaps keep the local mutation path."
         },
         {
           "id": "RF-304",
           "title": "Keep Edit details metadata writes safe with the new PATCH path",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "frontend",
@@ -426,12 +426,12 @@
             "RF-302",
             "RF-202"
           ],
-          "desc": "Route Estimate, Assignees, and Tags through task PATCH when edited via Edit details on synced roadmaps.\n\n\n**Scope**\n- Keep TaskEditForm UI unchanged.\n- No reintroduction of inline metadata editing.\n- No-op saves should not generate activity.\n\n\n**Acceptance criteria**\n- [ ] Edit details updates metadata without full roadmap PUT on synced roadmaps.\n- [ ] Tag registry behavior remains compatible.\n- [ ] Local roadmaps still work without backend.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; API focused tests.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Partial-write result handling exists: applyPartialWriteResult, mergeReturnedTaskFields, handleTaskPatchError.\n- Evidence: GRAPH_REPORT community 48.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Route Estimate, Assignees, and Tags through task PATCH when edited via Edit details on synced roadmaps.\n\n\n**Scope**\n- Keep TaskEditForm UI unchanged.\n- No reintroduction of inline metadata editing.\n- No-op saves should not generate activity.\n\n\n**Acceptance criteria**\n- [ ] Edit details updates metadata without full roadmap PUT on synced roadmaps.\n- [ ] Tag registry behavior remains compatible.\n- [ ] Local roadmaps still work without backend.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; API focused tests.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Partial-write result handling exists: applyPartialWriteResult, mergeReturnedTaskFields, handleTaskPatchError.\n- Evidence: GRAPH_REPORT community 48.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: Edit details metadata flows through the same changed-fields task PATCH on synced roadmaps; no-op saves return before any write or activity; local roadmaps mutate locally without backend."
         },
         {
           "id": "RF-305",
           "title": "Projection-read readiness and drift tests",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "backend",
@@ -443,7 +443,7 @@
           "deps": [
             "RF-302"
           ],
-          "desc": "Make the relational projection trustworthy before considering it for reads.\n\n\n**Scope**\n- Verify projection matches snapshot for phases, tasks, tags, deps, subtasks, claim fields.\n- Add drift tests around create/update/restore/import flows.\n- Do not flip production reads yet unless the test evidence is strong.\n\n\n**Acceptance criteria**\n- [ ] Projection drift test fails if snapshot and relational projection diverge.\n- [ ] Restore/import paths included.\n\n\n**Validation**\nRun full apps/api pytest.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Projection stack exists: validate_projection_parity, serialize_projection_to_snapshot, helpers_projection test fixtures, backfill runbook, read flag.\n- Evidence: GRAPH_REPORT communities 3/83; node validate_projection_parity().\n- Classification: confirmed (existence)\n- Action: Verify drift tests cover restore/import, then close via RF-901. Read-flag rollout decision moved to RF-1106."
+          "desc": "Make the relational projection trustworthy before considering it for reads.\n\n\n**Scope**\n- Verify projection matches snapshot for phases, tasks, tags, deps, subtasks, claim fields.\n- Add drift tests around create/update/restore/import flows.\n- Do not flip production reads yet unless the test evidence is strong.\n\n\n**Acceptance criteria**\n- [ ] Projection drift test fails if snapshot and relational projection diverge.\n- [ ] Restore/import paths included.\n\n\n**Validation**\nRun full apps/api pytest.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Projection stack exists: validate_projection_parity, serialize_projection_to_snapshot, helpers_projection test fixtures, backfill runbook, read flag.\n- Evidence: GRAPH_REPORT communities 3/83; node validate_projection_parity().\n- Classification: confirmed (existence)\n- Action: Verify drift tests cover restore/import, then close via RF-901. Read-flag rollout decision moved to RF-1106.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: test_roadmap_projection_parity.py covers create, import-style full replace, restore, claim-field drift, drift-failure detection, and backfill verify. Read-flag rollout decision remains RF-1106."
         },
         {
           "id": "RF-306",
@@ -493,7 +493,7 @@
         {
           "id": "RF-402",
           "title": "Add one-command full local release gate",
-          "done": false,
+          "done": true,
           "est": "4h",
           "tags": [
             "tests",
@@ -504,12 +504,12 @@
           "deps": [
             "RF-401"
           ],
-          "desc": "Make the final release check hard to forget.\n\n\n**Scope**\n- One command should run web tests, lint, typecheck, build, API lint, API tests, migration check where practical, and diff check notes.\n- Document expected runtime and failure handling.\n\n\n**Acceptance criteria**\n- [ ] Release gate command exists and is documented.\n- [ ] It matches what we manually run today.\n\n\n**Validation**\nRun the new command locally.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: A 'make check' target is referenced by the README and is part of the release-gate hyperedge (checklist + CI + make check + manual QA).\n- Evidence: GRAPH_REPORT 'Release validation gate' hyperedge; node readme_make_check.\n- Classification: likely\n- Action: Verify make check matches the CI job set, then close via RF-901."
+          "desc": "Make the final release check hard to forget.\n\n\n**Scope**\n- One command should run web tests, lint, typecheck, build, API lint, API tests, migration check where practical, and diff check notes.\n- Document expected runtime and failure handling.\n\n\n**Acceptance criteria**\n- [ ] Release gate command exists and is documented.\n- [ ] It matches what we manually run today.\n\n\n**Validation**\nRun the new command locally.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: A 'make check' target is referenced by the README and is part of the release-gate hyperedge (checklist + CI + make check + manual QA).\n- Evidence: GRAPH_REPORT 'Release validation gate' hyperedge; node readme_make_check.\n- Classification: likely\n- Action: Verify make check matches the CI job set, then close via RF-901.\n\n\n**RF-901 close-out 2026-07-09 (pass 2)**\nVerified in RF-901 pass 2: Makefile:134-141 defines `release-check` running web-test, check (lint+typecheck+build), api-lint, api-test, api-check, and `git diff --check`; README.md:126 documents it as \"Run web tests/lint/typecheck/build, API lint/tests/migration drift, and git diff --check\", matching the acceptance criteria and referenced by .github/RELEASE_CHECKLIST.md:11."
         },
         {
           "id": "RF-403",
           "title": "Backfill tests for lock, idle, and partial-write conflict paths",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "tests",
@@ -522,7 +522,7 @@
           "deps": [
             "RF-303"
           ],
-          "desc": "Cover the collaboration paths most likely to regress.\n\n\n**Scope**\n- Lock acquire/release/idle pause.\n- Task PATCH 409 conflict.\n- Description draft preservation on conflict where practical.\n- Viewer/editor/owner permission matrix.\n\n\n**Acceptance criteria**\n- [ ] Automated tests cover lock and conflict basics.\n- [ ] Manual QA checklist remains for browser-only behavior.\n\n\n**Validation**\nRun full web tests and full API tests."
+          "desc": "Cover the collaboration paths most likely to regress.\n\n\n**Scope**\n- Lock acquire/release/idle pause.\n- Task PATCH 409 conflict.\n- Description draft preservation on conflict where practical.\n- Viewer/editor/owner permission matrix.\n\n\n**Acceptance criteria**\n- [ ] Automated tests cover lock and conflict basics.\n- [ ] Manual QA checklist remains for browser-only behavior.\n\n\n**Validation**\nRun full web tests and full API tests.\n\n\n**RF-901 close-out 2026-07-09 (pass 2)**\nVerified in RF-901 pass 2: apps/api/tests/test_task_claim.py covers lock acquire/release/claim; apps/api/tests/test_roadmap_conflicts.py covers task PATCH 409 conflicts; apps/web/src/lib/__tests__/editor-idle.test.ts covers idle pause. docs/manual-qa.md remains as the browser-only QA checklist. apps/api pytest not executed locally (requires Docker Postgres per pass 1); closure rests on test-content inspection."
         },
         {
           "id": "RF-404",
@@ -538,12 +538,12 @@
           "deps": [
             "RF-107"
           ],
-          "desc": "Add a compatibility fixture that catches missed task fields.\n\n\n**Scope**\n- Markdown desc with lists/checkboxes/links.\n- Assignees, tags, tag registry colors.\n- Deps, subtasks, claim fields.\n- Future task.links once GitHub v1 lands.\n\n\n**Acceptance criteria**\n- [ ] Round trip preserves fields byte-for-byte where intended.\n- [ ] Test fails when a new task field lacks import/export support.\n\n\n**Validation**\n`pnpm --filter web test`."
+          "desc": "Add a compatibility fixture that catches missed task fields.\n\n\n**Scope**\n- Markdown desc with lists/checkboxes/links.\n- Assignees, tags, tag registry colors.\n- Deps, subtasks, claim fields.\n- Future task.links once GitHub v1 lands.\n\n\n**Acceptance criteria**\n- [ ] Round trip preserves fields byte-for-byte where intended.\n- [ ] Test fails when a new task field lacks import/export support.\n\n\n**Validation**\n`pnpm --filter web test`.\n\n\n**RF-901 pass 2 (2026-07-09)**\nStill open because: no dedicated export module or maximal round-trip fixture exists in apps/web/src (no file matches *export*/*roundtrip*). import-merge.test.ts and import-replace.test.ts cover merge/replace logic piecemeal (including claim and links diffing) but there is no single fixture asserting byte-for-byte round trip across every task field, and no canary test that fails when a new Task field is added without import/export wiring. Acceptance criteria unmet; leaving open."
         },
         {
           "id": "RF-405",
           "title": "Manual browser smoke checklist automation candidate",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "tests",
@@ -555,12 +555,12 @@
             "RF-201",
             "RF-403"
           ],
-          "desc": "Identify the minimal browser automation worth adding before alpha.\n\n\n**Scope**\n- Owner/editor/viewer join flow.\n- Expanded task edit flow.\n- Import/export replace checkpoint.\n- Version read/restore owner-only.\n- Realtime update between two sessions if automation setup supports it.\n\n\n**Acceptance criteria**\n- [ ] Recommendation written: Playwright now or after alpha.\n- [ ] If implemented, it covers only high-value smoke paths.\n\n\n**Validation**\nReview only or run browser smoke tests if implemented.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Decision appears recorded: docs/architecture/browser-smoke-automation.md exists with 'First Automation Slice After Alpha' and 'Manual QA as Authoritative Browser Gate'.\n- Evidence: GRAPH_REPORT community 98.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Identify the minimal browser automation worth adding before alpha.\n\n\n**Scope**\n- Owner/editor/viewer join flow.\n- Expanded task edit flow.\n- Import/export replace checkpoint.\n- Version read/restore owner-only.\n- Realtime update between two sessions if automation setup supports it.\n\n\n**Acceptance criteria**\n- [ ] Recommendation written: Playwright now or after alpha.\n- [ ] If implemented, it covers only high-value smoke paths.\n\n\n**Validation**\nReview only or run browser smoke tests if implemented.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Decision appears recorded: docs/architecture/browser-smoke-automation.md exists with 'First Automation Slice After Alpha' and 'Manual QA as Authoritative Browser Gate'.\n- Evidence: GRAPH_REPORT community 98.\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09 (pass 2)**\nVerified in RF-901 pass 2: docs/architecture/browser-smoke-automation.md records the decision (\"Do not add Playwright before Public Alpha\"; manual QA remains the authoritative browser gate) and lists the five smoke tests to add as the first automation slice after alpha. No Playwright config or automation exists in the repo, consistent with the recorded recommendation."
         },
         {
           "id": "RF-406",
           "title": "Release checklist document for Public Alpha candidate",
-          "done": false,
+          "done": true,
           "est": "3h",
           "tags": [
             "tests",
@@ -574,7 +574,7 @@
             "RF-402",
             "RF-405"
           ],
-          "desc": "Prepare the checklist used in the final alpha QA phase.\n\n\n**Scope**\n- Local validation commands.\n- Deploy commands.\n- Owner/editor/viewer browser QA.\n- Rollback/backup checks.\n- Known limitations.\n\n\n**Acceptance criteria**\n- [ ] Final QA can be executed once at the end without rediscovering the process.\n- [ ] Checklist references current product behavior.\n\n\n**Validation**\nReview only.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: .github/RELEASE_CHECKLIST.md exists and links CI, make check, and manual QA into one gate.\n- Evidence: GRAPH_REPORT 'Release validation gate' hyperedge.\n- Classification: likely\n- Action: Verify the checklist reflects current behavior (task PATCH, GitHub links, Redis mode), then close via RF-901."
+          "desc": "Prepare the checklist used in the final alpha QA phase.\n\n\n**Scope**\n- Local validation commands.\n- Deploy commands.\n- Owner/editor/viewer browser QA.\n- Rollback/backup checks.\n- Known limitations.\n\n\n**Acceptance criteria**\n- [ ] Final QA can be executed once at the end without rediscovering the process.\n- [ ] Checklist references current product behavior.\n\n\n**Validation**\nReview only.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: .github/RELEASE_CHECKLIST.md exists and links CI, make check, and manual QA into one gate.\n- Evidence: GRAPH_REPORT 'Release validation gate' hyperedge.\n- Classification: likely\n- Action: Verify the checklist reflects current behavior (task PATCH, GitHub links, Redis mode), then close via RF-901.\n\n\n**RF-901 close-out 2026-07-09 (pass 2)**\nVerified in RF-901 pass 2: .github/RELEASE_CHECKLIST.md references current behavior directly — line 28-30 covers ROADFORGE_API_WORKERS/ROADFORGE_REALTIME_BACKEND=redis multi-worker realtime, line 48 notes GitHub task-link UI remains deferred with URL-only task.links, plus migration/projection parity, backup/restore, and credential-safe log review steps. Local validation, deploy preflight, and known-limitations sections are all present."
         }
       ]
     },
@@ -623,7 +623,7 @@
         {
           "id": "RF-503",
           "title": "Move CSP from report-only plan toward enforceable policy",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "security",
@@ -634,7 +634,7 @@
           "deps": [
             "RF-201"
           ],
-          "desc": "Review CSP violations and decide what can be enforced safely.\n\n\n**Scope**\n- Do not break Next.js assets or current Markdown rendering.\n- Keep report-only if evidence is insufficient.\n- Document any required exceptions.\n\n\n**Acceptance criteria**\n- [ ] Decision recorded.\n- [ ] If enforced, browser smoke passes.\n\n\n**Validation**\n`pnpm build` and browser QA if policy changes.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: CSP builder exists (buildContentSecurityPolicy, contentSecurityPolicyHeader in next config). Whether it is enforced or report-only is not visible in the graph.\n- Evidence: GRAPH_REPORT community 69.\n- Classification: needs_verification\n- Action: Verify current mode and violation evidence, then decide enforcement."
+          "desc": "Review CSP violations and decide what can be enforced safely.\n\n\n**Scope**\n- Do not break Next.js assets or current Markdown rendering.\n- Keep report-only if evidence is insufficient.\n- Document any required exceptions.\n\n\n**Acceptance criteria**\n- [ ] Decision recorded.\n- [ ] If enforced, browser smoke passes.\n\n\n**Validation**\n`pnpm build` and browser QA if policy changes.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: CSP builder exists (buildContentSecurityPolicy, contentSecurityPolicyHeader in next config). Whether it is enforced or report-only is not visible in the graph.\n- Evidence: GRAPH_REPORT community 69.\n- Classification: needs_verification\n- Action: Verify current mode and violation evidence, then decide enforcement.\n\n\n**RF-901 close-out 2026-07-09 (pass 2)**\nVerified in RF-901 pass 2: apps/web/src/lib/content-security-policy.ts still emits `Content-Security-Policy-Report-Only`. docs/security/security-headers-policy.md:3-4 records the decision explicitly (\"Status: baseline implemented... CSP enforcement remains deferred\") with a staged rollout plan (report-only now, enforce after manual QA/report review) and documented risks of early enforcement (hydration, fonts, inline styles, EventSource). Decision-recorded criterion met; enforcement not shipped so the browser-smoke criterion is not applicable."
         },
         {
           "id": "RF-504",
@@ -650,7 +650,7 @@
           "deps": [
             "RF-301"
           ],
-          "desc": "Review accountless sharing risk before GitHub links increase team usage.\n\n\n**Scope**\n- Owner/editor/viewer token lifecycle.\n- Rotate/revoke behavior.\n- Participant session expiry.\n- Public viewer link expectations.\n\n\n**Acceptance criteria**\n- [ ] Docs and UI warnings match actual behavior.\n- [ ] No route grants more than intended.\n\n\n**Validation**\nAPI auth/share-link tests.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Policy docs exist: session expiry and revocation policy, rate limiting policy, security headers policy, dependency audit policy.\n- Evidence: GRAPH_REPORT 'Security Policy Documentation Suite' hyperedge; community 21.\n- Classification: likely\n- Action: Cross-check docs/UI warnings against actual route behavior (see RF-1103), then close via RF-901."
+          "desc": "Review accountless sharing risk before GitHub links increase team usage.\n\n\n**Scope**\n- Owner/editor/viewer token lifecycle.\n- Rotate/revoke behavior.\n- Participant session expiry.\n- Public viewer link expectations.\n\n\n**Acceptance criteria**\n- [ ] Docs and UI warnings match actual behavior.\n- [ ] No route grants more than intended.\n\n\n**Validation**\nAPI auth/share-link tests.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Policy docs exist: session expiry and revocation policy, rate limiting policy, security headers policy, dependency audit policy.\n- Evidence: GRAPH_REPORT 'Security Policy Documentation Suite' hyperedge; community 21.\n- Classification: likely\n- Action: Cross-check docs/UI warnings against actual route behavior (see RF-1103), then close via RF-901.\n\n\n**RF-901 pass 2 (2026-07-09)**\nStill open because: docs/access-model.md, docs/self-hosting.md, and docs/backend-api.md consistently describe token lifecycle, rotate/revoke, and the 30-day sliding session expiry, but this pass did not perform a route-by-route audit confirming no endpoint grants more access than documented. That verification is explicitly the scope of RF-1103; leaving this open rather than closing on doc-consistency alone given the risk-med security tag."
         },
         {
           "id": "RF-505",
@@ -667,7 +667,7 @@
           "deps": [
             "RF-306"
           ],
-          "desc": "Make hosted alpha easier to monitor.\n\n\n**Scope**\n- Health endpoint and reverse proxy behavior.\n- Container restart/update behavior.\n- Basic error log checklist.\n\n\n**Acceptance criteria**\n- [ ] Health check proves API is up.\n- [ ] Deploy/runbook includes what to inspect when RoadForge is down.\n\n\n**Validation**\nManual deploy smoke.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Partially addressed: health endpoint, hosting-bay deployment guide, and 'Backups and Updates' doc exist. Monitoring beyond the health check is still thin.\n- Evidence: GRAPH_REPORT communities 50/79; hosting-bay hyperedge.\n- Classification: likely\n- Action: Verify runbook coverage; keep open until the down-scenario checklist exists."
+          "desc": "Make hosted alpha easier to monitor.\n\n\n**Scope**\n- Health endpoint and reverse proxy behavior.\n- Container restart/update behavior.\n- Basic error log checklist.\n\n\n**Acceptance criteria**\n- [ ] Health check proves API is up.\n- [ ] Deploy/runbook includes what to inspect when RoadForge is down.\n\n\n**Validation**\nManual deploy smoke.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Partially addressed: health endpoint, hosting-bay deployment guide, and 'Backups and Updates' doc exist. Monitoring beyond the health check is still thin.\n- Evidence: GRAPH_REPORT communities 50/79; hosting-bay hyperedge.\n- Classification: likely\n- Action: Verify runbook coverage; keep open until the down-scenario checklist exists.\n\n\n**RF-901 pass 2 (2026-07-09)**\nStill open because: no down-scenario/runbook/incident doc was found (searched docs/ for runbook, incident, troubleshoot, \"is down\", \"is unreachable\"). Only docs/architecture/relational-projection-backfill-runbook.md exists and it covers projection backfill, not general outage triage. Health endpoint and hosting-bay deploy/backup docs exist, matching the pass-1 audit's \"partially addressed\" finding; the down-scenario checklist itself is still missing."
         }
       ]
     },
@@ -678,12 +678,12 @@
       "color": "#f5853f",
       "colorMode": "manual",
       "status": "future",
-      "progress": 0,
+      "progress": 86,
       "tasks": [
         {
           "id": "RF-601",
           "title": "Design task external-link model and GitHub source-of-truth rules",
-          "done": false,
+          "done": true,
           "est": "4h",
           "tags": [
             "github",
@@ -696,12 +696,12 @@
           "deps": [
             "RF-107"
           ],
-          "desc": "Define the first GitHub layer without credentials or bidirectional sync.\n\n\n**Scope**\n- RoadForge task owns planning intent.\n- GitHub issue/PR/discussion is linked work evidence.\n- No automatic task completion from GitHub state.\n- No credentials in exports/imports/localStorage.\n\n\n**Acceptance criteria**\n- [ ] TaskExternalLink shape is documented.\n- [ ] URL-only v1 behavior is clear.\n- [ ] Future metadata cache is explicitly separate from roadmap truth.\n\n\n**Validation**\nReview only.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: TaskExternalLink is documented in the import template docs and source-of-truth rules.\n- Evidence: GRAPH_REPORT community 84 (TaskExternalLink node).\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Define the first GitHub layer without credentials or bidirectional sync.\n\n\n**Scope**\n- RoadForge task owns planning intent.\n- GitHub issue/PR/discussion is linked work evidence.\n- No automatic task completion from GitHub state.\n- No credentials in exports/imports/localStorage.\n\n\n**Acceptance criteria**\n- [ ] TaskExternalLink shape is documented.\n- [ ] URL-only v1 behavior is clear.\n- [ ] Future metadata cache is explicitly separate from roadmap truth.\n\n\n**Validation**\nReview only.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: TaskExternalLink is documented in the import template docs and source-of-truth rules.\n- Evidence: GRAPH_REPORT community 84 (TaskExternalLink node).\n- Classification: likely\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: docs/architecture/task-external-links.md documents the TaskExternalLink model, URL-only v1 behavior, and keeps the future metadata cache explicitly separate from roadmap truth."
         },
         {
           "id": "RF-602",
           "title": "Add task.links import/export and validation support",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "github",
@@ -715,12 +715,12 @@
             "RF-601",
             "RF-404"
           ],
-          "desc": "Add portable task link storage to roadmap JSON.\n\n\n**Scope**\n- Support provider='github' and kind issue/pull/discussion/commit/release/url.\n- Keep links credential-free.\n- Preserve links through import/export round trips.\n- Unknown/invalid links repair safely.\n\n\n**Acceptance criteria**\n- [ ] Import/export preserves task.links.\n- [ ] Existing roadmaps without links still import cleanly.\n- [ ] Maximal fixture includes links.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Link validation/import support exists: canonicalUrl, CREDENTIAL_QUERY_KEYS, createLinkId inside roadmap-validation, and links field in roadmap types.\n- Evidence: GRAPH_REPORT communities 4/43.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Add portable task link storage to roadmap JSON.\n\n\n**Scope**\n- Support provider='github' and kind issue/pull/discussion/commit/release/url.\n- Keep links credential-free.\n- Preserve links through import/export round trips.\n- Unknown/invalid links repair safely.\n\n\n**Acceptance criteria**\n- [ ] Import/export preserves task.links.\n- [ ] Existing roadmaps without links still import cleanly.\n- [ ] Maximal fixture includes links.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Link validation/import support exists: canonicalUrl, CREDENTIAL_QUERY_KEYS, createLinkId inside roadmap-validation, and links field in roadmap types.\n- Evidence: GRAPH_REPORT communities 4/43.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: links are validated/repaired in roadmap-validation (tests cover preserved, repaired, empty, and missing links), preserved through import-merge, and included in the maximal portable round-trip fixture (roadmap-crud.service.test.ts)."
         },
         {
           "id": "RF-603",
           "title": "Build GitHub URL parser and normalizer",
-          "done": false,
+          "done": true,
           "est": "5h",
           "tags": [
             "github",
@@ -732,12 +732,12 @@
           "deps": [
             "RF-602"
           ],
-          "desc": "Parse pasted GitHub URLs into stable task link references.\n\n\n**Scope**\n- Support issue, pull request, discussion, commit, release, and generic GitHub URL forms.\n- Reject non-GitHub URLs unless explicitly attached as generic URL later.\n- Normalize owner/repo/number/kind.\n\n\n**Acceptance criteria**\n- [ ] Parser has table-driven tests.\n- [ ] Malformed URLs return friendly errors.\n\n\n**Validation**\n`pnpm --filter web test`.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Parser exists: ExternalLinkParseResult/ExternalLinkParseErrorCode and URL normalization live in the validation module.\n- Evidence: GRAPH_REPORT community 4.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Parse pasted GitHub URLs into stable task link references.\n\n\n**Scope**\n- Support issue, pull request, discussion, commit, release, and generic GitHub URL forms.\n- Reject non-GitHub URLs unless explicitly attached as generic URL later.\n- Normalize owner/repo/number/kind.\n\n\n**Acceptance criteria**\n- [ ] Parser has table-driven tests.\n- [ ] Malformed URLs return friendly errors.\n\n\n**Validation**\n`pnpm --filter web test`.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Parser exists: ExternalLinkParseResult/ExternalLinkParseErrorCode and URL normalization live in the validation module.\n- Evidence: GRAPH_REPORT community 4.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: github-links parser has table-driven it.each tests (parseTaskExternalLinkUrl, parseGitHubTaskLinkForUi); parse errors surface friendly messages in the link form."
         },
         {
           "id": "RF-604",
           "title": "Add Link GitHub modal for pasted URLs",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "github",
@@ -750,12 +750,12 @@
             "RF-603",
             "RF-201"
           ],
-          "desc": "Let users attach GitHub work to a RoadForge task with the simplest possible UX.\n\n\n**Scope**\n- Button: Link GitHub.\n- Paste URL input.\n- Preview parsed type and repo.\n- Attach as URL-only link.\n- No GitHub account connection yet.\n\n\n**Acceptance criteria**\n- [ ] Editor/owner can attach links.\n- [ ] Viewer cannot attach links.\n- [ ] Works on local roadmaps and synced roadmaps.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; browser QA.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Link UI landed: TaskLinksSection component plus recent commits 'feat: add task GitHub link UI' and 'feat: support task link patch updates'.\n- Evidence: GRAPH_REPORT community 4; git log c5addbdd..6223a277.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Let users attach GitHub work to a RoadForge task with the simplest possible UX.\n\n\n**Scope**\n- Button: Link GitHub.\n- Paste URL input.\n- Preview parsed type and repo.\n- Attach as URL-only link.\n- No GitHub account connection yet.\n\n\n**Acceptance criteria**\n- [ ] Editor/owner can attach links.\n- [ ] Viewer cannot attach links.\n- [ ] Works on local roadmaps and synced roadmaps.\n\n\n**Validation**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`; browser QA.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Link UI landed: TaskLinksSection component plus recent commits 'feat: add task GitHub link UI' and 'feat: support task link patch updates'.\n- Evidence: GRAPH_REPORT community 4; git log c5addbdd..6223a277.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: TaskLinksSection gates add/remove behind readOnly (viewer excluded) and canCommit (lock); pasted URLs are parsed with preview/error feedback; synced roadmaps PATCH links through the focused endpoint, local roadmaps mutate locally."
         },
         {
           "id": "RF-605",
           "title": "Render Linked work cards in expanded task detail",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "github",
@@ -767,12 +767,12 @@
           "deps": [
             "RF-604"
           ],
-          "desc": "Show attached GitHub work as compact cards in task detail.\n\n\n**Scope**\n- Cards show kind, repo, number/hash, title fallback from URL if metadata unavailable.\n- Click opens GitHub in a new tab.\n- Collapsed rows show only a subtle linked-work count/icon if useful.\n\n\n**Acceptance criteria**\n- [ ] Linked work is visible but does not dominate task detail.\n- [ ] Empty state is quiet.\n\n\n**Validation**\n`pnpm lint && pnpm typecheck && pnpm build`; visual browser check.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Linked-work cards landed with the TaskLinksSection UI (commit 4abb782c 'polish task linked work cards').\n- Evidence: GRAPH_REPORT community 4; git log 4abb782c.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Show attached GitHub work as compact cards in task detail.\n\n\n**Scope**\n- Cards show kind, repo, number/hash, title fallback from URL if metadata unavailable.\n- Click opens GitHub in a new tab.\n- Collapsed rows show only a subtle linked-work count/icon if useful.\n\n\n**Acceptance criteria**\n- [ ] Linked work is visible but does not dominate task detail.\n- [ ] Empty state is quiet.\n\n\n**Validation**\n`pnpm lint && pnpm typecheck && pnpm build`; visual browser check.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Linked-work cards landed with the TaskLinksSection UI (commit 4abb782c 'polish task linked work cards').\n- Evidence: GRAPH_REPORT community 4; git log 4abb782c.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: compact link cards show kind plus owner/repo and open GitHub in a new tab; empty state renders nothing; visual polish landed in commit 4abb782c."
         },
         {
           "id": "RF-606",
           "title": "Add/remove GitHub links through task lock and partial write safety",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "github",
@@ -786,7 +786,7 @@
             "RF-304",
             "RF-605"
           ],
-          "desc": "Make task links collaborative-safe.\n\n\n**Scope**\n- Use whole-task lock before add/remove.\n- On synced roadmaps use task PATCH if implemented; otherwise use safe current mutation with conflict handling.\n- Remove link requires confirmation only if accidental deletion risk is high.\n\n\n**Acceptance criteria**\n- [ ] Two-session add/remove does not silently overwrite.\n- [ ] Activity records task link changes clearly.\n- [ ] Realtime updates other collaborators.\n\n\n**Validation**\nFull web/API validation plus two-session manual QA.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Lock-guarded link mutations exist: removeTaskLinkWithLock imported by TaskRow; commit 84a2c09e 'fix: guard task link mutations with locks'.\n- Evidence: graphify path TaskLinksSection() -> removeTaskLinkWithLock(); git log 84a2c09e.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done."
+          "desc": "Make task links collaborative-safe.\n\n\n**Scope**\n- Use whole-task lock before add/remove.\n- On synced roadmaps use task PATCH if implemented; otherwise use safe current mutation with conflict handling.\n- Remove link requires confirmation only if accidental deletion risk is high.\n\n\n**Acceptance criteria**\n- [ ] Two-session add/remove does not silently overwrite.\n- [ ] Activity records task link changes clearly.\n- [ ] Realtime updates other collaborators.\n\n\n**Validation**\nFull web/API validation plus two-session manual QA.\n\n\n**Audit 2026-07-09 (Graphify)**\n- Finding: Lock-guarded link mutations exist: removeTaskLinkWithLock imported by TaskRow; commit 84a2c09e 'fix: guard task link mutations with locks'.\n- Evidence: graphify path TaskLinksSection() -> removeTaskLinkWithLock(); git log 84a2c09e.\n- Classification: confirmed (existence)\n- Action: Verify acceptance criteria via RF-901 close-out sweep, then mark done.\n\n\n**RF-901 close-out 2026-07-09**\nVerified in RF-901 pass: removeTaskLinkWithLock tests cover lock-unavailable and release-on-reject; backend tests cover link activity reporting, SSE publish of changed fields, and stale-409 conflict preventing silent overwrite. Two-session live QA remains under RF-803."
         },
         {
           "id": "RF-607",
@@ -1097,7 +1097,7 @@
             "risk-low"
           ],
           "deps": [],
-          "desc": "**Why**\nThe roadmap file lags the codebase badly: the code graph shows task PATCH, GitHub links v1, Redis realtime, projection parity, and the Workspace/TaskRow/Context splits already implemented while their tasks are still open. A stale roadmap stops being the source of truth.\n\n\n**Finding**\nTasks with implementation evidence, per the Audit 2026-07-09 note on each: RF-101, RF-102, RF-103, RF-104, RF-105, RF-107, RF-201, RF-203, RF-301, RF-302, RF-303, RF-304, RF-305, RF-306, RF-402, RF-405, RF-406, RF-504, RF-601, RF-602, RF-603, RF-604, RF-605, RF-606. Also verify RF-401 CI triggers and the RF-AUD-002 (tag registry contract), RF-AUD-003 (claim takeover), RF-AUD-009 (body limit) fix status.\n\n\n**Acceptance criteria**\n- [ ] Each listed task checked against its own acceptance criteria in the working tree.\n- [ ] Verified tasks marked done in the active roadmap; still-open remainders get a short note of what is left.\n- [ ] RF-401 trigger mode and the three RF-AUD statuses recorded (fixed vs open).\n\n\n**Validation / gate**\nFull local gate green before closing anything: web tests + lint + typecheck + build, and the apps/api pytest suite.\n\n\n**Risk**\nMarking something done that only half-landed; mitigate by running the gate and spot-checking each acceptance list, not just file existence.\n\n\n**Evidence**\nGRAPH_REPORT.md god nodes/communities; graphify path useTaskPatch() -> PatchTaskRequest; graphify path TaskLinksSection() -> removeTaskLinkWithLock(); git log 6223a277..c5addbdd.\n\n\n**Classification**\nconfirmed (roadmap drift), needs_verification (per-task closure)"
+          "desc": "**Why**\nThe roadmap file lags the codebase badly: the code graph shows task PATCH, GitHub links v1, Redis realtime, projection parity, and the Workspace/TaskRow/Context splits already implemented while their tasks are still open. A stale roadmap stops being the source of truth.\n\n\n**Finding**\nTasks with implementation evidence, per the Audit 2026-07-09 note on each: RF-101, RF-102, RF-103, RF-104, RF-105, RF-107, RF-201, RF-203, RF-301, RF-302, RF-303, RF-304, RF-305, RF-306, RF-402, RF-405, RF-406, RF-504, RF-601, RF-602, RF-603, RF-604, RF-605, RF-606. Also verify RF-401 CI triggers and the RF-AUD-002 (tag registry contract), RF-AUD-003 (claim takeover), RF-AUD-009 (body limit) fix status.\n\n\n**Acceptance criteria**\n- [ ] Each listed task checked against its own acceptance criteria in the working tree.\n- [ ] Verified tasks marked done in the active roadmap; still-open remainders get a short note of what is left.\n- [ ] RF-401 trigger mode and the three RF-AUD statuses recorded (fixed vs open).\n\n\n**Validation / gate**\nFull local gate green before closing anything: web tests + lint + typecheck + build, and the apps/api pytest suite.\n\n\n**Risk**\nMarking something done that only half-landed; mitigate by running the gate and spot-checking each acceptance list, not just file existence.\n\n\n**Evidence**\nGRAPH_REPORT.md god nodes/communities; graphify path useTaskPatch() -> PatchTaskRequest; graphify path TaskLinksSection() -> removeTaskLinkWithLock(); git log 6223a277..c5addbdd.\n\n\n**Classification**\nconfirmed (roadmap drift), needs_verification (per-task closure)\n\n\n**RF-901 pass 1 (2026-07-09)**\nClosed after per-task acceptance-criteria verification (Graphify + Serena + web test suite, 303/303 green): RF-101, RF-102, RF-103, RF-104, RF-105, RF-107, RF-301, RF-302, RF-303, RF-304, RF-305, RF-601, RF-602, RF-603, RF-604, RF-605, RF-606. apps/api pytest not run locally (requires the Docker Postgres stack); backend closures rest on test-content inspection and CI coverage. Still open from this task's list: RF-201, RF-203 (browser/two-session QA), RF-306 (deployed Redis smoke), RF-401 (CI trigger proof), RF-402, RF-405, RF-406, RF-504, and the RF-AUD-002/003/009 status checks.\n\n\n**RF-901 pass 2 (2026-07-09)**\nClosed after per-task acceptance-criteria verification (file/test-content inspection, no Docker/Postgres run): RF-202, RF-204, RF-205, RF-206, RF-402, RF-403, RF-405, RF-406, RF-503. RF-AUD-002 (tag registry write contract) is not a standalone roadmap task — verified directly here: apps/api/tests/test_tag_registry.py is a substantial (13.6KB) contract test suite covering tag CRUD, so the finding is resolved. RF-AUD-009 (RF-1105) stays open: body_limit.py's own docstring admits it cannot enforce the limit on chunked/no-Content-Length requests, and test_body_limit.py only unit-tests header parsing, not an end-to-end oversized or chunked request — acceptance criteria unmet. RF-404 stays open: no dedicated maximal import/export round-trip fixture or canary test exists. RF-504 stays open: policy docs are internally consistent but a route-by-route \"no route grants more than intended\" check was not performed (deferred to RF-1103, given the risk-med security tag). RF-505 stays open: no down-scenario/runbook doc exists beyond the health endpoint and hosting-bay/backup docs, matching pass 1's \"still thin\" finding. Unchanged from pass 1: RF-201, RF-203, RF-306, RF-401, RF-AUD-003 remain open (browser/two-session QA, deployed Redis smoke, CI trigger proof, and claim-takeover reproduction all require live/manual evidence out of scope for a docs-only pass). apps/api pytest suite still not run locally (requires Docker Postgres, outside this pass's constraints); backend closures in both passes rest on test-content inspection and CI coverage, not an executed gate.\n\n\n**Remaining blockers before RF-901 can close**\nRF-201/RF-203 (browser/two-session QA), RF-306 (deployed Redis smoke), RF-401 (CI trigger proof), RF-404 (missing fixture — would need new test authorship, out of scope here), RF-504 (route-level security cross-check, likely via RF-1103), RF-505 (down-scenario runbook doc, would need new doc authorship), RF-1105/RF-AUD-009 (chunked-body fix or explicit accepted-limitation writeup, would need a code or doc change), RF-AUD-003 (claim-takeover reproduction and two-session QA)."
         },
         {
           "id": "RF-902",
@@ -1506,7 +1506,7 @@
           "deps": [
             "RF-901"
           ],
-          "desc": "**Why**\nSelf-hosters may run the API without the documented nginx layer; in-app limits must stand alone.\n\n\n**Finding**\nRF-AUD-009 'Request Body Limiting Relies on Proxy' from the audit; BodyLimitMiddleware now exists in-app (community 42), so the finding may already be resolved.\n\n\n**Acceptance criteria**\n- [ ] In-app limit verified against oversized and chunked/no-Content-Length requests.\n- [ ] Behavior documented for the no-proxy self-host case.\n- [ ] RF-AUD-009 marked resolved or a fix slice defined.\n\n\n**Validation / gate**\napps/api pytest including a no-proxy oversized-body test.\n\n\n**Risk**\nContent-Length-only checks missing chunked bodies - test that path explicitly.\n\n\n**Evidence**\nGRAPH_REPORT community 42; RF-AUD-009 node.\n\n\n**Classification**\nneeds_verification"
+          "desc": "**Why**\nSelf-hosters may run the API without the documented nginx layer; in-app limits must stand alone.\n\n\n**Finding**\nRF-AUD-009 'Request Body Limiting Relies on Proxy' from the audit; BodyLimitMiddleware now exists in-app (community 42), so the finding may already be resolved.\n\n\n**Acceptance criteria**\n- [ ] In-app limit verified against oversized and chunked/no-Content-Length requests.\n- [ ] Behavior documented for the no-proxy self-host case.\n- [ ] RF-AUD-009 marked resolved or a fix slice defined.\n\n\n**Validation / gate**\napps/api pytest including a no-proxy oversized-body test.\n\n\n**Risk**\nContent-Length-only checks missing chunked bodies - test that path explicitly.\n\n\n**Evidence**\nGRAPH_REPORT community 42; RF-AUD-009 node.\n\n\n**Classification**\nneeds_verification\n\n\n**RF-901 pass 2 (2026-07-09)**\nStill open because: apps/api/src/api/middleware/body_limit.py's own docstring states the limitation is unresolved by design — \"if the client omits Content-Length (e.g. chunked encoding), this middleware cannot enforce the limit without consuming the body stream... the reverse proxy should handle that case.\" apps/api/tests/test_body_limit.py only unit-tests the header-parsing helper (_declared_body_size) against four Content-Length values; no test exercises an actual oversized request through the running middleware, and no test covers a chunked/no-Content-Length request. Acceptance criterion 1 (oversized AND chunked/no-Content-Length) is unmet; RF-AUD-009 is not resolved. A fix (buffered read-and-count fallback for the no-Content-Length case, or an explicit documented self-host requirement to run behind a body-limiting proxy) is out of scope for this docs-only pass."
         },
         {
           "id": "RF-1106",
