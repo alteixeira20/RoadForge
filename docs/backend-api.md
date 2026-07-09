@@ -947,7 +947,7 @@ Client compatibility: the browser auto-upgrades older local or server snapshots 
 - **Short-lived SSE tickets** — SSE connections use 30-second one-time tickets to avoid exposing session tokens in URLs or server logs.
 - **Optimistic concurrency** — `PUT /api/roadmaps/{id}` requires `last_updated_at`. Returns 409 with the server's current snapshot if the database is strictly newer.
 - **Password hashing** — PBKDF2-SHA256, 260,000 iterations, 16-byte random salt per password. Compared with `hmac.compare_digest`.
-- **Body size limit** — requests larger than 512 KB are rejected with 413 before parsing.
+- **Body size limit** — requests larger than 512 KB are rejected with 413 before parsing. This is enforced in-app for both declared `Content-Length` bodies and streamed/chunked bodies that omit `Content-Length` (the latter is tallied per ASGI message and aborted as soon as the running total exceeds the limit, without buffering the full body). Self-hosters running without a reverse proxy are still protected; a body-limiting proxy remains useful as defense-in-depth.
 - **Soft deletes** — roadmaps use `deleted_at` timestamp; hard purge is not yet implemented.
 - **Rate limiting** — in-process; shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`. Rate-limited operations include: roadmap create, join, password failures, share link rotate/revoke, SSE ticket requests, checkpoints, and authenticated sensitive read paths.
 
