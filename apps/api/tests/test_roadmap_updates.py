@@ -229,3 +229,62 @@ async def test_owner_can_update_name_and_phases_together(client: AsyncClient):
     assert data["name"] == "Combined Update"
     assert len(data["phases"]) == 1
     assert data["phases"][0]["id"] == "ph-2"
+
+
+async def test_owner_can_save_task_with_legacy_null_done(client: AsyncClient):
+    """Reproduces the reported PUT 422: an imported/legacy roadmap can still
+    carry a null `done` on a task. The backend must tolerate it the same way
+    apps/web/src/lib/roadmap-upgrade.ts already does (`task.done === true`),
+    coercing null to False instead of rejecting the save."""
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    legacy_phases = [
+        {
+            "id": "ph-1",
+            "num": "1",
+            "name": "Phase",
+            "color": "#4f46e5",
+            "status": "active",
+            "progress": 0,
+            "tasks": [{"id": "t-1", "title": "Task", "done": None}],
+        }
+    ]
+
+    resp = await client.put(
+        f"/api/roadmaps/{roadmap_id}",
+        headers=_auth(owner_token),
+        json={"phases": legacy_phases, "last_updated_at": body["updated_at"]},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["phases"][0]["tasks"][0]["done"] is False
+
+
+async def test_get_response_can_be_resubmitted_unchanged(client: AsyncClient):
+    """Contract test: a roadmap returned by GET (RoadmapResponse) must be
+    submittable through PUT (UpdateRoadmapRequest) unchanged, mapping the
+    response's `updated_at` into the request's `last_updated_at` the same
+    way apps/web/src/services/roadmap-crud.service.ts does."""
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    get_resp = await client.get(
+        f"/api/roadmaps/{roadmap_id}",
+        headers=_auth(owner_token),
+    )
+    assert get_resp.status_code == 200, get_resp.text
+    fetched = get_resp.json()
+
+    resp = await client.put(
+        f"/api/roadmaps/{roadmap_id}",
+        headers=_auth(owner_token),
+        json={
+            "name": fetched["name"],
+            "phases": fetched["phases"],
+            "tag_registry": fetched["tag_registry"],
+            "last_updated_at": fetched["updated_at"],
+        },
+    )
+    assert resp.status_code == 200, resp.text

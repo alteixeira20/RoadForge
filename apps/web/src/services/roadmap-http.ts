@@ -25,12 +25,19 @@ export function isApiConnectionError(error: unknown): error is ApiConnectionErro
   )
 }
 
+export interface ApiValidationDetail {
+  loc: (string | number)[]
+  msg: string
+  type: string
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly detail: string,
     public readonly code?: string,
     public readonly conflict?: RoadmapConflictMetadata,
+    public readonly validationErrors?: ApiValidationDetail[],
   ) {
     super(`API ${status}: ${detail}`)
     this.name = 'ApiError'
@@ -91,20 +98,31 @@ export async function requestJson<T>(
     let detail = res.statusText
     let code: string | undefined
     let conflict: RoadmapConflictMetadata | undefined
+    let validationErrors: ApiValidationDetail[] | undefined
     try {
       const body = await res.json() as {
-        detail?: string | { detail?: string; code?: string; conflict?: RoadmapConflictMetadata }
+        detail?: string | { detail?: string; code?: string; conflict?: RoadmapConflictMetadata } | ApiValidationDetail[]
         code?: string
         conflict?: RoadmapConflictMetadata
       }
+      const nestedDetail = (
+        typeof body.detail === 'object' && body.detail !== null && !Array.isArray(body.detail)
+      ) ? body.detail : undefined
+
       if (typeof body.detail === 'string') detail = body.detail
-      if (typeof body.detail === 'object' && body.detail?.detail) detail = body.detail.detail
-      code = body.code ?? (typeof body.detail === 'object' ? body.detail.code : undefined)
-      conflict = body.conflict ?? (typeof body.detail === 'object' ? body.detail.conflict : undefined)
+      if (Array.isArray(body.detail)) {
+        // FastAPI's own 422 shape: {"detail": [{"loc": [...], "msg": "...", "type": "..."}, ...]}
+        validationErrors = body.detail
+        detail = body.detail[0]?.msg ?? detail
+      } else if (nestedDetail?.detail) {
+        detail = nestedDetail.detail
+      }
+      code = body.code ?? nestedDetail?.code
+      conflict = body.conflict ?? nestedDetail?.conflict
     } catch {
       // leave detail as statusText
     }
-    throw new ApiError(res.status, detail, code, conflict)
+    throw new ApiError(res.status, detail, code, conflict, validationErrors)
   }
   return res.json() as Promise<T>
 }

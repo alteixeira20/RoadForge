@@ -165,6 +165,7 @@ export function useAutoSync({
           kind,
           conflictMetadata: nextConflict,
           hasLegacyConflictStatus,
+          validationMessage,
         } = classifyRoadmapSaveError(err)
         if (kind === 'conflict' || hasLegacyConflictStatus) {
           setIsConflict(true)
@@ -174,6 +175,9 @@ export function useAutoSync({
           toast('The roadmap changed elsewhere. Your edits are preserved locally.')
         } else if (kind === 'session-expired') {
           sessionExpired()
+        } else if (kind === 'validation') {
+          setIsOffline(false)
+          toast(validationMessage ?? 'Save rejected: the server could not validate this roadmap.')
         } else if (kind === 'connection') {
           setIsOffline(true)
         } else if (kind === 'unauthorized' || kind === 'forbidden') {

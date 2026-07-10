@@ -244,6 +244,16 @@ class TaskDTO(BaseModel):
     claimedAt: str | None = Field(default=None, max_length=32)
     links: list[TaskExternalLinkDTO] | None = Field(default=None, max_length=TASK_LINKS_MAX)
 
+    @field_validator("done", mode="before")
+    @classmethod
+    def _validate_done(cls, v: object) -> object:
+        # Mirrors the frontend's own legacy-data coercion (`task.done === true`
+        # in roadmap-upgrade.ts): imported roadmaps can carry a null `done`
+        # from older shapes, so treat null the same way the client does.
+        if v is None:
+            return False
+        return v
+
     @field_validator("id", "title", mode="before")
     @classmethod
     def _validate_required(cls, v: object, info) -> object:

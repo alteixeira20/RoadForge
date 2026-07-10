@@ -186,7 +186,7 @@ export function useSaveFlow({
       if (showActivity) setActivityRefreshKey((k) => k + 1)
       showToast('Saved · collaboration enabled')
     } catch (err) {
-      const { kind, conflictMetadata: nextConflict } = classifyRoadmapSaveError(err)
+      const { kind, conflictMetadata: nextConflict, validationMessage } = classifyRoadmapSaveError(err)
       if (kind === 'conflict') {
         setIsConflict(true)
         setConflictMetadata(nextConflict)
@@ -198,6 +198,8 @@ export function useSaveFlow({
         showToast('Session expired — rejoin from the invite link')
       } else if (kind === 'forbidden') {
         showToast('You do not have permission for this action')
+      } else if (kind === 'validation') {
+        showToast(validationMessage ?? 'Save rejected: the server could not validate this roadmap.')
       } else if (kind === 'connection') {
         showToast('RoadForge API is not reachable. Start the backend with make start.')
       } else {
