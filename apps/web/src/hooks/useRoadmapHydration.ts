@@ -148,6 +148,9 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
   const [backendUnavailableRoadmapId, setBackendUnavailableRoadmapId] = useState<string | null>(null)
   const [sessionExpiredRoadmapId, setSessionExpiredRoadmapId] = useState<string | null>(null)
   const shownUpgradeNoticeSignaturesRef = useRef<Set<string>>(new Set())
+  // Tracks the most recent loadRoadmapIntoState call so a superseded one
+  // (e.g. from switching roadmaps quickly) can never apply its response.
+  const currentLoadTokenRef = useRef<{ value: boolean } | null>(null)
 
   const showUpgradeNoticeOnce = useCallback((
     targetId: string,
@@ -206,6 +209,13 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
   ])
 
   const loadRoadmapIntoState = useCallback((targetId: string, cancelled: { value: boolean }) => {
+    // Supersede any previous in-flight load, regardless of the cancellation
+    // token the caller passed in, so an earlier roadmap can never hydrate
+    // over a later one.
+    if (currentLoadTokenRef.current) currentLoadTokenRef.current.value = true
+    const loadToken = { value: false }
+    currentLoadTokenRef.current = loadToken
+
     const rc = storage.getRoadmapCache(targetId)
     const ac = storage.getAuthCache(targetId)
     setBackendUnavailableRoadmapId(null)
@@ -258,7 +268,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
 
       getRoadmap(ac.serverRoadmapId, ac.sessionToken)
         .then((loaded) => {
-          if (cancelled.value) return
+          if (cancelled.value || loadToken.value) return
           setIsHydratingServer(false)
           setBackendUnavailableRoadmapId(null)
           let nextRoadmapName = loaded.roadmap.name
@@ -300,7 +310,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
           })
         })
         .catch((err: unknown) => {
-          if (cancelled.value) return
+          if (cancelled.value || loadToken.value) return
           setIsHydratingServer(false)
           if (isApiConnectionError(err)) {
             setBackendUnavailableRoadmapId(ac.serverRoadmapId)

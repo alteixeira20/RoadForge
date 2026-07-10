@@ -1,4 +1,3 @@
-import type { Phase, TagDefinition } from '@/types/roadmap'
 import type { ImportedRoadmap } from '@/lib/roadmap-validation'
 import type { RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
 
@@ -61,8 +60,6 @@ export interface PendingImport {
   mode: ImportMode
   upgradeNotices: RoadmapUpgradeNotice[]
   replaceScope: ReplaceImportScope
-  mergedPhases?: Phase[]
-  mergedTagRegistry?: TagDefinition[]
   mergePreview?: ImportPreviewSummary
   currentStats?: CurrentRoadmapStats
 }

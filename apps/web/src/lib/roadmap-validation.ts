@@ -43,7 +43,9 @@ export type ImportRepairCode =
   | 'inferred_phase_field'
   | 'legacy_assignees'
   | 'duplicate_ids'
+  | 'duplicate_phase_ids'
   | 'stale_parent_removed'
+  | 'stale_deps_removed'
   | 'tag_registry_repaired'
   | 'task_links_repaired'
 
@@ -69,8 +71,12 @@ const REPAIR_MESSAGES: Record<ImportRepairCode, string> = {
     'Assignment tags (owner:, review:) were migrated to the assignees field.',
   duplicate_ids:
     'Duplicate task IDs were renamed to be unique.',
+  duplicate_phase_ids:
+    'Duplicate phase IDs were renamed to be unique.',
   stale_parent_removed:
     'parentId references to non-existent tasks were removed.',
+  stale_deps_removed:
+    'deps references to non-existent tasks were removed.',
   tag_registry_repaired:
     'Invalid or duplicate tag registry definitions were removed or normalized.',
   task_links_repaired:
@@ -598,6 +604,7 @@ function repairTaskRaw(
 function repairPhaseRaw(
   raw: unknown,
   index: number,
+  seenPhaseIds: Set<string>,
   seenIds: Set<string>,
   counts: RepairCounts,
   gen: IdGen,
@@ -605,8 +612,10 @@ function repairPhaseRaw(
   if (!isPlainObject(raw)) {
     bump(counts, 'inferred_phase_field')
     const num = String(index + 1).padStart(2, '0')
+    const id = genPhaseId(index)
+    seenPhaseIds.add(id)
     return {
-      id: genPhaseId(index),
+      id,
       num,
       name: `Phase ${num}`,
       color: '#808080',
@@ -619,11 +628,23 @@ function repairPhaseRaw(
 
   const p: Record<string, unknown> = { ...raw }
 
-  // id: must be non-empty string
+  // id: must be non-empty string and unique among phases
   if (typeof p.id !== 'string' || !p.id.trim()) {
     bump(counts, 'inferred_phase_field')
     p.id = genPhaseId(index)
+  } else {
+    const trimmed = p.id.trim()
+    if (seenPhaseIds.has(trimmed)) {
+      bump(counts, 'duplicate_phase_ids')
+      let suffix = 2
+      let candidate = `${trimmed}-dup${suffix}`
+      while (seenPhaseIds.has(candidate)) { suffix++; candidate = `${trimmed}-dup${suffix}` }
+      p.id = candidate
+    } else {
+      p.id = trimmed
+    }
   }
+  seenPhaseIds.add(p.id as string)
 
   // num: must be non-empty string
   if (typeof p.num !== 'string' || !p.num.trim()) {
@@ -685,6 +706,7 @@ function repairImportedRoadmap(
   raw: unknown,
 ): { repairedRaw: unknown; repairs: ImportRepair[] } {
   const counts: RepairCounts = {}
+  const seenPhaseIds = new Set<string>()
   const seenIds = new Set<string>()
   const gen = makeIdGen()
 
@@ -710,18 +732,26 @@ function repairImportedRoadmap(
     return { repairedRaw: raw, repairs: [] }
   }
 
-  // Pass 1: repair each phase and all tasks, collect all task IDs
+  // Pass 1: repair each phase and all tasks, collect all phase and task IDs
   const repairedPhases = phasesArray.map((phase, i) =>
-    repairPhaseRaw(phase, i, seenIds, counts, gen),
+    repairPhaseRaw(phase, i, seenPhaseIds, seenIds, counts, gen),
   )
 
-  // Pass 2: remove stale parentId references
+  // Pass 2: remove stale parentId and deps references
   for (const phase of repairedPhases) {
     if (Array.isArray(phase.tasks)) {
       for (const task of phase.tasks as Record<string, unknown>[]) {
         if (typeof task.parentId === 'string' && !seenIds.has(task.parentId)) {
           bump(counts, 'stale_parent_removed')
           delete task.parentId
+        }
+        if (Array.isArray(task.deps)) {
+          const deps = task.deps as unknown[]
+          const prunedDeps = deps.filter((d) => typeof d === 'string' && seenIds.has(d))
+          if (prunedDeps.length !== deps.length) {
+            bump(counts, 'stale_deps_removed')
+          }
+          task.deps = prunedDeps
         }
       }
     }

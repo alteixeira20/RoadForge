@@ -8,13 +8,15 @@ MVP note: this guard covers well-behaved clients and common attack tools.
 Production deployments should also enforce body size limits at the reverse
 proxy (nginx, Caddy, etc.) before traffic reaches the application server.
 
-Streaming bodies: if the client omits Content-Length (e.g. chunked encoding),
-this middleware wraps the ASGI `receive` callable and tallies the cumulative
-byte count of each `http.request` message as the application consumes it,
-aborting with HTTP 413 as soon as the running total exceeds
-REQUEST_BODY_MAX_BYTES. This never buffers the full body in memory. The
-reverse proxy remains useful as defense-in-depth but is no longer the only
-enforcement point.
+This middleware always wraps the ASGI `receive` callable and tallies the
+cumulative byte count of each `http.request` message as the application
+consumes it, aborting with HTTP 413 as soon as the running total exceeds
+REQUEST_BODY_MAX_BYTES. This never buffers the full body in memory. A
+declared Content-Length above the limit is still rejected up front without
+reading the body, but a small (or absent) declared Content-Length does not
+exempt the request from this check — the header is untrusted input, and the
+actual streamed body can exceed what was declared. The reverse proxy remains
+useful as defense-in-depth but is no longer the only enforcement point.
 """
 
 from fastapi import FastAPI
@@ -84,13 +86,14 @@ class BodyLimitMiddleware:
             if declared_size == -1:
                 await _INVALID_LENGTH(scope, receive, send)
                 return
-            if declared_size is not None:
-                if declared_size > self.max_bytes:
-                    await _TOO_LARGE(scope, receive, send)
-                    return
-            else:
-                await self._call_with_streaming_limit(scope, receive, send)
+            if declared_size is not None and declared_size > self.max_bytes:
+                await _TOO_LARGE(scope, receive, send)
                 return
+            # Always enforce the actual streamed size, even when a small
+            # Content-Length was declared — the declared value is untrusted
+            # and the real body can exceed it.
+            await self._call_with_streaming_limit(scope, receive, send)
+            return
         await self.app(scope, receive, send)
 
     async def _call_with_streaming_limit(self, scope: Scope, receive: Receive, send: Send) -> None:

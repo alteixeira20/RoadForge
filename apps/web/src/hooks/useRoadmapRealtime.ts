@@ -134,6 +134,9 @@ export function useRoadmapRealtime({
 
     let unsubscribe: (() => void) | null = null
     let hiddenAt: number | null = null
+    // Guards against a startSync() call resuming after this effect has
+    // already been cleaned up (e.g. the active roadmap changed mid-await).
+    let cancelled = false
 
     const startSync = async (isReconnect = false) => {
       const subscribedActiveId = activeRoadmapId
@@ -159,6 +162,7 @@ export function useRoadmapRealtime({
 
       try {
         const activeLocks = await getLocks(serverRoadmapId, sessionToken)
+        if (cancelled) return
         const lockMap: LockMap = {}
         for (const l of activeLocks) {
           lockMap[l.target] = { participantId: l.participant_id, displayName: l.display_name }
@@ -166,6 +170,7 @@ export function useRoadmapRealtime({
         setLocks(lockMap)
 
         const { ticket } = await getEventTicket(serverRoadmapId, sessionToken)
+        if (cancelled) return
         unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, ticket, {
           onOpen: () => {
             setRealtimeStatus('live')
@@ -299,6 +304,7 @@ export function useRoadmapRealtime({
     document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
+      cancelled = true
       if (unsubscribe) unsubscribe()
       document.removeEventListener('visibilitychange', handleVisibility)
     }

@@ -103,6 +103,24 @@ async def test_middleware_rejects_oversized_streamed_body_without_content_length
     assert _response_status(sent) == 413
 
 
+async def test_middleware_rejects_actual_body_exceeding_declared_content_length():
+    middleware = BodyLimitMiddleware(_echo_app, max_bytes=_MAX_BYTES)
+    # Declares 5 bytes (under the limit) but actually streams 24 bytes,
+    # simulating a client that lies about Content-Length.
+    scope = _scope(b"5")
+    scope["method"] = "POST"
+    send, sent = _make_send()
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"12345678", "more_body": True},
+        {"type": "http.request", "body": b"12345678", "more_body": True},
+        {"type": "http.request", "body": b"12345678", "more_body": False},
+    ]
+
+    await middleware(scope, _make_receive(messages), send)
+
+    assert _response_status(sent) == 413
+
+
 async def test_middleware_allows_streamed_body_under_limit():
     middleware = BodyLimitMiddleware(_echo_app, max_bytes=_MAX_BYTES)
     scope = _scope(None)

@@ -316,6 +316,27 @@ describe('roadmap-validation', () => {
       expect(repairCodes).toContain('progress_recalculated')
     })
 
+    it('renames duplicate phase IDs to be unique', () => {
+      const input = JSON.stringify({
+        phases: [
+          { ...MINIMAL_PHASE, id: 'dup' },
+          { ...MINIMAL_PHASE, id: 'dup' },
+        ],
+      })
+      const result = parseImportedRoadmapJson(input)
+      const ids = result.phases.map((p) => p.id)
+      expect(new Set(ids).size).toBe(2)
+      expect(result.repairs.map((r) => r.code)).toContain('duplicate_phase_ids')
+    })
+
+    it('removes deps referencing tasks that do not exist', () => {
+      const task = { ...MINIMAL_TASK, deps: ['missing-task', 't1'] }
+      const input = JSON.stringify({ phases: [{ ...MINIMAL_PHASE, tasks: [task] }] })
+      const result = parseImportedRoadmapJson(input)
+      expect(result.phases[0].tasks[0].deps).toEqual(['t1'])
+      expect(result.repairs.map((r) => r.code)).toContain('stale_deps_removed')
+    })
+
     it('preserves valid claim fields on tasks', () => {
       const task = {
         ...MINIMAL_TASK,

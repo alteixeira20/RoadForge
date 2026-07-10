@@ -111,8 +111,11 @@ export function useSaveFlow({
     pendingActivityChanges,
     partialWriteInFlight,
     showActivity,
-    onSyncSuccess: (newUpdatedAt) => {
+    onSyncSuccess: (newUpdatedAt, isCurrent) => {
       setUpdatedAt(newUpdatedAt)
+      // Skip if edits landed after this request captured its snapshot —
+      // marking saved here would hide those edits from the next autosync.
+      if (!isCurrent) return
       setSaved(true)
       setPendingActivityChanges([])
     },

@@ -20,6 +20,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import api.services.sharing_service as sharing_service
 from api.models.roadmap import Participant
 from tests.conftest import create_roadmap
 
@@ -319,6 +320,41 @@ async def test_revoked_editor_session_returns_401(client: AsyncClient):
     assert resp.status_code == 401
 
 
+async def test_revoke_participant_publishes_sse_event(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    editor_url = await _rotate_link(client, roadmap_id, owner_token, "editor")
+    join_resp = await _join(client, editor_url, display_name="EditMe")
+    assert join_resp.status_code == 200, join_resp.text
+    editor_pid = join_resp.json()["participant_id"]
+
+    published_events = []
+
+    async def record_publish(event):
+        published_events.append(event)
+
+    monkeypatch.setattr(sharing_service.event_bus, "publish", record_publish)
+
+    revoke_resp = await client.post(
+        f"/api/roadmaps/{roadmap_id}/participants/{editor_pid}/revoke",
+        headers=_auth(owner_token),
+    )
+    assert revoke_resp.status_code == 204
+
+    assert len(published_events) == 1
+    event = published_events[0]
+    assert event.action == "participant.revoked"
+    assert event.roadmap_id == roadmap_id
+    assert event.payload["roadmap_id"] == roadmap_id
+    assert event.payload["participant_id"] == editor_pid
+    assert event.payload["revoked_at"]
+
+
 # ─── Group F — Participant list read (owner/editor/viewer) ──────────────────
 
 
@@ -396,6 +432,38 @@ async def test_editor_participant_list_excludes_revoked(client: AsyncClient):
     assert resp.status_code == 200, resp.text
     names = {r["display_name"] for r in resp.json()}
     assert names == {"Owner", "EditorTwo"}
+
+
+async def test_editor_participant_list_excludes_expired_session(
+    client: AsyncClient,
+    db_session: AsyncSession,
+):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    expired_editor_url = await _rotate_link(client, roadmap_id, owner_token, "editor")
+    expired_join_resp = await _join(client, expired_editor_url, display_name="ExpiredEditor")
+    expired_pid = expired_join_resp.json()["participant_id"]
+
+    active_editor_url = await _rotate_link(client, roadmap_id, owner_token, "editor")
+    active_join_resp = await _join(client, active_editor_url, display_name="ActiveEditor")
+    active_editor_token = active_join_resp.json()["session_token"]
+
+    # Backdating session_expires_at directly via DB session
+    result = await db_session.execute(
+        select(Participant).where(Participant.id == expired_pid)
+    )
+    expired_participant = result.scalar_one()
+    expired_participant.session_expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    await db_session.commit()
+
+    resp = await client.get(
+        f"/api/roadmaps/{roadmap_id}/participants", headers=_auth(active_editor_token)
+    )
+    assert resp.status_code == 200, resp.text
+    names = {r["display_name"] for r in resp.json()}
+    assert names == {"Owner", "ActiveEditor"}
 
 
 async def test_viewer_cannot_read_participants(client: AsyncClient):

@@ -99,15 +99,17 @@ export function useImportFlow({
       serverRoadmapId, createLocalRoadmap, onRoadmapImported, onClose, onToast])
 
   const applySafeAdditionsImport = useCallback((pending: PendingImport) => {
-    const { mergedPhases, mergePreview } = pending
-    if (!mergedPhases) return
-    setPhases(mergedPhases)
-    if (setTagRegistry && pending.mergedTagRegistry) {
-      setTagRegistry(pending.mergedTagRegistry)
-    }
+    // Recompute the merge against the roadmap's current state rather than
+    // the snapshot captured when the file was previewed — edits, a realtime
+    // update, or another tab may have changed phases/tagRegistry since then.
+    const importedPhases = pending.result.phases
+    const importedRegistry = pending.result.tagRegistry ?? buildRegistryFromPhases(importedPhases)
+    const mergeResult = applySafeAdditions(phases, importedPhases, tagRegistry, importedRegistry)
+    setPhases(mergeResult.phases)
+    if (setTagRegistry) setTagRegistry(mergeResult.tagRegistry)
     setSaved(false)
-    const pCount = mergePreview?.phasesAdded ?? 0
-    const tCount = mergePreview?.tasksAdded ?? 0
+    const pCount = mergeResult.preview.phasesAdded
+    const tCount = mergeResult.preview.tasksAdded
     if (pCount === 0 && tCount === 0) {
       onToast('No new content to merge — roadmap unchanged.')
     } else {
@@ -116,9 +118,9 @@ export function useImportFlow({
       if (tCount > 0) parts.push(`${tCount} task${tCount !== 1 ? 's' : ''}`)
       onToast(`Merged safe additions: ${parts.join(' and ')} added.`)
     }
-    onRoadmapImported?.(undefined, mergedPhases, pending.mode)
+    onRoadmapImported?.(undefined, mergeResult.phases, pending.mode)
     onClose()
-  }, [setPhases, setSaved, setTagRegistry, onToast, onRoadmapImported, onClose])
+  }, [phases, tagRegistry, setPhases, setSaved, setTagRegistry, onToast, onRoadmapImported, onClose])
 
   const handleImportFile = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -145,16 +147,12 @@ export function useImportFlow({
         }
         const mode = importModeRef.current
 
-        let mergedPhases: Phase[] | undefined
         let mergePreview: PendingImport['mergePreview'] = buildBasicPreview(imported, upgraded.notices)
         let currentStats: PendingImport['currentStats']
 
-        let mergedTagRegistry: TagDefinition[] | undefined
         if (mode === 'safe-additions') {
           const importedRegistry = imported.tagRegistry ?? buildRegistryFromPhases(imported.phases)
           const mergeResult = applySafeAdditions(phases, imported.phases, tagRegistry, importedRegistry)
-          mergedPhases = mergeResult.phases
-          mergedTagRegistry = mergeResult.tagRegistry
           mergePreview = {
             ...mergeResult.preview,
             repairsCount: imported.repairs.length,
@@ -169,15 +167,15 @@ export function useImportFlow({
           }
         }
 
-        // Always show preview before applying (task 2007)
+        // Always show preview before applying (task 2007). The preview merge
+        // above is display-only — handleConfirm recomputes the real merge
+        // against current state so it can't apply a stale snapshot.
         setPendingImport({
           fileName: file.name,
           result: imported,
           mode,
           upgradeNotices: upgraded.notices,
           replaceScope: serverRoadmapId ? 'synced' : 'local',
-          mergedPhases,
-          mergedTagRegistry,
           mergePreview,
           currentStats,
         })

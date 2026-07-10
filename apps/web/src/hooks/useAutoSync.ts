@@ -18,7 +18,7 @@ interface AutoSyncParams {
   pendingActivityChanges: ActivityChange[]
   partialWriteInFlight: boolean
   showActivity: boolean
-  onSyncSuccess: (updatedAt: string) => void
+  onSyncSuccess: (updatedAt: string, isCurrent: boolean) => void
   onActivityRefresh: () => void
   onToast: (msg: string) => void
   onSessionExpired: () => void
@@ -62,6 +62,10 @@ export function useAutoSync({
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Ref prevents concurrent autosync calls without adding isSyncing to effect deps
   const isSyncingRef = useRef(false)
+  // Bumped whenever phases/roadmapName actually change, so an in-flight
+  // request can detect edits made after it captured its snapshot
+  const revisionRef = useRef(0)
+  const lastEditedSnapshotRef = useRef({ phases, roadmapName })
   // Holds latest values so the debounced callback is never stale
   const syncParamsRef = useRef({
     phases,
@@ -102,8 +106,15 @@ export function useAutoSync({
 
   // ─── Debounced autosync for server-backed roadmaps ─────────────────────────
   useEffect(() => {
+    if (phases !== lastEditedSnapshotRef.current.phases || roadmapName !== lastEditedSnapshotRef.current.roadmapName) {
+      revisionRef.current += 1
+      lastEditedSnapshotRef.current = { phases, roadmapName }
+    }
+
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
     if (!serverRoadmapId || !sessionToken || readOnly || saved || partialWriteInFlight) return
+
+    const requestRevision = revisionRef.current
 
     syncTimerRef.current = setTimeout(async () => {
       if (isSyncingRef.current) return
@@ -144,7 +155,7 @@ export function useAutoSync({
       const changeSummary = buildChangeSummary(pac, rid)
       try {
         const data = await saveToServer(rid, n, p, tok, ua, changeSummary, tr)
-        syncSuccess(data.updated_at)
+        syncSuccess(data.updated_at, requestRevision === revisionRef.current)
         setIsOffline(false)
         setIsConflict(false)
         setConflictMetadata(null)

@@ -6,7 +6,7 @@ Extracted from roadmap_service.py (Slice 2).
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant, ShareLink
@@ -16,6 +16,7 @@ from api.schemas.roadmap import (
     ShareLinkResponse,
     ShareRole,
 )
+from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
@@ -264,11 +265,16 @@ async def get_participants_summary(
     """
     await _fetch_active_roadmap_for_sharing(db, roadmap_id)
 
+    now = datetime.now(timezone.utc)
     result = await db.execute(
         select(Participant)
         .where(
             Participant.roadmap_id == roadmap_id,
             Participant.revoked_at.is_(None),
+            or_(
+                Participant.session_expires_at.is_(None),
+                Participant.session_expires_at > now,
+            ),
         )
         .order_by(Participant.created_at.asc())
     )
@@ -323,3 +329,13 @@ async def revoke_participant(
     )
 
     await db.commit()
+
+    await event_bus.publish(Event(
+        roadmap_id=roadmap_id,
+        action="participant.revoked",
+        payload={
+            "roadmap_id": roadmap_id,
+            "participant_id": target.id,
+            "revoked_at": now.isoformat(),
+        }
+    ))
