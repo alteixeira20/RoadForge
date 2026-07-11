@@ -1,6 +1,6 @@
 # Contributing to RoadForge
 
-RoadForge is Public Alpha/WIP software distributed under the PolyForm
+RoadForge is Public Alpha software distributed under the PolyForm
 Noncommercial License 1.0.0. Contributions are welcome under the same repository
 license; commercial use is not granted by contributing.
 

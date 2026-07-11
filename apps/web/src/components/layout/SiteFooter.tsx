@@ -8,7 +8,7 @@ export function SiteFooter() {
       <div className="row">
         <Brand />
         <span style={{ color: 'var(--ink-4)' }}>·</span>
-        <span>Public Alpha · WIP · RoadForge from Anvilary</span>
+        <span>Public Alpha · RoadForge from Anvilary</span>
         <span className="flex-1" />
         <span>Private during alpha · Source release planned for beta</span>
       </div>

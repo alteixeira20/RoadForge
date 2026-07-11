@@ -62,7 +62,7 @@ export function FeaturesSection() {
       </div>
       <div className="gh-cta">
         <div className="gh-cta-text">
-          <strong>Private alpha. Portable JSON. Public source release planned.</strong>
+          <strong>Public Alpha. Portable JSON. Public source release planned.</strong>
           <span>Public Alpha · Future non-commercial source-available release</span>
         </div>
         <span className="btn lg secondary">

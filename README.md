@@ -43,7 +43,7 @@ Assignees and collaborators are separate concepts:
 
 ## Security note
 
-RoadForge is built with a security-first mindset, but remains alpha/WIP software.
+RoadForge is built with a security-first mindset, but remains Public Alpha software.
 
 CI defines dependency, lint, test, migration, and build gates. Those checks are
 point-in-time evidence and must be rerun for each release candidate. See
