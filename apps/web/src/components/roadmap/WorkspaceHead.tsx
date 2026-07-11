@@ -13,6 +13,7 @@ interface WorkspaceHeadProps {
   canRename?: boolean
   maxNameLength?: number
   onRename?: (name: string) => boolean
+  isSample?: boolean
 }
 
 export function WorkspaceHead({
@@ -25,6 +26,7 @@ export function WorkspaceHead({
   canRename = false,
   maxNameLength,
   onRename,
+  isSample = false,
 }: WorkspaceHeadProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [draftName, setDraftName] = useState(roadmapName)
@@ -110,7 +112,14 @@ export function WorkspaceHead({
               }}
             />
           ) : (
-            <span>{roadmapName}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+              <span>{roadmapName}</span>
+              {isSample && (
+                <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ink-2)', background: 'var(--bg-3)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center' }}>
+                  Sample Roadmap
+                </span>
+              )}
+            </span>
           )}
         </h1>
         {canRename && !isEditing && (

@@ -42,6 +42,7 @@ interface HydrationMetadataStateSetters {
   setIsPasswordEnabledState: Dispatch<SetStateAction<boolean>>
   setOwnerDisplayNameState: Dispatch<SetStateAction<string | null>>
   setUpdatedAtState: Dispatch<SetStateAction<string | null>>
+  setIsSampleState: Dispatch<SetStateAction<boolean>>
 }
 
 interface HydrationLifecycleStateSetters {
@@ -108,6 +109,7 @@ function buildSampleCache(): RoadmapCache {
     ownerDisplayName: null,
     updatedAt: null,
     isPasswordEnabled: false,
+    isSample: true,
   }
 }
 
@@ -138,6 +140,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     setIsPasswordEnabledState,
     setOwnerDisplayNameState,
     setUpdatedAtState,
+    setIsSampleState,
   } = metadataState
   const {
     setLocks,
@@ -192,6 +195,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     setIsPasswordEnabledState(cache.isPasswordEnabled)
     setOwnerDisplayNameState(cache.ownerDisplayName)
     setUpdatedAtState(cache.updatedAt)
+    setIsSampleState(cache.isSample ?? false)
   }, [
     setActiveRoadmapIdState,
     setRoadmapUpgradeNotice,
@@ -206,6 +210,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     setIsPasswordEnabledState,
     setOwnerDisplayNameState,
     setUpdatedAtState,
+    setIsSampleState,
   ])
 
   const loadRoadmapIntoState = useCallback((targetId: string, cancelled: { value: boolean }) => {
@@ -252,6 +257,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
       setOwnerDisplayNameState(cacheToLoad.ownerDisplayName)
       setUpdatedAtState(cacheToLoad.updatedAt)
       setIsPasswordEnabledState(cacheToLoad.isPasswordEnabled)
+      setIsSampleState(cacheToLoad.isSample ?? false)
       const cachedRegistry = cacheToLoad.tagRegistry ?? []
       const registryToLoad = cachedRegistry.length > 0
         ? cachedRegistry
@@ -292,6 +298,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
           setOwnerDisplayNameState(loaded.ownerDisplayName)
           setUpdatedAtState(loaded.updatedAt)
           setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
+          setIsSampleState(false)
           setSavedState(nextSaved)
           const serverRegistry = loaded.tagRegistry ?? []
           const nextRegistry = serverRegistry.length > 0
@@ -360,6 +367,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     setSessionTokenState,
     setParticipantIdState,
     setRoleState,
+    setIsSampleState,
   ])
 
   // Mount-time hydration effect

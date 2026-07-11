@@ -308,6 +308,71 @@ describe('storage', () => {
       expect(window.localStorage.getItem('rf:ui:rm-1')).not.toBeNull()
       expect(window.localStorage.getItem('rf:roadmap:rm-1')).toBeNull()
     })
+
+    it('accepts UI state with isOnboardingDismissed', () => {
+      const state = {
+        schemaVersion: 1 as const,
+        openPhaseIds: [],
+        expandedTaskId: null,
+        isOnboardingDismissed: true,
+        updatedAt: '2025-01-01T00:00:00Z',
+      }
+      storage.setRoadmapUiState('rm-1', state)
+      expect(storage.getRoadmapUiState('rm-1')).toEqual(state)
+    })
+
+    it('returns null when isOnboardingDismissed is not a boolean', () => {
+      window.localStorage.setItem('rf:ui:rm-x', JSON.stringify({
+        schemaVersion: 1,
+        openPhaseIds: [],
+        expandedTaskId: null,
+        isOnboardingDismissed: 'not-a-boolean',
+        updatedAt: '',
+      }))
+      expect(storage.getRoadmapUiState('rm-x')).toBeNull()
+    })
+  })
+
+  describe('onboarding dismissal', () => {
+    it('hasDismissedOnboarding returns false when no UI state has dismissed onboarding', () => {
+      expect(storage.hasDismissedOnboarding()).toBe(false)
+
+      const state = {
+        schemaVersion: 1 as const,
+        openPhaseIds: [],
+        expandedTaskId: null,
+        isOnboardingDismissed: false,
+        updatedAt: '2025-01-01T00:00:00Z',
+      }
+      storage.setRoadmapUiState('rm-1', state)
+      expect(storage.hasDismissedOnboarding()).toBe(false)
+    })
+
+    it('hasDismissedOnboarding returns true if any UI state has isOnboardingDismissed === true', () => {
+      const state1 = {
+        schemaVersion: 1 as const,
+        openPhaseIds: [],
+        expandedTaskId: null,
+        isOnboardingDismissed: false,
+        updatedAt: '2025-01-01T00:00:00Z',
+      }
+      const state2 = {
+        schemaVersion: 1 as const,
+        openPhaseIds: [],
+        expandedTaskId: null,
+        isOnboardingDismissed: true,
+        updatedAt: '2025-01-01T00:00:00Z',
+      }
+      storage.setRoadmapUiState('rm-1', state1)
+      storage.setRoadmapUiState('rm-2', state2)
+      expect(storage.hasDismissedOnboarding()).toBe(true)
+    })
+
+    it('setOnboardingDismissed sets and persists onboarding dismissal', () => {
+      storage.setOnboardingDismissed('rm-1', true)
+      expect(storage.getRoadmapUiState('rm-1')?.isOnboardingDismissed).toBe(true)
+      expect(storage.hasDismissedOnboarding()).toBe(true)
+    })
   })
 
   describe('setActiveRoadmapId / getActiveRoadmapId', () => {

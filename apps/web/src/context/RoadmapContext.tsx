@@ -34,6 +34,8 @@ interface RoadmapDataContextValue {
   setUpdatedAt: (value: string | null) => void
   tagRegistry: TagDefinition[]
   setTagRegistry: (registry: TagDefinition[]) => void
+  isSample: boolean
+  setIsSample: (value: boolean) => void
 }
 
 interface RoadmapSessionContextValue {
@@ -93,6 +95,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [ownerDisplayName, setOwnerDisplayNameState] = useState<string | null>(null)
   const [updatedAt, setUpdatedAtState] = useState<string | null>(null)
   const [tagRegistry, setTagRegistryState] = useState<TagDefinition[]>([])
+  const [isSample, setIsSample] = useState(false)
   const [locks, setLocks] = useState<Record<string, { participantId: string; displayName: string }>>({})
   const [activeRoadmapId, setActiveRoadmapIdState] = useState<string | null>(null)
   const [roadmapUpgradeNotice, setRoadmapUpgradeNotice] = useState<RoadmapUpgradeState | null>(null)
@@ -130,6 +133,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       setIsPasswordEnabledState,
       setOwnerDisplayNameState,
       setUpdatedAtState,
+      setIsSampleState: setIsSample,
     },
     lifecycleState: {
       setLocks,
@@ -333,6 +337,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     ownerDisplayName, setOwnerDisplayName,
     updatedAt, setUpdatedAt,
     tagRegistry, setTagRegistry,
+    isSample, setIsSample,
   }), [
     displayName,
     setDisplayName,
@@ -350,6 +355,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setUpdatedAt,
     tagRegistry,
     setTagRegistry,
+    isSample,
+    setIsSample,
   ])
 
   const sessionValue = useMemo<RoadmapSessionContextValue>(() => ({

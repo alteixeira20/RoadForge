@@ -28,6 +28,7 @@ export interface RoadmapCache {
   updatedAt: string | null
   isPasswordEnabled: boolean
   tagRegistry?: TagDefinition[]
+  isSample?: boolean
 }
 
 export interface AuthCache {
@@ -42,6 +43,7 @@ export interface RoadmapUiState {
   openPhaseIds: string[]
   expandedTaskId: string | null
   dismissedUpgradeNoticeSignature?: string
+  isOnboardingDismissed?: boolean
   updatedAt: string
 }
 
@@ -56,6 +58,7 @@ function parseRoadmapUiState(value: unknown): RoadmapUiState | null {
     v.dismissedUpgradeNoticeSignature !== undefined &&
     typeof v.dismissedUpgradeNoticeSignature !== 'string'
   ) return null
+  if (v.isOnboardingDismissed !== undefined && typeof v.isOnboardingDismissed !== 'boolean') return null
   if (typeof v.updatedAt !== 'string') return null
 
   const state: RoadmapUiState = {
@@ -66,6 +69,9 @@ function parseRoadmapUiState(value: unknown): RoadmapUiState | null {
   }
   if (typeof v.dismissedUpgradeNoticeSignature === 'string') {
     state.dismissedUpgradeNoticeSignature = v.dismissedUpgradeNoticeSignature
+  }
+  if (typeof v.isOnboardingDismissed === 'boolean') {
+    state.isOnboardingDismissed = v.isOnboardingDismissed
   }
   return state
 }
@@ -259,6 +265,39 @@ export const storage = {
   },
   clearRoadmapUiState(id: string): void {
     removeLocal(`rf:ui:${id}`)
+  },
+
+  hasDismissedOnboarding(): boolean {
+    if (typeof window === 'undefined') return false
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i)
+      if (key && key.startsWith('rf:ui:')) {
+        const raw = getLocal(key)
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw) as Record<string, unknown>
+            if (parsed.isOnboardingDismissed === true) {
+              return true
+            }
+          } catch {}
+        }
+      }
+    }
+    return false
+  },
+
+  setOnboardingDismissed(id: string, dismissed: boolean): void {
+    const current = this.getRoadmapUiState(id) ?? {
+      schemaVersion: 1,
+      openPhaseIds: [],
+      expandedTaskId: null,
+      updatedAt: new Date().toISOString(),
+    }
+    this.setRoadmapUiState(id, {
+      ...current,
+      isOnboardingDismissed: dismissed,
+      updatedAt: new Date().toISOString(),
+    })
   },
 
   migrateLegacyStorageIfNeeded(): string | null {

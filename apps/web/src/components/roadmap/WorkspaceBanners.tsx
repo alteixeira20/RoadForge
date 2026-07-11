@@ -108,3 +108,42 @@ export function WorkspaceUpgradeNotice({
     </div>
   )
 }
+
+interface WorkspaceWelcomeBannerProps {
+  onDismiss: () => void
+  onCreateOwn: () => void
+}
+
+export function WorkspaceWelcomeBanner({
+  onDismiss,
+  onCreateOwn,
+}: WorkspaceWelcomeBannerProps) {
+  return (
+    <div className="upgrade-notice" role="status" aria-label="Welcome to RoadForge Onboarding">
+      <div className="upgrade-notice-icon">
+        <Icon name="spark" size={16} />
+      </div>
+      <div className="upgrade-notice-copy" style={{ gap: '6px' }}>
+        <strong>Welcome to RoadForge!</strong>
+        <span>
+          RoadForge is a collaborative planner where teams and individuals build, organize, and track project roadmaps.
+        </span>
+        <ul style={{ margin: '4px 0 8px', paddingLeft: '20px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <li><strong>No accounts required:</strong> Start planning immediately without any signup.</li>
+          <li><strong>Private local draft:</strong> Your roadmaps live privately in your browser until you choose to save or share.</li>
+          <li><strong>Easy collaboration:</strong> Share roadmaps using secure invite links with viewer or editor roles.</li>
+        </ul>
+        <div style={{ marginTop: '4px' }}>
+          <button type="button" className="btn sm primary" onClick={onCreateOwn}>
+            <Icon name="plus" size={13} /> Create New Roadmap
+          </button>
+        </div>
+      </div>
+      <div className="upgrade-notice-actions">
+        <button type="button" className="iconbtn" aria-label="Dismiss welcome onboarding banner" onClick={onDismiss}>
+          <Icon name="x" size={15} />
+        </button>
+      </div>
+    </div>
+  )
+}

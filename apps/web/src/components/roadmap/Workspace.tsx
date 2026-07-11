@@ -8,7 +8,7 @@ import { AppHeader } from '@/components/layout/AppHeader'
 import { WorkspaceHead } from './WorkspaceHead'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
 import { PhaseList } from './PhaseList'
-import { WorkspaceBanners, WorkspaceUpgradeNotice } from './WorkspaceBanners'
+import { WorkspaceBanners, WorkspaceUpgradeNotice, WorkspaceWelcomeBanner } from './WorkspaceBanners'
 import { WorkspaceModals } from './WorkspaceModals'
 import { SyncConflictReviewPanel } from './SyncConflictReviewPanel'
 import { ActivityPanel } from './ActivityPanel'
@@ -35,6 +35,7 @@ import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import type { ImportMode } from '@/lib/import-merge/types'
 import { resolveWorkspaceSyncStatus } from '@/lib/sync-status'
 import type { WorkspaceMode, Phase as PhaseType, Roadmap, RoadmapConflictMetadata } from '@/types/roadmap'
+import { storage } from '@/lib/storage'
 
 interface WorkspaceProps {
   mode?: WorkspaceMode
@@ -74,6 +75,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setOwnerDisplayName,
     updatedAt,
     setUpdatedAt,
+    isSample,
   } = useRoadmapData()
   const {
     serverRoadmapId,
@@ -116,6 +118,23 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(() => !storage.hasDismissedOnboarding())
+
+  const handleDismissOnboarding = () => {
+    setShowOnboarding(false)
+    if (activeRoadmapId) {
+      storage.setOnboardingDismissed(activeRoadmapId, true)
+    }
+  }
+
+  const handleCreateOwn = () => {
+    if (activeRoadmapId) {
+      storage.setOnboardingDismissed(activeRoadmapId, true)
+    }
+    setShowOnboarding(false)
+    onCreateOwn?.()
+  }
+
   const taskDoneSuccessRef = useRef<() => void>(() => {})
   const taskDoneConflictRef = useRef<(metadata: RoadmapConflictMetadata | null) => void>(() => {})
   const taskDoneSessionExpiredRef = useRef<() => void>(() => {})
@@ -427,6 +446,12 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       />
 
       <div className="workspace">
+        {showOnboarding && (
+          <WorkspaceWelcomeBanner
+            onDismiss={handleDismissOnboarding}
+            onCreateOwn={handleCreateOwn}
+          />
+        )}
         <WorkspaceUpgradeNotice
           roadmapUpgradeNotice={roadmapUpgradeNotice}
           onDismissUpgradeNotice={dismissRoadmapUpgradeNotice}
@@ -441,6 +466,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           canRename={canRenameRoadmap}
           maxNameLength={ROADMAP_NAME_MAX}
           onRename={handleRenameRoadmap}
+          isSample={isSample}
         />
         <WorkspaceToolbar
           filterState={filterState}
