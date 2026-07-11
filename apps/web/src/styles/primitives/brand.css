@@ -19,3 +19,35 @@
   opacity: 0.95;
 }
 .brand .mark svg { position: relative; z-index: 1; }
+
+.brand-logo {
+  width: 24px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.brand-logo img {
+  grid-area: 1 / 1;
+  width: 24px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+}
+
+.brand-logo-default {
+  display: none;
+}
+
+.brand-logo-white {
+  display: block;
+}
+
+[data-theme="light"] .brand-logo-default {
+  display: block;
+}
+
+[data-theme="light"] .brand-logo-white {
+  display: none;
+}

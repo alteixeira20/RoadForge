@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { canRestoreFocus, trapDialogTabFocus } from '@/lib/dialog-focus'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
 
@@ -22,49 +23,6 @@ interface ModalProps {
   role?: 'dialog' | 'alertdialog'
 }
 
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'textarea:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',')
-
-function trapTabFocus(e: KeyboardEvent, dialog: HTMLDivElement | null) {
-  if (!dialog) return
-  const focusable = Array.from(
-    dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-  ).filter((el) => {
-    const isJsDom = typeof navigator !== 'undefined' && navigator.userAgent?.includes('jsdom')
-    const isVisible = el.offsetParent !== null || el.offsetWidth > 0 || el.offsetHeight > 0 || isJsDom
-    return isVisible || el === document.activeElement
-  })
-  if (focusable.length === 0) {
-    e.preventDefault()
-    dialog.focus()
-    return
-  }
-  const first = focusable[0]
-  const last = focusable[focusable.length - 1]
-  const active = document.activeElement
-  const insideDialog = active instanceof Node && dialog.contains(active)
-  if (!insideDialog) {
-    e.preventDefault()
-    ;(e.shiftKey ? last : first).focus()
-    return
-  }
-  if (e.shiftKey) {
-    if (active === first || active === dialog) {
-      e.preventDefault()
-      last.focus()
-    }
-  } else if (active === last) {
-    e.preventDefault()
-    first.focus()
-  }
-}
-
 export function Modal({ open, onClose, icon, title, sub, describedBy, children, footer, width, role = 'dialog' }: ModalProps) {
   const titleId = useId()
   const descriptionId = useId()
@@ -76,29 +34,34 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
 
   useEffect(() => {
     if (!open) return
+    const dialog = dialogRef.current
+    if (!dialog) return
+
     const previouslyFocused = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null
     const focusFrame = window.requestAnimationFrame(() => {
-      if (dialogRef.current && !dialogRef.current.contains(document.activeElement)) {
-        dialogRef.current.focus()
+      if (!dialog.contains(document.activeElement)) {
+        dialog.focus()
       }
     })
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (e.defaultPrevented) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (event.defaultPrevented) return
         onClose()
         return
       }
-      if (e.key === 'Tab') trapTabFocus(e, dialogRef.current)
+      if (event.key === 'Tab') trapDialogTabFocus(event, dialog)
     }
     window.addEventListener('keydown', onKey)
+
     return () => {
       window.cancelAnimationFrame(focusFrame)
       window.removeEventListener('keydown', onKey)
-      if (previouslyFocused?.isConnected) {
+
+      if (canRestoreFocus(previouslyFocused)) {
         const currentActive = document.activeElement
-        const focusInside = currentActive && dialogRef.current?.contains(currentActive)
+        const focusInside = currentActive instanceof Node && dialog.contains(currentActive)
         const focusOnBody = currentActive === document.body
         if (focusInside || focusOnBody || !currentActive) {
           previouslyFocused.focus()

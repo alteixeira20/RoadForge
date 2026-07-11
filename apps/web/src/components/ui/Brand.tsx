@@ -28,34 +28,6 @@ export function Brand({ href, className = 'brand' }: BrandProps) {
         />
       </span>
       <span>RoadForge</span>
-      <style jsx>{`
-        .brand-logo {
-          width: 24px;
-          height: 28px;
-          display: inline-grid;
-          place-items: center;
-          flex: 0 0 auto;
-        }
-        .brand-logo :global(img) {
-          grid-area: 1 / 1;
-          width: 24px;
-          height: 28px;
-          object-fit: contain;
-          display: block;
-        }
-        :global(.brand-logo-default) {
-          display: none;
-        }
-        :global(.brand-logo-white) {
-          display: block;
-        }
-        :global([data-theme="light"]) :global(.brand-logo-default) {
-          display: block;
-        }
-        :global([data-theme="light"]) :global(.brand-logo-white) {
-          display: none;
-        }
-      `}</style>
     </>
   )
 
