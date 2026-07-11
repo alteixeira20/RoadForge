@@ -1425,7 +1425,7 @@
         {
           "id": "RF-1101",
           "title": "Break lib import cycles in the import/validation path",
-          "done": false,
+          "done": true,
           "est": "5h",
           "tags": [
             "frontend",
@@ -1438,12 +1438,12 @@
           "deps": [
             "RF-901"
           ],
-          "desc": "**Why**\nThe import/validation path is the safety net for portable roadmap data. Import cycles there make every change riskier and can hide initialization-order bugs.\n\n\n**Finding**\nGraphify confirms two cycles: import-merge/types.ts -> roadmap-validation.ts -> tag-registry.ts -> types.ts, and the 4-file variant through roadmap-upgrade.ts.\n\n\n**Acceptance criteria**\n- [ ] Both cycles removed (extract shared types or invert one dependency).\n- [ ] No behavior change; import/export/upgrade tests stay green.\n- [ ] No new barrel or god module introduced to 'solve' the cycle.\n\n\n**Validation / gate**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**Risk**\nType extraction rippling through many imports - keep the slice mechanical and behavior-preserving.\n\n\n**Evidence**\nGRAPH_REPORT Import Cycles section.\n\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nThe import/validation path is the safety net for portable roadmap data. Import cycles there make every change riskier and can hide initialization-order bugs.\n\n\n**Finding**\nGraphify confirms two cycles: import-merge/types.ts -> roadmap-validation.ts -> tag-registry.ts -> types.ts, and the 4-file variant through roadmap-upgrade.ts.\n\n\n**Acceptance criteria**\n- [x] Both cycles removed (extract shared types or invert one dependency).\n- [x] No behavior change; import/export/upgrade tests stay green.\n- [x] No new barrel or god module introduced to 'solve' the cycle.\n\n\n**Closure**\nExtracted ConflictType/EntityKind/TaskFieldDiff/ImportConflict into import-merge/conflict-types.ts (zero imports). tag-registry.ts now imports from conflict-types.ts instead of types.ts; types.ts re-exports for API compat. Static cycle checker confirms 0 cycles after vs 1 before. 320/320 tests pass, lint/typecheck/build clean.\n\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-1102",
           "title": "Split roadmap-validation.ts by responsibility",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "frontend",
@@ -1455,7 +1455,7 @@
           "deps": [
             "RF-1101"
           ],
-          "desc": "**Why**\nroadmap-validation.ts is the largest module in the codebase and now owns import repair plus GitHub link parsing/normalization - two distinct responsibilities in the highest-stakes file.\n\n\n**Finding**\nTop-of-list in the graph's file-size scan (42 nodes); community 4 shows link parsing (canonicalUrl, CREDENTIAL_QUERY_KEYS, ExternalLinkParse*) living beside validation.\n\n\n**Acceptance criteria**\n- [ ] Link parsing/normalization extracted to its own module; validation re-exports nothing it does not own.\n- [ ] Public function signatures preserved for existing importers.\n- [ ] Validation and link tests pass unchanged.\n\n\n**Validation / gate**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**Risk**\nSubtle behavior drift in import repair - move code, do not rewrite it.\n\n\n**Evidence**\ngraph.json file node-count scan; GRAPH_REPORT community 4.\n\n\n**Classification**\nconfirmed (size), likely (split boundary)"
+          "desc": "**Why**\nroadmap-validation.ts is the largest module in the codebase and now owns import repair plus GitHub link parsing/normalization - two distinct responsibilities in the highest-stakes file.\n\n\n**Finding**\nTop-of-list in the graph's file-size scan (42 nodes); community 4 shows link parsing (canonicalUrl, CREDENTIAL_QUERY_KEYS, ExternalLinkParse*) living beside validation.\n\n\n**Acceptance criteria**\n- [x] Link parsing/normalization extracted to its own module; validation re-exports nothing it does not own.\n- [x] Public function signatures preserved for existing importers.\n- [x] Validation and link tests pass unchanged.\n\n\n**Closure**\nExtracted normalizeLinkRecord, linkRecordMatches, normalizeTaskLinks, validateTaskLinks, TASK_LINK_KEYS, TASK_LINKS_MAX into task-link-validation.ts. roadmap-validation.ts no longer imports from github-links.ts. File reduced from 892 to 813 lines. All 320 tests pass, lint/typecheck/build clean.\n\n\n**Classification**\nconfirmed (size), likely (split boundary)"
         },
         {
           "id": "RF-1103",
