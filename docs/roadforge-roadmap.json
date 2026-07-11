@@ -1312,7 +1312,7 @@
       "color": "#c96f85",
       "colorMode": "manual",
       "status": "next",
-      "progress": 0,
+      "progress": 50,
       "tasks": [
         {
           "id": "RF-1001",
@@ -1383,7 +1383,7 @@
         {
           "id": "RF-1005",
           "title": "Implement or remove Markdown/PDF export stubs",
-          "done": false,
+          "done": true,
           "est": "1d",
           "tags": [
             "frontend",
@@ -1394,12 +1394,12 @@
           "deps": [
             "RF-901"
           ],
-          "desc": "**Why**\nExport buttons that only show a toast look broken in a public alpha. Either ship Markdown export (cheap, client-side, fits local-first) or remove the stubs until post-alpha.\n\n\n**Finding**\nFrontend wiring table lists Markdown/PDF export as 'Not implemented (toasts)'; the graph has no export-markdown/pdf nodes.\n\n\n**Acceptance criteria**\n- [ ] Decision recorded: implement Markdown now, defer PDF, or remove both stubs.\n- [ ] If implemented: client-side only, no new dependencies without instruction, round-trip-safe content.\n- [ ] No dead 'coming soon' toasts remain on shipped buttons.\n\n\n**Validation / gate**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**Risk**\nPDF generation pulling in heavy dependencies - default to Markdown-only for alpha.\n\n\n**Evidence**\ngraph.json label scan for export markdown/pdf (0 hits); CLAUDE.md wiring table.\n\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nExport buttons that only show a toast look broken in a public alpha. Either ship Markdown export (cheap, client-side, fits local-first) or remove the stubs until post-alpha.\n\n\n**Finding**\nFrontend wiring table lists Markdown/PDF export as 'Not implemented (toasts)'; the graph has no export-markdown/pdf nodes.\n\n\n**Acceptance criteria**\n- [ ] Decision recorded: implement Markdown now, defer PDF, or remove both stubs.\n- [ ] If implemented: client-side only, no new dependencies without instruction, round-trip-safe content.\n- [ ] No dead 'coming soon' toasts remain on shipped buttons.\n\n\n**Validation / gate**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`.\n\n\n**Risk**\nPDF generation pulling in heavy dependencies - default to Markdown-only for alpha.\n\n\n**Evidence**\ngraph.json label scan for export markdown/pdf (0 hits); CLAUDE.md wiring table.\n\n\n**Classification**\nconfirmed\n\n\n**Closure 2026-07-11**\n- Decision: ship deterministic client-side Markdown export for Public Alpha and defer PDF without exposing a dead PDF control.\n- Implementation: readable phase/task/subtask output preserves roadmap ordering, status, progress, done/next state, planning metadata, descriptions, dependencies, and credential-free external links.\n- Safety: JSON remains the canonical portable and importable format. Markdown is presentation-only and excludes RoadForge session, invite, password, browser-authentication, and volatile claim state.\n- Validation: 358 web tests, lint, typecheck, production build, 211 API tests, and the full release-check passed.\n- Implementation commit: `60aded22`."
         },
         {
           "id": "RF-1006",
           "title": "Docs cleanup: remove obsolete integration guidance (RF-AUD-012)",
-          "done": false,
+          "done": true,
           "est": "2h",
           "tags": [
             "docs",
@@ -1409,7 +1409,7 @@
           "deps": [
             "RF-901"
           ],
-          "desc": "**Why**\nDocs are the contract for future coding agents; obsolete guidance produces confidently wrong changes.\n\n\n**Finding**\nRF-AUD-012 'Obsolete Integration Guidance in Docs' in the project audit; the audit also references a retired implementation-planning doc.\n\n\n**Acceptance criteria**\n- [ ] Obsolete guidance removed or clearly marked superseded with a pointer to the current doc.\n- [ ] CLAUDE.md wiring table updated to match verified reality from RF-901.\n\n\n**Validation / gate**\nReview only; no code changes in this task.\n\n\n**Risk**\nDeleting context still referenced elsewhere - prefer 'superseded by' notes over silent deletion.\n\n\n**Evidence**\ngraph.json RF-AUD-012 node; 'Implementation Planning (Retired)' node.\n\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nDocs are the contract for future coding agents; obsolete guidance produces confidently wrong changes.\n\n\n**Finding**\nRF-AUD-012 'Obsolete Integration Guidance in Docs' in the project audit; the audit also references a retired implementation-planning doc.\n\n\n**Acceptance criteria**\n- [ ] Obsolete guidance removed or clearly marked superseded with a pointer to the current doc.\n- [ ] CLAUDE.md wiring table updated to match verified reality from RF-901.\n\n\n**Validation / gate**\nReview only; no code changes in this task.\n\n\n**Risk**\nDeleting context still referenced elsewhere - prefer 'superseded by' notes over silent deletion.\n\n\n**Evidence**\ngraph.json RF-AUD-012 node; 'Implementation Planning (Retired)' node.\n\n\n**Classification**\nconfirmed\n\n\n**Closure 2026-07-11**\n- Corrected obsolete or contradictory guidance across CLAUDE.md, README, backend/frontend documentation, manual QA, and the dated pre-QA decision record.\n- Documentation now reflects the verified invite/session access model, existing SSE/Redis realtime design, generic task PATCH endpoint, five-step creation wizard, and Markdown/PDF export decision.\n- Validation: direct documentation review plus the complete repository release-check.\n- Documentation commit: `fea02c38`."
         }
       ]
     },
