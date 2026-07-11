@@ -53,7 +53,7 @@ Old roadmap snapshots pass through `roadmap-upgrade.ts` before rendering.
 
 Only modules under `src/services/` call `fetch()`:
 
-- `roadmap-crud.service.ts` — roadmap CRUD, versions, task state, tags, import/export;
+- `roadmap-crud.service.ts` - roadmap CRUD, versions, task state, tags, and canonical JSON export;
 - `roadmap-sharing.service.ts` — join, share links, and participants;
 - `roadmap-locks.service.ts` — lock acquire/release/list;
 - `roadmap-realtime.service.ts` — event tickets and SSE setup;
@@ -69,7 +69,11 @@ shapes, previews replace/merge effects, and never requires a backend endpoint. I
 accepts current `roadforge.*` and legacy `anvilary.*` schema IDs. Exports retain the
 legacy `anvilary.roadmap.export` ID so older RoadForge deployments can read new files.
 
-Markdown and PDF export are not implemented.
+Markdown export is produced by `src/lib/roadmap-markdown.ts` as a deterministic
+client-side presentation format. It preserves phase/task order and user-authored task
+descriptions, includes planning metadata, omits session and volatile claim state, and
+cannot be imported. PDF export is deferred and has no control in the Public Alpha UI.
+JSON remains the canonical portable and importable format.
 
 ## Collaboration behavior
 

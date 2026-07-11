@@ -72,6 +72,7 @@ All errors use FastAPI's default shape:
 |---|---|
 | `GET /api/roadmaps/{id}` | owner, editor, or viewer |
 | `PUT /api/roadmaps/{id}` | owner or editor |
+| `PATCH /api/roadmaps/{id}/tasks/{task_id}` | owner or editor |
 | `PATCH /api/roadmaps/{id}/tasks/{task_id}/done` | owner or editor |
 | `PATCH /api/roadmaps/{id}/tasks/{task_id}/claim` | owner or editor |
 | `DELETE /api/roadmaps/{id}/tasks/{task_id}/claim` | owner or editor |
@@ -348,6 +349,41 @@ Batch `change_summary` example:
 `summary.phase_ids` and `summary.task_ids` list IDs present in one version but not the other (symmetric difference).
 
 **Response 404:** Roadmap not found.
+
+---
+
+### PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}
+
+Update one or more editable task planning fields without replacing the full roadmap
+snapshot. Supported fields are `title`, `desc`, `est`, `assignees`, `tags`, and
+credential-free `links`. The write uses optimistic concurrency, records a
+`task.updated` activity entry, synchronizes the relational projection, and publishes
+a `roadmap.updated` event when a field changes.
+
+**Auth:** owner or editor.
+
+**Request:**
+```json
+{
+  "title": "Document Markdown export",
+  "est": "2h",
+  "assignees": ["Ada"],
+  "tags": ["docs"],
+  "links": [],
+  "last_updated_at": "2026-05-08T10:00:00Z"
+}
+```
+
+At least one editable task field is required. `title` and `links` cannot be null.
+`last_updated_at` is required; a newer server roadmap returns the same structured
+409 conflict shape as `PUT /api/roadmaps/{roadmap_id}`. A no-op patch returns the
+current roadmap without creating activity or publishing an event.
+
+**Response 200:** Same shape as `GET /api/roadmaps/{roadmap_id}`.
+
+**Response 404:** Task not found.
+
+**Response 422:** No editable field supplied or a field fails validation.
 
 ---
 

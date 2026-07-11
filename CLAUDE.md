@@ -47,7 +47,7 @@ apps/web/src/
 │   ├── roadmap/    # Workspace, Phase, TaskRow, sub-components
 │   ├── share/      # SaveToServerModal, ShareModal, IOModal
 │   ├── ui/         # Icon, Modal, Brand, Toast, ThemeToggle
-│   └── wizard/     # CreateWizard (4-step form)
+│   └── wizard/     # CreateWizard (5-step form)
 ├── context/        # RoadmapContext, ThemeContext
 ├── data/           # sample-roadmap.ts, EXPORT_OPTIONS
 ├── hooks/          # useWorkspaceModals, usePhaseCollapse, usePhaseSearch, useToastState
@@ -59,8 +59,8 @@ apps/web/src/
 
 ## Hard rules — do not do these unless explicitly instructed
 
-- Do not add user accounts, login, sessions, or auth tokens
-- Do not add WebSocket or real-time collaboration infrastructure
+- Do not add user accounts, email/password login, OAuth, or replace the existing invite/session-token access model
+- Do not replace the existing SSE and Redis realtime design or add WebSockets
 - Do not create API routes (`app/api/`)
 - Do not redesign the UI or rename CSS classes
 - Do not install packages without explicit instruction
@@ -86,6 +86,7 @@ POST   /api/roadmaps                                          create roadmap
 POST   /api/roadmaps/join                                     accept invite token
 GET    /api/roadmaps/{roadmap_id}                             fetch roadmap + phases
 PUT    /api/roadmaps/{roadmap_id}                             update name and/or phases
+PATCH  /api/roadmaps/{roadmap_id}/tasks/{task_id}             update task planning fields
 PATCH  /api/roadmaps/{roadmap_id}/tasks/{task_id}/done        set task completion
 PATCH  /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim       claim task
 DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim       release task claim
@@ -131,18 +132,23 @@ in `routers/roadmaps.py` remain thin wrappers. Note: `/join` must be registered 
 | Reload server roadmap on app refresh → GET /api/roadmaps/{id} | Wired (non-fatal) |
 | Password field in Save flow | Wired |
 | Session token sent as bearer on requests | Wired |
-| Import auto-repair pipeline (roadmap-validation.ts) | Wired |
+| JSON import auto-repair pipeline (roadmap-validation.ts) | Wired |
+| JSON export | Wired; canonical portable and importable format |
+| Markdown export | Wired; deterministic client-side presentation format |
+| PDF export | Deferred; absent from the Public Alpha UI |
 | Roadmap schema auto-upgrade (roadmap-upgrade.ts) | Wired |
 | Public read-only viewer/demo link | Wired |
 | Team main workspace view for participants | Wired for synced owner/editor roadmaps |
 | Editor participant summaries for assignee suggestions | Wired |
 | Editor read-only version history | Wired |
+| Task field PATCH partial writes | Wired |
 | Task done/claim partial writes | Wired |
+| URL-only GitHub and generic task links | Wired; no provider metadata fetching |
+| Redis-backed SSE realtime | Wired for safe multi-worker mode |
 | Tag registry partial writes | Wired |
 | Inline roadmap title rename | Wired |
 | Phase reorder renumbering | Wired |
 | Responsive header — More menu collapses secondary actions ≤640px | Wired |
-| Markdown/PDF export | Not implemented (toasts) |
 
 ## Service layer conventions
 
@@ -209,7 +215,7 @@ Current roadmap upgrade behavior also repairs older phase/task shapes: missing/n
 - The frontend works fully without the backend running
 - `RoadmapContext` falls back to `SAMPLE_ROADMAP` when no localStorage state exists
 - Backend calls happen only after user-initiated actions (Save, Share rotate/revoke, Join)
-- JSON export/import run entirely client-side
+- JSON import/export and Markdown export run entirely client-side; only JSON is importable
 
 ## Backend structure
 
@@ -240,13 +246,17 @@ apps/api/
         ├── id_service.py        # generate_id(prefix)
         ├── token_service.py     # generate_token, hash_token, token_prefix
         ├── password_service.py  # hash_password, verify_password (PBKDF2-SHA256)
-        └── roadmap_service.py   # All business logic
+        ├── roadmap_service.py        # Aggregate roadmap CRUD
+        ├── roadmap_task_service.py   # Task PATCH, done, and claim operations
+        ├── roadmap_tag_service.py    # Tag registry operations
+        ├── sharing_service.py        # Share links and participants
+        └── version_service.py        # Version history and restore
 ```
 
 ## Hard rules for backend — do not do these unless explicitly instructed
 
-- Do not add user accounts, email, or authentication middleware
-- Do not add WebSockets or real-time collaboration
+- Do not add user accounts, email/password login, OAuth, or a second authentication model
+- Do not replace the existing SSE and Redis realtime design or add WebSockets
 - Do not install packages without explicit instruction
 
 ## Commit hygiene

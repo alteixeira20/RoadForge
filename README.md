@@ -39,6 +39,13 @@ Assignees and collaborators are separate concepts:
 - **Assignees** are task-local names used for filters and workload views. They can exist in local-only roadmaps.
 - **Participants / collaborators** are server-side joined users with roles and sessions. Team management is shown only for synced owner roadmaps.
 
+## Portable exports
+
+- **JSON** - canonical portable backup and import format, including phases, tasks, tags, dependencies, and credential-free external links.
+- **Markdown** - deterministic client-side presentation format for reading and sharing roadmap content. It cannot be imported.
+
+Both export paths run entirely in the browser and exclude RoadForge session, invite, password, and browser-authentication state.
+
 ---
 
 ## Security note
@@ -235,6 +242,7 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 | `POST` | `/api/roadmaps/join` | Accept invite token, create participant, return session token |
 | `GET` | `/api/roadmaps/{id}` | Fetch roadmap and phases |
 | `PUT` | `/api/roadmaps/{id}` | Update name and/or phases (full snapshot replace) |
+| `PATCH` | `/api/roadmaps/{id}/tasks/{task_id}` | Update task planning fields with optimistic concurrency |
 | `PATCH` | `/api/roadmaps/{id}/tasks/{task_id}/done` | Set task completion with optimistic concurrency |
 | `PATCH` | `/api/roadmaps/{id}/tasks/{task_id}/claim` | Claim a task; owner may explicitly override |
 | `DELETE` | `/api/roadmaps/{id}/tasks/{task_id}/claim` | Release a task claim; owner may explicitly override |
@@ -274,7 +282,7 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 
 ## Current limitations / deferred features
 
-- **Markdown/PDF export** — requires backend; currently shows a toast.
+- **PDF export** - deferred and absent from the Public Alpha UI.
 - **Email verification** — not implemented. Planned as an optional future security layer.
 - **Rate limiting** — app-level rate limiting is active. It is shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`.
 - **Content Security Policy** — a report-only policy is active; enforcement remains deferred.

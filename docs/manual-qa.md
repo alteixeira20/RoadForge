@@ -324,15 +324,27 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 
 ---
 
-## 18 — Export JSON
+## 18 - Export JSON and Markdown
 
-- [ ] Open **Import / Export** → Export tab.
-- [ ] Click **Export JSON** → `.roadforge.json` file downloads.
+**JSON**
+
+- [ ] Open **Import / Export** -> Export tab.
+- [ ] Click **Download .roadforge.json** -> a timestamped `.roadforge.json` file downloads.
 - [ ] Inspect file: contains `"schema": "anvilary.roadmap.export"`, `"version": 1`, phases, tasks. The legacy schema ID is intentionally retained so older RoadForge deployments can import new exports.
 - [ ] Markdown descriptions remain plain JSON strings, and each phase includes its `colorMode`.
-- [ ] **No session tokens, invite tokens, or auth data** in the exported file.
-- [ ] A task with GitHub/URL links (§11a) exports with its `links` array intact — no credentials, only the fields listed in [Task External Links](architecture/task-external-links.md).
-- [ ] Re-import that same file (§19) → no compatibility warning (known schema/version).
+- [ ] **No session tokens, invite tokens, passwords, or browser auth data** appear in the exported file.
+- [ ] A task with GitHub/URL links (§11a) exports with its `links` array intact - no credentials, only the fields listed in [Task External Links](architecture/task-external-links.md).
+- [ ] Re-import that same file (§19) -> no compatibility warning (known schema/version).
+
+**Markdown**
+
+- [ ] Click **Download readable Markdown** -> `<roadmap-name>.roadforge.md` downloads.
+- [ ] Export the unchanged roadmap twice -> generated Markdown contents and requested filename are identical.
+- [ ] Inspect phase order, phase status/progress, task/subtask order, done/next state, estimates, assignees, tags, dependencies, and external links.
+- [ ] Confirm user-authored task descriptions retain their Markdown paragraphs, lists, checkboxes, quotes, and inline formatting.
+- [ ] Confirm participant claims, session tokens, invite tokens, passwords, and browser auth state are absent.
+- [ ] Confirm the import file picker remains JSON-only and the Markdown file is not presented as importable.
+- [ ] Confirm no PDF control or dead "coming soon" export action appears.
 
 ---
 

@@ -4,6 +4,10 @@ Review date: 2026-06-13
 
 Status: static acceptance complete; executable QA pending
 
+> Update 2026-07-11: Markdown export now ships as a deterministic client-side
+> presentation format under RF-1005. PDF export remains deferred. This document is
+> retained as a dated pre-QA decision record.
+
 ## Public Alpha boundary
 
 Public Alpha remains an accountless, local-first roadmap collaboration product.
@@ -22,7 +26,7 @@ Deferred until after Public Alpha:
 
 - OAuth, accounts, workspaces, account claims, billing, telemetry, and admin UI;
 - custom public slugs and community discovery;
-- PDF/Markdown exports, saved views, duplication, and advanced conflict resolution;
+- PDF export, saved views, duplication, and advanced conflict resolution;
 - executable MCP or assistant write integrations.
 
 Discarded for Public Alpha:
@@ -38,6 +42,8 @@ Discarded for Public Alpha:
   dismissal, limit visible volume, and respect reduced motion.
 - Import provides feedback before the native file picker; exports announce preparation
   before generating the download.
+- JSON remains the canonical portable/importable format; Markdown provides a readable,
+  non-importable client-side export, while PDF remains deferred.
 - Phase colors support backward-compatible Manual mode and derived Auto mode with an
   explanation, presets, and validated custom hex values.
 - Filtering has a single pure model, combined categories, per-roadmap session state,
