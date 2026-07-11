@@ -5,7 +5,7 @@ labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: Do not include invite links, tokens, passwords, private roadmap data, or vulnerabilities.
+      value: Do not include credentials, invite links, tokens, passwords, private roadmap data, or vulnerabilities. Report security vulnerabilities privately through the security contact below.
   - type: textarea
     id: summary
     attributes:
@@ -19,6 +19,12 @@ body:
     validations:
       required: true
   - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
     id: expected
     attributes:
       label: Expected behavior
@@ -28,11 +34,27 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Browser, OS, deployment mode, and commit/version.
-  - type: checkboxes
-    id: security
+      description: Include only what is relevant, such as browser, OS, deployment mode, and RoadForge version or commit.
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots_logs
     attributes:
-      label: Security check
+      label: Screenshots or logs
+      description: Optional. Remove any sensitive data before sharing.
+  - type: textarea
+    id: regression
+    attributes:
+      label: Regression information
+      description: Optional. Did this work previously, and if known, which version or commit changed it?
+  - type: checkboxes
+    id: report_checks
+    attributes:
+      label: Report checks
       options:
+        - label: This report contains no credentials or private roadmap data.
+          required: true
         - label: This report does not contain a security vulnerability.
           required: true
+    validations:
+      required: true

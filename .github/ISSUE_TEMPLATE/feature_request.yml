@@ -16,14 +16,46 @@ body:
       label: Desired outcome
     validations:
       required: true
+  - type: textarea
+    id: beneficiaries
+    attributes:
+      label: Who benefits
+      description: Which RoadForge users or workflows would benefit?
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current workaround
+      description: How do you handle this today? Optional.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Proposed behavior
+      description: Optional. Describe the desired behavior without assuming a specific implementation.
   - type: dropdown
     id: scope
     attributes:
       label: Scope
       options:
-        - Accountless beta
-        - Self-hosting
-        - Future accounts/workspaces
-        - Integrations and automation
+        - Roadmap planning
+        - Tasks, phases, tags, and dependencies
+        - Collaboration and sharing
+        - Import and export
+        - Accessibility and responsive UX
+        - Self-hosting and deployment
+        - Documentation and contributor experience
+        - Other
     validations:
       required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. What other approaches or workflows did you consider?
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to contribute this change.

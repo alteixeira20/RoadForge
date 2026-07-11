@@ -8,10 +8,17 @@ license; commercial use is not granted by contributing.
 
 - Read `README.md` and the relevant architecture, API, security, or QA documentation.
 - Keep changes small, reviewable, and focused on one behavior.
-- Open an issue before broad feature work, schema redesign, authentication changes,
-  or deployment architecture changes.
-- Never include real invite links, session tokens, passwords, private roadmaps, or
-  production data.
+- Open an issue before implementing a feature, broad refactor, schema redesign,
+  authentication change, or deployment architecture change. Small bug fixes and
+  documentation corrections can go directly to a pull request.
+- Never include credentials, invite links, session tokens, passwords, private
+  roadmaps, production data, or local tooling artifacts.
+
+## Issues and security
+
+- [Report a bug](../../issues/new?template=bug_report.yml) with reproducible details.
+- [Request a feature](../../issues/new?template=feature_request.yml) around a focused user problem.
+- Report vulnerabilities privately through [GitHub security advisories](../../security/advisories/new), not a public issue.
 
 ## Development
 
@@ -29,7 +36,7 @@ when a validation step was not run and why.
 
 ## Pull requests
 
-- Explain the user-visible behavior and risk.
+- Use the [pull request template](.github/pull_request_template.md) and explain the user-visible behavior and risk.
 - List changed contracts, migrations, environment variables, and documentation.
 - Include focused tests for bug fixes and shared behavior.
 - Preserve backward compatibility for roadmap imports unless the change includes an
@@ -37,4 +44,5 @@ when a validation step was not run and why.
 - Do not commit generated build output, local databases, logs, private planning
   material, or secrets.
 
-Security issues must follow `SECURITY.md`, not a public issue.
+Public contributions are accepted under the repository's [PolyForm Noncommercial License 1.0.0](LICENSE).
+Security issues must follow [SECURITY.md](SECURITY.md), not a public issue.
