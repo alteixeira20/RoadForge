@@ -43,3 +43,9 @@
 @import '../styles/modals/password-gate.css';
 @import '../styles/modals/tag-registry-modal.css';
 @import '../styles/join.css';
+
+/* Global keyboard-only focus visible override */
+*:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}

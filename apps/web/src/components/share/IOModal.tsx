@@ -175,13 +175,14 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
         </>
       }
     >
-      <div className="io-tab" role="group" aria-label="Import or export mode">
+      <div className="io-tab" role="tablist" aria-label="Import or export mode">
         {MODE_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
+            role="tab"
+            aria-selected={mode === tab.id}
             className={mode === tab.id ? 'active' : ''}
-            aria-pressed={mode === tab.id}
             onClick={() => selectMode(tab.id)}
             disabled={isConfirming}
           >

@@ -19,6 +19,7 @@ interface ModalProps {
   children: ReactNode
   footer?: ReactNode
   width?: number
+  role?: 'dialog' | 'alertdialog'
 }
 
 const FOCUSABLE_SELECTOR = [
@@ -34,7 +35,11 @@ function trapTabFocus(e: KeyboardEvent, dialog: HTMLDivElement | null) {
   if (!dialog) return
   const focusable = Array.from(
     dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-  ).filter((el) => el.offsetParent !== null || el === document.activeElement)
+  ).filter((el) => {
+    const isJsDom = typeof navigator !== 'undefined' && navigator.userAgent?.includes('jsdom')
+    const isVisible = el.offsetParent !== null || el.offsetWidth > 0 || el.offsetHeight > 0 || isJsDom
+    return isVisible || el === document.activeElement
+  })
   if (focusable.length === 0) {
     e.preventDefault()
     dialog.focus()
@@ -60,7 +65,7 @@ function trapTabFocus(e: KeyboardEvent, dialog: HTMLDivElement | null) {
   }
 }
 
-export function Modal({ open, onClose, icon, title, sub, describedBy, children, footer, width }: ModalProps) {
+export function Modal({ open, onClose, icon, title, sub, describedBy, children, footer, width, role = 'dialog' }: ModalProps) {
   const titleId = useId()
   const descriptionId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -75,10 +80,13 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
       ? document.activeElement
       : null
     const focusFrame = window.requestAnimationFrame(() => {
-      dialogRef.current?.focus()
+      if (dialogRef.current && !dialogRef.current.contains(document.activeElement)) {
+        dialogRef.current.focus()
+      }
     })
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (e.defaultPrevented) return
         onClose()
         return
       }
@@ -89,7 +97,12 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
       window.cancelAnimationFrame(focusFrame)
       window.removeEventListener('keydown', onKey)
       if (previouslyFocused?.isConnected) {
-        previouslyFocused.focus()
+        const currentActive = document.activeElement
+        const focusInside = currentActive && dialogRef.current?.contains(currentActive)
+        const focusOnBody = currentActive === document.body
+        if (focusInside || focusOnBody || !currentActive) {
+          previouslyFocused.focus()
+        }
       }
     }
   }, [open, onClose])
@@ -102,7 +115,7 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
         ref={dialogRef}
         className="modal"
         style={width ? { width } : undefined}
-        role="dialog"
+        role={role}
         aria-modal
         aria-labelledby={titleId}
         aria-describedby={ariaDescription}

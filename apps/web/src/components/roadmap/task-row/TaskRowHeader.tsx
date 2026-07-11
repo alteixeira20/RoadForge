@@ -76,12 +76,23 @@ export function TaskRowHeader({
         <Icon name="grip" size={14} />
       </div>
       <div
+        role="checkbox"
+        aria-checked={task.done}
+        aria-label={`Mark task "${task.title}" as ${task.done ? 'incomplete' : 'complete'}`}
+        tabIndex={checkDisabled ? -1 : 0}
         className={`check${checkDisabled ? ' task-check-disabled' : ''}`}
         aria-disabled={checkDisabled}
         title={checkTitle}
         onClick={(event) => {
           event.stopPropagation()
           if (!checkDisabled) onCheck()
+        }}
+        onKeyDown={(event) => {
+          if (event.key === ' ' || event.key === 'Enter') {
+            event.preventDefault()
+            event.stopPropagation()
+            if (!checkDisabled) onCheck()
+          }
         }}
       />
       <TaskInlineField

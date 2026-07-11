@@ -43,7 +43,7 @@ export function AppHeader({
       <div className="header-end">
         {!readOnly && (
           <>
-            <button className="iconbtn" title="Import / Export" onClick={onIO}>
+            <button className="iconbtn" title="Import / Export" aria-label="Import / Export" onClick={onIO}>
               <Icon name="export" size={16} />
             </button>
             {!isServerBacked ? (

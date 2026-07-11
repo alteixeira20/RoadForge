@@ -121,8 +121,9 @@ export function TaskEditForm({
   return (
     <div className="edit-form">
       <div className="field">
-        <label>Title</label>
+        <label htmlFor={`edit-title-${task.id}`}>Title</label>
         <input
+          id={`edit-title-${task.id}`}
           autoFocus
           value={draft.title}
           onChange={(e) => setDraft({ ...draft, title: e.target.value })}
@@ -132,8 +133,9 @@ export function TaskEditForm({
       </div>
       {!isNested && (
         <div className="field">
-          <label>Estimate</label>
+          <label htmlFor={`edit-est-${task.id}`}>Estimate</label>
           <input
+            id={`edit-est-${task.id}`}
             value={draft.est}
             onChange={(e) => setDraft({ ...draft, est: e.target.value })}
             onKeyDown={handleTitleKeyDown}
@@ -142,13 +144,14 @@ export function TaskEditForm({
         </div>
       )}
       <div className="field full">
-        <label>Description</label>
+        <label htmlFor={`edit-desc-${task.id}`}>Description</label>
         <MarkdownToolbar
           textareaRef={descriptionRef}
           value={draft.desc}
           onChange={(desc) => setDraft({ ...draft, desc })}
         />
         <textarea
+          id={`edit-desc-${task.id}`}
           ref={descriptionRef}
           value={draft.desc}
           onChange={(e) => setDraft({ ...draft, desc: e.target.value })}
@@ -172,6 +175,7 @@ export function TaskEditForm({
                     type="button"
                     className={`assignee-option ${selected ? 'selected' : ''}`}
                     onClick={() => toggleAssignee(name)}
+                    aria-pressed={selected}
                   >
                     {name}
                   </button>
@@ -185,6 +189,7 @@ export function TaskEditForm({
               onChange={(e) => setAssigneeDraft(e.target.value)}
               onKeyDown={handleAssigneeInputKeyDown}
               placeholder="Add assignee"
+              aria-label="Add new assignee"
             />
             <button type="button" className="btn sm ghost" onClick={handleAddAssignee}>
               Add assignee

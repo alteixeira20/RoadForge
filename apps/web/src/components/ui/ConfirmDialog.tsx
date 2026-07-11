@@ -31,11 +31,21 @@ export function ConfirmDialog({
 
   const footer = (
     <>
-      <button className="btn sm ghost" onClick={onClose} disabled={loading}>
+      <button
+        className="btn sm ghost"
+        onClick={onClose}
+        disabled={loading}
+        autoFocus={tone === 'danger'}
+      >
         {cancelLabel}
       </button>
       <span className="spacer" />
-      <button className={confirmClass} onClick={onConfirm} disabled={loading}>
+      <button
+        className={confirmClass}
+        onClick={onConfirm}
+        disabled={loading}
+        autoFocus={tone !== 'danger'}
+      >
         {loading ? 'Please wait…' : confirmLabel}
       </button>
     </>
@@ -49,6 +59,7 @@ export function ConfirmDialog({
       footer={footer}
       width={420}
       describedBy={messageId}
+      role="alertdialog"
     >
       <p id={messageId} className="confirm-dialog-message">{message}</p>
     </Modal>

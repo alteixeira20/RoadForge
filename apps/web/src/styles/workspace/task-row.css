@@ -213,3 +213,8 @@
   .task-row { padding: 12px 14px; gap: 10px; }
   .draft-task-row { padding: 10px 14px; }
 }
+
+.task-row .check:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}

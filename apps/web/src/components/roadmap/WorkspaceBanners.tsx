@@ -140,7 +140,18 @@ export function WorkspaceWelcomeBanner({
         </div>
       </div>
       <div className="upgrade-notice-actions">
-        <button type="button" className="iconbtn" aria-label="Dismiss welcome onboarding banner" onClick={onDismiss}>
+        <button
+          type="button"
+          className="iconbtn"
+          aria-label="Dismiss welcome onboarding banner"
+          onClick={onDismiss}
+          onKeyDown={(e) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+              e.preventDefault()
+              onDismiss()
+            }
+          }}
+        >
           <Icon name="x" size={15} />
         </button>
       </div>

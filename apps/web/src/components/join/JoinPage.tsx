@@ -171,7 +171,7 @@ export function JoinPage() {
         )}
 
         {error && (
-          <div className="note-line" style={{ borderColor: 'rgba(217,116,66,0.40)' }}>
+          <div className="note-line" style={{ borderColor: 'rgba(217,116,66,0.40)' }} role="alert">
             <span className="ic">
               <Icon name="x" size={14} />
             </span>
