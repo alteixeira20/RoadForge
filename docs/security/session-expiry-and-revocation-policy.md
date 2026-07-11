@@ -1,9 +1,7 @@
 # RoadForge — Session Expiry and Revocation Policy
 
-Status: implemented policy. See
-[`security-hardening-implementation-notes.md`](./security-hardening-implementation-notes.md)
-for the shipped code paths and validation scope. Optional token rotation and hard
-session caps described below remain future work.
+Status: implemented policy. Optional token rotation and hard session caps
+described below remain future work.
 
 RoadForge is accountless. Access is controlled by role-scoped invite links, optional roadmap passwords, and participant session tokens stored by the browser. The policy below keeps that model while reducing the risk of long-lived stolen sessions.
 

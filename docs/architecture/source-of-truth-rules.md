@@ -93,7 +93,7 @@ to export a complete roadmap snapshot.
 
 ## Do / Don't
 
-For future coding agents:
+For future maintainers and contributors:
 
 Do:
 

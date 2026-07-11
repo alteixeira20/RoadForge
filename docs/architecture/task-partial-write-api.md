@@ -382,6 +382,6 @@ git diff --check
 After later frontend wiring:
 
 ```bash
-pnpm --filter web test
+pnpm --dir apps/web test
 pnpm typecheck
 ```

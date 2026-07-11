@@ -36,15 +36,13 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Local agent handoff (not for commit)
-.agent-handoff/
-
+# Local-only project material
+.local/
 tmp/
 
+# Python
 __pycache__/
 *.py[cod]
-
+.pytest_cache/
+.ruff_cache/
 apps/api/.venv/
-
-# Claude Code local settings
-.claude/

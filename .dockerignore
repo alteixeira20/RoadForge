@@ -1,7 +1,6 @@
 .git
 .gitignore
-.agent-handoff
-.claude
+.local
 
 node_modules
 **/node_modules

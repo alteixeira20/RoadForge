@@ -1,12 +1,12 @@
 # Contributing to RoadForge
 
 RoadForge is Public Alpha software distributed under the PolyForm
-Noncommercial License 1.0.0. Contributions are welcome under the same repository
+Noncommercial License 1.0.0. Contributions are welcome under the repository
 license; commercial use is not granted by contributing.
 
 ## Before opening a change
 
-- Read `CLAUDE.md`, `README.md`, and the relevant `docs/` files.
+- Read `README.md` and the relevant architecture, API, security, or QA documentation.
 - Keep changes small, reviewable, and focused on one behavior.
 - Open an issue before broad feature work, schema redesign, authentication changes,
   or deployment architecture changes.
@@ -15,20 +15,17 @@ license; commercial use is not granted by contributing.
 
 ## Development
 
-Prerequisites and commands are documented in `README.md`. Before submitting a pull
-request, run the applicable repository checks:
+Prerequisites and commands are documented in `README.md`.
+
+Run focused tests while developing. Before opening a pull request, run the complete
+repository gate:
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-docker compose exec api pytest
-docker compose exec api alembic upgrade head
+make release-check
 ```
 
-Also run the focused manual QA steps for the behavior you changed. State clearly when
-a command was not run and why.
+Also run the relevant manual QA checks for the behavior you changed. State clearly
+when a validation step was not run and why.
 
 ## Pull requests
 
@@ -37,17 +34,7 @@ a command was not run and why.
 - Include focused tests for bug fixes and shared behavior.
 - Preserve backward compatibility for roadmap imports unless the change includes an
   explicit migration and upgrade path.
-- Do not commit generated build output, local databases, logs, or secrets.
-
-## AI-assisted contributions
-
-AI tools may help inspect or edit the repository, but the contributor remains
-responsible for the result.
-
-- Give the tool only the files and secrets it needs. Do not paste credentials.
-- Review every generated diff.
-- Do not claim tests, builds, audits, or manual QA ran unless they actually ran.
-- Preserve existing user changes and avoid unrelated rewrites.
-- Keep license, security, and data-loss decisions under human review.
+- Do not commit generated build output, local databases, logs, private planning
+  material, or secrets.
 
 Security issues must follow `SECURITY.md`, not a public issue.

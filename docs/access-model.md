@@ -139,7 +139,7 @@ This adds a second factor without requiring accounts. It is purely opt-in per ro
   Limits are process-local in memory mode and shared across workers in Redis mode.
 - **No HTTPS enforcement** — the Docker setup serves plain HTTP. Production deployment must terminate TLS at a reverse proxy and configure HSTS.
 - **Tokens in URLs** — invite tokens appear in the URL query string and remain in
-  browser history. The RoadForge application and hosting-bay access-log format
+  browser history. The RoadForge application and self-hosted access-log format
   omit query strings, headers, and `Referer`, but upstream proxies and error logs
   may still record them. Self-hosters must review and restrict every logging layer.
 - **Soft deletes only** — `Roadmap.deleted_at` is set on delete; no hard purge yet.

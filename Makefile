@@ -13,7 +13,7 @@ APP_NAME ?= roadforge
 DEPLOY_ROOT ?= /opt/stacks/roadforge
 DATA_ROOT ?= /opt/data/apps/roadforge
 ENV_FILE ?= $(DEPLOY_ROOT)/.env
-COMPOSE_FILE ?= deploy/hosting-bay/compose.yaml
+COMPOSE_FILE ?= deploy/self-hosted/compose.yaml
 DEPLOY_COMPOSE := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) --project-name $(APP_NAME)
 
 # ─── Help ─────────────────────────────────────────────────────────────────────
@@ -32,7 +32,7 @@ help:
 	@echo "  make audit-prod    Run JS dependency security audit (production only, high+)"
 	@echo "  make api-audit     Run Python dependency security audit (pip-audit)"
 	@echo ""
-	@echo "Deployment (hosting-bay):"
+	@echo "Deployment (self-hosted):"
 	@echo "  make deploy        Build/start production stack and run migrations"
 	@echo "  make update        Pull latest code, rebuild/restart stack, run migrations"
 	@echo "  make migrate       Run production Alembic migrations"
@@ -123,13 +123,13 @@ ensure-deps: ensure-pnpm
 # ─── Foreground Development ───────────────────────────────────────────────────
 
 dev: ensure-deps
-	NEXT_PUBLIC_API_URL=$(API_URL) pnpm --filter web dev --hostname $(WEB_HOST) --port $(WEB_PORT)
+	NEXT_PUBLIC_API_URL=$(API_URL) pnpm --dir apps/web dev --hostname $(WEB_HOST) --port $(WEB_PORT)
 
 check: ensure-deps
 	pnpm lint && pnpm typecheck && pnpm build
 
 web-test: ensure-deps
-	pnpm --filter web test
+	pnpm --dir apps/web test
 
 release-check:
 	$(MAKE) web-test
@@ -331,7 +331,7 @@ web-start: ensure-deps
 	fi
 	@echo "Starting Web in background on $(WEB_URL)..."
 	@echo "Using API: $(API_URL)"
-	@setsid sh -c 'exec env NEXT_PUBLIC_API_URL=$(API_URL) pnpm --filter web dev --hostname $(WEB_HOST) --port $(WEB_PORT) > .logs/web.log 2>&1' & echo $$! > .pids/web.pid
+	@setsid sh -c 'exec env NEXT_PUBLIC_API_URL=$(API_URL) pnpm --dir apps/web dev --hostname $(WEB_HOST) --port $(WEB_PORT) > .logs/web.log 2>&1' & echo $$! > .pids/web.pid
 	@sleep 2
 	@if kill -0 $$(cat .pids/web.pid) 2>/dev/null; then \
 		echo "Web started (PID $$(cat .pids/web.pid))"; \
@@ -404,11 +404,11 @@ logs-web:
 		echo "Frontend log not found; run 'make web-start' first."; \
 	fi
 
-# ─── Production Deployment (hosting-bay) ──────────────────────────────────────
+# ─── Production Deployment (self-hosted) ──────────────────────────────────────
 
 deploy-check:
 	@test -f "$(COMPOSE_FILE)" || (echo "Missing $(COMPOSE_FILE)" && exit 1)
-	@test -f "$(ENV_FILE)" || (echo "Missing $(ENV_FILE). Copy deploy/hosting-bay/.env.example to $(ENV_FILE) and set POSTGRES_PASSWORD." && exit 1)
+	@test -f "$(ENV_FILE)" || (echo "Missing $(ENV_FILE). Copy deploy/self-hosted/.env.example to $(ENV_FILE) and set POSTGRES_PASSWORD." && exit 1)
 	@test -f "apps/web/Dockerfile" || (echo "Missing apps/web/Dockerfile" && exit 1)
 	@test -f "apps/api/Dockerfile" || (echo "Missing apps/api/Dockerfile" && exit 1)
 
@@ -448,8 +448,8 @@ doctor:
 	@echo "COMPOSE_FILE=$(COMPOSE_FILE)"
 	@test -f "$(COMPOSE_FILE)" && echo "OK: compose file exists" || echo "MISSING: $(COMPOSE_FILE)"
 	@test -f "$(ENV_FILE)" && echo "OK: env file exists" || echo "MISSING: $(ENV_FILE)"
-	@test -f "deploy/hosting-bay/nginx/roadforge.conf" && echo "OK: nginx config template exists" || echo "MISSING: nginx config template"
-	@test -f "deploy/hosting-bay/cloudflared-ingress-snippet.yml" && echo "OK: cloudflared snippet exists" || echo "MISSING: cloudflared snippet"
+	@test -f "deploy/self-hosted/nginx/roadforge.conf" && echo "OK: nginx config template exists" || echo "MISSING: nginx config template"
+	@test -f "deploy/self-hosted/cloudflared-ingress-snippet.yml" && echo "OK: cloudflared snippet exists" || echo "MISSING: cloudflared snippet"
 	@docker network inspect edge >/dev/null 2>&1 && echo "OK: Docker network edge exists" || echo "MISSING: Docker network edge"
 
 deploy-hints:
@@ -457,6 +457,6 @@ deploy-hints:
 	@echo "RoadForge production stack updated."
 	@echo "Status: make ps"
 	@echo "Logs:   make logs"
-	@echo "Health: curl -s https://roadforge.alexandreteixeira.dev/api/health"
-	@echo "Nginx config template: deploy/hosting-bay/nginx/roadforge.conf"
-	@echo "Cloudflared snippet:   deploy/hosting-bay/cloudflared-ingress-snippet.yml"
+	@echo "Health: curl -s https://roadforge.anvilary.tools/api/health"
+	@echo "Nginx config template: deploy/self-hosted/nginx/roadforge.conf"
+	@echo "Cloudflared snippet:   deploy/self-hosted/cloudflared-ingress-snippet.yml"

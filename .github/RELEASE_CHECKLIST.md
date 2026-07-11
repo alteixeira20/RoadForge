@@ -15,12 +15,12 @@ operator, environment, and result beside the release ticket.
 
 ## Deploy preflight
 
-- [ ] Follow the [hosting-bay deployment preflight](../deploy/hosting-bay/README.md#validation);
+- [ ] Follow the [self-hosted stack deployment preflight](../deploy/self-hosted/README.md#validation);
   production secrets, URLs, trusted proxies, HTTPS, and health checks are valid.
 - [ ] Back up PostgreSQL and prove the restore procedure using
   [self-hosting backup guidance](../docs/self-hosting.md#backups-and-updates).
 - [ ] Run the credential-safe
-  [proxy and application log review](../deploy/hosting-bay/README.md#credential-safe-log-review).
+  [proxy and application log review](../deploy/self-hosted/README.md#credential-safe-log-review).
   Record the reviewed time range and upstream providers; do not paste matching
   credentials into the release ticket.
 - [ ] Migration upgrade, drift check, and projection backfill/parity complete;
@@ -36,17 +36,16 @@ operator, environment, and result beside the release ticket.
 - [ ] Run [task creation/editing/PATCH QA](../docs/manual-qa.md#11--task-creation--editing--done-state),
   [lock/idle draft preservation](../docs/manual-qa.md#12--task-edit-locks), and
   [409 recovery](../docs/manual-qa.md#25--409-conflict-recovery).
-- [ ] Run [JSON export](../docs/manual-qa.md#18--export-json) and
-  [replace-current import](../docs/manual-qa.md#19--import-replace-current-roadmap);
-  verify the checkpoint, roadmap identity, tags, dependencies, subtasks, claims,
-  descriptions, estimates, assignees, and done/next state survive.
+- [ ] Run the JSON and Markdown export checks plus replace-current import in
+  [manual QA](../docs/manual-qa.md); verify the checkpoint, roadmap identity, tags,
+  dependencies, subtasks, claims, descriptions, estimates, assignees, and done/next
+  state survive.
 - [ ] Run [version read/restore](../docs/manual-qa.md#22--version-history):
   owner restores, editor reads but cannot restore, viewer cannot read versions.
-- [ ] Browser automation is deferred per the
-  [Public Alpha recommendation](../docs/architecture/browser-smoke-automation.md);
-  this manual QA is authoritative.
-- [ ] GitHub task-link UI remains deferred; URL-only `task.links` records may
-  round-trip through import/export without credentials or fetched metadata.
+- [ ] Complete the responsive, accessibility, and multi-session browser checks
+  in [manual QA](../docs/manual-qa.md).
+- [ ] Verify task external links can be added, opened, removed, exported, and
+  imported without credentials or fetched provider metadata.
 
 ## Release decision and rollback
 
@@ -57,7 +56,7 @@ operator, environment, and result beside the release ticket.
   and advise users to export important roadmaps.
 - [ ] Staging candidate is approved before production.
 - [ ] Rollback revision and operator are assigned. Follow
-  [rollback notes](../deploy/hosting-bay/README.md#rollback-notes); application
+  [rollback notes](../deploy/self-hosted/README.md#rollback-notes); application
   rollback does not reverse migrations, so restore PostgreSQL when required.
 - [ ] Post-deploy health, owner create/save/share, editor join/edit, viewer
   read-only, and realtime checks pass on the public environment.

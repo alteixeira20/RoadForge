@@ -24,6 +24,6 @@ body:
         - Accountless beta
         - Self-hosting
         - Future accounts/workspaces
-        - Future assistant integration
+        - Integrations and automation
     validations:
       required: true

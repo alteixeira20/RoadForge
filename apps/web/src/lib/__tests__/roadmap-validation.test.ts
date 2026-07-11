@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { AI_ROADMAP_TEMPLATE } from '@/lib/ai-roadmap-template'
+import { ROADMAP_GENERATOR_TEMPLATE } from '@/lib/roadmap-generator-template'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 
 const MINIMAL_TASK = {
@@ -50,8 +50,8 @@ describe('roadmap-validation', () => {
       )
     })
 
-    it('accepts the AI template example without warnings or repairs', () => {
-      const example = AI_ROADMAP_TEMPLATE.match(/```json\n([\s\S]*?)\n```/)
+    it('accepts the roadmap generator template example without warnings or repairs', () => {
+      const example = ROADMAP_GENERATOR_TEMPLATE.match(/```json\n([\s\S]*?)\n```/)
       expect(example?.[1]).toBeDefined()
 
       const result = parseImportedRoadmapJson(example![1])
@@ -60,17 +60,16 @@ describe('roadmap-validation', () => {
       expect(result.repairs).toEqual([])
     })
 
-    it('keeps the downloadable and documented AI templates identical', () => {
+    it('keeps the downloadable and documented roadmap generator templates identical', () => {
       const documentedTemplate = readFileSync(
-        new URL('../../../../../docs/roadforge-ai-roadmap-template.txt', import.meta.url),
+        new URL('../../../../../docs/roadforge-roadmap-generator-template.txt', import.meta.url),
         'utf8',
       )
 
-      expect(AI_ROADMAP_TEMPLATE).toBe(documentedTemplate)
+      expect(ROADMAP_GENERATOR_TEMPLATE).toBe(documentedTemplate)
     })
 
     it.each([
-      '../../../../../docs/roadforge-roadmap.json',
       '../../../../../examples/public-alpha-demo-roadmap.json',
     ])('accepts tracked roadmap example %s', (relativePath) => {
       const input = readFileSync(new URL(relativePath, import.meta.url), 'utf8')

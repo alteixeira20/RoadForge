@@ -1,12 +1,24 @@
 {
-  "name": "roadforge",
+  "name": "@anvilary/roadforge",
   "private": true,
   "packageManager": "pnpm@9.15.9",
   "scripts": {
-    "dev": "pnpm --filter web dev",
-    "build": "pnpm --filter web build",
-    "lint": "pnpm --filter web lint",
-    "typecheck": "pnpm --filter web typecheck",
-    "test:web": "pnpm --filter web test"
+    "dev": "pnpm --dir apps/web dev",
+    "build": "pnpm --dir apps/web build",
+    "lint": "pnpm --dir apps/web lint",
+    "typecheck": "pnpm --dir apps/web typecheck",
+    "test": "pnpm --dir apps/web test",
+    "test:web": "pnpm --dir apps/web test"
+  },
+  "version": "0.1.0-alpha.0",
+  "description": "Local-first, accountless roadmap planning for individuals and small teams.",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "homepage": "https://roadforge.anvilary.tools",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alteixeira20/RoadForge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alteixeira20/RoadForge/issues"
   }
 }

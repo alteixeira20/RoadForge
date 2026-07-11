@@ -24,7 +24,7 @@ Current repository evidence:
 - `apps/web/next.config.ts` sets `X-Content-Type-Options: nosniff`,
   `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, a
   restrictive `Permissions-Policy`, and `Content-Security-Policy-Report-Only`.
-- `deploy/hosting-bay/nginx/roadforge.conf` sets the same baseline headers at the Nginx layer and proxies `/api/` to FastAPI and everything else to Next.js.
+- `deploy/self-hosted/nginx/roadforge.conf` sets the same baseline headers at the Nginx layer and proxies `/api/` to FastAPI and everything else to Next.js.
 - `apps/api/src/api/main.py` wires CORS, body-size, and security-header middleware.
   Sensitive roadmap JSON receives `Cache-Control: no-store`; API responses receive
   `X-Content-Type-Options: nosniff`, while SSE retains stream-safe headers.

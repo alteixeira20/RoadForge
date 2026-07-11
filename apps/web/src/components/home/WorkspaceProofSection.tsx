@@ -7,7 +7,7 @@ export function WorkspaceProofSection() {
     <LandingSectionFrame
       id="proof"
       title="One file. Phases, tasks, and what to build next."
-      lede="The plan is a single portable JSON — readable by you, your team, or a coding agent. Dependencies surface the recommended next task automatically."
+      lede="The plan is a single portable JSON file, readable by people and compatible tools. Dependencies surface the recommended next task automatically."
     >
       <div className="proof-wrap">
         <div className="proof-demo">
@@ -21,7 +21,7 @@ export function WorkspaceProofSection() {
               <h3>Portable JSON format</h3>
               <p>
                 Export your roadmap at any time. Import it anywhere. No lock-in,
-                no vendor dependency — the file is yours.
+                no vendor dependency - the file is yours.
               </p>
             </div>
           </div>
@@ -38,10 +38,10 @@ export function WorkspaceProofSection() {
           <div className="proof-callout">
             <div className="ic"><Icon name="robot" size={18} /></div>
             <div>
-              <h3>Readable by coding agents</h3>
+              <h3>Works with your toolchain</h3>
               <p>
-                A structured plan that humans and coding agents share. Agents can
-                read the same file and propose changes — you stay in control.
+                Keep roadmap data in a stable, inspectable format that can be
+                reviewed, versioned, and processed by compatible tools.
               </p>
             </div>
           </div>
