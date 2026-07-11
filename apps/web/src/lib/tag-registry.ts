@@ -1,5 +1,5 @@
 import type { Phase, TagDefinition } from '@/types/roadmap'
-import type { ImportConflict } from '@/lib/import-merge/types'
+import type { ImportConflict } from '@/lib/import-merge/conflict-types'
 
 export const TAG_ID_MAX = 40
 export const TAG_LABEL_MAX = 80

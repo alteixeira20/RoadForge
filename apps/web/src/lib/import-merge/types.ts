@@ -8,31 +8,9 @@ export type ReplaceImportScope = 'synced' | 'local'
 
 // ─── Merge entity types ────────────────────────────────────────────────────────
 
-export type EntityKind = 'phase' | 'task' | 'tag'
+import type { ConflictType, EntityKind, TaskFieldDiff, ImportConflict } from './conflict-types'
+export type { ConflictType, EntityKind, TaskFieldDiff, ImportConflict }
 export type MatchStrategy = 'id' | 'fallback' | 'none'
-
-export type ConflictType =
-  | 'task-field-conflict'
-  | 'tag-registry-conflict'
-  | 'id-collision'
-
-export interface TaskFieldDiff {
-  field: string
-  current: string
-  imported: string
-}
-
-export interface ImportConflict {
-  type: ConflictType
-  kind: EntityKind
-  importedId: string
-  importedTitle?: string
-  currentId?: string
-  phaseName?: string
-  field?: string
-  message: string
-  fieldDiffs?: TaskFieldDiff[]
-}
 
 export interface ImportPreviewSummary {
   phasesAdded: number
