@@ -9,6 +9,7 @@ RoadForge follows a pre-1.0 changelog. Dates use ISO format.
 - Public Alpha release labeling.
 - Source-available non-commercial licensing.
 - Repository contribution, support, issue, pull request, and release checklist files.
+- A footer feedback link for feature requests and reproducible issues; security reports remain directed to `SECURITY.md`.
 
 ### Changed
 

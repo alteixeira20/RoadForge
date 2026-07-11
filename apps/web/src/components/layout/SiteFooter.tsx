@@ -16,6 +16,13 @@ export function SiteFooter() {
         <a href="https://anvilary.tools" target="_blank" rel="noopener noreferrer">
           anvilary.tools
         </a>
+        <a
+          href="https://github.com/alteixeira20/RoadForge/issues/new/choose"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Report an issue or give feedback
+        </a>
         <span className="flex-1" />
         <span>Local-first. Portable. Self-hostable.</span>
       </div>

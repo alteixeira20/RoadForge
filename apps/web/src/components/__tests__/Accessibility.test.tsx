@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Modal } from '../ui/Modal'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { AppHeader } from '../layout/AppHeader'
+import { SiteFooter } from '../layout/SiteFooter'
 import { TaskRowHeader } from '../roadmap/task-row/TaskRowHeader'
 import { TaskEditForm } from '../roadmap/TaskEditForm'
 import { WorkspaceWelcomeBanner } from '../roadmap/WorkspaceBanners'
@@ -62,6 +63,18 @@ afterEach(() => {
 })
 
 describe('Accessibility Unit Tests', () => {
+  it('provides a discoverable feedback link separate from security reporting', () => {
+    act(() => {
+      root.render(<SiteFooter />)
+    })
+
+    const feedbackLink = container.querySelector('a[href="https://github.com/alteixeira20/RoadForge/issues/new/choose"]')
+    expect(feedbackLink?.textContent).toBe('Report an issue or give feedback')
+    expect(feedbackLink?.getAttribute('target')).toBe('_blank')
+    expect(feedbackLink?.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(container.textContent).toContain('Local-first. Portable. Self-hostable.')
+  })
+
   it('verifies icon-only button accessible names (AppHeader, TaskRowHeader)', () => {
     // AppHeader Import/Export button
     act(() => {
