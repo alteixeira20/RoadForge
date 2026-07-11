@@ -1,8 +1,8 @@
-export const AI_ROADMAP_TEMPLATE = `# RoadForge AI Roadmap Template
+export const ROADMAP_GENERATOR_TEMPLATE = `# RoadForge Roadmap Generator Template
 
 Create a RoadForge JSON file that can be imported into RoadForge.
 
-Use this template to gather context, then produce a final .json file for RoadForge.
+Use this template with a text-generation or planning tool, then produce a final .json file for RoadForge.
 
 ## Fill in
 
@@ -91,7 +91,7 @@ Priority rules:
 - Use double quotes and do not include trailing commas.
 - Do not include session tokens, invite tokens, passwords, auth cache, or browser storage data.
 
-## Final AI instruction
+## Final output instruction
 
 Return only the final JSON. Do not wrap it in Markdown. Do not include comments.
 `

@@ -9,15 +9,13 @@ RoadForge by Anvilary is a structured roadmap planning tool for indie hackers an
 > requirements may change. Export important roadmaps regularly and do not treat
 > the hosted alpha as the only copy of critical data.
 
-**Current status:** v0.1 alpha. Security, collaboration, accessibility,
-and UX hardening are still in progress. Known launch work is tracked in
-[`docs/project-audit-2026-06-13.md`](docs/project-audit-2026-06-13.md).
+**Current status:** v0.1 Public Alpha. Security, collaboration,
+accessibility, and UX hardening remain active work.
 
-**Repository and source release:** The repository and codebase are private during
-Public Alpha. A public source release is planned when RoadForge is beta-ready.
-That release is intended to be non-commercial source-available software, not
-permissive open source; commercial use will remain restricted. The planned terms
-are represented by the [PolyForm Noncommercial License 1.0.0](LICENSE).
+**Source availability:** This repository is distributed as non-commercial
+source-available software under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). It is not permissive open
+source, and commercial use remains restricted.
 
 ---
 
@@ -101,12 +99,12 @@ make stop           # Stop everything
 
 Before self-hosting or releasing RoadForge publicly:
 
-- **Do not expose `make dev`** — always run a production build (`pnpm build`) and start the production server (`pnpm --filter web start`).
+- **Do not expose `make dev`** — always run a production build (`pnpm build`) and start the production server (`pnpm --dir apps/web start`).
 - **Use a reverse proxy** — terminate TLS (HTTPS) at a proxy like Caddy or Nginx.
 - **Enable HSTS** — configure HTTP Strict Transport Security at the proxy level.
 - **Configure proxy logs** — join URLs are credentials. Omit query strings and
   `Referer` from access logs, restrict error-log access, and review upstream
-  provider logging. The hosting-bay nginx template includes a safe access format.
+  provider logging. The self-hosted nginx template includes a safe access format.
 - **Run security audits** — regularly run `make audit` and address high-severity vulnerabilities.
 - **Review CSP violations** — the current application emits a report-only Content
   Security Policy. There is no report collector, so use a production-build browser
@@ -315,11 +313,3 @@ roadforge/
 │           └── types/        # TypeScript types
 └── docs/                     # Architecture and API documentation
 ```
-
----
-
-## Development disclosure
-
-RoadForge is a human-directed project developed with assistance from coding tools.
-
-These tools were used for implementation planning, code drafting, refactoring support, and documentation drafts. Final product direction, code review, testing, and acceptance remain human-controlled.

@@ -1,4 +1,4 @@
-- hostname: roadforge.alexandreteixeira.dev
+- hostname: roadforge.anvilary.tools
   service: http://nginx:80
 
 # Insert this before the final catch-all rule, usually:

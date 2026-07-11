@@ -344,16 +344,16 @@ Streams should be reconsidered only if RF-886 discovers that missed events durin
 
 ### RF-881: add Redis service and configuration for dev/prod
 
-Implementation status: complete. Redis is provisioned in local and hosting-bay
+Implementation status: complete. Redis is provisioned in local and self-hosted deployments
 Compose, API settings expose Redis URL, backend, key prefix, and timeout fields,
 and deployment examples keep `ROADFORGE_REALTIME_BACKEND=memory` by default.
 
 Likely files touched:
 
 - `docker-compose.yml`
-- `deploy/hosting-bay/compose.yaml`
-- `deploy/hosting-bay/.env.example`
-- `deploy/hosting-bay/README.md`
+- `deploy/self-hosted/compose.yaml`
+- `deploy/self-hosted/.env.example`
+- `deploy/self-hosted/README.md`
 - `apps/api/src/api/config.py`
 - API dependency files only to add the Redis client dependency if RF-881 owns that dependency change.
 
@@ -528,8 +528,8 @@ successful startup ping.
 Likely files touched:
 
 - `apps/api/Dockerfile`
-- `deploy/hosting-bay/compose.yaml`
-- `deploy/hosting-bay/README.md`
+- `deploy/self-hosted/compose.yaml`
+- `deploy/self-hosted/README.md`
 - README/manual QA docs.
 
 Validation:

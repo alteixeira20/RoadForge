@@ -519,7 +519,7 @@ Set browser devtools to 375×812 (iPhone SE / 13 mini):
 
 ## 30 — Deployment verification
 
-Run on hosting-bay (or a staging clone of the deploy setup):
+Run on the production host or a staging clone of the deployment:
 
 - [ ] `git status --short` is clean on `main`.
 - [ ] GitHub Actions CI is green for latest commit (Quality Gate + API Syntax Check jobs both pass).
@@ -528,7 +528,7 @@ Run on hosting-bay (or a staging clone of the deploy setup):
 - [ ] Confirm migration `0005_add_public_viewer_tokens.py` has been applied before testing persistent public viewer links.
 - [ ] `make ps` shows `api` container as `Up`. No restart loops.
 - [ ] `docker compose logs --tail=40 api` shows `Application startup complete.` No ERROR lines at startup.
-- [ ] `curl https://roadforge.alexandreteixeira.dev/api/health` → `{"status":"ok","version":"0.1.0"}`.
+- [ ] `curl https://roadforge.anvilary.tools/api/health` → `{"status":"ok","version":"0.1.0"}`.
 - [ ] Confirm normal deployment uses `ROADFORGE_API_WORKERS=1`.
 - [ ] Confirm any deployment with `ROADFORGE_API_WORKERS` greater than `1` also sets `ROADFORGE_REALTIME_BACKEND=redis`.
 - [ ] Migration/schema drift check passes — run `make api-check` (requires running stack) or `alembic check` directly. Expect: `No new upgrade operations detected.`

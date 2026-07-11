@@ -1,10 +1,9 @@
 # Self-Hosting RoadForge
 
-RoadForge is a Public Alpha product from Anvilary. Its repository and codebase
-remain private during alpha. A public source release is planned when RoadForge is
-beta-ready under non-commercial source-available terms, not a permissive
-open-source license. Commercial hosting and monetized use will not be permitted
-under the intended license.
+RoadForge is a Public Alpha product from Anvilary. Its source is available
+under the PolyForm Noncommercial License 1.0.0. The repository is not permissive
+open source, and commercial hosting or monetized use is not permitted by the
+repository license.
 
 ## Topology
 
@@ -16,7 +15,7 @@ The supported alpha topology is:
 - optional Redis for shared realtime, locks, tickets, and rate limits;
 - HTTPS reverse proxy.
 
-Use `deploy/hosting-bay/` as the production-oriented Compose example. It requires
+Use `deploy/self-hosted/` as the production-oriented Compose example. It requires
 explicit secrets, origins, database credentials, web URL, and trusted proxy ranges.
 
 ## Deployment sequence
@@ -31,7 +30,7 @@ explicit secrets, origins, database credentials, web URL, and trusted proxy rang
 8. Verify health, create/join/share, realtime, import/export, and backup restore.
 
 Exact commands and environment variables are documented in
-`deploy/hosting-bay/README.md` and `docs/public-deployment-security.md`.
+`deploy/self-hosted/README.md` and `docs/public-deployment-security.md`.
 
 ## Authentication modes
 
@@ -53,14 +52,14 @@ roadmap passwords, and participant session tokens.
   them in URLs or operator commands that may be retained in shell history.
 
 The FastAPI application does not log headers, bodies, query strings, or full request
-URLs. Its access log contains only method, path, and status. The hosting-bay nginx
+URLs. Its access log contains only method, path, and status. The self-hosted stack nginx
 template also omits query strings and `Referer` from its access log. Proxy error
 logs and infrastructure outside this repository can still contain full request
 targets; operators must review and restrict those logs.
 
 ## Backups and updates
 
-Back up PostgreSQL before every migration. On hosting-bay, run:
+Back up PostgreSQL before every migration. On the deployment host, run:
 
 ```bash
 cd /opt/stacks/roadforge/src
@@ -70,7 +69,7 @@ BACKUP="/opt/data/apps/roadforge/backups/roadforge-$(date -u +%Y%m%dT%H%M%SZ).du
 
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
-  -f deploy/hosting-bay/compose.yaml \
+  -f deploy/self-hosted/compose.yaml \
   --project-name roadforge \
   exec -T roadforge-postgres \
   pg_dump -U roadforge -d roadforge --format=custom --no-owner --no-acl \
@@ -79,7 +78,7 @@ docker compose \
 test -s "$BACKUP"
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
-  -f deploy/hosting-bay/compose.yaml \
+  -f deploy/self-hosted/compose.yaml \
   --project-name roadforge \
   exec -T roadforge-postgres pg_restore --list < "$BACKUP" > /dev/null
 sha256sum "$BACKUP" > "$BACKUP.sha256"
@@ -104,13 +103,13 @@ sha256sum -c "$BACKUP.sha256"
 
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
-  -f deploy/hosting-bay/compose.yaml \
+  -f deploy/self-hosted/compose.yaml \
   --project-name roadforge \
   exec -T roadforge-postgres createdb -U roadforge "$DRILL_DB"
 
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
-  -f deploy/hosting-bay/compose.yaml \
+  -f deploy/self-hosted/compose.yaml \
   --project-name roadforge \
   exec -T roadforge-postgres \
   pg_restore -U roadforge -d "$DRILL_DB" --no-owner --no-acl --exit-on-error \
@@ -122,7 +121,7 @@ Verify the required domain data and projection relationships:
 ```bash
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
-  -f deploy/hosting-bay/compose.yaml \
+  -f deploy/self-hosted/compose.yaml \
   --project-name roadforge \
   exec -T roadforge-postgres \
   psql -U roadforge -d "$DRILL_DB" -v ON_ERROR_STOP=1 <<'SQL'
@@ -152,7 +151,7 @@ SQL
 
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
-  -f deploy/hosting-bay/compose.yaml \
+  -f deploy/self-hosted/compose.yaml \
   --project-name roadforge \
   run --rm --no-deps -T \
   -e RESTORE_DB="$DRILL_DB" \
@@ -170,7 +169,7 @@ projection recovery only in the disposable database:
 ```bash
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
-  -f deploy/hosting-bay/compose.yaml \
+  -f deploy/self-hosted/compose.yaml \
   --project-name roadforge \
   run --rm --no-deps -T \
   -e RESTORE_DB="$DRILL_DB" \
@@ -185,7 +184,7 @@ runbook before release. Then remove only the disposable database:
 test "$DRILL_DB" != roadforge
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
-  -f deploy/hosting-bay/compose.yaml \
+  -f deploy/self-hosted/compose.yaml \
   --project-name roadforge \
   exec -T roadforge-postgres dropdb -U roadforge --if-exists --force "$DRILL_DB"
 unset DRILL_DB BACKUP
@@ -208,7 +207,7 @@ Each step names what to inspect and the command to inspect it with.
    point at the reverse proxy or TLS instead. `/api/health` is liveness only —
    it does not check PostgreSQL or Redis.
 2. **Container status.** `docker compose --env-file /opt/stacks/roadforge/.env
-   -f deploy/hosting-bay/compose.yaml --project-name roadforge ps`. Confirm
+   -f deploy/self-hosted/compose.yaml --project-name roadforge ps`. Confirm
    `roadforge-web`, `roadforge-api`, `roadforge-postgres`, and (if enabled)
    `roadforge-redis` are all `running`/`healthy`. A restarting or exited
    container is the fastest signal of which layer failed.
@@ -239,7 +238,7 @@ Each step names what to inspect and the command to inspect it with.
    strings — so application logs will not leak share-link tokens or session
    tokens. Proxy logs and upstream providers are outside this repository and
    need separate review; see
-   [credential-safe log commands](../deploy/hosting-bay/README.md#credential-safe-log-review).
+   [credential-safe log commands](../deploy/self-hosted/README.md#credential-safe-log-review).
 7. **Restart / update path.** For a stuck container, restart just that
    service: `docker compose ... restart roadforge-api`. For a full update,
    follow the [Deployment sequence](#deployment-sequence) above — back up

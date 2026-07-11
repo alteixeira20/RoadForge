@@ -1,8 +1,8 @@
-# RoadForge on hosting-bay
+# Self-hosting RoadForge
 
 Deployment target:
 
-- Public domain: `roadforge.alexandreteixeira.dev`
+- Public domain: `roadforge.anvilary.tools`
 - Repo path: `/opt/stacks/roadforge/src`
 - Persistent data: `/opt/data/apps/roadforge`
 - Nginx config path: `/opt/data/proxy/nginx/conf.d`
@@ -24,7 +24,7 @@ cd /opt/stacks/roadforge/src
 Create the deployment env file outside the repo:
 
 ```bash
-cp deploy/hosting-bay/.env.example /opt/stacks/roadforge/.env
+cp deploy/self-hosted/.env.example /opt/stacks/roadforge/.env
 chmod 600 /opt/stacks/roadforge/.env
 ```
 
@@ -42,7 +42,7 @@ Do not commit the environment file.
 Install nginx config:
 
 ```bash
-cp deploy/hosting-bay/nginx/roadforge.conf /opt/data/proxy/nginx/conf.d/roadforge.conf
+cp deploy/self-hosted/nginx/roadforge.conf /opt/data/proxy/nginx/conf.d/roadforge.conf
 ```
 
 The vhost uses a dedicated `roadforge_safe` access format. It logs method, path,
@@ -51,7 +51,7 @@ invite or short-lived SSE credentials. The format declaration must remain in an
 nginx `http` context (the normal `conf.d` include location). Validate the central
 proxy before reloading it.
 
-Add `deploy/hosting-bay/cloudflared-ingress-snippet.yml` to the Cloudflare
+Add `deploy/self-hosted/cloudflared-ingress-snippet.yml` to the Cloudflare
 Tunnel ingress config before the final `http_status:404` rule.
 
 Deploy:
@@ -62,7 +62,7 @@ make deploy
 
 ## Updates
 
-From the repo root on hosting-bay:
+From the repository root on the server:
 
 ```bash
 cd /opt/stacks/roadforge/src
@@ -101,11 +101,11 @@ memory backend.
 ## Validation
 
 ```bash
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge ps
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge exec roadforge-postgres pg_isready -U roadforge -d roadforge
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge exec roadforge-redis redis-cli ping
-curl -fsSI https://roadforge.alexandreteixeira.dev
-curl -fsS https://roadforge.alexandreteixeira.dev/api/health
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge ps
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge exec roadforge-postgres pg_isready -U roadforge -d roadforge
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge exec roadforge-redis redis-cli ping
+curl -fsSI https://roadforge.anvilary.tools
+curl -fsS https://roadforge.anvilary.tools/api/health
 ```
 
 `/api/health` is a non-sensitive API liveness check. It returns only application
@@ -115,10 +115,10 @@ checks below remain required. In memory mode, Redis may be healthy but unused.
 
 Browser checks:
 
-1. Open `https://roadforge.alexandreteixeira.dev`.
+1. Open `https://roadforge.anvilary.tools`.
 2. Create a roadmap and save it.
 3. Generate an editor invite link.
-4. Confirm the link starts with `https://roadforge.alexandreteixeira.dev/join?token=`.
+4. Confirm the link starts with `https://roadforge.anvilary.tools/join?token=`.
 5. Join from a private window and confirm realtime sync works.
 
 ## Logs And Operations
@@ -144,12 +144,12 @@ Run these in order when RoadForge is down:
 
 ```bash
 cd /opt/stacks/roadforge/src
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge ps
-curl -fsS https://roadforge.alexandreteixeira.dev/api/health
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge logs --since 30m --tail=200 roadforge-web roadforge-api
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge logs --since 30m --tail=200 roadforge-postgres roadforge-redis
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge exec roadforge-postgres pg_isready -U roadforge -d roadforge
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/hosting-bay/compose.yaml --project-name roadforge exec roadforge-redis redis-cli ping
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge ps
+curl -fsS https://roadforge.anvilary.tools/api/health
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge logs --since 30m --tail=200 roadforge-web roadforge-api
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge logs --since 30m --tail=200 roadforge-postgres roadforge-redis
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge exec roadforge-postgres pg_isready -U roadforge -d roadforge
+docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge exec roadforge-redis redis-cli ping
 ```
 
 - A failed public request with healthy containers points first to Cloudflare
@@ -177,7 +177,7 @@ Review stack logs for credential-shaped values without printing matches:
 cd /opt/stacks/roadforge/src
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
-  -f deploy/hosting-bay/compose.yaml \
+  -f deploy/self-hosted/compose.yaml \
   --project-name roadforge \
   logs --since 168h roadforge-api roadforge-web 2>&1 \
   | grep -Eoc '(token=|ticket=|Bearer[[:space:]%]+|(sess_|ow_|ed_|vi_)[A-Za-z0-9_-]{8,})' \
@@ -190,7 +190,7 @@ before display:
 ```bash
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
-  -f deploy/hosting-bay/compose.yaml \
+  -f deploy/self-hosted/compose.yaml \
   --project-name roadforge \
   logs --since 168h roadforge-api roadforge-web 2>&1 \
   | sed -E \

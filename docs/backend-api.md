@@ -5,7 +5,7 @@
 | Environment | URL |
 |---|---|
 | Local (Docker) | `http://localhost:7878` |
-| Production | `https://roadforge.alexandreteixeira.dev` |
+| Production | `https://roadforge.anvilary.tools` |
 
 All endpoints are under `/api/`. All request and response bodies are JSON.
 

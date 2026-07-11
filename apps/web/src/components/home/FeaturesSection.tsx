@@ -21,10 +21,10 @@ export function FeaturesSection() {
         </div>
         <div className="feature">
           <div className="ic"><Icon name="export" size={20} /></div>
-          <h3>Portable JSON</h3>
+          <h3>Portable exports</h3>
           <p>
-            Export and import the full roadmap as JSON. Readable, versionable,
-            and never locked to a service.
+            Keep a canonical JSON backup and generate readable Markdown.
+            Your roadmap is never locked to one service.
           </p>
         </div>
         <div className="feature">
@@ -37,10 +37,10 @@ export function FeaturesSection() {
         </div>
         <div className="feature">
           <div className="ic"><Icon name="robot" size={20} /></div>
-          <h3>Agent-readable planning</h3>
+          <h3>Tool-readable planning</h3>
           <p>
-            A structured file humans and coding agents both understand. Agents
-            can read the plan and propose changes — you approve.
+            The structured JSON format works with version control, scripts,
+            and compatible planning tools while RoadForge remains the source of truth.
           </p>
         </div>
         <div className="feature">
@@ -53,21 +53,26 @@ export function FeaturesSection() {
         </div>
         <div className="feature">
           <div className="ic"><Icon name="shield" size={20} /></div>
-          <h3>Self-hosting at beta</h3>
+          <h3>Self-hostable source</h3>
           <p>
-            A non-commercial source-available release is planned for
-            self-hosting when RoadForge is beta-ready.
+            Run RoadForge on your own infrastructure under the repository&apos;s
+            non-commercial source-available license.
           </p>
         </div>
       </div>
       <div className="gh-cta">
         <div className="gh-cta-text">
-          <strong>Public Alpha. Portable JSON. Public source release planned.</strong>
-          <span>Public Alpha · Future non-commercial source-available release</span>
+          <strong>Public Alpha. Portable data. Source available.</strong>
+          <span>PolyForm Noncommercial 1.0.0</span>
         </div>
-        <span className="btn lg secondary">
-          <Icon name="github" size={16} /> Source at beta
-        </span>
+        <a
+          className="btn lg secondary"
+          href="https://github.com/alteixeira20/RoadForge"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Icon name="github" size={16} /> View source
+        </a>
       </div>
     </LandingSectionFrame>
   )

@@ -221,8 +221,8 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
                     <Icon name="check" size={12} />
                   </span>
                   <div className="text">
-                    <b>Export anytime</b> to a portable JSON file — the same
-                    format AI agents read.
+                    <b>Export anytime</b> to a portable JSON file that works
+                    with version control and compatible tools.
                   </div>
                 </div>
                 <div className="row">

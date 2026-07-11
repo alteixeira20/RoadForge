@@ -10,7 +10,7 @@ import { exportRoadmap } from '@/services/roadmap-crud.service'
 import { useRoadmap } from '@/context/RoadmapContext'
 import type { Phase } from '@/types/roadmap'
 import type { ImportMode } from '@/lib/import-merge/types'
-import { AI_ROADMAP_TEMPLATE } from '@/lib/ai-roadmap-template'
+import { ROADMAP_GENERATOR_TEMPLATE } from '@/lib/roadmap-generator-template'
 import {
   createMarkdownExportFilename,
   formatRoadmapMarkdown,
@@ -151,12 +151,12 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     }
   }
 
-  const handleAITemplateExport = () => {
+  const handleGeneratorTemplateExport = () => {
     try {
-      onToast('Preparing AI roadmap template...')
-      const blob = new Blob([AI_ROADMAP_TEMPLATE], { type: 'text/plain;charset=utf-8' })
-      downloadBlob(blob, 'roadforge-ai-roadmap-template.txt')
-      onToast('AI roadmap template downloaded')
+      onToast('Preparing roadmap generator template...')
+      const blob = new Blob([ROADMAP_GENERATOR_TEMPLATE], { type: 'text/plain;charset=utf-8' })
+      downloadBlob(blob, 'roadforge-roadmap-generator-template.txt')
+      onToast('Roadmap generator template downloaded')
     } catch {
       onToast('Export failed. Could not create template file.')
     }
@@ -239,10 +239,10 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
           <button
             type="button"
             className="io-secondary-action"
-            onClick={handleAITemplateExport}
+            onClick={handleGeneratorTemplateExport}
           >
             <Icon name="robot" size={14} />
-            Download AI roadmap template
+            Download roadmap generator template
           </button>
         </section>
       ) : pendingImport ? (

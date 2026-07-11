@@ -95,7 +95,7 @@ docker compose logs --tail=40 api
 ```
 
 Expected: `PONG`, `Application startup complete.`, and no Redis startup error.
-The local service name is `redis`; hosting-bay uses `roadforge-redis`.
+The local service name is `redis`; the self-hosted stack uses `roadforge-redis`.
 
 For a multi-worker staging check, complete
 `docs/manual-qa.md` section `30b`. A health response alone does not prove

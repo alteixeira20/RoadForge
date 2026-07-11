@@ -79,7 +79,7 @@ Participant-scoped limits use a `{participant_id}:{roadmap_id}` key. IP-scoped l
 
 ## Database migrations and deployment ordering
 
-The `hosting-bay` Compose file starts the API after Postgres is healthy, but it
+The self-hosted Compose file starts the API after Postgres is healthy, but it
 does **not** run migrations automatically.  If a deployment includes schema
 changes, the API may fail requests with database errors until migrations are
 applied.
@@ -122,10 +122,10 @@ projection serialization fails for a roadmap, the API falls back to
 Terminate HTTPS at the public edge or reverse proxy and forward only to the API over a private network. Public deployments should use HSTS-capable HTTPS for all browser traffic. Do not expose the API directly behind an untrusted proxy that preserves client-supplied forwarding headers.
 
 Join URLs and SSE tickets are query credentials. FastAPI access logs contain only
-method, path, and status. The hosting-bay nginx access format additionally omits
+method, path, and status. The self-hosted nginx access format additionally omits
 query strings and `Referer`. Retained old logs, nginx error logs, Cloudflare, and
 other upstream providers still require an operator review; follow the
-[credential-safe log commands](../deploy/hosting-bay/README.md#credential-safe-log-review).
+[credential-safe log commands](../deploy/self-hosted/README.md#credential-safe-log-review).
 
 `GET /api/health` is liveness only and returns status/version without dependency
 or environment details. Check PostgreSQL directly and Redis when configured;

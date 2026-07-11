@@ -8,19 +8,16 @@ export function SiteFooter() {
       <div className="row">
         <Brand />
         <span style={{ color: 'var(--ink-4)' }}>·</span>
-        <span>Public Alpha · RoadForge from Anvilary</span>
+        <span>Public Alpha · An Anvilary product</span>
         <span className="flex-1" />
-        <span>Private during alpha · Source release planned for beta</span>
+        <span>Non-commercial source available</span>
       </div>
       <div className="row sub" style={{ marginTop: 16, color: 'var(--ink-4)', fontSize: 13 }}>
-        <span>
-          Created by{' '}
-          <a href="https://github.com/alteixeira20/" target="_blank" rel="noopener noreferrer">
-            Alexandre Teixeira
-          </a>
-        </span>
+        <a href="https://anvilary.tools" target="_blank" rel="noopener noreferrer">
+          anvilary.tools
+        </a>
         <span className="flex-1" />
-        <span>Built locally. Optionally yours to host.</span>
+        <span>Local-first. Portable. Self-hostable.</span>
       </div>
     </footer>
   )
