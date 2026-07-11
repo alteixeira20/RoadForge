@@ -25,6 +25,7 @@
 @import '../styles/workspace/roadmap.css';
 @import '../styles/workspace/phase.css';
 @import '../styles/workspace/task-row.css';
+@import '../styles/workspace/draft-task.css';
 @import '../styles/workspace/task-detail.css';
 @import '../styles/workspace/task-description.css';
 @import '../styles/workspace/task-metadata.css';
