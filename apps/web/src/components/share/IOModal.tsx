@@ -11,6 +11,10 @@ import { useRoadmap } from '@/context/RoadmapContext'
 import type { Phase } from '@/types/roadmap'
 import type { ImportMode } from '@/lib/import-merge/types'
 import { AI_ROADMAP_TEMPLATE } from '@/lib/ai-roadmap-template'
+import {
+  createMarkdownExportFilename,
+  formatRoadmapMarkdown,
+} from '@/lib/roadmap-markdown'
 
 interface IOModalProps {
   open: boolean
@@ -134,6 +138,19 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
     }
   }
 
+  const handleMarkdownExport = () => {
+    try {
+      onToast('Preparing Markdown export...')
+      const markdown = formatRoadmapMarkdown({ roadmapName, phases, tagRegistry })
+      const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
+      downloadBlob(blob, createMarkdownExportFilename(roadmapName))
+      onToast('Markdown file downloaded')
+      onClose()
+    } catch {
+      onToast('Export failed. Could not create Markdown file.')
+    }
+  }
+
   const handleAITemplateExport = () => {
     try {
       onToast('Preparing AI roadmap template...')
@@ -164,7 +181,7 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
       width={560}
       icon={{ name: mode === 'export' ? 'export' : 'import', plain: true }}
       title="Import / Export roadmap"
-      sub="Choose one action. JSON is the supported roadmap format."
+      sub="JSON is canonical and importable. Markdown is presentation-only."
       footer={
         <>
           <span className="note">Exports and file previews stay on this device.</span>
@@ -194,10 +211,11 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
       {mode === 'export' ? (
         <section className="io-mode-panel">
           <div className="io-mode-copy">
-            <strong>Download a portable roadmap backup</strong>
+            <strong>Download a portable roadmap export</strong>
             <p>
-              Includes phases, tasks, dependencies, tags, and status. Sessions,
-              invite links, passwords, and browser authentication are excluded.
+              JSON remains the canonical backup and import format. Markdown is a
+              readable, non-importable view. Sessions, invite links, passwords, and
+              browser authentication are excluded.
             </p>
           </div>
           <button
@@ -207,6 +225,15 @@ export function IOModal({ open, onClose, onToast, onRoadmapImported }: IOModalPr
           >
             <Icon name="export" size={14} />
             Download .roadforge.json
+          </button>
+
+          <button
+            type="button"
+            className="io-secondary-action"
+            onClick={handleMarkdownExport}
+          >
+            <Icon name="export" size={14} />
+            Download readable Markdown
           </button>
 
           <button
