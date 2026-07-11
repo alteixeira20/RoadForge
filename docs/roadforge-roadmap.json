@@ -1329,7 +1329,7 @@
           "deps": [
             "RF-901"
           ],
-          "desc": "**Why**\nA first-time visitor gets no explanation of the accountless model, invite links, local-first storage, or what to do first. For a public alpha, the first five minutes decide whether anyone stays.\n\n\n**Finding**\nThe code graph has zero onboarding/first-run/empty-state/welcome nodes among 2062. CreateWizard and SAMPLE_ROADMAP exist but nothing frames them for a new user.\n\n\n**Acceptance criteria**\n- [ ] First visit shows a short, dismissible orientation (what RoadForge is, no accounts, where data lives, how sharing works).\n- [ ] Sample roadmap is clearly labeled as a sample with an obvious 'start your own' action.\n- [ ] Dismissal state persists via storage.ts helpers; no direct localStorage calls.\n- [ ] No redesign of existing UI; additive copy and light components only.\n\n\n**Validation / gate**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`. Manual first-visit check in a clean browser profile, desktop and mobile.\n\n\n**Risk**\nOnboarding noise annoying returning users - keep it one-shot and dismissible.\n\n\n**Evidence**\ngraph.json label scan (0 onboarding hits); query 'onboarding first run sample roadmap'.\n\n\n**Classification**\nlikely"
+          "desc": "**Why**\nA first-time visitor gets no explanation of the accountless model, invite links, local-first storage, or what to do first. For a public alpha, the first five minutes decide whether anyone stays.\n\n\n**Finding**\nThe code graph has zero onboarding/first-run/empty-state/welcome nodes among 2062. CreateWizard and SAMPLE_ROADMAP exist but nothing frames them for a new user.\n\n\n**Acceptance criteria**\n- [ ] First visit shows a short, dismissible orientation (what RoadForge is, no accounts, where data lives, how sharing works).\n- [ ] Sample roadmap is clearly labeled as a sample with an obvious 'start your own' action.\n- [ ] Dismissal state persists via storage.ts helpers; no direct localStorage calls.\n- [ ] No redesign of existing UI; additive copy and light components only.\n\n\n**Validation / gate**\n`pnpm --filter web test && pnpm lint && pnpm typecheck && pnpm build`. Manual first-visit check in a clean browser profile, desktop and mobile.\n\n\n**Risk**\nOnboarding noise annoying returning users - keep it one-shot and dismissible.\n\n\n**Evidence**\ngraph.json label scan (0 onboarding hits); query 'onboarding first run sample roadmap'.\n\n\n**Classification**\nlikely\n\n\n**Note**\nImplementation and automated validation are complete; only final manual QA (clean-profile desktop/mobile check) remains."
         },
         {
           "id": "RF-1002",
@@ -1350,7 +1350,7 @@
         {
           "id": "RF-1003",
           "title": "Make alpha/WIP status consistent everywhere (RF-AUD-006)",
-          "done": false,
+          "done": true,
           "est": "2h",
           "tags": [
             "docs",
