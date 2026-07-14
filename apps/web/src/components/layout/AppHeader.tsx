@@ -2,7 +2,6 @@
 
 import { Icon } from '@/components/ui/Icon'
 import { Brand } from '@/components/ui/Brand'
-import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { RoadmapSwitcher } from '@/components/roadmap/RoadmapSwitcher'
 import type { SyncStatus } from '@/types/roadmap'
 
@@ -88,7 +87,6 @@ export function AppHeader({
             <Icon name="plus" size={14} stroke="#fff" /> Create your own
           </button>
         )}
-        <ThemeToggle />
         <RoadmapSwitcher />
       </div>
     </header>

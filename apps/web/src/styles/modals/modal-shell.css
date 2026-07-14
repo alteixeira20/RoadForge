@@ -4,20 +4,19 @@
 .wizard-scrim {
   position: fixed; inset: 0;
   z-index: var(--z-wizard);
-  background: rgba(8,8,10,0.78);
-  backdrop-filter: blur(10px);
+  background: rgba(5, 5, 7, 0.9);
   display: grid; place-items: center;
   padding: 24px;
   animation: fadeIn 200ms ease-out;
 }
-[data-theme="light"] .wizard-scrim { background: rgba(40,28,18,0.30); }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ─── Wizard base ──────────────────────────────────────────────────────────── */
 .wizard {
   width: 540px; max-width: 100%;
-  background: var(--panel);
+  background: radial-gradient(420px 160px at 82% 0%, var(--forge-glow-1), transparent 66%), var(--surface-overlay);
   border: 1px solid var(--border-strong);
+  border-top-color: var(--accent-border-strong);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
@@ -110,21 +109,20 @@
 /* ─── Generic modal scrim ──────────────────────────────────────────────────── */
 .modal-scrim {
   position: fixed; inset: 0; z-index: var(--z-modal);
-  background: rgba(8,6,4,0.62);
-  backdrop-filter: blur(6px);
+  background: rgba(5, 5, 7, 0.9);
   display: grid; place-items: center;
   padding: 24px;
   animation: scrim-in 180ms ease-out;
 }
-[data-theme="light"] .modal-scrim { background: rgba(40,28,16,0.32); }
 @keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* ─── Generic modal base ───────────────────────────────────────────────────── */
 .modal {
   width: 540px; max-width: 100%;
   max-height: calc(100vh - 48px); overflow: auto;
-  background: var(--panel);
+  background: radial-gradient(420px 160px at 82% 0%, var(--forge-glow-1), transparent 66%), var(--surface-overlay);
   border: 1px solid var(--border-strong);
+  border-top-color: var(--accent-border-strong);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   animation: modal-in 240ms cubic-bezier(.2,.7,.2,1);

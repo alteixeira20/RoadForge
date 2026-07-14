@@ -10,8 +10,6 @@ export type IconName =
   | 'check'
   | 'chevron-right'
   | 'chevron-down'
-  | 'moon'
-  | 'sun'
   | 'lock'
   | 'cloud'
   | 'device'
@@ -130,19 +128,6 @@ export function Icon({ name, size = 16, stroke = 'currentColor', strokeWidth = 1
           <circle cx="15" cy="5" r="1" fill="currentColor" stroke="none" />
           <circle cx="15" cy="12" r="1" fill="currentColor" stroke="none" />
           <circle cx="15" cy="19" r="1" fill="currentColor" stroke="none" />
-        </svg>
-      )
-    case 'moon':
-      return (
-        <svg {...s}>
-          <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" />
-        </svg>
-      )
-    case 'sun':
-      return (
-        <svg {...s}>
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4" />
         </svg>
       )
     case 'lock':

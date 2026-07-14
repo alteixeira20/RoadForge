@@ -94,13 +94,6 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/context/ThemeContext', () => ({
-  useTheme: () => ({
-    theme: 'dark',
-    setTheme: vi.fn(),
-  }),
-}))
-
 vi.mock('@/hooks/useWorkspaceModals', () => ({
   useWorkspaceModals: () => ({
     showSave: false,

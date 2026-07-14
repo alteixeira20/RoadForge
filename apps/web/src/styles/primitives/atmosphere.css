@@ -1,0 +1,71 @@
+/* ─── Forge atmosphere — ambient glow + ember canvas ───────────────────────
+   Ported from the Anvilary-Website design system (components/atmosphere.css
+   and motion.css). One fixed decorative layer; never interactive. */
+
+/* Pages that host the atmosphere isolate their stacking context so the
+   negative z-index layer sits above the page background but below all
+   content, headers, dialogs, and menus. */
+.home,
+.join-page,
+.app-shell {
+  isolation: isolate;
+}
+
+.ember-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+}
+.ember-background::before {
+  content: '';
+  position: absolute;
+  inset: -3% -5% 0;
+  background:
+    radial-gradient(ellipse 112% 70% at 43% 116%, var(--forge-glow-1) 0%, var(--forge-glow-2) 42%, transparent 73%),
+    radial-gradient(ellipse 72% 48% at 79% 109%, var(--forge-glow-2) 0%, transparent 68%),
+    linear-gradient(to top, var(--forge-glow-3) 0%, transparent 59%);
+  opacity: var(--forge-glow-opacity);
+  transform: translate3d(-1.5%, 0, 0) scale(1.035);
+  will-change: transform, opacity;
+}
+.ember-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Restrained variant behind the dense roadmap workspace */
+.ember-background--subdued {
+  --forge-glow-opacity: 0.4;
+  --forge-glow-opacity-low: 0.32;
+  --forge-glow-opacity-mobile: 0.3;
+  --forge-glow-opacity-mobile-low: 0.24;
+}
+
+@keyframes forge-atmosphere-breathe {
+  from { transform: translate3d(-1.5%, 0, 0) scale(1.035); opacity: var(--forge-glow-opacity-low); }
+  to { transform: translate3d(1.5%, -0.5%, 0) scale(1.055); opacity: var(--forge-glow-opacity); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ember-background::before {
+    animation: forge-atmosphere-breathe 18s ease-in-out infinite alternate;
+  }
+}
+
+@media (max-width: 640px) {
+  .ember-background {
+    --forge-glow-opacity: var(--forge-glow-opacity-mobile);
+    --forge-glow-opacity-low: var(--forge-glow-opacity-mobile-low);
+  }
+}
+
+/* Reduced motion: no moving embers, keep the static glow */
+@media (prefers-reduced-motion: reduce) {
+  .ember-canvas { display: none; }
+}

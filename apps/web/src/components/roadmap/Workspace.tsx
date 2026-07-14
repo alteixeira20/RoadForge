@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ToastViewport } from '@/components/ui/Toast'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { EmberBackground } from '@/components/ui/EmberBackground'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { WorkspaceHead } from './WorkspaceHead'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
@@ -421,6 +422,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
 
   return (
     <div className="app-shell">
+      <EmberBackground subdued />
       <AppHeader
         roadmapName={roadmapName}
         syncStatus={syncStatus}

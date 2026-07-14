@@ -36,18 +36,6 @@
   display: block;
 }
 
-.brand-logo-default {
-  display: none;
-}
-
 .brand-logo-white {
   display: block;
-}
-
-[data-theme="light"] .brand-logo-default {
-  display: block;
-}
-
-[data-theme="light"] .brand-logo-white {
-  display: none;
 }

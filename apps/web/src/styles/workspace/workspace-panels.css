@@ -5,7 +5,7 @@
 .slide-panel {
   position: fixed; top: 0; right: 0; bottom: 0;
   width: 360px;
-  background: var(--panel);
+  background: var(--surface-overlay);
   border-left: 1px solid var(--border-strong);
   z-index: var(--z-panel);
   display: flex; flex-direction: column;

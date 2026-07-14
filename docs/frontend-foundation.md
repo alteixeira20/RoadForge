@@ -23,7 +23,6 @@ Current keys:
 
 | Storage | Key | Purpose |
 |---|---|---|
-| local | `rf:theme` | theme |
 | local | `rf:displayName` | collaboration label |
 | local | `rf:lastRoadmapId` | last active roadmap |
 | local | `rf:roadmap:{id}` | roadmap cache and save state |
@@ -89,6 +88,20 @@ JSON remains the canonical portable and importable format.
 
 ## Styling
 
-CSS is organized under `src/styles/` and imported through `app/globals.css`. Theme
+CSS is organized under `src/styles/` and imported through `app/globals.css`. Design
 tokens live in `styles/tokens.css`; responsive rules stay with the owning stylesheet.
 The `Brand` component presents the RoadForge product name with Anvilary brand assets.
+
+The UI is dark-only and inherits the shared Anvilary design language. The
+Anvilary-Website repository is the source of truth for the forge palette, typography
+(Lexend / JetBrains Mono), the dark-orange action gradient, translucent surface
+treatment, and the ambient ember atmosphere. The aligned pieces were copied and
+adapted — not imported — so RoadForge builds independently:
+
+- `styles/tokens.css` mirrors the Anvilary token set (palette, radii, shadows,
+  action gradient, forge-glow, surface hierarchy).
+- `components/ui/EmberBackground.tsx` and `styles/primitives/atmosphere.css` port
+  the Anvilary ember canvas and glow (fixed decorative layer, particle cap, capped
+  device pixel ratio, pauses when hidden, reduced-motion keeps a static glow).
+- `styles/primitives/buttons.css` ports the accessible primary button gradient.
+- Brand and favicon assets use the white Anvilary mark for dark surfaces.

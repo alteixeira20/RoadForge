@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Brand } from '@/components/ui/Brand'
 import { Icon } from '@/components/ui/Icon'
-import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { EmberBackground } from '@/components/ui/EmberBackground'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { persistJoinResult } from '@/lib/join-flow'
@@ -51,9 +51,7 @@ export function JoinPage() {
             Go home
           </button>
         </div>
-        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 40 }}>
-          <ThemeToggle />
-        </div>
+        <EmberBackground />
       </div>
     )
   }
@@ -204,9 +202,7 @@ export function JoinPage() {
         </div>
       </div>
 
-      <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 40 }}>
-        <ThemeToggle />
-      </div>
+      <EmberBackground />
     </div>
   )
 }

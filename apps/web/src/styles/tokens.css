@@ -1,7 +1,10 @@
-/* ─── Design tokens ────────────────────────────────────────────────────────── */
+/* ─── Design tokens — shared Anvilary design language ──────────────────────
+   Aligned with the Anvilary-Website token set (dark-only forge palette).
+   Copied and adapted, not imported — RoadForge builds independently. */
 
 :root {
-  /* Dark theme — primary */
+  color-scheme: dark;
+  /* Dark forge palette — shared with Anvilary Tools */
   --bg: #0e0e10;
   --bg-1: #0e0e10;
   --bg-2: #141417;
@@ -32,6 +35,28 @@
   --sage-dim: rgba(61, 158, 107, 0.16);
   --sage-glow: rgba(61, 158, 107, 0.12);
 
+  /* Accessible dark-orange action gradient (Anvilary primary buttons) */
+  --action-start: #b95725;
+  --action-end: #7f3214;
+  --action-text: #ffffff;
+  --accent-border-soft: rgba(217, 116, 66, 0.32);
+  --accent-border-strong: rgba(217, 116, 66, 0.56);
+  --accent-shadow: rgba(127, 50, 20, 0.28);
+
+  /* Surface hierarchy — translucency via color-mix so content stays opaque */
+  --surface-translucent: color-mix(in srgb, var(--panel) 58%, transparent);
+  --surface-dense: color-mix(in srgb, var(--panel) 92%, transparent);
+  --surface-overlay: var(--panel);
+
+  /* Forge ambience — reflected heat, not literal flame */
+  --forge-glow-1: rgba(236, 138, 74, 0.13);
+  --forge-glow-2: rgba(168, 44, 26, 0.12);
+  --forge-glow-3: rgba(217, 116, 66, 0.06);
+  --forge-glow-opacity: 0.76;
+  --forge-glow-opacity-low: 0.62;
+  --forge-glow-opacity-mobile: 0.58;
+  --forge-glow-opacity-mobile-low: 0.48;
+
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
   --shadow-md: 0 8px 24px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4);
   --shadow-lg: 0 32px 80px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.5);
@@ -61,40 +86,4 @@
   --z-panel: 100;
   --z-wizard: 100;
   --z-toast: 200;
-}
-
-[data-theme="light"] {
-  --bg: #f5f1ea;
-  --bg-1: #f5f1ea;
-  --bg-2: #ede8de;
-  --bg-3: #e3ddd0;
-  --bg-inset: #efeae0;
-  --panel: #faf6ee;
-  --border: #d8d1c2;
-  --border-strong: #beb6a4;
-  --border-faint: #e2dccd;
-  --ink: #1c1a16;
-  --ink-1: #1c1a16;
-  --ink-2: #4d4942;
-  --ink-3: #7c776c;
-  --ink-4: #a8a298;
-  --ink-6: rgba(28, 26, 22, 0.08);
-  --ember: #b8582a;
-  --ember-2: #9a481f;
-  --molten: #c4612d;
-  --molten-dim: rgba(196, 97, 45, 0.14);
-  --copper: #a85a3a;
-  --lava-glow: rgba(184, 88, 42, 0.10);
-  --lava-glow-2: rgba(184, 88, 42, 0.20);
-  --warning: #b8582a;
-  --warning-bg: rgba(184, 88, 42, 0.06);
-  --warning-border: rgba(184, 88, 42, 0.25);
-  --sage: #2e7d52;
-  --sage-2: #23603e;
-  --sage-dim: rgba(46, 125, 82, 0.14);
-  --sage-glow: rgba(46, 125, 82, 0.10);
-  --shadow-sm: 0 1px 2px rgba(60,40,20,0.05);
-  --shadow-md: 0 8px 24px rgba(60,40,20,0.08), 0 1px 2px rgba(60,40,20,0.06);
-  --shadow-lg: 0 32px 80px rgba(60,40,20,0.18), 0 2px 8px rgba(60,40,20,0.08);
-  --shadow-ember: 0 0 0 1px rgba(184,88,42,0.20), 0 12px 40px rgba(184,88,42,0.10);
 }

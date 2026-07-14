@@ -11,6 +11,7 @@ interface SiteHeaderProps {
 
 export function SiteHeader({ onCreate }: SiteHeaderProps) {
   const [scrolled, setScrolled] = useState(false)
+  const [featuresActive, setFeaturesActive] = useState(false)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12)
@@ -18,20 +19,40 @@ export function SiteHeader({ onCreate }: SiteHeaderProps) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => {
+    const features = document.getElementById('features')
+    if (!features || !('IntersectionObserver' in window)) return
+
+    const isDirectFeaturesLink = window.location.hash === '#features'
+    setFeaturesActive(isDirectFeaturesLink)
+    if (isDirectFeaturesLink) features.scrollIntoView({ block: 'start' })
+    const observer = new IntersectionObserver(
+      ([entry]) => setFeaturesActive(entry.isIntersecting),
+      { rootMargin: '-76px 0px -55% 0px', threshold: 0 },
+    )
+    observer.observe(features)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <header className={`site-header ${scrolled ? 'scrolled' : ''}`}>
       <Brand href="/" />
       <nav>
-        <a href="#how">How it works</a>
-        <a href="#features">Features</a>
+        <a className={featuresActive ? 'active' : undefined} href="#features" aria-current={featuresActive ? 'page' : undefined}>
+          Features
+        </a>
       </nav>
       <span className="spacer" />
       <div className="actions">
-        <span className="gh-pill muted">
+        <a
+          className="gh-pill"
+          href="https://github.com/alteixeira20/RoadForge"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <Icon name="github" size={18} />
           <span>Source</span>
-          <span className="stars">private</span>
-        </span>
+        </a>
         <button className="btn primary" onClick={onCreate}>
           Create roadmap
         </button>

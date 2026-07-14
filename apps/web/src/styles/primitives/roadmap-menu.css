@@ -25,8 +25,3 @@
   border-color: color-mix(in oklab, var(--ember-2) 60%, var(--border-strong));
   box-shadow: var(--shadow-ember);
 }
-
-[data-theme="light"] .roadmap-menu-trigger {
-  color: var(--ember-2);
-  background: color-mix(in oklab, var(--ember-2) 10%, var(--bg-2));
-}

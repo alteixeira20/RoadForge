@@ -18,24 +18,39 @@
 .btn.sm { height: 36px; padding: 0 14px; font-size: 14px; }
 .btn.lg { height: 52px; padding: 0 22px; font-size: 16px; border-radius: 12px; }
 
+/* Anvilary accessible dark-orange action gradient — hover feedback comes from
+   shadow, border, and lift, never from brightening the fill under white text. */
 .btn.primary {
-  background: linear-gradient(180deg, var(--molten) 0%, var(--ember-2) 100%);
-  border-color: var(--ember-2);
-  color: #fff;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 8px 24px rgba(217,116,66,0.30);
+  background: linear-gradient(180deg, var(--action-start) 0%, var(--action-end) 100%);
+  border-color: var(--action-end);
+  color: var(--action-text);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 8px 24px var(--accent-shadow);
 }
-.btn.primary:hover { filter: brightness(1.06); }
-[data-theme="light"] .btn.primary { color: #fff; }
+.btn.primary:hover {
+  border-color: var(--action-start);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 10px 28px var(--accent-shadow);
+  transform: translateY(-1px);
+}
+.btn svg { transition: transform 200ms; }
+.btn:hover svg { transform: translateX(2px); }
+
+.btn:disabled, .btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
 
 .btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
 .btn.ghost:hover { background: var(--bg-2); color: var(--ink); }
 
+/* Destructive — red-leaning so it never reads as the orange primary action */
 .btn.danger {
-  background: var(--ember);
-  border-color: var(--ember-2);
+  background: linear-gradient(180deg, #b03a2a 0%, #7c2114 100%);
+  border-color: #7c2114;
   color: #fff;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.14) inset;
 }
-.btn.danger:hover { filter: brightness(1.08); }
+.btn.danger:hover { border-color: #b03a2a; box-shadow: 0 1px 0 rgba(255,255,255,0.14) inset, 0 8px 20px rgba(124,33,20,0.30); }
 
 .iconbtn {
   width: 36px; height: 36px;

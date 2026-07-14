@@ -34,22 +34,6 @@ beforeEach(() => {
 })
 
 describe('storage', () => {
-  describe('getTheme / setTheme', () => {
-    it('returns null when no theme is set', () => {
-      expect(storage.getTheme()).toBeNull()
-    })
-
-    it('round-trips dark theme', () => {
-      storage.setTheme('dark')
-      expect(storage.getTheme()).toBe('dark')
-    })
-
-    it('round-trips light theme', () => {
-      storage.setTheme('light')
-      expect(storage.getTheme()).toBe('light')
-    })
-  })
-
   describe('getDisplayName / setDisplayName', () => {
     it('returns null when not set', () => {
       expect(storage.getDisplayName()).toBeNull()

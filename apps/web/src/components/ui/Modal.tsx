@@ -64,7 +64,7 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
         const focusInside = currentActive instanceof Node && dialog.contains(currentActive)
         const focusOnBody = currentActive === document.body
         if (focusInside || focusOnBody || !currentActive) {
-          previouslyFocused.focus()
+          previouslyFocused.focus({ preventScroll: true })
         }
       }
     }

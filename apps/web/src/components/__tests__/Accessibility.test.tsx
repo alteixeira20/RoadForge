@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Modal } from '../ui/Modal'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { EmberBackground } from '../ui/EmberBackground'
 import { AppHeader } from '../layout/AppHeader'
 import { SiteFooter } from '../layout/SiteFooter'
 import { TaskRowHeader } from '../roadmap/task-row/TaskRowHeader'
@@ -14,9 +15,6 @@ import { CreateWizard } from '../wizard/CreateWizard'
 // Mock sub-components/modules to avoid deep workspace and context dependencies
 vi.mock('@/components/roadmap/RoadmapSwitcher', () => ({
   RoadmapSwitcher: () => <div data-testid="roadmap-switcher" />,
-}))
-vi.mock('@/components/ui/ThemeToggle', () => ({
-  ThemeToggle: () => <div data-testid="theme-toggle" />,
 }))
 
 const mockSetDisplayName = vi.fn()
@@ -75,6 +73,22 @@ describe('Accessibility Unit Tests', () => {
     expect(container.textContent).toContain('Local-first. Portable. Self-hostable.')
   })
 
+  it('renders the ember atmosphere as a decorative, non-interactive layer', () => {
+    act(() => {
+      root.render(<EmberBackground />)
+    })
+
+    const layer = container.querySelector('.ember-background')
+    expect(layer).not.toBeNull()
+    expect(layer?.getAttribute('aria-hidden')).toBe('true')
+    expect(layer?.querySelector('canvas.ember-canvas')).not.toBeNull()
+
+    act(() => {
+      root.render(<EmberBackground subdued />)
+    })
+    expect(container.querySelector('.ember-background--subdued')).not.toBeNull()
+  })
+
   it('verifies icon-only button accessible names (AppHeader, TaskRowHeader)', () => {
     // AppHeader Import/Export button
     act(() => {
@@ -88,6 +102,9 @@ describe('Accessibility Unit Tests', () => {
     })
     const ioButton = container.querySelector('button[title="Import / Export"]')
     expect(ioButton?.getAttribute('aria-label')).toBe('Import / Export')
+
+    // Dark-only UI: no theme toggle is rendered anywhere in the header
+    expect(container.querySelector('.theme-toggle')).toBeNull()
 
     // TaskRowHeader checkbox accessible name
     const task = {

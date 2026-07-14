@@ -1,7 +1,6 @@
-import type { Phase, ShareRole, TagDefinition, Theme } from '@/types/roadmap'
+import type { Phase, ShareRole, TagDefinition } from '@/types/roadmap'
 
 const KEYS = {
-  theme: 'rf:theme',
   displayName: 'rf:displayName',
   lastRoadmapId: 'rf:lastRoadmapId',
   activeRoadmapId: 'rf:activeRoadmapId',
@@ -129,14 +128,6 @@ function setSession(key: string, value: string): void {
 }
 
 export const storage = {
-  getTheme(): Theme | null {
-    const v = getLocal(KEYS.theme)
-    return v === 'dark' || v === 'light' ? v : null
-  },
-  setTheme(theme: Theme): void {
-    setLocal(KEYS.theme, theme)
-  },
-
   getDisplayName(): string | null {
     return getLocal(KEYS.displayName)
   },

@@ -58,8 +58,7 @@
 /* Force consistent line-height on every interactive element in the header */
 .app-header .btn,
 .app-header .iconbtn,
-.app-header .roadmap-menu-trigger,
-.app-header .theme-toggle {
+.app-header .roadmap-menu-trigger {
   line-height: 1;
 }
 /* Ensure the roadmap-switcher div (which wraps the trigger button) aligns as a
