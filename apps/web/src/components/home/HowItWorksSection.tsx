@@ -8,13 +8,6 @@ export function HowItWorksSection() {
       title="Planning that stays in one place."
       lede="Notes in one app, tickets in another, decisions lost in chat. RoadForge keeps the plan in a single structured file — local by default, portable always."
     >
-      <div className="flow-strip" aria-hidden="true">
-        <span>Local file</span>
-        <span className="flow-sep">→</span>
-        <span>Portable JSON</span>
-        <span className="flow-sep">→</span>
-        <span>Optional server sync</span>
-      </div>
       <div className="steps">
         <div className="step-card">
           <div className="step-ic"><Icon name="device" size={17} /></div>
@@ -43,6 +36,13 @@ export function HowItWorksSection() {
             logs, participant tracking, and signed invite links.
           </p>
         </div>
+      </div>
+      <div className="flow-strip" aria-hidden="true">
+        <span>Local file</span>
+        <span className="flow-sep">→</span>
+        <span>Portable JSON</span>
+        <span className="flow-sep">→</span>
+        <span>Optional server sync</span>
       </div>
     </LandingSectionFrame>
   )

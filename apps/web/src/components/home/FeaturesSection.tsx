@@ -1,5 +1,3 @@
-'use client'
-
 import { Icon } from '@/components/ui/Icon'
 import { LandingSectionFrame } from '@/components/home/LandingSectionFrame'
 
@@ -72,20 +70,6 @@ export function FeaturesSection() {
             non-commercial source-available license.
           </p>
         </div>
-      </div>
-      <div className="gh-cta">
-        <div className="gh-cta-text">
-          <strong>Public Alpha. Portable data. Source available.</strong>
-          <span>PolyForm Noncommercial 1.0.0</span>
-        </div>
-        <a
-          className="btn lg secondary"
-          href="https://github.com/alteixeira20/RoadForge"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Icon name="github" size={16} /> View source
-        </a>
       </div>
     </LandingSectionFrame>
   )

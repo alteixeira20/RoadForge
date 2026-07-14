@@ -33,7 +33,7 @@ export function AppHeader({
   return (
     <header className="app-header">
       <div className="header-start">
-        <Brand href="/" className="brand-mini" />
+        <Brand href="/#hero" className="brand-mini" />
         {roadmapName && (
           <span className="header-roadmap-name">{roadmapName}</span>
         )}

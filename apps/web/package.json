@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:hero-viewport": "node --test tests/hero-viewport.test.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {

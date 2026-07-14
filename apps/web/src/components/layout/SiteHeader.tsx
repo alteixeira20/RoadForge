@@ -11,7 +11,7 @@ interface SiteHeaderProps {
 
 export function SiteHeader({ onCreate }: SiteHeaderProps) {
   const [scrolled, setScrolled] = useState(false)
-  const [featuresActive, setFeaturesActive] = useState(false)
+  const [activeSection, setActiveSection] = useState<string | null>(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12)
@@ -20,25 +20,43 @@ export function SiteHeader({ onCreate }: SiteHeaderProps) {
   }, [])
 
   useEffect(() => {
-    const features = document.getElementById('features')
-    if (!features || !('IntersectionObserver' in window)) return
+    const sections = ['how', 'features']
+      .map((id) => document.getElementById(id))
+      .filter((section): section is HTMLElement => section !== null)
+    if (sections.length === 0 || !('IntersectionObserver' in window)) return
 
-    const isDirectFeaturesLink = window.location.hash === '#features'
-    setFeaturesActive(isDirectFeaturesLink)
-    if (isDirectFeaturesLink) features.scrollIntoView({ block: 'start' })
+    const syncHash = () => {
+      const section = sections.find(({ id }) => window.location.hash === `#${id}`)
+      setActiveSection(section?.id ?? null)
+    }
+    syncHash()
+    const directSection = sections.find(({ id }) => window.location.hash === `#${id}`)
+    directSection?.scrollIntoView({ block: 'start' })
     const observer = new IntersectionObserver(
-      ([entry]) => setFeaturesActive(entry.isIntersecting),
+      (entries) => {
+        const activeEntry = entries.find((entry) => entry.isIntersecting)
+        if (activeEntry) setActiveSection(activeEntry.target.id)
+      },
       { rootMargin: '-76px 0px -55% 0px', threshold: 0 },
     )
-    observer.observe(features)
-    return () => observer.disconnect()
+    sections.forEach((section) => observer.observe(section))
+    window.addEventListener('hashchange', syncHash)
+    window.addEventListener('popstate', syncHash)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('hashchange', syncHash)
+      window.removeEventListener('popstate', syncHash)
+    }
   }, [])
 
   return (
     <header className={`site-header ${scrolled ? 'scrolled' : ''}`}>
-      <Brand href="/" />
+      <Brand href="/#hero" />
       <nav>
-        <a className={featuresActive ? 'active' : undefined} href="#features" aria-current={featuresActive ? 'page' : undefined}>
+        <a className={activeSection === 'how' ? 'active' : undefined} href="#how" aria-current={activeSection === 'how' ? 'page' : undefined}>
+          How it works
+        </a>
+        <a className={activeSection === 'features' ? 'active' : undefined} href="#features" aria-current={activeSection === 'features' ? 'page' : undefined}>
           Features
         </a>
       </nav>
