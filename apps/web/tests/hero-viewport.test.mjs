@@ -117,6 +117,7 @@ async function collectViewport(page, viewport) {
       return { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left, width: rect.width, height: rect.height }
     }
     const metadata = document.querySelector('.meta-row')
+    const ctas = document.querySelector('.ctas')
     const hero = document.querySelector('#hero')
     const howHeading = document.querySelector('#how h2')
     const preview = document.querySelector('.preview')
@@ -124,6 +125,7 @@ async function collectViewport(page, viewport) {
     const expectedMetadata = ['No account required', 'Runs locally', 'Portable exports', 'Non-commercial source available']
     const metadataItems = [...metadata.querySelectorAll('span')]
     const metadataBox = box(metadata)
+    const ctasBox = box(ctas)
     const previewBox = box(preview)
     const previewContentBox = box(previewContent)
     const previewChildrenFit = [...previewContent.querySelectorAll('*')].every((element) => {
@@ -133,6 +135,8 @@ async function collectViewport(page, viewport) {
     return {
       viewport: { width: window.innerWidth, height: window.innerHeight },
       metadataBox,
+      ctaPreviewGap: previewBox.top - ctasBox.bottom,
+      previewMetadataGap: metadataBox.top - previewBox.bottom,
       heroBox: box(hero),
       howHeadingBox: box(howHeading),
       previewBox,
@@ -184,6 +188,7 @@ test('desktop Hero keeps metadata within the initial viewport', { timeout: 60_00
       assert.ok(bottomInset <= 96, `${viewport.width}x${viewport.height}: metadata must stay within 96px of the viewport bottom, received ${bottomInset}px`)
       assert.ok(result.heroBox.bottom >= result.viewport.height, `${viewport.width}x${viewport.height}: Hero must fill the viewport`)
       assert.ok(result.howHeadingBox.top >= result.viewport.height + 24, `${viewport.width}x${viewport.height}: How it works must begin at least 24px below the viewport`)
+      assert.ok(Math.abs(result.ctaPreviewGap - result.previewMetadataGap) <= 1, `${viewport.width}x${viewport.height}: preview spacing must be equal (${result.ctaPreviewGap}px vs ${result.previewMetadataGap}px)`)
       assert.equal(result.previewUnclipped, true, `${viewport.width}x${viewport.height}: preview content must not be clipped`)
       assert.equal(result.horizontalOverflow, false, `${viewport.width}x${viewport.height}: page must not overflow horizontally`)
     }

@@ -8,6 +8,7 @@ import { EmberBackground } from '../ui/EmberBackground'
 import { AppHeader } from '../layout/AppHeader'
 import { SiteFooter } from '../layout/SiteFooter'
 import { TaskRowHeader } from '../roadmap/task-row/TaskRowHeader'
+import { TaskDetailActions } from '../roadmap/task-row/TaskDetailActions'
 import { TaskEditForm } from '../roadmap/TaskEditForm'
 import { WorkspaceWelcomeBanner } from '../roadmap/WorkspaceBanners'
 import { CreateWizard } from '../wizard/CreateWizard'
@@ -131,18 +132,6 @@ describe('Accessibility Unit Tests', () => {
           canDrag={true}
           dragHandleTitle="Drag to reorder"
           checkDisabled={false}
-          titleEditor={{
-            draft: 'Accessible Task',
-            active: false,
-            editable: true,
-            busy: false,
-            canCommit: true,
-            onBegin: vi.fn(),
-            onDraftChange: vi.fn(),
-            onCommit: vi.fn(),
-            onCancel: vi.fn(),
-            onInteraction: vi.fn(),
-          }}
           onCheck={vi.fn()}
           onToggle={vi.fn()}
         />
@@ -150,6 +139,41 @@ describe('Accessibility Unit Tests', () => {
     })
     const checkbox = container.querySelector('[role="checkbox"]')
     expect(checkbox?.getAttribute('aria-label')).toBe('Mark task "Accessible Task" as complete')
+    expect(container.querySelector('.title')?.tagName).toBe('SPAN')
+    expect(container.querySelector('.inline-title-trigger')).toBeNull()
+  })
+
+  it('keeps one explicit task editor action alongside subtask and dependency actions', () => {
+    const onEditDetails = vi.fn()
+    const onAddSubtask = vi.fn()
+    const onLinkDependency = vi.fn()
+
+    act(() => {
+      root.render(
+        <TaskDetailActions
+          showChildActions={true}
+          onEditDetails={onEditDetails}
+          onAddSubtask={onAddSubtask}
+          onLinkDependency={onLinkDependency}
+        />,
+      )
+    })
+
+    const editButtons = [...container.querySelectorAll('button')]
+      .filter((button) => button.textContent?.includes('Edit details'))
+    expect(editButtons).toHaveLength(1)
+    expect(editButtons[0].querySelector('svg')).not.toBeNull()
+    expect(container.querySelector('[aria-label="Edit description"]')).toBeNull()
+    expect(container.textContent).not.toContain('EDIT')
+
+    act(() => {
+      editButtons[0].click()
+      ;[...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Add subtask'))?.click()
+      ;[...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Link dependency'))?.click()
+    })
+    expect(onEditDetails).toHaveBeenCalledOnce()
+    expect(onAddSubtask).toHaveBeenCalledOnce()
+    expect(onLinkDependency).toHaveBeenCalledOnce()
   })
 
   it('verifies dialog roles and accessible title (Modal & ConfirmDialog)', () => {
