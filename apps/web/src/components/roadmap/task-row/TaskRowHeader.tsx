@@ -8,21 +8,6 @@ import {
   type DerivedTaskStatus,
 } from '@/lib/task-display'
 import type { TagDefinition, Task } from '@/types/roadmap'
-import { TaskInlineField } from '../TaskInlineField'
-
-interface TitleEditorProps {
-  draft: string
-  active: boolean
-  editable: boolean
-  busy: boolean
-  canCommit: boolean
-  error?: string
-  onBegin: () => void
-  onDraftChange: (value: string) => void
-  onCommit: () => void
-  onCancel: () => void
-  onInteraction: () => void
-}
 
 interface TaskRowHeaderProps {
   task: Task
@@ -40,7 +25,6 @@ interface TaskRowHeaderProps {
   dragHandleProps?: Record<string, unknown>
   checkDisabled: boolean
   checkTitle?: string
-  titleEditor: TitleEditorProps
   onCheck: () => void
   onToggle: () => void
 }
@@ -61,7 +45,6 @@ export function TaskRowHeader({
   dragHandleProps,
   checkDisabled,
   checkTitle,
-  titleEditor,
   onCheck,
   onToggle,
 }: TaskRowHeaderProps) {
@@ -95,22 +78,7 @@ export function TaskRowHeader({
           }
         }}
       />
-      <TaskInlineField
-        field="title"
-        value={task.title}
-        draft={titleEditor.draft}
-        active={titleEditor.active}
-        editable={titleEditor.editable}
-        busy={titleEditor.busy}
-        canCommit={titleEditor.canCommit}
-        error={titleEditor.error}
-        errorId={`${task.id}-title-error`}
-        onBegin={titleEditor.onBegin}
-        onDraftChange={titleEditor.onDraftChange}
-        onCommit={titleEditor.onCommit}
-        onCancel={titleEditor.onCancel}
-        onInteraction={titleEditor.onInteraction}
-      />
+      <span className="title">{task.title}</span>
       <span className={`task-status-badge is-${status}`} title={statusTitle}>
         {TASK_STATUS_LABELS[status]}
       </span>

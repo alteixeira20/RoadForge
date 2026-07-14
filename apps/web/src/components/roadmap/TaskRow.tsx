@@ -7,7 +7,7 @@ import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-as
 import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import { TaskEditForm } from './TaskEditForm'
 import { TaskDetailMeta } from './TaskDetailMeta'
-import { TaskDescriptionEditor } from './TaskDescriptionEditor'
+import { MarkdownDescription } from './MarkdownDescription'
 import { TaskClaimRow } from './task-row/TaskClaimRow'
 import { TaskDependencySection } from './task-row/TaskDependencySection'
 import { TaskDetailActions } from './task-row/TaskDetailActions'
@@ -16,7 +16,6 @@ import { TaskRowHeader } from './task-row/TaskRowHeader'
 import { TaskSubtaskSection } from './task-row/TaskSubtaskSection'
 import { useEditLock } from '@/hooks/useEditLock'
 import { useIdleEditPause } from '@/hooks/useIdleEditPause'
-import { useInlineTaskEdit } from '@/hooks/useInlineTaskEdit'
 import type { TaskUpdateHandler } from '@/hooks/taskMutationHelpers'
 import { useTaskClaim } from '@/hooks/useTaskClaim'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -99,9 +98,6 @@ export function TaskRow({
   const [isEditing, setIsEditing] = useState(startEditing)
   const [editDirty, setEditDirty] = useState(false)
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
-  const [titleDraft, setTitleDraft] = useState(task.title)
-  const [descDraft, setDescDraft] = useState(task.desc ?? '')
-  const [titleError, setTitleError] = useState<string | null>(null)
 
   const target = `task:${task.id}`
   const lock = locks[target]
@@ -182,15 +178,6 @@ export function TaskRow({
   const hasLocalLockControl = isAcquiring || ownsLock || isReleasing || hadLocalLockControlRef.current
   const isLockedByOther = knownLockHeldByOther
     || Boolean(lock && !isLockedByMe && !hasLocalLockControl)
-  const inlineEdit = useInlineTaskEdit({
-    task,
-    readOnly,
-    lockedByOther: isLockedByOther,
-    serverRoadmapId,
-    sessionToken,
-    onUpdateTask,
-    onAcquireError: handleEditLockError,
-  })
   const canCommitEdit = activeForm && ownsLock && !isIdlePaused && !isLockedByOther
   const resumeInFlightRef = useRef(false)
 
@@ -201,15 +188,15 @@ export function TaskRow({
       setShowGitHubLinkForm(false)
       setIsEditing(false)
       setEditDirty(false)
-      if (!inlineEdit.isEditing) onDirtyChange?.(task.id, false)
+      onDirtyChange?.(task.id, false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded])
 
   useEffect(() => {
-    onDirtyChange?.(task.id, editDirty || inlineEdit.isEditing)
+    onDirtyChange?.(task.id, editDirty)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editDirty, inlineEdit.isEditing])
+  }, [editDirty])
 
   const handleResumeEditing = useCallback(async () => {
     if (readOnly || resumeInFlightRef.current) return
@@ -237,14 +224,6 @@ export function TaskRow({
     ownsLock,
     recordInteraction,
   ])
-  const handleInlineInteraction = useCallback(() => {
-    if (!inlineEdit.isEditing) return
-    if (inlineEdit.isIdlePaused || !inlineEdit.ownsLock) {
-      void inlineEdit.resumeEditing()
-      return
-    }
-    inlineEdit.recordInteraction()
-  }, [inlineEdit])
   const effectivelyReadOnly = readOnly || isLockedByOther || isTaskDonePending
   const canDragTask =
     !effectivelyReadOnly && !expanded && !dragDisabled && Boolean(dragHandleProps)
@@ -295,40 +274,6 @@ export function TaskRow({
     const success = await tryAcquireEditLock()
     if (success) setShowGitHubLinkForm(true)
     return success
-  }
-
-  const handleBeginInlineEdit = async (field: 'title' | 'desc') => {
-    if (activeForm || effectivelyReadOnly || inlineEdit.isEditing) return
-    if (field === 'title') {
-      setTitleDraft(task.title)
-      setTitleError(null)
-    } else {
-      setDescDraft(task.desc ?? '')
-    }
-    await inlineEdit.beginEdit(field)
-  }
-
-  const handleCommitInlineEdit = async () => {
-    const value = inlineEdit.activeField === 'title'
-      ? titleDraft
-      : descDraft
-    const result = await inlineEdit.commitEdit(value)
-    if (result?.ok === false && result.reason === 'empty-title') {
-      setTitleError('Title cannot be empty.')
-      return
-    }
-    if (result?.ok) {
-      setTitleError(null)
-      onDirtyChange?.(task.id, false)
-    }
-  }
-
-  const handleCancelInlineEdit = async () => {
-    setTitleDraft(task.title)
-    setDescDraft(task.desc ?? '')
-    setTitleError(null)
-    onDirtyChange?.(task.id, false)
-    await inlineEdit.cancelEdit()
   }
 
   const navigateToTask = (id: string) => {
@@ -394,25 +339,9 @@ export function TaskRow({
         dragHandleProps={dragHandleProps}
         checkDisabled={effectivelyReadOnly}
         checkTitle={checkTitle}
-        titleEditor={{
-          draft: titleDraft,
-          active: expanded && inlineEdit.activeField === 'title',
-          editable: expanded && !activeForm && !effectivelyReadOnly && !inlineEdit.isEditing,
-          busy: inlineEdit.isAcquiring || inlineEdit.isReleasing,
-          canCommit: inlineEdit.canCommit,
-          error: titleError ?? undefined,
-          onBegin: () => { void handleBeginInlineEdit('title') },
-          onDraftChange: (value) => {
-            setTitleDraft(value)
-            if (value.trim()) setTitleError(null)
-          },
-          onCommit: () => { void handleCommitInlineEdit() },
-          onCancel: () => { void handleCancelInlineEdit() },
-          onInteraction: handleInlineInteraction,
-        }}
         onCheck={() => onCheck(task.id)}
         onToggle={() => {
-          if ((isEditing && editDirty) || inlineEdit.isEditing) {
+          if (isEditing && editDirty) {
             onToast('Save or discard your edits first.')
             return
           }
@@ -428,10 +357,10 @@ export function TaskRow({
           onKeyDownCapture={handleEditorInteraction}
           onPointerDownCapture={handleEditorInteraction}
         >
-          {((activeForm && !canCommitEdit) || (inlineEdit.isEditing && !inlineEdit.canCommit)) && (
+          {activeForm && !canCommitEdit && (
             <div className="edit-session-status" role="status" aria-live="polite">
               <span>
-                {(activeForm ? isIdlePaused : inlineEdit.isIdlePaused)
+                {isIdlePaused
                   ? 'Editing paused after 90 seconds of inactivity. Your draft is still here.'
                   : 'Edit lock unavailable. Your draft is still here.'}
               </span>
@@ -439,16 +368,11 @@ export function TaskRow({
                 type="button"
                 className="btn sm ghost"
                 onClick={() => {
-                  if (inlineEdit.isEditing) void inlineEdit.resumeEditing()
-                  else void handleResumeEditing()
+                  void handleResumeEditing()
                 }}
-                disabled={inlineEdit.isEditing
-                  ? inlineEdit.isAcquiring || inlineEdit.isReleasing
-                  : isAcquiring || isReleasing}
+                disabled={isAcquiring || isReleasing}
               >
-                {(inlineEdit.isEditing
-                  ? inlineEdit.isAcquiring || inlineEdit.isReleasing
-                  : isAcquiring || isReleasing)
+                {isAcquiring || isReleasing
                   ? 'Reconnecting…'
                   : 'Resume editing'}
               </button>
@@ -484,19 +408,7 @@ export function TaskRow({
             />
           ) : (
             <>
-              <TaskDescriptionEditor
-                value={task.desc ?? ''}
-                draft={descDraft}
-                active={inlineEdit.activeField === 'desc'}
-                editable={!activeForm && !effectivelyReadOnly && !inlineEdit.isEditing}
-                busy={inlineEdit.isAcquiring || inlineEdit.isReleasing}
-                canCommit={inlineEdit.canCommit}
-                onBegin={() => { void handleBeginInlineEdit('desc') }}
-                onDraftChange={setDescDraft}
-                onCommit={() => { void handleCommitInlineEdit() }}
-                onCancel={() => { void handleCancelInlineEdit() }}
-                onInteraction={handleInlineInteraction}
-              />
+              {task.desc && <MarkdownDescription value={task.desc} />}
               <TaskDetailMeta
                 task={task}
                 isNested={isNested}
@@ -562,9 +474,7 @@ export function TaskRow({
                   </div>
                 ) : (
                   <TaskDetailActions
-                    showEditDetails={!inlineEdit.isEditing}
                     showChildActions={!isNested}
-                    childActionsDisabled={inlineEdit.isEditing}
                     onEditDetails={() => { void handleOpenEditDetails() }}
                     onAddSubtask={() => { void handleOpenSubtaskForm() }}
                     onLinkDependency={() => { void handleOpenDependencyPicker() }}
