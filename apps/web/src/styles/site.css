@@ -75,7 +75,7 @@
 }
 .hero-inner {
   --hero-flow-gap: clamp(8px, 1.3vh, 16px);
-  --hero-preview-gap: clamp(20px, 2.5vh, 30px);
+  --hero-preview-gap: clamp(42px, 2.5vh, 30px);
   width: 100%;
   flex: 1;
   display: grid;
