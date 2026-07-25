@@ -216,6 +216,8 @@ See [docs/manual-qa.md](docs/manual-qa.md) for the full pre-release QA checklist
 (functional, collaboration, import/export, security, and deployment verification).
 For a focused backend API smoke test with curl commands, see
 [docs/backend-smoke-tests.md](docs/backend-smoke-tests.md).
+For large-roadmap scale budgets and the reproducible benchmark command, see
+[docs/performance.md](docs/performance.md).
 
 For security policies and responsible disclosure, see [SECURITY.md](SECURITY.md) and [docs/security/README.md](docs/security/README.md).
 For public deployment security assumptions, see [docs/public-deployment-security.md](docs/public-deployment-security.md).

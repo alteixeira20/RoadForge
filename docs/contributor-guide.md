@@ -182,6 +182,14 @@ cd ../..
 Use focused tests first. Database-backed API tests require PostgreSQL; do not
 convert a connection failure into a passing skip.
 
+Changes to hydration, filtering, import/export, or autosync payloads should also
+run the scale benchmark and compare against the budgets in
+[performance.md](performance.md):
+
+```bash
+COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm --dir apps/web benchmark:roadmap
+```
+
 For a persistence change, add a new file under `apps/api/alembic/versions/`.
 Never rewrite an applied migration. Run:
 

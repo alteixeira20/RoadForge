@@ -10,6 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "playwright test",
+    "benchmark:roadmap": "vitest run --config vitest.performance.config.ts && playwright test --config playwright.performance.config.ts",
+    "benchmark:roadmap:cpu": "vitest run --config vitest.performance.config.ts",
+    "benchmark:roadmap:browser": "playwright test --config playwright.performance.config.ts",
     "test:hero-viewport": "node --test tests/hero-viewport.test.mjs",
     "test:watch": "vitest"
   },

@@ -695,7 +695,7 @@
       "color": "#4f7cac",
       "colorMode": "auto",
       "status": "future",
-      "progress": 25,
+      "progress": 50,
       "tasks": [
         {
           "id": "RF-033",
@@ -723,7 +723,7 @@
           "id": "RF-034",
           "title": "Establish accessibility and responsive acceptance gates",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "a11y",
             "quality",
@@ -742,8 +742,8 @@
         {
           "id": "RF-035",
           "title": "Measure large-roadmap performance and sync payload limits",
-          "done": false,
-          "next": true,
+          "done": true,
+          "next": false,
           "tags": [
             "performance",
             "quality",
@@ -756,7 +756,7 @@
             "RF-031"
           ],
           "est": "3 days",
-          "desc": "**Why**\nPlanning tools must remain responsive with realistic data.\n\n**Finding**\nNo evidence was found of a large-roadmap benchmark for hydration, typing, filters, expand/collapse, import/export, autosync payloads, or realtime updates.\n\n**Scope**\nCreate a representative fixture and budgets; profile subscriptions before proposing optimizations.\n\n**Acceptance criteria**\nHundreds-task workflow meets agreed interaction and sync budgets; regressions fail a repeatable gate; only evidenced optimizations enter scope.\n\n**Validation / gate**\nBenchmark/trace in CI or reproducible local command.\n\n**Risk**\nSpeculative optimization can obscure real bottlenecks.\n\n**Evidence**\nWorkspace view model, storage, autosync, import/export; classification needs verification.\n\n**Classification**\nneeds verification"
+          "desc": "**Why**\nPlanning workflows need reproducible scale evidence before optimization or Beta release decisions.\n\n**Implemented**\nAdded parser-valid small, medium, and large fixtures with 50, 250, and 1,000 tasks. `benchmark:roadmap` runs median CPU budgets, existing typing/caret and render-subscription regressions, controlled autosync/realtime tests, then a one-worker production Chromium benchmark. The browser stage builds and serves the same `output: 'standalone'` artifact the Dockerfile ships via `scripts/serve-standalone.mjs`, so a passing run also proves the deployable server boots. `docs/performance.md` defines commands, fixture content, budgets, the recorded baseline, sync/import boundaries, and deployed limitations.\n\n**Measured baseline**\nVerified 2026-07-25 on one Linux workstation. The 1,000-task autosync request is 297.0 KiB against a 384 KiB budget and 512 KiB API ceiling. Median CPU results: hydration preparation 22.3 ms, cache round trip 3.3 ms, broad filter 3.4 ms, display-number preparation 0.5 ms, parser import 3.3 ms, JSON export 18.0 ms, and Markdown export 10.9 ms. Production Chromium: hydration to usable 893.6 ms, controlled middle-string typing/caret 48.3 ms, broad search stabilization 1,480.8 ms, and 50-task phase expansion 309.9 ms.\n\n**Result**\nAll budgets pass. Browser timings vary between runs on the same machine; across three consecutive runs hydration measured 825-947 ms, typing/caret 48-185 ms, search 1,481-1,561 ms, and phase expansion 277-355 ms. Broad search holds the least headroom at roughly 25% below budget and is the first metric to watch for regression. Input node identity and caret position remain stable; unchanged PhaseList props do not rerender children; controlled autosync and realtime state tests pass. No speculative optimization was introduced. Real browser diversity, storage quotas, PostgreSQL/Redis latency, proxy limits, and cross-worker propagation remain RF-023/RF-036 deployment evidence.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-036",
