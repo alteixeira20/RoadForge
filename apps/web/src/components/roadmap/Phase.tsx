@@ -59,6 +59,8 @@ interface PhaseProps {
   hasCycle: (taskId: string, depId: string) => boolean
   allTasks: Task[]
   readOnly: boolean
+  beginRename?: boolean
+  onBeginRenameHandled?: () => void
   assignmentNames: string[]
   onToast: (message: string, tone?: ToastTone) => void
   dragHandleProps?: React.HTMLAttributes<Element>
@@ -87,6 +89,8 @@ export function Phase({
   hasCycle,
   allTasks,
   readOnly,
+  beginRename = false,
+  onBeginRenameHandled,
   assignmentNames,
   onToast,
   dragHandleProps,
@@ -102,6 +106,7 @@ export function Phase({
   const [dirtyTaskId, setDirtyTaskId] = useState<string | null>(null)
   const [draftCreatedTaskId, setDraftCreatedTaskId] = useState<string | null>(null)
   const [isNameEditing, setIsNameEditing] = useState(false)
+  const beginRenameHandledRef = useRef(false)
   const colorControlRef = useRef<HTMLDivElement | null>(null)
 
   const { locks, serverRoadmapId, sessionToken, participantId } = useRoadmapSession()
@@ -164,12 +169,12 @@ export function Phase({
     return tryAcquireColorLock()
   }
 
-  const handleNameBeforeEdit = async (): Promise<boolean> => {
+  const handleNameBeforeEdit = useCallback(async (): Promise<boolean> => {
     if (readOnly || isColorLockedByOther) return false
     const ok = await tryAcquireColorLock()
     if (ok) setIsNameEditing(true)
     return ok
-  }
+  }, [isColorLockedByOther, readOnly, tryAcquireColorLock])
 
   const handleNameSave = (name: string) => {
     onUpdatePhaseName(phase.id, name)
@@ -189,10 +194,20 @@ export function Phase({
     closeColorPicker()
   }
 
-  const handleMenuRename = async () => {
+  const handleMenuRename = useCallback(async () => {
     const ok = await handleNameBeforeEdit()
     if (ok) setRenameKey((k) => k + 1)
-  }
+  }, [handleNameBeforeEdit])
+
+  useEffect(() => {
+    if (!beginRename) {
+      beginRenameHandledRef.current = false
+      return
+    }
+    if (beginRenameHandledRef.current) return
+    beginRenameHandledRef.current = true
+    void handleMenuRename().finally(() => onBeginRenameHandled?.())
+  }, [beginRename, handleMenuRename, onBeginRenameHandled])
 
   useEffect(() => {
     if (!showColorPicker) return

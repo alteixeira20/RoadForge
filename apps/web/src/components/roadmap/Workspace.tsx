@@ -120,6 +120,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const [showActivity, setShowActivity] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => !storage.hasDismissedOnboarding())
+  const [phaseNameEditRequestId, setPhaseNameEditRequestId] = useState<string | null>(null)
+  const phaseCreateGuardRef = useRef(false)
 
   const handleDismissOnboarding = () => {
     setShowOnboarding(false)
@@ -181,6 +183,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     isFiltering,
     effectiveOpenPhases,
     togglePhase,
+    openPhase,
     allOpen,
     collapseAll,
     expandAll,
@@ -378,6 +381,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   })
 
   const {
+    handleAddPhase,
     handleUpdatePhaseColor,
     handleUpdatePhaseColorMode,
     handleUpdatePhaseName,
@@ -391,6 +395,21 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     serverRoadmapId,
     addPendingActivityChange,
   })
+
+  const handleAddPhaseRequest = () => {
+    if (readOnly || phaseCreateGuardRef.current) return
+    phaseCreateGuardRef.current = true
+    const phaseId = handleAddPhase()
+    if (phaseId) {
+      setWorkspaceView('roadmap')
+      clearFilters()
+      openPhase(phaseId)
+      setPhaseNameEditRequestId(phaseId)
+    }
+    queueMicrotask(() => {
+      phaseCreateGuardRef.current = false
+    })
+  }
 
   const handleRoadmapImported = (
     importedName: string | undefined,
@@ -486,6 +505,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           onOpenActivity={() => setShowActivity(true)}
           onOpenVersions={() => setShowVersions(true)}
           onOpenTagRegistry={openTagRegistry}
+          onAddPhase={handleAddPhaseRequest}
+          readOnly={readOnly}
           hasServerActivity={!!serverRoadmapId && !!sessionToken}
           canViewTeam={canViewTeam}
           canViewVersions={
@@ -515,6 +536,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             expandedTaskId={expandedTaskId}
             allTasks={allTasks}
             readOnly={readOnly}
+            hasRoadmapPhases={phases.length > 0}
             isFiltering={isFiltering}
             emptyStateMessage={
               filterState.query.trim()
@@ -522,6 +544,9 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
                 : 'No tasks match the selected filters.'
             }
             onClearFilters={clearFilters}
+            onAddPhase={handleAddPhaseRequest}
+            phaseNameEditRequestId={phaseNameEditRequestId}
+            onPhaseNameEditRequestHandled={() => setPhaseNameEditRequestId(null)}
             onTogglePhase={togglePhase}
             onToggleTask={toggleExpandedTask}
             onCheckTask={onCheckTask}

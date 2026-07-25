@@ -29,6 +29,7 @@ const changePriority: Record<ActivityAction, number> = {
   'roadmap.imported': 1,
   'import.replaced': 1,
   'roadmap.restored': 1,
+  'phase.created': 2,
   'phase.completed': 2,
   'phase.reopened': 2,
   'task.created': 3,
@@ -52,6 +53,7 @@ export function countKeyForAction(action: ActivityAction): string {
     case 'import.replaced': return 'imports_replaced'
     case 'roadmap.restored': return 'restores'
     case 'roadmap.renamed': return 'roadmaps_renamed'
+    case 'phase.created': return 'phases_added'
     case 'phase.completed': return 'phases_completed'
     case 'phase.reopened': return 'phases_reopened'
     case 'task.created': return 'tasks_added'

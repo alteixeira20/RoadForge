@@ -1,0 +1,250 @@
+// @vitest-environment jsdom
+
+import { act, type ComponentProps } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { PhaseList } from '@/components/roadmap/PhaseList'
+import { PhaseNameEditor } from '@/components/roadmap/PhaseNameEditor'
+import { WorkspaceToolbar } from '@/components/roadmap/WorkspaceToolbar'
+import type { Phase } from '@/types/roadmap'
+
+vi.mock('@/components/roadmap/SortablePhaseItem', () => ({
+  SortablePhaseItem: ({ phase }: { phase: Phase }) => (
+    <div data-testid={`phase-${phase.id}`}>{phase.name}</div>
+  ),
+}))
+
+const phase: Phase = {
+  id: 'rf-p-1',
+  num: '01',
+  name: 'Planning',
+  color: '#76746e',
+  colorMode: 'auto',
+  status: 'active',
+  progress: 0,
+  tasks: [],
+}
+
+function createPhaseListProps(
+  overrides: Partial<ComponentProps<typeof PhaseList>> = {},
+): ComponentProps<typeof PhaseList> {
+  return {
+    phases: [],
+    openPhases: [],
+    expandedTaskId: null,
+    allTasks: [],
+    readOnly: false,
+    hasRoadmapPhases: false,
+    isFiltering: false,
+    emptyStateMessage: 'No tasks match.',
+    onClearFilters: vi.fn(),
+    onAddPhase: vi.fn(),
+    phaseNameEditRequestId: null,
+    onPhaseNameEditRequestHandled: vi.fn(),
+    onTogglePhase: vi.fn(),
+    onToggleTask: vi.fn(),
+    onCheckTask: vi.fn(),
+    pendingTaskDoneIds: new Set(),
+    onUpdateTask: vi.fn(),
+    onUpdatePhaseColor: vi.fn(),
+    onUpdatePhaseColorMode: vi.fn(),
+    onUpdatePhaseName: vi.fn(),
+    onDeletePhase: vi.fn(),
+    onAddTask: vi.fn(() => ''),
+    onAddSubtask: vi.fn(),
+    onLinkDependency: vi.fn(),
+    onUnlinkDependency: vi.fn(),
+    onReorderTasks: vi.fn(),
+    onReorderSubtasks: vi.fn(),
+    onDeleteSubtask: vi.fn(),
+    onReorderPhases: vi.fn(),
+    hasCycle: vi.fn(() => false),
+    assignmentNames: [],
+    onToast: vi.fn(),
+    ...overrides,
+  }
+}
+
+function createToolbarProps(
+  overrides: Partial<ComponentProps<typeof WorkspaceToolbar>> = {},
+): ComponentProps<typeof WorkspaceToolbar> {
+  return {
+    filterState: {
+      query: '',
+      status: 'all',
+      assignees: [],
+      tags: [],
+      phaseIds: [],
+      claim: 'all',
+      recommended: false,
+    },
+    onFilterChange: vi.fn(),
+    onClearFilters: vi.fn(),
+    assignmentNames: [],
+    tagIds: [],
+    tagLabels: new Map(),
+    phaseOptions: [{ id: phase.id, label: '01 Planning' }],
+    workspaceView: 'roadmap',
+    onWorkspaceViewChange: vi.fn(),
+    allOpen: true,
+    onCollapseAll: vi.fn(),
+    onExpandAll: vi.fn(),
+    onOpenActivity: vi.fn(),
+    onOpenVersions: vi.fn(),
+    onOpenTagRegistry: vi.fn(),
+    onAddPhase: vi.fn(),
+    readOnly: false,
+    hasServerActivity: false,
+    canViewTeam: false,
+    canViewVersions: false,
+    ...overrides,
+  }
+}
+
+describe('phase creation controls', () => {
+  let container: HTMLDivElement
+  let root: Root
+
+  beforeEach(() => {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it('offers first-phase recovery to editors', () => {
+    const onAddPhase = vi.fn()
+    act(() => {
+      root.render(<PhaseList {...createPhaseListProps({ onAddPhase })} />)
+    })
+
+    const button = Array.from(container.querySelectorAll('button'))
+      .find((candidate) => candidate.textContent?.includes('Create first phase'))
+    expect(button).toBeInstanceOf(HTMLButtonElement)
+    expect(button?.getAttribute('type')).toBe('button')
+    act(() => button?.click())
+    expect(onAddPhase).toHaveBeenCalledTimes(1)
+  })
+
+  it('explains zero-phase restrictions to viewers without an enabled action', () => {
+    act(() => {
+      root.render(
+        <PhaseList {...createPhaseListProps({ readOnly: true })} />,
+      )
+    })
+
+    expect(container.textContent).toContain('Viewers cannot create phases')
+    expect(container.querySelector('button')).toBeNull()
+  })
+
+  it('keeps filtered-empty recovery separate from zero-phase recovery', () => {
+    const onClearFilters = vi.fn()
+    act(() => {
+      root.render(
+        <PhaseList
+          {...createPhaseListProps({
+            hasRoadmapPhases: true,
+            isFiltering: true,
+            onClearFilters,
+          })}
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain('No matching tasks')
+    expect(container.textContent).toContain('Clear search and filters')
+    expect(container.textContent).not.toContain('Create first phase')
+  })
+
+  it('offers another phase after the final phase only to editors', () => {
+    const onAddPhase = vi.fn()
+    act(() => {
+      root.render(
+        <PhaseList
+          {...createPhaseListProps({
+            phases: [phase],
+            hasRoadmapPhases: true,
+            onAddPhase,
+          })}
+        />,
+      )
+    })
+
+    const button = Array.from(container.querySelectorAll('button'))
+      .find((candidate) => candidate.textContent?.includes('Add another phase'))
+    expect(button).toBeInstanceOf(HTMLButtonElement)
+    act(() => button?.click())
+    expect(onAddPhase).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      root.render(
+        <PhaseList
+          {...createPhaseListProps({
+            phases: [phase],
+            hasRoadmapPhases: true,
+            readOnly: true,
+          })}
+        />,
+      )
+    })
+    expect(container.textContent).not.toContain('Add another phase')
+  })
+
+  it('keeps Add phase visible in the toolbar for editors', () => {
+    const onAddPhase = vi.fn()
+    act(() => {
+      root.render(
+        <WorkspaceToolbar {...createToolbarProps({ onAddPhase })} />,
+      )
+    })
+
+    const button = Array.from(container.querySelectorAll('button'))
+      .find((candidate) => candidate.textContent?.includes('Add phase'))
+    expect(button).toBeInstanceOf(HTMLButtonElement)
+    act(() => button?.click())
+    expect(onAddPhase).toHaveBeenCalledTimes(1)
+    const filterButton = Array.from(container.querySelectorAll('button'))
+      .find((candidate) => candidate.textContent?.includes('Filters'))
+    act(() => filterButton?.click())
+    expect(container.textContent).toContain('Choose phase...')
+
+    act(() => {
+      root.render(
+        <WorkspaceToolbar {...createToolbarProps({ readOnly: true })} />,
+      )
+    })
+    expect(Array.from(container.querySelectorAll('button'))
+      .some((candidate) => candidate.textContent?.includes('Add phase'))).toBe(false)
+  })
+
+  it('focuses phase-name editing when the rename key changes', async () => {
+    const props: ComponentProps<typeof PhaseNameEditor> = {
+      name: 'New phase',
+      num: '02',
+      isActive: false,
+      displayStatus: 'future',
+      progressPercent: 0,
+      doneCount: 0,
+      taskCount: 0,
+      renameKey: 0,
+      onPhaseToggle: vi.fn(),
+      onSave: vi.fn(),
+    }
+    act(() => {
+      root.render(<PhaseNameEditor {...props} />)
+    })
+
+    await act(async () => {
+      root.render(<PhaseNameEditor {...props} renameKey={1} />)
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    })
+
+    const input = container.querySelector('input')
+    expect(input).toBeInstanceOf(HTMLInputElement)
+    expect(document.activeElement).toBe(input)
+  })
+})

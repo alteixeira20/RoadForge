@@ -30,6 +30,8 @@ interface SortablePhaseItemProps {
   hasCycle: (taskId: string, depId: string) => boolean
   allTasks: Task[]
   readOnly: boolean
+  beginRename?: boolean
+  onBeginRenameHandled?: () => void
   assignmentNames: string[]
   onToast: (message: string) => void
 }

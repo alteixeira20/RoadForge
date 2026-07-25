@@ -28,6 +28,8 @@ interface WorkspaceToolbarProps {
   onOpenActivity: () => void
   onOpenVersions: () => void
   onOpenTagRegistry: () => void
+  onAddPhase: () => void
+  readOnly: boolean
   hasServerActivity: boolean
   canViewTeam: boolean
   canViewVersions: boolean
@@ -70,6 +72,8 @@ export function WorkspaceToolbar({
   onOpenActivity,
   onOpenVersions,
   onOpenTagRegistry,
+  onAddPhase,
+  readOnly,
   hasServerActivity,
   canViewTeam,
   canViewVersions,
@@ -167,6 +171,16 @@ export function WorkspaceToolbar({
 
         {workspaceView === 'roadmap' && (
           <div className="workspace-roadmap-tools">
+            {!readOnly && (
+              <button
+                type="button"
+                className="toolbar-action toolbar-add-phase-action"
+                onClick={onAddPhase}
+              >
+                <Icon name="plus" size={14} /> Add phase
+              </button>
+            )}
+
             <div className="search">
               <Icon name="search" size={15} stroke="var(--ink-3)" />
               <input
@@ -241,7 +255,7 @@ export function WorkspaceToolbar({
                       }
                     }}
                   >
-                    <option value="">Add phase...</option>
+                    <option value="">Choose phase...</option>
                     {phaseOptions.map((phase) => (
                       <option key={phase.id} value={phase.id}>{phase.label}</option>
                     ))}

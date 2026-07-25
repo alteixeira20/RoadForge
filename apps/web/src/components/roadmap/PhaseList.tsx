@@ -20,6 +20,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import { Icon } from '@/components/ui/Icon'
 import { SortablePhaseItem } from './SortablePhaseItem'
 import type { ToastTone } from '@/hooks/useToastState'
 import type { TaskUpdateHandler } from '@/hooks/taskMutationHelpers'
@@ -31,9 +32,13 @@ interface PhaseListProps {
   expandedTaskId: string | null
   allTasks: Task[]
   readOnly: boolean
+  hasRoadmapPhases: boolean
   isFiltering: boolean
   emptyStateMessage: string
   onClearFilters: () => void
+  onAddPhase: () => void
+  phaseNameEditRequestId: string | null
+  onPhaseNameEditRequestHandled: () => void
   onTogglePhase: (id: string) => void
   onToggleTask: (id: string) => void
   onCheckTask: (id: string) => void
@@ -62,9 +67,13 @@ export function PhaseList({
   expandedTaskId,
   allTasks,
   readOnly,
+  hasRoadmapPhases,
   isFiltering,
   emptyStateMessage,
   onClearFilters,
+  onAddPhase,
+  phaseNameEditRequestId,
+  onPhaseNameEditRequestHandled,
   onTogglePhase,
   onToggleTask,
   onCheckTask,
@@ -120,6 +129,26 @@ export function PhaseList({
 
   const activePhase = activePhaseId ? phases.find((p) => p.id === activePhaseId) : null
 
+  if (!hasRoadmapPhases) {
+    return (
+      <div className="phases">
+        <div className="zero-phase-state" role="status">
+          <strong>No phases yet</strong>
+          <p>
+            {readOnly
+              ? 'This roadmap has no phases. Viewers cannot create phases.'
+              : 'Create a first phase to continue planning.'}
+          </p>
+          {!readOnly && (
+            <button type="button" className="btn primary" onClick={onAddPhase}>
+              <Icon name="plus" size={14} /> Create first phase
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   if (isFiltering && phases.length === 0) {
     return (
       <div className="phases">
@@ -172,10 +201,21 @@ export function PhaseList({
                 hasCycle={hasCycle}
                 allTasks={allTasks}
                 readOnly={readOnly}
+                beginRename={phaseNameEditRequestId === p.id}
+                onBeginRenameHandled={onPhaseNameEditRequestHandled}
                 assignmentNames={assignmentNames}
                 onToast={onToast}
               />
             ))}
+            {!readOnly && !isFiltering && (
+              <button
+                type="button"
+                className="add-phase-after-list"
+                onClick={onAddPhase}
+              >
+                <Icon name="plus" size={14} /> Add another phase
+              </button>
+            )}
           </div>
         </SortableContext>
         <DragOverlay

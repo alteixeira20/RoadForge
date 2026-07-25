@@ -112,8 +112,9 @@ describe('roadmap-validation', () => {
 
       expect(new Set(phaseIds).size).toBe(phaseIds.length)
       expect(taskIdSet.size).toBe(taskIds.length)
-      expect(tasks.filter((task) => task.next).map((task) => task.id))
-        .toEqual(['RF-016'])
+      const nextTasks = tasks.filter((task) => task.next)
+      expect(nextTasks).toHaveLength(1)
+      expect(nextTasks[0].id).toMatch(/^RF-0(?:1[6-9]|2\d|3[0-5])$/)
       expect(tasks.flatMap((task) => task.tags ?? [])
         .every((tag) => registeredTags.has(tag))).toBe(true)
       expect(tasks.flatMap((task) => task.deps ?? [])

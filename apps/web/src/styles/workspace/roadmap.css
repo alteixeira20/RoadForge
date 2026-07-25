@@ -154,7 +154,8 @@
 
 /* ─── Phases container ─────────────────────────────────────────────────────── */
 .phases { display: flex; flex-direction: column; gap: 12px; }
-.filtered-empty-state {
+.filtered-empty-state,
+.zero-phase-state {
   padding: 28px 24px;
   background: var(--bg-2);
   border: 1px dashed var(--border);
@@ -162,18 +163,42 @@
   color: var(--ink-3);
   text-align: center;
 }
-.filtered-empty-state strong {
+.filtered-empty-state strong,
+.zero-phase-state strong {
   display: block;
   margin-bottom: 4px;
   color: var(--ink-1);
   font-size: 14px;
 }
-.filtered-empty-state p {
+.filtered-empty-state p,
+.zero-phase-state p {
   margin: 0;
   font-size: 13.5px;
 }
-.filtered-empty-state .btn {
+.filtered-empty-state .btn,
+.zero-phase-state .btn {
   margin-top: 14px;
+}
+.add-phase-after-list {
+  min-height: 44px;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--ink-3);
+  font: inherit;
+  cursor: pointer;
+}
+.add-phase-after-list:hover,
+.add-phase-after-list:focus-visible {
+  border-color: var(--ember);
+  color: var(--ink-1);
+  background: var(--bg-2);
+  outline: none;
 }
 
 /* ─── Animations ───────────────────────────────────────────────────────────── */

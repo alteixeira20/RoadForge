@@ -1,3 +1,4 @@
+import { createPhase } from '@/lib/roadmap-factory'
 import { renumberPhases } from '@/lib/phase-progress'
 import type { ActivityChange, Phase, PhaseColorMode } from '@/types/roadmap'
 
@@ -11,6 +12,7 @@ interface UsePhaseMutationsParams {
 }
 
 interface UsePhaseMutationsResult {
+  handleAddPhase: () => string | null
   handleUpdatePhaseColor: (phaseId: string, color: string) => void
   handleUpdatePhaseColorMode: (phaseId: string, colorMode: PhaseColorMode) => void
   handleUpdatePhaseName: (phaseId: string, name: string) => void
@@ -26,6 +28,24 @@ export function usePhaseMutations({
   serverRoadmapId,
   addPendingActivityChange,
 }: UsePhaseMutationsParams): UsePhaseMutationsResult {
+  const handleAddPhase = () => {
+    if (readOnly) return null
+
+    const phase = createPhase(phases)
+    setPhases([...phases, phase])
+    addPendingActivityChange({
+      action: 'phase.created',
+      entity_type: 'phase',
+      entity_id: phase.id,
+      phaseId: phase.id,
+      phaseName: phase.name,
+      phaseNum: phase.num,
+      details: `${phase.num} — ${phase.name}`,
+    })
+    setSaved(false)
+    return phase.id
+  }
+
   const handleUpdatePhaseColor = (phaseId: string, color: string) => {
     if (readOnly) return
 
@@ -86,6 +106,7 @@ export function usePhaseMutations({
   }
 
   return {
+    handleAddPhase,
     handleUpdatePhaseColor,
     handleUpdatePhaseColorMode,
     handleUpdatePhaseName,

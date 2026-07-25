@@ -76,6 +76,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
         const changes = Array.isArray(metadata?.changes) ? metadata.changes.length : 0
         return `Saved ${changes || 'multiple'} changes`
       }
+      case 'phase.created': return 'Added phase'
       case 'phase.completed': return 'Completed phase'
       case 'phase.reopened': return 'Reopened phase'
       case 'task.created': return 'Added task'
@@ -108,6 +109,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
       if (typeof value === 'number' && value > 0) parts.push(plural(value, singular, pluralLabel))
     }
     add('tasks_added', 'task added', 'tasks added')
+    add('phases_added', 'phase added', 'phases added')
     add('phases_completed', 'phase completed', 'phases completed')
     add('phases_reopened', 'phase reopened', 'phases reopened')
     add('tasks_completed', 'task completed', 'tasks completed')
@@ -162,7 +164,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
       const details = getBatchDetails(metadata_json)
       return details ? <span>{details}</span> : <span className="dim">Snapshot saved</span>
     }
-    if (action === 'phase.completed' || action === 'phase.reopened') {
+    if (action === 'phase.created' || action === 'phase.completed' || action === 'phase.reopened') {
       if (metadata_json?.details) return <span>{String(metadata_json.details)}</span>
       if (metadata_json?.phaseNum || metadata_json?.phaseName) {
         return <span>{[metadata_json.phaseNum, metadata_json.phaseName].filter(Boolean).map(String).join(' — ')}</span>

@@ -106,10 +106,12 @@ export function usePhaseCollapse(phases: Phase[], roadmapId: string | null) {
     setOpenPhases((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     )
+  const openPhase = (id: string) =>
+    setOpenPhases((prev) => (prev.includes(id) ? prev : [...prev, id]))
 
   const allOpen = openPhases.length === phases.length
   const collapseAll = () => setOpenPhases([])
   const expandAll = () => setOpenPhases(phases.map((p) => p.id))
 
-  return { openPhases, togglePhase, allOpen, collapseAll, expandAll }
+  return { openPhases, togglePhase, openPhase, allOpen, collapseAll, expandAll }
 }
