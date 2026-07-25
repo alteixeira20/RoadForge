@@ -9,11 +9,15 @@
 }
 
 /* ─── Start zone: brand + roadmap name ──────────────────────────────────── */
+/* Absorbs the leftover width so the roadmap name truncates instead of pushing
+   the actions past the viewport edge. */
 .header-start {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .app-header .brand-mini {
@@ -30,6 +34,8 @@
   line-height: 1;
   color: var(--ink);
   max-width: 240px;
+  min-width: 0;
+  flex: 0 1 auto;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -38,10 +44,27 @@
 }
 
 /* ─── End zone: actions ─────────────────────────────────────────────────── */
+/* Actions keep their intrinsic width; nothing here may shrink into wrapped
+   text or spill outside the viewport. */
 .header-end {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
+}
+
+/* Buttons and links keep their intrinsic width. The roadmap switcher is
+   deliberately excluded: it is the widest item and is the one control that
+   must absorb the shortfall, which it already does by truncating internally. */
+.header-end > .btn,
+.header-end > .iconbtn,
+.header-end > a {
+  flex: 0 0 auto;
+}
+
+.header-end > .roadmap-switcher {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .app-header .header-save-btn {
@@ -55,7 +78,14 @@
   display: inline-block;
   line-height: 1;
 }
-.header-help-glyph { display: none; }
+/* Report a problem: never wraps, and never shrinks below its text width. The
+   "!" glyph replaces the label once the header runs short of room. */
+.app-header .header-report-link {
+  height: 36px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  line-height: 1;
+}
 .app-header .header-report-link::after { display: none; content: "!"; }
 /* Force consistent line-height on every interactive element in the header */
 .app-header .btn,
@@ -86,6 +116,25 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
+/* ── 1024px — narrow desktop/laptop: report action becomes glyph-only ─────
+   The full label is the widest item in the header and is what runs out of room
+   first, well before mobile widths. The accessible name, title, href, and
+   privacy warning all live on the anchor, so dropping the label text costs
+   nothing semantically. */
+@media (max-width: 1024px) {
+  .app-header .header-report-link {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+  .app-header .header-report-link .problem-report-link-label { display: none; }
+  .app-header .header-report-link::after {
+    display: inline;
+    font-weight: 800;
+  }
+}
+
 /* ── 760px — tablet: tighten header spacing ─────────────────────────────── */
 @media (max-width: 760px) {
   .app-header { padding: 12px 20px; }
@@ -104,13 +153,4 @@
 @media (max-width: 600px) {
   .app-header .header-save-btn { width: 36px; min-width: 36px; padding: 0; }
   .app-header .header-save-label { display: none; }
-  .app-header .header-help-link { width: 36px; min-width: 36px; padding: 0; }
-  .app-header .header-report-link { width: 36px; min-width: 36px; padding: 0; }
-  .app-header .header-report-link .problem-report-link-label { display: none; }
-  .app-header .header-report-link::after {
-    display: inline;
-    font-weight: 800;
-  }
-  .header-help-label { display: none; }
-  .header-help-glyph { display: inline; font-weight: 700; }
 }

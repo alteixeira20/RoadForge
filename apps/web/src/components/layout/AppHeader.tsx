@@ -4,7 +4,6 @@ import { Icon } from '@/components/ui/Icon'
 import { Brand } from '@/components/ui/Brand'
 import { ProblemReportLink } from '@/components/ui/ProblemReportLink'
 import { RoadmapSwitcher } from '@/components/roadmap/RoadmapSwitcher'
-import Link from 'next/link'
 import type { SyncStatus } from '@/types/roadmap'
 
 interface AppHeaderProps {
@@ -42,15 +41,9 @@ export function AppHeader({
       </div>
 
       <div className="header-end">
+        {/* The Help action is hidden from the workspace header pending
+            refinement. /help stays routable and linked from the site header. */}
         <ProblemReportLink className="btn sm header-report-link" />
-        <Link
-          className="btn sm header-help-link"
-          href="/help"
-          aria-label="Help and user guide"
-        >
-          <span className="header-help-glyph" aria-hidden="true">?</span>
-          <span className="header-help-label">Help</span>
-        </Link>
         {!readOnly && (
           <>
             <button className="iconbtn" title="Import / Export" aria-label="Import / Export" onClick={onIO}>

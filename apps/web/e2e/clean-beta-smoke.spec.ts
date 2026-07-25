@@ -151,3 +151,70 @@ for (const role of ['owner', 'editor', 'viewer'] as const) {
     }
   })
 }
+
+const HEADER_VIEWPORTS = [
+  { label: '1280px desktop', width: 1280, height: 800, expectsLabel: true },
+  { label: '1024px laptop', width: 1024, height: 768, expectsLabel: false },
+  { label: '900px narrow desktop', width: 900, height: 800, expectsLabel: false },
+  { label: '768px tablet', width: 768, height: 1024, expectsLabel: false },
+  { label: '600px small tablet', width: 600, height: 800, expectsLabel: false },
+  { label: '390px mobile', width: 390, height: 844, expectsLabel: false },
+] as const
+
+for (const viewport of HEADER_VIEWPORTS) {
+  test(`keeps header actions on one line at ${viewport.label}`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height })
+    await createRoadmap(page, {
+      title: 'A deliberately long roadmap title that should truncate politely',
+      startingPoint: 'blank',
+    })
+
+    const report = page.getByRole('link', { name: /Report a problem with RoadForge/ })
+    await expect(report).toBeVisible()
+    await expect(report).toHaveAttribute('href', ISSUE_CHOOSER_URL)
+    await expect(report).toHaveAttribute('aria-label', /Privacy warning/)
+    await expect(report).toHaveAttribute('title', /Report a problem/)
+
+    // The label collapses to the glyph below the wide breakpoint, but the
+    // accessible name never changes.
+    const labelVisible = await page
+      .locator('.header-report-link .problem-report-link-label')
+      .isVisible()
+    expect(labelVisible).toBe(viewport.expectsLabel)
+    if (!viewport.expectsLabel) {
+      const glyph = await report.evaluate(
+        (node) => getComputedStyle(node, '::after').display,
+      )
+      expect(glyph).not.toBe('none')
+    }
+
+    // Single line: the control is never taller than one row of buttons.
+    const box = await report.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.height).toBeLessThanOrEqual(40)
+    expect(
+      await report.evaluate((node) => getComputedStyle(node).whiteSpace),
+    ).toBe('nowrap')
+
+    // Actions stay inside the viewport and aligned with the header row.
+    const header = page.locator('.app-header')
+    const headerBox = await header.boundingBox()
+    expect(headerBox!.height).toBeLessThanOrEqual(72)
+    const end = await page.locator('.header-end').boundingBox()
+    expect(end!.x).toBeGreaterThanOrEqual(0)
+    expect(end!.x + end!.width).toBeLessThanOrEqual(viewport.width + 1)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true)
+  })
+}
+
+test('does not expose a Help action in the workspace header', async ({ page }) => {
+  await createRoadmap(page, { title: 'Header help roadmap', startingPoint: 'blank' })
+
+  await expect(page.locator('.app-header a[href="/help"]')).toHaveCount(0)
+
+  // The route itself still works by direct URL.
+  await page.goto('/help')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+})
