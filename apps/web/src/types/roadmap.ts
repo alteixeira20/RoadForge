@@ -257,16 +257,6 @@ export interface RoadmapVersionDetail extends RoadmapVersionSummary {
   metadataJson: Record<string, unknown> | null
 }
 
-// ─── Import / Export ───────────────────────────────────────────────────────────
-
-export interface ExportOption {
-  id: ExportFormat
-  icon: string
-  name: string
-  badge?: string
-  desc: string
-}
-
 // ─── Activity Logs ─────────────────────────────────────────────────────────────
 
 export interface ActivityLog {

@@ -14,12 +14,11 @@ function layerValue(name: string): number {
 }
 
 describe('overlay layer contract', () => {
-  it('keeps chrome, menus, overlays, panels, modals, and toasts ordered', () => {
+  it('keeps chrome, overlays, panels, modals, and toasts ordered', () => {
     const orderedLayers = [
       'z-popover',
       'z-workspace-header',
       'z-header',
-      'z-dropdown',
       'z-anchored-overlay',
       'z-panel',
       'z-modal',

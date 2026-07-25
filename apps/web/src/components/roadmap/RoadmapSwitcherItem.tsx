@@ -2,7 +2,13 @@
 
 import { Icon } from '@/components/ui/Icon'
 import type { AuthCache, RoadmapCache } from '@/lib/storage'
-import type { DeleteTarget } from './RoadmapSwitcher'
+
+export interface RoadmapSwitcherDeleteTarget {
+  id: string
+  cache: RoadmapCache
+  auth: AuthCache | null
+  mode: 'server' | 'local'
+}
 
 interface RoadmapSwitcherItemProps {
   id: string
@@ -10,7 +16,7 @@ interface RoadmapSwitcherItemProps {
   auth: AuthCache | null
   active: boolean
   onActivate: (id: string) => void
-  onRequestDelete: (target: DeleteTarget) => void
+  onRequestDelete: (target: RoadmapSwitcherDeleteTarget) => void
 }
 
 export function RoadmapSwitcherItem({

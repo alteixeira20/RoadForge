@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation'
 import { AnchoredOverlay } from '@/components/ui/AnchoredOverlay'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { storage, type AuthCache, type RoadmapCache } from '@/lib/storage'
+import { storage } from '@/lib/storage'
 import { persistJoinResult } from '@/lib/join-flow'
 import { deleteRoadmap, getRoadmap } from '@/services/roadmap-crud.service'
 import { isApiConnectionError } from '@/services/roadmap-http'
 import { joinRoadmap } from '@/services/roadmap-sharing.service'
 import { Modal } from '@/components/ui/Modal'
-import { RoadmapSwitcherItem } from '@/components/roadmap/RoadmapSwitcherItem'
+import {
+  RoadmapSwitcherItem,
+  type RoadmapSwitcherDeleteTarget,
+} from '@/components/roadmap/RoadmapSwitcherItem'
 import { RoadmapSwitcherInviteForm } from '@/components/roadmap/RoadmapSwitcherInviteForm'
 import type { ShareRole } from '@/types/roadmap'
 
@@ -20,13 +23,6 @@ interface RoadmapSwitcherProps {
   hideWhenEmpty?: boolean
   label?: string
   onCreate?: () => void
-}
-
-export interface DeleteTarget {
-  id: string
-  cache: RoadmapCache
-  auth: AuthCache | null
-  mode: 'server' | 'local'
 }
 
 export function RoadmapSwitcher({
@@ -51,7 +47,7 @@ export function RoadmapSwitcher({
   const [needsPassword, setNeedsPassword] = useState(false)
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<RoadmapSwitcherDeleteTarget | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const anchorRef = useRef<HTMLButtonElement>(null)
@@ -153,7 +149,7 @@ export function RoadmapSwitcher({
     }
   }
 
-  const handleRequestDelete = (target: DeleteTarget) => {
+  const handleRequestDelete = (target: RoadmapSwitcherDeleteTarget) => {
     setDeleteTarget(target)
     setError(null)
     setIsOpen(false)

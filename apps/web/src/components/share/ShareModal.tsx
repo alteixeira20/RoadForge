@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
-import { MOCK_SHARE_LINKS } from '@/data/roadmap-options'
 import { getParticipants, getShareLinks, regenerateShareLink, revokeParticipant, revokeShareLink } from '@/services/roadmap-sharing.service'
 import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
 import { ShareRoleSection } from '@/components/share/ShareRoleSection'
@@ -55,7 +54,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       return
     }
     if (!serverRoadmapId) {
-      setLinks(MOCK_SHARE_LINKS)
+      setLinks([])
       setParticipants([])
       setLoading(false)
       setParticipantsLoading(false)

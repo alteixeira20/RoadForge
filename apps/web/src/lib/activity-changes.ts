@@ -50,7 +50,7 @@ const changePriority: Record<ActivityAction, number> = {
   'roadmap.updated': 9,
 }
 
-export function countKeyForAction(action: ActivityAction): string {
+function countKeyForAction(action: ActivityAction): string {
   switch (action) {
     case 'roadmap.imported': return 'imports'
     case 'import.replaced': return 'imports_replaced'
@@ -74,7 +74,7 @@ export function countKeyForAction(action: ActivityAction): string {
   }
 }
 
-export function dedupeKey(change: ActivityChange): string {
+function dedupeKey(change: ActivityChange): string {
   if (change.taskId) return `task:${change.taskId}`
   if (change.phaseId) {
     if (change.action === 'phase.completed' || change.action === 'phase.reopened') {
@@ -107,7 +107,7 @@ export function getPhaseUpdateLabel(metadata: Record<string, unknown> | null): s
   }
 }
 
-export function areOppositeActions(a: ActivityAction, b: ActivityAction): boolean {
+function areOppositeActions(a: ActivityAction, b: ActivityAction): boolean {
   return (
     (a === 'task.completed' && b === 'task.reopened') ||
     (a === 'task.reopened' && b === 'task.completed') ||

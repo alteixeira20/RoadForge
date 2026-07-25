@@ -34,6 +34,18 @@ Current keys:
 Legacy flat `rf:*` roadmap/auth keys are migrated into scoped records on first read.
 Old roadmap snapshots pass through `roadmap-upgrade.ts` before rendering.
 
+Canonical construction and validation boundaries:
+
+- `roadmap-factory.ts` is the only phase factory; phase creation always flows
+  through `usePhaseMutations`.
+- `roadmap-validation.ts` and `parseImportedRoadmapJson` are the canonical
+  browser import/parser path. Upgrade and repair behavior delegates to that path
+  rather than maintaining a second template validator.
+- `ActivityAction` in `types/roadmap.ts` is the current mutation vocabulary, and
+  `activity-changes.ts` owns batching/deduplication. `roadmap.phases_reordered`
+  remains read-compatible legacy vocabulary; new phase reorder writes use
+  `phase.reordered`.
+
 ## Component and hook boundaries
 
 - `Workspace.tsx` composes the workspace and delegates stateful behavior to hooks.
@@ -66,7 +78,7 @@ Old roadmap snapshots pass through `roadmap-upgrade.ts` before rendering.
 - `SidePanel` owns Activity and Versions panel structure, initial focus, Escape, and
   focus return. Workspace keeps those panels mutually exclusive.
 - Layer ordering is defined only by the `--z-*` tokens in `styles/tokens.css`:
-  local popovers, workspace/site headers, dropdowns, anchored overlays, side panels,
+  local popovers, workspace/site headers, anchored overlays, side panels,
   modal dialogs and wizards, then toasts.
 
 ## Service boundary

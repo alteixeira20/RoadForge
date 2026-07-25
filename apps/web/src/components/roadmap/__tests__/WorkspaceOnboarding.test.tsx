@@ -241,21 +241,6 @@ vi.mock('@/hooks/useParticipantRevocation', () => ({
   }),
 }))
 
-vi.mock('@/hooks/createTaskMutations', () => ({
-  createTaskMutations: () => ({
-    hasCycle: false,
-    onCheckTask: vi.fn(),
-    handleAddTask: vi.fn(),
-    handleAddSubtask: vi.fn(),
-    handleUpdateTask: vi.fn(),
-    handleLinkDependency: vi.fn(),
-    handleUnlinkDependency: vi.fn(),
-    handleReorderTasks: vi.fn(),
-    handleReorderSubtasks: vi.fn(),
-    handleDeleteSubtask: vi.fn(),
-  }),
-}))
-
 vi.mock('@/hooks/usePhaseMutations', () => ({
   usePhaseMutations: () => ({
     handleUpdatePhaseColor: vi.fn(),

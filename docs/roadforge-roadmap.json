@@ -625,7 +625,7 @@
       "color": "#b85a2e",
       "colorMode": "auto",
       "status": "future",
-      "progress": 33,
+      "progress": 67,
       "tasks": [
         {
           "id": "RF-030",
@@ -672,8 +672,8 @@
         {
           "id": "RF-032",
           "title": "Remove stale flags, dead paths, and duplicated mutation vocabulary",
-          "done": false,
-          "next": true,
+          "done": true,
+          "next": false,
           "tags": [
             "core",
             "quality"
@@ -684,7 +684,7 @@
             "RF-030"
           ],
           "est": "2 days",
-          "desc": "**Why**\nThe removed phase action and uneven activity show a risk of drift.\n\n**Finding**\nHistory records a removed no-op add-phase button; phase and task mutations use different activity/persistence paths.\n\n**Scope**\nTrace candidate unused exports/flags and consolidate only demonstrated dead paths or duplicated vocabulary.\n\n**Acceptance criteria**\nNo removed workflow leaves dangling UI/state; canonical factories, validation, and activity names are documented and tested.\n\n**Validation / gate**\nTypecheck, targeted reference search, and focused tests.\n\n**Risk**\nDeleting compatibility paths prematurely can break imports or collaboration.\n\n**Evidence**\n`usePhaseMutations.ts`, `createTaskMutations`, history `ceddb72`; classification likely.\n\n**Classification**\nlikely"
+          "desc": "**Why**\nDead module surfaces and stale fallback data increased drift and compatibility risk.\n\n**Implemented**\nRemoved the unused export-options constant/type, unused save-flow return surface, stale nonexistent-module test mock, unused public helper exports, unused dropdown layer token, and fake token-shaped local share-link fallback. Moved the switcher delete-target contract to its owning item module to remove the only current web import cycle. Preserved historical/server activity vocabulary and import/export compatibility.\n\n**Canonical ownership**\n`roadmap-factory.ts` owns phase construction; `parseImportedRoadmapJson` is the real parser/repair boundary; `ActivityAction` plus `activity-changes.ts` own current vocabulary and aggregation. New reorder writes use `phase.reordered`; the legacy `roadmap.phases_reordered` value remains readable.\n\n**Automated evidence**\nSerena reference checks proved each removed export had no external consumer. The new dependency-free import gate validates 194 source files and 514 internal imports with no cycle or dangling internal import. 48 focused cleanup, mutation, autosync, share, switcher, workspace, and layer tests pass; lint and typecheck pass.\n\n**Classification**\nconfirmed"
         }
       ]
     },
@@ -701,7 +701,7 @@
           "id": "RF-033",
           "title": "Add browser smoke coverage for essential editable workflows",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "quality",
             "a11y"

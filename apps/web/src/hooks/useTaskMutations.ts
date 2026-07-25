@@ -40,7 +40,7 @@ interface CreateTaskMutationsParams {
   patchSyncedTask: (params: PatchSyncedTaskParams) => Promise<boolean>
 }
 
-export interface TaskMutations {
+interface TaskMutations {
   hasCycle: (taskId: string, depId: string) => boolean
   onCheckTask: (id: string) => void
   handleAddTask: (phaseId: string, title?: string) => string

@@ -75,7 +75,6 @@ export function useSaveFlow({
     setPendingActivityChanges((prev) => mergePendingActivityChange(prev, change))
   }, [])
 
-  const clearPendingActivityChanges = () => setPendingActivityChanges([])
   const replacePendingActivityChanges = useCallback((changes: ActivityChange[]) => {
     setPendingActivityChanges(changes)
   }, [])
@@ -332,11 +331,8 @@ export function useSaveFlow({
     keepLocalLoading,
     confirmReload,
     activityRefreshKey,
-    pendingActivityChanges,
-
     addPendingActivityChange,
     replacePendingActivityChanges,
-    clearPendingActivityChanges,
     refreshActivity,
     markServerStateHealthy,
     handleSessionExpired,
