@@ -1,0 +1,57 @@
+name: UX/usability problem
+description: Report a confusing, difficult, or error-prone workflow
+title: "[UX]: "
+labels: ["usability"]
+body:
+  - type: markdown
+    attributes:
+      value: Describe the workflow without including credentials, tokens, secrets, private logs, roadmap exports, invite links, private URLs, or private roadmap data.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What were you trying to do?
+      description: State the outcome you expected to reach.
+    validations:
+      required: true
+  - type: textarea
+    id: difficulty
+    attributes:
+      label: What made the workflow difficult?
+      description: Describe the confusing label, missing feedback, unexpected step, or blocked outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps or context
+      description: Give the shortest sequence that reproduces the problem.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did this happen?
+      options:
+        - Landing or first-run creation
+        - Roadmap, phase, or task editing
+        - Search, filters, or navigation
+        - Import, export, or recovery
+        - Sharing or collaboration
+        - Help or documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Optional. Include browser, operating system, viewport or device type, and local or self-hosted mode when relevant.
+  - type: checkboxes
+    id: report_checks
+    attributes:
+      label: Report checks
+      options:
+        - label: This report contains no credentials, private roadmap data, or other secrets.
+          required: true
+        - label: This report is not a security vulnerability.
+          required: true

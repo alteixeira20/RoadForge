@@ -6,6 +6,7 @@
     "dev": "pnpm --dir apps/web dev",
     "build": "pnpm --dir apps/web build",
     "check:copy": "node tools/check-product-copy.mjs",
+    "check:issues": "node tools/check-issue-forms.mjs",
     "lint": "pnpm --dir apps/web lint",
     "typecheck": "pnpm --dir apps/web typecheck",
     "test": "pnpm --dir apps/web test",
@@ -21,5 +22,8 @@
   },
   "bugs": {
     "url": "https://github.com/alteixeira20/RoadForge/issues"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.0"
   }
 }

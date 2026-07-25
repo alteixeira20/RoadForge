@@ -1,0 +1,59 @@
+name: Accessibility problem
+description: Report a barrier to perceiving, navigating, or operating RoadForge
+title: "[Accessibility]: "
+labels: ["accessibility"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, tokens, secrets, private logs, roadmap exports, invite links, private URLs, or private roadmap data.
+  - type: textarea
+    id: task
+    attributes:
+      label: Task and barrier
+      description: What were you trying to do, and what prevented or complicated it?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Give the shortest sequence that reaches the barrier.
+    validations:
+      required: true
+  - type: dropdown
+    id: barrier
+    attributes:
+      label: Barrier type
+      options:
+        - Keyboard or focus
+        - Screen reader or semantics
+        - Zoom, reflow, or text size
+        - Contrast or color
+        - Motion or animation
+        - Touch target or pointer operation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and assistive technology
+      description: Include browser, operating system, device, zoom level, and assistive technology with version when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected accessible outcome
+      description: Describe how the task could be completed without the barrier.
+    validations:
+      required: true
+  - type: checkboxes
+    id: report_checks
+    attributes:
+      label: Report checks
+      options:
+        - label: This report contains no credentials, private roadmap data, or other secrets.
+          required: true
+        - label: This report is not a security vulnerability.
+          required: true

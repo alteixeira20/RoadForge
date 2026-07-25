@@ -17,8 +17,10 @@ is not granted by contributing.
 
 ## Issues and security
 
-- [Report a bug](../../issues/new?template=bug_report.yml) with reproducible details.
-- [Request a feature](../../issues/new?template=feature_request.yml) around a focused user problem.
+- Use the [public issue chooser](https://github.com/alteixeira20/RoadForge/issues/new/choose)
+  for bug, usability, feature, documentation, self-hosting, or accessibility reports.
+- Read the [issue reporting guide](docs/issue-reporting.md) before sharing
+  diagnostics; never attach roadmap exports, private logs, tokens, or secrets.
 - Report vulnerabilities privately through [GitHub security advisories](../../security/advisories/new), not a public issue.
 
 ## Development

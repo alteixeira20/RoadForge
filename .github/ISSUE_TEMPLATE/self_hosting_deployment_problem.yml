@@ -1,0 +1,50 @@
+name: Self-hosting/deployment problem
+description: Report a reproducible setup, upgrade, or runtime problem
+title: "[Self-hosting]: "
+labels: ["self-hosting"]
+body:
+  - type: markdown
+    attributes:
+      value: Never publish environment files, credentials, tokens, secrets, private logs, roadmap exports, invite links, database contents, or private URLs. Share only redacted configuration names and minimal non-sensitive diagnostics.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Deployment goal
+      description: Describe whether this is a first install, upgrade, backup/restore, rollback, or runtime operation.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: List the commands or documented steps without secret values.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Actual and expected result
+      description: Explain what happened and what the documented outcome led you to expect.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Non-sensitive environment details
+      description: Include RoadForge version or commit, container/runtime versions, operating system, and reverse proxy type when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Minimal redacted diagnostics
+      description: Optional. Paste only the shortest non-sensitive error excerpt needed to identify the failure; do not attach private logs.
+  - type: checkboxes
+    id: report_checks
+    attributes:
+      label: Report checks
+      options:
+        - label: I removed credentials, tokens, private URLs, roadmap data, database contents, and private logs.
+          required: true
+        - label: This report is not a security vulnerability.
+          required: true

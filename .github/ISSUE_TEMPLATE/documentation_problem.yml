@@ -1,0 +1,48 @@
+name: Documentation problem
+description: Report missing, inaccurate, or unclear RoadForge guidance
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, tokens, secrets, private logs, roadmap exports, invite links, private URLs, or private roadmap data.
+  - type: textarea
+    id: location
+    attributes:
+      label: Documentation location
+      description: Link to the public page or name the repository file and section.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing?
+      description: Explain what a reader cannot understand or complete.
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Suggested correction
+      description: Optional. Describe the expected guidance or provide concise replacement wording.
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Affected reader
+      options:
+        - RoadForge user
+        - Contributor
+        - Self-hosting operator
+        - Security reviewer
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: report_checks
+    attributes:
+      label: Report checks
+      options:
+        - label: This report contains no credentials, private roadmap data, or other secrets.
+          required: true
+        - label: This report is not a security vulnerability.
+          required: true

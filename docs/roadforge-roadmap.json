@@ -570,7 +570,7 @@
           "id": "RF-027",
           "title": "Complete the public GitHub issue chooser",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "contributors",
             "docs",
@@ -581,13 +581,13 @@
             "RF-015"
           ],
           "est": "2 days",
-          "desc": "**Why**\nPublic reports need safe, actionable routing.\n\n**Finding**\n`config.yml` disables blank issues and routes security privately, but only bug and feature forms exist; UX, docs, self-hosting, and accessibility forms are absent.\n\n**Scope**\nAdd the four missing forms with concise context, consistent labels/title prefixes, and no sensitive data fields; document labels/triage.\n\n**Acceptance criteria**\nChooser offers exactly the six requested report paths; security remains private; forms request useful reproduction context without roadmap/session/token upload.\n\n**Validation / gate**\nYAML validation and manual chooser check.\n\n**Risk**\nPoor intake wastes maintainer time or leaks private data.\n\n**Evidence**\n`.github/ISSUE_TEMPLATE/config.yml`, `bug_report.yml`, `feature_request.yml`.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nPublic reports need safe, actionable routing.\n\n**Finding**\nThe chooser now defines exactly six focused public forms, disables blank issues, and routes vulnerabilities to GitHub's private Security Advisory form. Every form warns against publishing secrets or private roadmap artifacts.\n\n**Scope**\nAdd the four missing forms with concise context, consistent labels/title prefixes, and no sensitive data fields; document labels/triage.\n\n**Acceptance criteria**\nChooser offers exactly the six requested report paths; security remains private; forms request useful reproduction context without roadmap/session/token upload.\n\n**Validation / gate**\nYAML validation and manual chooser check.\n\n**Risk**\nPoor intake wastes maintainer time or leaks private data.\n\n**Evidence**\nSix issue-form YAML files; chooser configuration; `docs/issue-reporting.md`; semantic `check:issues` gate wired into `make check`.\n\n**Implementation status**\nImplementation and local YAML/schema/privacy invariants pass. Remaining gate after publication: verify GitHub renders all six chooser entries and that the six configured labels exist and apply correctly.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-028",
           "title": "Complete contributor architecture, ownership, and PR guidance",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "contributors",
             "docs"

@@ -3,6 +3,9 @@ description: Propose a focused product improvement
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: Describe the user problem without including credentials, tokens, secrets, private logs, roadmap exports, invite links, or private roadmap data.
   - type: textarea
     id: problem
     attributes:
@@ -54,8 +57,12 @@ body:
       label: Alternatives considered
       description: Optional. What other approaches or workflows did you consider?
   - type: checkboxes
-    id: contribution
+    id: report_checks
     attributes:
-      label: Contribution
+      label: Report checks
       options:
+        - label: This report contains no credentials, private roadmap data, or other secrets.
+          required: true
+        - label: This report is not a security vulnerability.
+          required: true
         - label: I am willing to contribute this change.

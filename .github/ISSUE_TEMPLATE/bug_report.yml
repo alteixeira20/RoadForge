@@ -5,7 +5,7 @@ labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: Do not include credentials, invite links, tokens, passwords, private roadmap data, or vulnerabilities. Report security vulnerabilities privately through the security contact below.
+      value: Do not include credentials, tokens, secrets, private logs, roadmap exports, invite links, private URLs, private roadmap data, or vulnerabilities. Report security vulnerabilities privately through SECURITY.md and the chooser's security contact.
   - type: textarea
     id: summary
     attributes:
@@ -40,8 +40,8 @@ body:
   - type: textarea
     id: screenshots_logs
     attributes:
-      label: Screenshots or logs
-      description: Optional. Remove any sensitive data before sharing.
+      label: Non-sensitive evidence
+      description: Optional. Share only a minimal screenshot or diagnostic excerpt. Never publish tokens, secrets, private logs, roadmap exports, invite links, or private URLs.
   - type: textarea
     id: regression
     attributes:
