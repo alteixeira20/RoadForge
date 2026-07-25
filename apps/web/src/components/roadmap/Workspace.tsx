@@ -7,7 +7,11 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmberBackground } from '@/components/ui/EmberBackground'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { WorkspaceHead } from './WorkspaceHead'
-import { WorkspaceToolbar } from './WorkspaceToolbar'
+import {
+  WORKSPACE_VIEW_PANEL_ID,
+  WORKSPACE_VIEW_TAB_ID,
+  WorkspaceToolbar,
+} from './WorkspaceToolbar'
 import { PhaseList } from './PhaseList'
 import { WorkspaceBanners, WorkspaceUpgradeNotice, WorkspaceWelcomeBanner } from './WorkspaceBanners'
 import { WorkspaceModals } from './WorkspaceModals'
@@ -536,8 +540,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             setShowVersions(true)
           }}
           onOpenTagRegistry={openTagRegistry}
-          onAddPhase={handleAddPhaseRequest}
-          readOnly={readOnly}
           hasServerActivity={!!serverRoadmapId && !!sessionToken}
           canViewTeam={canViewTeam}
           canViewVersions={
@@ -545,6 +547,11 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           }
           canTogglePhaseExpansion={phases.length > 0 && !isFiltering}
         />
+        <div
+          id={WORKSPACE_VIEW_PANEL_ID}
+          role="tabpanel"
+          aria-labelledby={WORKSPACE_VIEW_TAB_ID[workspaceView]}
+        >
         {workspaceView === 'team' && canViewTeam ? (
           <TeamPanel
             participants={participants}
@@ -602,6 +609,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             onToast={showToast}
           />
         )}
+        </div>
       </div>
 
       <WorkspaceModals

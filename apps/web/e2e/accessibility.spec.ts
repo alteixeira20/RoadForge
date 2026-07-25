@@ -58,7 +58,7 @@ test('supports keyboard phase reordering through explicit move actions', async (
     startingPoint: 'blank',
   })
 
-  await page.getByRole('button', { name: 'Add phase', exact: true }).click()
+  await page.getByRole('button', { name: 'Add another phase', exact: true }).click()
   const phaseName = page.getByRole('textbox', { name: 'Phase name for New phase' })
   await phaseName.fill('Delivery')
   await phaseName.press('Enter')
@@ -88,7 +88,7 @@ test('honors reduced motion and critical mobile touch targets', async ({ page })
   expect(Number.parseFloat(transitionDuration)).toBeLessThanOrEqual(0.00001)
 
   for (const control of [
-    page.getByRole('button', { name: 'Add phase', exact: true }),
+    page.getByRole('button', { name: 'Add another phase', exact: true }),
     page.getByRole('button', { name: 'Phase settings for Planning' }),
     page.getByRole('button', { name: 'Reorder phase Planning' }),
     page.getByRole('button', { name: 'Add first task' }),

@@ -6,6 +6,7 @@ import {
   useId,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react'
 import { Icon } from '@/components/ui/Icon'
@@ -16,6 +17,28 @@ import type {
   TaskStatusFilter,
   WorkspaceView,
 } from '@/types/roadmap'
+
+/** Shared with the panel Workspace renders, so the tabs can own `aria-controls`. */
+export const WORKSPACE_VIEW_PANEL_ID = 'workspace-view-panel'
+
+export const WORKSPACE_VIEW_TAB_ID: Record<WorkspaceView, string> = {
+  roadmap: 'workspace-tab-roadmap',
+  team: 'workspace-tab-team',
+}
+
+const ACTIVITY_UNAVAILABLE_HINT =
+  'Activity becomes available after this roadmap is saved or synced.'
+
+const VIEW_TABS: Array<{
+  view: WorkspaceView
+  label: string
+  icon: 'fold' | 'users'
+}> = [
+  { view: 'roadmap', label: 'Roadmap', icon: 'fold' },
+  { view: 'team', label: 'Team', icon: 'users' },
+]
+
+const TAB_KEY_OFFSETS: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1 }
 
 interface WorkspaceToolbarProps {
   filterState: FilterState
@@ -36,8 +59,6 @@ interface WorkspaceToolbarProps {
   onOpenActivity: () => void
   onOpenVersions: () => void
   onOpenTagRegistry: () => void
-  onAddPhase: () => void
-  readOnly: boolean
   hasServerActivity: boolean
   canViewTeam: boolean
   canViewVersions: boolean
@@ -81,8 +102,6 @@ export function WorkspaceToolbar({
   onOpenActivity,
   onOpenVersions,
   onOpenTagRegistry,
-  onAddPhase,
-  readOnly,
   hasServerActivity,
   canViewTeam,
   canViewVersions,
@@ -91,8 +110,36 @@ export function WorkspaceToolbar({
   const [filterOpen, setFilterOpen] = useState(false)
   const filterAnchorRef = useRef<HTMLButtonElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
+  const tablistRef = useRef<HTMLDivElement | null>(null)
   const activityHelpId = useId()
   const closeFilters = useCallback(() => setFilterOpen(false), [])
+  const visibleTabs = VIEW_TABS.filter(
+    (tab) => tab.view !== 'team' || canViewTeam,
+  )
+
+  // Roving tabindex: arrows and Home/End move between view tabs and select.
+  const handleTabKeys = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const tabs = Array.from(
+      tablistRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [],
+    )
+    if (tabs.length === 0) return
+
+    const current = tabs.findIndex((tab) => tab === document.activeElement)
+    const offset = TAB_KEY_OFFSETS[event.key]
+    let next = -1
+    if (offset !== undefined && current >= 0) {
+      next = (current + offset + tabs.length) % tabs.length
+    } else if (event.key === 'Home') {
+      next = 0
+    } else if (event.key === 'End') {
+      next = tabs.length - 1
+    }
+    if (next < 0) return
+
+    event.preventDefault()
+    tabs[next].focus()
+    tabs[next].click()
+  }
   const activeCount = [
     filterState.status !== 'all',
     filterState.assignees.length > 0,
@@ -117,75 +164,61 @@ export function WorkspaceToolbar({
   return (
     <div className="workspace-toolbar-wrap">
       <div className="workspace-bar">
-        <nav className="workspace-view-tabs" aria-label="Workspace views">
-          <button
-            type="button"
-            className={`workspace-view-tab ${workspaceView === 'roadmap' ? 'active' : ''}`}
-            onClick={() => onWorkspaceViewChange('roadmap')}
-            aria-current={workspaceView === 'roadmap' ? 'page' : undefined}
+        <div className="workspace-nav-row">
+          <div
+            ref={tablistRef}
+            className="workspace-view-tabs"
+            role="tablist"
+            aria-label="Workspace views"
+            onKeyDown={handleTabKeys}
           >
-            <Icon name="fold" size={14} /> Roadmap
-          </button>
-          {canViewTeam && (
-            <button
-              type="button"
-              className={`workspace-view-tab ${workspaceView === 'team' ? 'active' : ''}`}
-              onClick={() => onWorkspaceViewChange('team')}
-              aria-current={workspaceView === 'team' ? 'page' : undefined}
-            >
-              <Icon name="users" size={14} /> Team
-            </button>
-          )}
+            {visibleTabs.map(({ view, label, icon }) => (
+              <button
+                key={view}
+                type="button"
+                id={WORKSPACE_VIEW_TAB_ID[view]}
+                role="tab"
+                className={`workspace-view-tab ${workspaceView === view ? 'active' : ''}`}
+                aria-selected={workspaceView === view}
+                aria-controls={WORKSPACE_VIEW_PANEL_ID}
+                tabIndex={workspaceView === view ? 0 : -1}
+                onClick={() => onWorkspaceViewChange(view)}
+              >
+                <Icon name={icon} size={14} /> {label}
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
             className="workspace-view-tab"
             onClick={hasServerActivity ? onOpenActivity : undefined}
             aria-disabled={!hasServerActivity || undefined}
+            aria-haspopup={hasServerActivity ? 'dialog' : undefined}
             aria-describedby={!hasServerActivity ? activityHelpId : undefined}
-            title={hasServerActivity ? 'View recent activity' : 'Available after save or sync.'}
+            title={hasServerActivity ? 'View recent activity' : ACTIVITY_UNAVAILABLE_HINT}
           >
             <Icon name="activity" size={14} /> Activity
           </button>
+          {!hasServerActivity && (
+            <span id={activityHelpId} className="workspace-tab-hint">
+              {ACTIVITY_UNAVAILABLE_HINT}
+            </span>
+          )}
           {canViewVersions && (
             <button
               type="button"
               className="workspace-view-tab"
+              aria-haspopup="dialog"
               onClick={onOpenVersions}
             >
               <Icon name="clock" size={14} /> Versions
             </button>
           )}
-        </nav>
-        {!hasServerActivity && (
-          <span id={activityHelpId} className="activity-helper">
-            Activity is available after save or sync.
-          </span>
-        )}
-
-        {workspaceView !== 'roadmap' && !readOnly && (
-          <div className="workspace-roadmap-tools workspace-primary-tools">
-            <button
-              type="button"
-              className="toolbar-action toolbar-add-phase-action"
-              onClick={onAddPhase}
-            >
-              <Icon name="plus" size={14} /> Add phase
-            </button>
-          </div>
-        )}
+        </div>
 
         {workspaceView === 'roadmap' && (
-          <div className="workspace-roadmap-tools">
-            {!readOnly && (
-              <button
-                type="button"
-                className="toolbar-action toolbar-add-phase-action"
-                onClick={onAddPhase}
-              >
-                <Icon name="plus" size={14} /> Add phase
-              </button>
-            )}
-
+          <div className="workspace-tools-row">
             <div className="search">
               <Icon name="search" size={15} stroke="var(--ink-3)" />
               <input

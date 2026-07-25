@@ -94,8 +94,6 @@ function createToolbarProps(
     onOpenActivity: vi.fn(),
     onOpenVersions: vi.fn(),
     onOpenTagRegistry: vi.fn(),
-    onAddPhase: vi.fn(),
-    readOnly: false,
     hasServerActivity: false,
     canViewTeam: false,
     canViewVersions: false,
@@ -221,19 +219,15 @@ describe('phase creation controls', () => {
     expect(container.textContent).not.toContain('Add another phase')
   })
 
-  it('keeps Add phase visible in the toolbar for editors', () => {
-    const onAddPhase = vi.fn()
+  it('keeps phase creation out of the toolbar and filters working', () => {
     act(() => {
-      root.render(
-        <WorkspaceToolbar {...createToolbarProps({ onAddPhase })} />,
-      )
+      root.render(<WorkspaceToolbar {...createToolbarProps()} />)
     })
 
-    const button = Array.from(container.querySelectorAll('button'))
-      .find((candidate) => candidate.textContent?.includes('Add phase'))
-    expect(button).toBeInstanceOf(HTMLButtonElement)
-    act(() => button?.click())
-    expect(onAddPhase).toHaveBeenCalledTimes(1)
+    // Creation lives after the phase list and in the zero state, not up here.
+    expect(Array.from(container.querySelectorAll('button'))
+      .some((candidate) => candidate.textContent?.includes('Add phase'))).toBe(false)
+
     const filterButton = Array.from(container.querySelectorAll('button'))
       .find((candidate) => candidate.textContent?.includes('Filters'))
     act(() => filterButton?.click())
@@ -243,7 +237,7 @@ describe('phase creation controls', () => {
 
     act(() => {
       root.render(
-        <WorkspaceToolbar {...createToolbarProps({ readOnly: true })} />,
+        <WorkspaceToolbar {...createToolbarProps()} />,
       )
     })
     expect(Array.from(container.querySelectorAll('button'))
@@ -251,7 +245,6 @@ describe('phase creation controls', () => {
   })
 
   it('keeps the primary action and secondary controls truthful across role states', () => {
-    const onAddPhase = vi.fn()
     act(() => {
       root.render(
         <WorkspaceToolbar
@@ -260,17 +253,14 @@ describe('phase creation controls', () => {
             canViewTeam: true,
             hasServerActivity: true,
             canViewVersions: true,
-            onAddPhase,
           })}
         />,
       )
     })
-    expect(container.textContent).toContain('Add phase')
+    // Team view keeps navigation only; exploration tools belong to Roadmap.
+    expect(container.textContent).not.toContain('Add phase')
     expect(container.querySelector('input[aria-label="Search roadmap tasks"]')).toBeNull()
-    const teamAdd = Array.from(container.querySelectorAll('button'))
-      .find((button) => button.textContent?.includes('Add phase'))
-    act(() => teamAdd?.click())
-    expect(onAddPhase).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('.workspace-tools-row')).toBeNull()
 
     act(() => {
       root.render(
@@ -284,7 +274,6 @@ describe('phase creation controls', () => {
     const activity = Array.from(container.querySelectorAll('button'))
       .find((button) => button.textContent?.includes('Activity')) as HTMLButtonElement
     expect(activity.getAttribute('aria-disabled')).toBe('true')
-    expect(container.textContent).toContain('Activity is available after save or sync')
     expect(container.textContent).not.toContain('Collapse all')
     expect(container.textContent).not.toContain('Expand all')
 
@@ -292,7 +281,6 @@ describe('phase creation controls', () => {
       root.render(
         <WorkspaceToolbar
           {...createToolbarProps({
-            readOnly: true,
             hasServerActivity: true,
           })}
         />,

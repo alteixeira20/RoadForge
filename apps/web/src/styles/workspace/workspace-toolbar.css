@@ -1,19 +1,16 @@
-/* ─── Search toolbar ───────────────────────────────────────────────────────── */
+/* ─── Roadmap navigation and tools card ────────────────────────────────────── */
+/* Two rows only: section navigation, then exploration tools. */
 .workspace-bar {
   display: flex; align-items: stretch; gap: 8px; flex-direction: column;
   margin: 24px 0 16px;
-  padding: 8px;
+  padding: 8px 12px;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
-.workspace-roadmap-tools {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  min-width: 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-faint);
-}
-.workspace-view-tabs {
+
+/* Row 1 — section navigation */
+.workspace-nav-row {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -21,8 +18,46 @@
   overflow-x: auto;
   scrollbar-width: none;
 }
-.workspace-view-tabs::-webkit-scrollbar {
+.workspace-nav-row::-webkit-scrollbar {
   display: none;
+}
+.workspace-view-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+/* Row 2 — exploration tools. Search takes the slack; utilities stay compact. */
+.workspace-tools-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-faint);
+}
+.workspace-tools-row > .search {
+  flex: 1 1 auto;
+  min-width: 240px;
+}
+.workspace-tools-row > .task-filter,
+.workspace-tools-row > .toolbar-action {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Explains a disabled tab to assistive technology without occupying a row. */
+.workspace-tab-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .workspace-view-tab {
   height: 34px;
@@ -207,16 +242,6 @@
   color: var(--ink-3);
 }
 .toolbar-action:hover { color: var(--ink); background: var(--bg); }
-.toolbar-add-phase-action {
-  border-color: color-mix(in srgb, var(--ember) 42%, var(--border));
-  color: var(--ember);
-  background: color-mix(in srgb, var(--ember) 7%, transparent);
-}
-.toolbar-add-phase-action:hover,
-.toolbar-add-phase-action:focus-visible {
-  border-color: var(--ember);
-  color: var(--ink);
-}
 .toolbar-action:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -225,40 +250,33 @@
   color: var(--ink-3);
   background: transparent;
 }
-.activity-helper {
-  padding: 0 8px;
-  color: var(--ink-3);
-  font-size: 11.5px;
-}
-
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 900px — half-screen: tighten toolbar to prevent premature wrap ──────── */
+/* ── 900px — search takes its own line, utilities group on the next ─────── */
 @media (max-width: 900px) {
-  .workspace-bar .search { min-width: 180px; }
+  .workspace-tools-row { flex-wrap: wrap; }
+  .workspace-tools-row > .search { flex: 1 1 100%; min-width: 0; }
   .toolbar-action { padding: 0 9px; }
-  .toolbar-collapse-action { margin-left: auto; }
 }
 
-/* ── 600px — mobile: scrollable nav, search+filter fill remaining row ───── */
+/* ── 600px — mobile: full-width search, utilities share one compact row ─── */
 @media (max-width: 600px) {
-  .workspace-bar { gap: 6px; padding: 6px; }
-  .workspace-view-tabs { margin: 0 -2px; }
-  .workspace-view-tab { min-width: max-content; padding: 0 10px; }
-  .workspace-roadmap-tools { padding-top: 6px; }
-  .toolbar-add-phase-action { flex: 1 1 100%; justify-content: center; }
-  .workspace-bar .search { flex: 1 1 calc(100% - 132px); min-width: 0; }
+  .workspace-bar { gap: 6px; padding: 6px 8px; }
+  .workspace-nav-row { margin: 0 -2px; }
+  .workspace-view-tab { min-width: max-content; height: 44px; padding: 0 10px; }
+  .workspace-tools-row { padding-top: 6px; }
   .workspace-bar .search input { min-width: 0; }
-  .task-filter { flex: 0 0 124px; min-width: 0; }
+  .workspace-tools-row > .task-filter,
+  .workspace-tools-row > .toolbar-action {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 44px;
+    justify-content: center;
+  }
+  .task-filter-trigger { min-width: 0; width: 100%; }
+  .toolbar-action { padding: 0 8px; font-size: 13px; }
   .filter-panel {
     max-width: calc(100vw - 32px);
     width: 280px;
-  }
-  .toolbar-action { padding: 0 8px; font-size: 13px; height: 44px; }
-  .toolbar-tags-action { flex: 1 1 calc(50% - 4px); justify-content: center; }
-  .toolbar-collapse-action {
-    flex: 1 1 calc(50% - 4px);
-    margin-left: 0;
-    justify-content: center;
   }
 }

@@ -63,7 +63,7 @@ test('recovers after deleting the final phase and creates another phase', async 
   await phaseName.fill('Recovered phase')
   await phaseName.press('Enter')
 
-  await page.getByRole('button', { name: 'Add phase', exact: true }).click()
+  await page.getByRole('button', { name: 'Add another phase', exact: true }).click()
   await expect(phaseName).toBeFocused()
   await phaseName.fill('Second phase')
   await phaseName.press('Enter')
@@ -134,7 +134,9 @@ for (const role of ['owner', 'editor', 'viewer'] as const) {
     await page.goto(`${role === 'viewer' ? '/shared' : '/workspace'}?roadmap=${id}`)
     await expect(page.getByRole('heading', { name: `${role} browser roadmap` })).toBeVisible()
 
-    const addPhase = page.getByRole('button', { name: /Add phase/ })
+    // Phase creation lives after the phase list, never in the top toolbar.
+    await expect(page.getByRole('button', { name: 'Add phase', exact: true })).toHaveCount(0)
+    const addPhase = page.getByRole('button', { name: 'Add another phase', exact: true })
     const share = page.getByRole('button', { name: 'Share' })
     if (role === 'owner') {
       await expect(addPhase.first()).toBeVisible()
@@ -217,4 +219,94 @@ test('does not expose a Help action in the workspace header', async ({ page }) =
   // The route itself still works by direct URL.
   await page.goto('/help')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+})
+
+const TOOLBAR_VIEWPORTS = [
+  { label: 'desktop', width: 1280, height: 800 },
+  { label: '900px', width: 900, height: 800 },
+  { label: '600px', width: 600, height: 800 },
+  { label: '390px', width: 390, height: 844 },
+] as const
+
+for (const viewport of TOOLBAR_VIEWPORTS) {
+  test(`keeps roadmap navigation and tools inside the ${viewport.label} viewport`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height })
+    await createRoadmap(page, {
+      title: 'Toolbar layout roadmap',
+      startingPoint: 'blank',
+    })
+
+    // Exactly two rows: navigation, then exploration tools.
+    await expect(page.locator('.workspace-nav-row')).toHaveCount(1)
+    await expect(page.locator('.workspace-tools-row')).toHaveCount(1)
+
+    for (const selector of ['.workspace-nav-row', '.workspace-tools-row']) {
+      const box = await page.locator(selector).boundingBox()
+      expect(box).not.toBeNull()
+      expect(box!.x).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1)
+    }
+
+    // Tools stay reachable and share one row baseline per line.
+    const search = page.getByRole('textbox', { name: 'Search roadmap tasks' })
+    await expect(search).toBeVisible()
+    await expect(page.getByRole('button', { name: /Filters/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Tags', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Expand all|Collapse all/ })).toBeVisible()
+
+    const searchBox = await search.boundingBox()
+    expect(searchBox!.width).toBeGreaterThanOrEqual(120)
+
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true)
+  })
+}
+
+test('keeps phase creation out of the toolbar and after the phase list', async ({ page }) => {
+  await createRoadmap(page, { title: 'Creation placement roadmap', startingPoint: 'blank' })
+
+  await expect(page.getByRole('button', { name: 'Add phase', exact: true })).toHaveCount(0)
+  await expect(page.locator('.workspace-bar').getByRole('button', { name: /phase/i })).toHaveCount(0)
+
+  const addAnother = page.getByRole('button', { name: 'Add another phase', exact: true })
+  await expect(addAnother).toBeVisible()
+
+  // Zero-phase state still offers creation.
+  await page.getByRole('button', { name: 'Phase settings for Planning' }).click()
+  await page.getByRole('menuitem', { name: /Delete phase/ }).click()
+  await page
+    .getByRole('alertdialog', { name: 'Delete phase?' })
+    .getByRole('button', { name: 'Delete phase' })
+    .click()
+  await expect(page.getByRole('button', { name: 'Create first phase' })).toBeVisible()
+})
+
+test('explains why Activity is unavailable on a local roadmap', async ({ page }) => {
+  await createRoadmap(page, { title: 'Local activity roadmap', startingPoint: 'blank' })
+
+  const tablist = page.getByRole('tablist', { name: 'Workspace views' })
+  await expect(tablist.getByRole('tab', { name: 'Roadmap' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+
+  const activity = page.getByRole('button', { name: 'Activity' })
+  await expect(activity).toHaveAttribute('aria-disabled', 'true')
+  await expect(activity).toHaveAttribute(
+    'title',
+    'Activity becomes available after this roadmap is saved or synced.',
+  )
+
+  // The reason is described, not printed as a standing row.
+  const describedBy = await activity.getAttribute('aria-describedby')
+  expect(describedBy).toBeTruthy()
+  await expect(page.locator(`[id="${describedBy}"]`)).toHaveText(
+    'Activity becomes available after this roadmap is saved or synced.',
+  )
+  await expect(page.locator('.activity-helper')).toHaveCount(0)
+
+  // Clicking must not open an empty panel.
+  await activity.click({ force: true })
+  await expect(page.locator('.side-panel')).toHaveCount(0)
 })
