@@ -44,6 +44,18 @@ Documents required production settings, disabled OpenAPI docs outside developmen
 
 ---
 
+## Release proof
+
+**[Operational Proof Gate](./operational-proof-gate.md)**
+
+The procedure that turns policy into release evidence. Separates what repository
+commands already settle from what needs a developer machine, a deployed
+candidate, or a human decision, and gives each remaining check its exact
+command, expected output, and pass/fail criterion. Status: automated and local
+sections are exercised; deployed sections are pending a candidate.
+
+---
+
 ## Dependency audits
 
 **[Dependency Audit Policy](./dependency-audit-policy.md)**

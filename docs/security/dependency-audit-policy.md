@@ -24,7 +24,26 @@ make audit-prod
 # both run: pnpm audit --audit-level high --prod
 ```
 
-**CI status:** Active. `next` is pinned to `15.5.18`, which resolves all previously blocking high-severity advisories (GHSA-8h8q-6873-q5fj, GHSA-26hh-7cqf-hhc6, GHSA-mg66-mrh9-m8jx, GHSA-c4j6-fc7j-m34r, GHSA-492v-c6pp-mqqv, GHSA-267c-6grr-h53f, GHSA-36qx-fr4f-26g5). The `js-audit` CI job runs on every push and PR.
+**CI status:** Active, and clean as of 2026-07-25. The `js-audit` CI job runs on every push and PR.
+
+`next` is pinned to `15.5.21`. The earlier `15.5.18` pin went stale and the gate
+failed with twelve advisories, six of them high, all reaching production through
+Next: Server Action denial of service, server-side request forgery in rewrites
+and in Server Actions, cache confusion of response bodies, unbounded Edge
+Server Action payloads, and unauthenticated Server Function disclosure.
+
+Next still pins `postcss@8.4.31` and `sharp@0.34.5`, which remain vulnerable
+after that upgrade, so the root `package.json` raises both through
+`pnpm.overrides`:
+
+| Override | Reason | Removal condition |
+|---|---|---|
+| `postcss: ^8.5.23` | Arbitrary file read, source-map path traversal, and `</style>` XSS in `<=8.5.17` | Next ships `postcss >= 8.5.18` |
+| `sharp: ^0.35.3` | Inherited libvips CVEs in `<0.35.0`; reachable because `next/image` is used by `Brand` | Next ships `sharp >= 0.35.0` |
+
+Overrides are a version floor, not a suppression: the advisory still has to be
+resolved, and each entry is dropped once the upstream pin catches up. Re-check
+both on every Next upgrade.
 
 ---
 
@@ -86,7 +105,8 @@ Automated dependency update PRs (Dependabot, Renovate) are deferred. Both audit 
 
 | Item | Condition for action |
 |---|---|
-| ~~Add `js-audit` CI job~~ | Done — `next` upgraded to `15.5.18`; job active |
+| ~~Add `js-audit` CI job~~ | Done — job active |
+| Drop the `postcss` and `sharp` overrides | Next ships patched pins for both |
 | ~~Add `api-audit` CI job~~ | Done — job active alongside `js-audit` |
 | Python lockfile (`uv.lock`) | Deferred; evaluate when `uv` is adopted as the Python package manager |
 | Dependabot / Renovate | Deferred until both audit CI gates are proven stable over time |
