@@ -38,6 +38,12 @@ const filters = (overrides: Partial<FilterState>): FilterState => ({
 })
 
 describe('task filters', () => {
+  it('preserves empty phases when no filter is active', () => {
+    const phases = [phase([])]
+
+    expect(filterTasks(phases, DEFAULT_FILTER_STATE, context)).toBe(phases)
+  })
+
   it('combines status, assignee, tag, claim, and recommendation filters', () => {
     const candidate = task({
       next: true,

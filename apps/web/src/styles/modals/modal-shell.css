@@ -13,13 +13,14 @@
 
 /* ─── Wizard base ──────────────────────────────────────────────────────────── */
 .wizard {
-  width: 540px; max-width: 100%;
+  width: min(540px, 100%);
+  max-height: calc(100dvh - 48px);
   background: radial-gradient(420px 160px at 82% 0%, var(--forge-glow-1), transparent 66%), var(--surface-overlay);
   border: 1px solid var(--border-strong);
   border-top-color: var(--accent-border-strong);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
-  overflow: hidden;
+  overflow: auto;
   position: relative;
 }
 .wizard::before {
@@ -347,6 +348,7 @@
 @media (max-width: 480px) {
   .modal-scrim { padding: 12px; }
   .wizard-scrim { padding: 12px; }
+  .wizard { max-height: calc(100dvh - 24px); }
   .modal-head { padding: 14px 14px 8px; }
   .modal-body { padding: 8px 14px 12px; }
   .modal-foot { padding: 10px 14px 12px; flex-wrap: wrap; gap: 8px; }

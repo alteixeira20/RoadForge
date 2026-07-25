@@ -695,13 +695,13 @@
       "color": "#4f7cac",
       "colorMode": "auto",
       "status": "future",
-      "progress": 0,
+      "progress": 25,
       "tasks": [
         {
           "id": "RF-033",
           "title": "Add browser smoke coverage for essential editable workflows",
-          "done": false,
-          "next": true,
+          "done": true,
+          "next": false,
           "tags": [
             "quality",
             "a11y"
@@ -717,13 +717,13 @@
             "RF-029"
           ],
           "est": "4 days",
-          "desc": "**Why**\nUnit coverage cannot prove focus, overlay placement, drag alternatives, and responsive recovery.\n\n**Finding**\nVitest/API tests are extensive, but repository inspection found no full browser suite covering phase creation and key mobile/zoom flows.\n\n**Scope**\nAdd focused browser smoke for local and synced owner/editor/viewer paths, phase/task creation, import failure, conflict/session recovery, and reporting links.\n\n**Acceptance criteria**\nCritical workflows pass at desktop, narrow desktop, mobile, and 200% zoom; failures include actionable artifacts.\n\n**Validation / gate**\nCI browser smoke gate.\n\n**Risk**\nBeta regressions can escape component/API tests.\n\n**Evidence**\nWeb test inventory, `Accessibility.test.tsx`; classification likely.\n\n**Classification**\nlikely"
+          "desc": "**Why**\nBrowser coverage is required to prove focus, overlay placement, responsive recovery, and real local persistence across navigation.\n\n**Implemented**\nAdded a focused Playwright Chromium smoke suite and isolated CI job with retained screenshots, traces, videos, and HTML reports on failure. The suite covers blank and canonical-template creation, Add phase, final-phase recovery, Add task, reload persistence, invalid import announcement, phase menu and color-dialog viewport bounds, owner/editor/viewer control essentials, and the static privacy-safe problem-report link. Role coverage uses deterministic cached collaboration fixtures while server authorization remains covered by RF-023.\n\n**Responsive evidence**\nDesktop, 640 CSS-pixel 200% reflow proxy, and 390 CSS-pixel mobile runs pass without horizontal overflow. The browser gate exposed and fixed default filtering that hid genuinely empty phases and a mobile wizard whose actions could render outside the usable viewport.\n\n**Automated evidence**\n9 Playwright smoke tests pass. The suite uses accessible locators, a visible file chooser, one CI worker, and focused Chromium-only installation. Template clone independence remains covered through the real-parser unit suite.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-034",
           "title": "Establish accessibility and responsive acceptance gates",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "a11y",
             "quality",

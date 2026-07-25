@@ -85,6 +85,8 @@ export function filterTasks(
   filters: FilterState,
   context: TaskFilterContext,
 ): Phase[] {
+  if (!isFilterStateActive(filters)) return phases
+
   return phases
     .filter((phase) =>
       filters.phaseIds.length === 0 || filters.phaseIds.includes(phase.id),
