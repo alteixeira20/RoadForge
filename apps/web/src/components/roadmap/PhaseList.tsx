@@ -168,6 +168,7 @@ function PhaseListComponent({
   return (
     <>
       <DndContext
+        id="roadmap-phases"
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}

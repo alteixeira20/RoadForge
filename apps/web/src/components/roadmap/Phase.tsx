@@ -363,6 +363,7 @@ export function Phase({
             </div>
           ) : (
             <DndContext
+              id={`phase-tasks-${phase.id}`}
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragStart={handleDragStart}
@@ -372,7 +373,7 @@ export function Phase({
             >
               <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                 <div className="sortable-list">
-                  {topLevelTasks.map((t, index) => (
+                  {topLevelTasks.map((t) => (
                     <SortableTaskItem
                       key={t.id}
                       task={t}

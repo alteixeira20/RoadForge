@@ -54,6 +54,7 @@ export function TaskSubtaskList({
 
   return (
     <DndContext
+      id={`task-subtasks-${parentId}`}
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={(e) => setActiveSubtaskId(e.active.id as string)}

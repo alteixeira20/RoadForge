@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "playwright test",
+    "test:browser:production": "playwright test --config playwright.production.config.ts",
     "benchmark:roadmap": "vitest run --config vitest.performance.config.ts && playwright test --config playwright.performance.config.ts",
     "benchmark:roadmap:cpu": "vitest run --config vitest.performance.config.ts",
     "benchmark:roadmap:browser": "playwright test --config playwright.performance.config.ts",
