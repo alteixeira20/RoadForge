@@ -564,7 +564,7 @@
       "color": "#76746e",
       "colorMode": "auto",
       "status": "future",
-      "progress": 0,
+      "progress": 33,
       "tasks": [
         {
           "id": "RF-027",
@@ -586,8 +586,8 @@
         {
           "id": "RF-028",
           "title": "Complete contributor architecture, ownership, and PR guidance",
-          "done": false,
-          "next": true,
+          "done": true,
+          "next": false,
           "tags": [
             "contributors",
             "docs"
@@ -597,13 +597,13 @@
             "RF-015"
           ],
           "est": "3 days",
-          "desc": "**Why**\nExternal contributors need safe boundaries before making broad changes.\n\n**Finding**\nThe existing PR template was missed by the original audit. A central contributor guide now supplies the missing fresh-clone setup, module ownership, architecture, schema, storage/security, migration, testing, triage, and good-first-issue policies; stale setup and route references were corrected.\n\n**Scope**\nDocument module ownership, contracts, migrations, tests, local validation, PR conventions, triage, and good-first-issue policy; add or strengthen the PR template.\n\n**Acceptance criteria**\nA new contributor can run, test, locate ownership, understand data/security boundaries, and open a scoped PR without reverse-engineering the repository.\n\n**Validation / gate**\nFresh-clone contributor walkthrough and link check.\n\n**Risk**\nAmbiguous ownership encourages unsafe cross-layer changes.\n\n**Evidence**\n`docs/contributor-guide.md`; README and CONTRIBUTING indexes; strengthened PR template; full API test discovery in Make/CI; repository-local Markdown link gate.\n\n**Implementation status**\nGuidance and automated link validation are implemented. Remaining gate: execute the documented install and database-free checks from a clean clone before marking complete.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nExternal contributors need safe boundaries before making broad changes.\n\n**Finding**\nThe existing PR template was missed by the original audit. A central contributor guide now supplies the missing fresh-clone setup, module ownership, architecture, schema, storage/security, migration, testing, triage, and good-first-issue policies; stale setup and route references were corrected.\n\n**Scope**\nDocument module ownership, contracts, migrations, tests, local validation, PR conventions, triage, and good-first-issue policy; add or strengthen the PR template.\n\n**Acceptance criteria**\nA new contributor can run, test, locate ownership, understand data/security boundaries, and open a scoped PR without reverse-engineering the repository.\n\n**Validation / gate**\nFresh-clone contributor walkthrough and link check.\n\n**Risk**\nAmbiguous ownership encourages unsafe cross-layer changes.\n\n**Evidence**\n`docs/contributor-guide.md`; README and CONTRIBUTING indexes; strengthened PR template; full API test discovery in Make/CI; repository-local Markdown link gate; clean-clone frozen install, 438 web tests, six API unit tests, and 64 local documentation links passed.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-029",
           "title": "Keep in-app and landing problem-report links safe",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "ui",
             "contributors",
