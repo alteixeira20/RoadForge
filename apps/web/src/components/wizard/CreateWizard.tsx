@@ -5,7 +5,7 @@ import { Icon } from '@/components/ui/Icon'
 import { canRestoreFocus, trapDialogTabFocus } from '@/lib/dialog-focus'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { createBlankPhases } from '@/lib/roadmap-factory'
-import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
+import { createRoadForgeTemplate } from '@/data/roadforge-template'
 
 interface CreateWizardProps {
   onComplete: (roadmapId?: string) => void
@@ -65,10 +65,17 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
   const back = () => setStep((s) => Math.max(0, s - 1))
 
   const handleFinish = () => {
-    const nextPhases = startingPoint === 'blank' ? createBlankPhases() : SAMPLE_ROADMAP.phases
+    const template = startingPoint === 'template'
+      ? createRoadForgeTemplate()
+      : null
+    const nextPhases = template?.phases ?? createBlankPhases()
     const nextDisplayName = draftDisplayName.trim()
     setDisplayName(nextDisplayName)
-    const newRoadmapId = createLocalRoadmap(draftRoadmapName.trim() || 'Untitled Roadmap', nextPhases)
+    const newRoadmapId = createLocalRoadmap(
+      draftRoadmapName.trim() || 'Untitled Roadmap',
+      nextPhases,
+      template?.tagRegistry,
+    )
     onComplete(newRoadmapId)
   }
 
@@ -140,7 +147,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
                   id="rn"
                   ref={inputRef}
                   className="input"
-                  placeholder="e.g. v1.0 Public Launch"
+                  placeholder="e.g. Product launch"
                   value={draftRoadmapName}
                   onChange={(e) => setDraftRoadmapName(e.target.value)}
                   onKeyDown={(e) => {
@@ -187,8 +194,8 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
                     <Icon name="spark" size={20} />
                   </div>
                   <div className="meta">
-                    <div className="h">Use template</div>
-                    <div className="d">Explore RoadForge with example phases, tasks, and dependencies.</div>
+                    <div className="h">Use RoadForge template</div>
+                    <div className="d">Start from the bundled Clean Beta roadmap with real phases, tasks, and dependencies.</div>
                   </div>
                   {startingPoint === 'template' && <div className="check-mark"><Icon name="check" size={14} /></div>}
                 </button>

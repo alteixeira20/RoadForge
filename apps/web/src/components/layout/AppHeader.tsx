@@ -3,6 +3,7 @@
 import { Icon } from '@/components/ui/Icon'
 import { Brand } from '@/components/ui/Brand'
 import { RoadmapSwitcher } from '@/components/roadmap/RoadmapSwitcher'
+import Link from 'next/link'
 import type { SyncStatus } from '@/types/roadmap'
 
 interface AppHeaderProps {
@@ -40,6 +41,14 @@ export function AppHeader({
       </div>
 
       <div className="header-end">
+        <Link
+          className="btn sm header-help-link"
+          href="/help"
+          aria-label="Help and user guide"
+        >
+          <span className="header-help-glyph" aria-hidden="true">?</span>
+          <span className="header-help-label">Help</span>
+        </Link>
         {!readOnly && (
           <>
             <button className="iconbtn" title="Import / Export" aria-label="Import / Export" onClick={onIO}>

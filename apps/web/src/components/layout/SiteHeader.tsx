@@ -59,6 +59,7 @@ export function SiteHeader({ onCreate }: SiteHeaderProps) {
         <a className={activeSection === 'features' ? 'active' : undefined} href="#features" aria-current={activeSection === 'features' ? 'page' : undefined}>
           Features
         </a>
+        <a href="/help">Help</a>
       </nav>
       <span className="spacer" />
       <div className="actions">

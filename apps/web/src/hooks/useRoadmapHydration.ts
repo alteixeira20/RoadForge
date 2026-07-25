@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, type Dispatch, type SetStateAction } from 'react'
 import type { Phase, ShareRole, TagDefinition } from '@/types/roadmap'
-import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
+import { createRoadForgeTemplate } from '@/data/roadforge-template'
 import { storage, type RoadmapCache } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import {
@@ -98,17 +98,15 @@ function getRoadmapIdFromUrl(): string | null {
 }
 
 function buildSampleCache(): RoadmapCache {
-  const upgraded = upgradeRoadmapSnapshot({
-    roadmapName: 'v1.0 Public Launch',
-    phases: SAMPLE_ROADMAP.phases,
-  })
+  const template = createRoadForgeTemplate()
   return {
-    roadmapName: upgraded.roadmapName || 'v1.0 Public Launch',
-    phases: upgraded.phases,
+    roadmapName: template.roadmapName,
+    phases: template.phases,
     saved: false,
     ownerDisplayName: null,
     updatedAt: null,
     isPasswordEnabled: false,
+    tagRegistry: template.tagRegistry,
     isSample: true,
   }
 }

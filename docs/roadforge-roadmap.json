@@ -524,7 +524,7 @@
           "id": "RF-025",
           "title": "Publish task-based first-run help and recovery guidance",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "docs",
             "ui"
@@ -537,13 +537,13 @@
             "RF-024"
           ],
           "est": "3 days",
-          "desc": "**Why**\nNew users need a clear local-first workflow without reading implementation docs.\n\n**Finding**\nOnboarding exists, but this audit found no verified Help path covering phases, next task, saving, sharing/roles, locks, versions, import/export, and recovery. First-time template selection still uses a separately maintained hard-coded sample.\n\n**Scope**\nAdd contextual Help entry points and a task-based user guide with known limitations and troubleshooting. Make `docs/roadforge-roadmap.json` the canonical bundled template instead of maintaining duplicate sample content.\n\n**Acceptance criteria**\nA first-time user can find where data lives, create phase/task, export, save/share, understand roles/locks/conflicts, restore a version, and report a problem. Selecting the RoadForge template deep-clones the canonical JSON into an independent roadmap, resets runtime/export metadata, preserves its registered tags, and cannot mutate the source through user editing. No separately maintained hard-coded roadmap can drift. CI validates the canonical file through RoadForge's real parser and strict template invariants. Template selection has component and browser regression coverage.\n\n**Validation / gate**\nParser and invariant tests, template factory/component tests, browser template-selection smoke, usability walkthrough, and link/content tests.\n\n**Risk**\nVerbose technical docs can hide the essential actions; duplicated template data can silently drift.\n\n**Evidence**\n`CreateWizard`, `useRoadmapHydration`, `SAMPLE_ROADMAP`, `WorkspaceWelcomeBanner`, README, self-hosting and support docs; classification likely.\n\n**Classification**\nlikely"
+          "desc": "**Why**\nNew users need a clear local-first workflow without reading implementation docs.\n\n**Finding**\nA visible Help route now covers creation, next-task behavior, portability, collaboration, recovery, history, troubleshooting, and limitations. First-run template selection parses and deep-clones this canonical roadmap with its tags; the duplicate hard-coded roadmap was removed.\n\n**Scope**\nAdd contextual Help entry points and a task-based user guide with known limitations and troubleshooting. Make `docs/roadforge-roadmap.json` the canonical bundled template instead of maintaining duplicate sample content.\n\n**Acceptance criteria**\nA first-time user can find where data lives, create phase/task, export, save/share, understand roles/locks/conflicts, restore a version, and report a problem. Selecting the RoadForge template deep-clones the canonical JSON into an independent roadmap, resets runtime/export metadata, preserves its registered tags, and cannot mutate the source through user editing. No separately maintained hard-coded roadmap can drift. CI validates the canonical file through RoadForge's real parser and strict template invariants. Template selection has component and browser regression coverage.\n\n**Validation / gate**\nParser and invariant tests, template factory/component tests, browser template-selection smoke, usability walkthrough, and link/content tests.\n\n**Risk**\nVerbose technical docs can hide the essential actions; duplicated template data can silently drift.\n\n**Evidence**\nParser-backed template factory; wizard, clone, parser, Help, navigation, accessibility, and production-build checks; no `SAMPLE_ROADMAP` consumer remains.\n\n**Implementation status**\nImplementation, parser/invariant tests, component selection coverage, link/content tests, lint, typecheck, and production build pass. RF-033 browser template-selection smoke and the user's usability walkthrough remain pending.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-026",
           "title": "Inventory and remove low-value or dead visible controls",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "ui",
             "docs"

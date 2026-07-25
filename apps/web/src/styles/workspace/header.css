@@ -55,6 +55,7 @@
   display: inline-block;
   line-height: 1;
 }
+.header-help-glyph { display: none; }
 /* Force consistent line-height on every interactive element in the header */
 .app-header .btn,
 .app-header .iconbtn,
@@ -102,4 +103,7 @@
 @media (max-width: 600px) {
   .app-header .header-save-btn { width: 36px; min-width: 36px; padding: 0; }
   .app-header .header-save-label { display: none; }
+  .app-header .header-help-link { width: 36px; min-width: 36px; padding: 0; }
+  .header-help-label { display: none; }
+  .header-help-glyph { display: inline; font-weight: 700; }
 }

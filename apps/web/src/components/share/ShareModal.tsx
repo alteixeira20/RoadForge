@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
-import { MOCK_SHARE_LINKS } from '@/data/sample-roadmap'
+import { MOCK_SHARE_LINKS } from '@/data/roadmap-options'
 import { getParticipants, getShareLinks, regenerateShareLink, revokeParticipant, revokeShareLink } from '@/services/roadmap-sharing.service'
 import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
 import { ShareRoleSection } from '@/components/share/ShareRoleSection'

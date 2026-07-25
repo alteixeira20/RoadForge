@@ -7,7 +7,7 @@ import type {
   ShareRole,
   TagDefinition,
 } from '@/types/roadmap'
-import { SAMPLE_ROADMAP } from '@/data/sample-roadmap'
+import { createRoadForgeTemplate } from '@/data/roadforge-template'
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { useRoadmapHydration, type RoadmapUpgradeState } from '@/hooks/useRoadmapHydration'
@@ -81,9 +81,10 @@ const RoadmapLifecycleContext = createContext<RoadmapLifecycleContextValue | nul
 const RoadmapContext = createContext<RoadmapContextValue | null>(null)
 
 export function RoadmapProvider({ children }: { children: ReactNode }) {
+  const initialTemplate = useMemo(() => createRoadForgeTemplate(), [])
   const [displayName, setDisplayNameState] = useState('')
-  const [roadmapName, setRoadmapNameState] = useState('v1.0 Public Launch')
-  const [phases, setPhasesState] = useState<Phase[]>(SAMPLE_ROADMAP.phases)
+  const [roadmapName, setRoadmapNameState] = useState(initialTemplate.roadmapName)
+  const [phases, setPhasesState] = useState<Phase[]>(initialTemplate.phases)
   const [saved, setSavedState] = useState(false)
   // Ref so SSE callbacks always read the current saved value without stale closure
   const savedRef = useRef(false)
@@ -94,7 +95,9 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [isPasswordEnabled, setIsPasswordEnabledState] = useState(false)
   const [ownerDisplayName, setOwnerDisplayNameState] = useState<string | null>(null)
   const [updatedAt, setUpdatedAtState] = useState<string | null>(null)
-  const [tagRegistry, setTagRegistryState] = useState<TagDefinition[]>([])
+  const [tagRegistry, setTagRegistryState] = useState<TagDefinition[]>(
+    initialTemplate.tagRegistry,
+  )
   const [isSample, setIsSample] = useState(false)
   const [locks, setLocks] = useState<Record<string, { participantId: string; displayName: string }>>({})
   const [activeRoadmapId, setActiveRoadmapIdState] = useState<string | null>(null)

@@ -43,7 +43,7 @@ interface ApiJoinResponse {
 
 // ─── Mappers ───────────────────────────────────────────────────────────────────
 
-// Matches icon/desc/recommended from MOCK_SHARE_LINKS in sample-roadmap.ts.
+// Matches icon/desc/recommended from MOCK_SHARE_LINKS in roadmap-options.ts.
 const _LINK_META: Record<string, { icon: string; desc: string; recommended?: true }> = {
   owner:  { icon: 'shield', desc: 'Full control — manage settings, links, and members.' },
   editor: { icon: 'users',  desc: 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.', recommended: true },

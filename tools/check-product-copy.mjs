@@ -17,6 +17,7 @@ const currentSurfaces = [
   'docs/architecture/realtime-feedback-contract.md',
   'docs/architecture/source-of-truth-rules.md',
   'docs/security/security-headers-policy.md',
+  'apps/web/src/app/help/page.tsx',
   'apps/web/src/app/layout.tsx',
   'apps/web/src/components/layout/SiteFooter.tsx',
   'apps/web/src/components/roadmap/Workspace.tsx',

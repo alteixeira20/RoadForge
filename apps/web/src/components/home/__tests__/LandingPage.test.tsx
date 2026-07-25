@@ -118,6 +118,7 @@ describe('landing page refinement', () => {
     expect(howLink?.getAttribute('href')).toBe('#how')
     expect(howLink?.textContent).toBe('How it works')
     expect(featuresLink?.getAttribute('href')).toBe('#features')
+    expect(container.querySelector('nav a[href="/help"]')?.textContent).toBe('Help')
     expect(howLink?.classList.contains('active')).toBe(true)
     expect(how.scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
 

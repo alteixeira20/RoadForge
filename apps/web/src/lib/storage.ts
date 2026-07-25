@@ -304,7 +304,7 @@ export const storage = {
       phases = rawPhases ? JSON.parse(rawPhases) : []
     } catch {}
 
-    const roadmapName = getLocal(LEGACY_KEYS.roadmapName) || 'v1.0 Public Launch'
+    const roadmapName = getLocal(LEGACY_KEYS.roadmapName) || 'Untitled Roadmap'
     const saved = getLocal(LEGACY_KEYS.saved) === 'true'
     const ownerDisplayName = getLocal(LEGACY_KEYS.ownerDisplayName)
     const updatedAt = getLocal(LEGACY_KEYS.updatedAt)

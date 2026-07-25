@@ -103,6 +103,8 @@ describe('Accessibility Unit Tests', () => {
     })
     const ioButton = container.querySelector('button[title="Import / Export"]')
     expect(ioButton?.getAttribute('aria-label')).toBe('Import / Export')
+    const helpLink = container.querySelector('a[href="/help"]')
+    expect(helpLink?.getAttribute('aria-label')).toBe('Help and user guide')
 
     // Dark-only UI: no theme toggle is rendered anywhere in the header
     expect(container.querySelector('.theme-toggle')).toBeNull()
