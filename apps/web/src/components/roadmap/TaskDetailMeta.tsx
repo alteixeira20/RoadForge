@@ -1,8 +1,7 @@
 'use client'
 
-import { type CSSProperties } from 'react'
 import type { Task, TagDefinition } from '@/types/roadmap'
-import { resolveTagColor, resolveTagDisplay } from '@/lib/tag-registry'
+import { TagChip } from './TagChip'
 
 interface TaskDetailMetaProps {
   task: Task
@@ -47,15 +46,9 @@ export function TaskDetailMeta({
         <dt className="task-meta-label">Tags</dt>
         <dd className="task-meta-value tags">
           {visibleTags.length > 0
-            ? visibleTags.map((tagId) => {
-                const { label } = resolveTagDisplay(tagId, registry)
-                const bg = resolveTagColor(tagId, registry)
-                return (
-                  <span key={tagId} className="tag-pill" style={{ '--tag-bg': bg } as CSSProperties}>
-                    {label}
-                  </span>
-                )
-              })
+            ? visibleTags.map((tagId) => (
+                <TagChip key={tagId} tagId={tagId} registry={registry} />
+              ))
             : <span className="task-meta-empty">No tags</span>}
         </dd>
       </div>

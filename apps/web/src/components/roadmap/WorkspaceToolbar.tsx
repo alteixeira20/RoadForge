@@ -23,6 +23,7 @@ export const WORKSPACE_VIEW_PANEL_ID = 'workspace-view-panel'
 
 export const WORKSPACE_VIEW_TAB_ID: Record<WorkspaceView, string> = {
   roadmap: 'workspace-tab-roadmap',
+  tags: 'workspace-tab-tags',
   team: 'workspace-tab-team',
 }
 
@@ -32,9 +33,10 @@ const ACTIVITY_UNAVAILABLE_HINT =
 const VIEW_TABS: Array<{
   view: WorkspaceView
   label: string
-  icon: 'fold' | 'users'
+  icon?: 'fold' | 'users'
 }> = [
   { view: 'roadmap', label: 'Roadmap', icon: 'fold' },
+  { view: 'tags', label: 'Tags' },
   { view: 'team', label: 'Team', icon: 'users' },
 ]
 
@@ -58,7 +60,6 @@ interface WorkspaceToolbarProps {
   onExpandAll: () => void
   onOpenActivity: () => void
   onOpenVersions: () => void
-  onOpenTagRegistry: () => void
   hasServerActivity: boolean
   canViewTeam: boolean
   canViewVersions: boolean
@@ -101,7 +102,6 @@ export function WorkspaceToolbar({
   onExpandAll,
   onOpenActivity,
   onOpenVersions,
-  onOpenTagRegistry,
   hasServerActivity,
   canViewTeam,
   canViewVersions,
@@ -179,19 +179,20 @@ export function WorkspaceToolbar({
                 id={WORKSPACE_VIEW_TAB_ID[view]}
                 role="tab"
                 className={`workspace-view-tab ${workspaceView === view ? 'active' : ''}`}
+                data-workspace-view={view}
                 aria-selected={workspaceView === view}
                 aria-controls={WORKSPACE_VIEW_PANEL_ID}
                 tabIndex={workspaceView === view ? 0 : -1}
                 onClick={() => onWorkspaceViewChange(view)}
               >
-                <Icon name={icon} size={14} /> {label}
+                {icon && <Icon name={icon} size={14} />} {label}
               </button>
             ))}
           </div>
 
           <button
             type="button"
-            className="workspace-view-tab"
+            className="workspace-view-tab workspace-activity-trigger"
             onClick={hasServerActivity ? onOpenActivity : undefined}
             aria-disabled={!hasServerActivity || undefined}
             aria-haspopup={hasServerActivity ? 'dialog' : undefined}
@@ -208,7 +209,7 @@ export function WorkspaceToolbar({
           {canViewVersions && (
             <button
               type="button"
-              className="workspace-view-tab"
+              className="workspace-view-tab workspace-versions-trigger"
               aria-haspopup="dialog"
               onClick={onOpenVersions}
             >
@@ -335,14 +336,6 @@ export function WorkspaceToolbar({
                   </button>
               </AnchoredOverlay>
             </div>
-
-            <button
-              type="button"
-              className="toolbar-action toolbar-tags-action"
-              onClick={onOpenTagRegistry}
-            >
-              Tags
-            </button>
 
             {canTogglePhaseExpansion && (
               <button

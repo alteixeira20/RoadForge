@@ -74,6 +74,18 @@ test('keeps drag descriptions deterministic across navigation and reload', async
     'phase-tasks-p01',
   )
 
+  await page.getByRole('tab', { name: 'Tags' }).click()
+  await expect(page.getByRole('heading', { name: 'Tags' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Roadmap' }).click()
+  await expect(phaseHandles.first()).toHaveAttribute(
+    'aria-describedby',
+    'roadmap-phases',
+  )
+  await expect(taskHandles.first()).toHaveAttribute(
+    'aria-describedby',
+    'phase-tasks-p01',
+  )
+
   await page.reload()
   await expect(
     page.getByRole('button', { name: /Reorder phase/ }).first(),

@@ -13,7 +13,7 @@ export interface TagDefinition {
 export type PhaseStatus = 'done' | 'active' | 'next' | 'future'
 export type PhaseColorMode = 'auto' | 'manual'
 export type WorkspaceMode = 'owner' | 'viewer'
-export type WorkspaceView = 'roadmap' | 'team'
+export type WorkspaceView = 'roadmap' | 'tags' | 'team'
 export type ExportFormat = 'json'
 export type ShareRole = 'owner' | 'editor' | 'viewer'
 export type SyncStatus = 'local' | 'live' | 'syncing' | 'offline' | 'conflict' | 'error'

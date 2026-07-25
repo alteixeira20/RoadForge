@@ -1,8 +1,7 @@
 'use client'
 
-import type { CSSProperties } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import { resolveTagColor, resolveTagDisplay } from '@/lib/tag-registry'
+import { TagChip } from '@/components/roadmap/TagChip'
 import {
   TASK_STATUS_LABELS,
   type DerivedTaskStatus,
@@ -83,13 +82,12 @@ export function TaskRowHeader({
         {TASK_STATUS_LABELS[status]}
       </span>
       {visibleTags.slice(0, 2).map((tagId) => (
-        <span
+        <TagChip
           key={tagId}
-          className="tag-pill task-row-tag"
-          style={{ '--tag-bg': resolveTagColor(tagId, registry) } as CSSProperties}
-        >
-          {resolveTagDisplay(tagId, registry).label}
-        </span>
+          tagId={tagId}
+          registry={registry}
+          className="task-row-tag"
+        />
       ))}
       {visibleTags.length > 2 && (
         <span className="meta-pill">+{visibleTags.length - 2}</span>

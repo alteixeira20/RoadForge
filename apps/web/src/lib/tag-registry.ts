@@ -77,7 +77,9 @@ export function resolveTagDisplay(
   registry: TagDefinition[],
 ): { label: string; color?: string } {
   const entry = registry.find((t) => t.id === tagId)
-  return entry ? { label: entry.label, color: entry.color } : { label: tagId }
+  return entry
+    ? { label: entry.label, color: normalizeTagColor(entry.color) }
+    : { label: tagId }
 }
 
 const FALLBACK_TAG_COLORS: Record<string, string> = {

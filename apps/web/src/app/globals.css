@@ -38,12 +38,12 @@
 @import '../styles/workspace/activity-panel.css';
 @import '../styles/workspace/team-panel.css';
 @import '../styles/workspace/versions-panel.css';
+@import '../styles/workspace/tags-panel.css';
 @import '../styles/modals/modal-shell.css';
 @import '../styles/modals/create-wizard.css';
 @import '../styles/modals/share-modal.css';
 @import '../styles/modals/io-modal.css';
 @import '../styles/modals/password-gate.css';
-@import '../styles/modals/tag-registry-modal.css';
 @import '../styles/join.css';
 
 /* Global keyboard-only focus visible override */

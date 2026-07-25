@@ -119,15 +119,12 @@ vi.mock('@/hooks/useWorkspaceModals', () => ({
     showSave: false,
     showShare: false,
     showIO: false,
-    showTagRegistry: false,
     openSave: vi.fn(),
     openShare: vi.fn(),
     openIO: vi.fn(),
-    openTagRegistry: vi.fn(),
     closeSave: vi.fn(),
     closeShare: vi.fn(),
     closeIO: vi.fn(),
-    closeTagRegistry: vi.fn(),
   }),
 }))
 

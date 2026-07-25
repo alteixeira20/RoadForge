@@ -33,7 +33,6 @@ function createProps(
     onExpandAll: vi.fn(),
     onOpenActivity: vi.fn(),
     onOpenVersions: vi.fn(),
-    onOpenTagRegistry: vi.fn(),
     hasServerActivity: false,
     canViewTeam: false,
     canViewVersions: false,
@@ -82,6 +81,13 @@ describe('roadmap navigation and tools card', () => {
       ),
     )
     expect(buttonWith(container, 'Add phase')).toBeUndefined()
+
+    act(() =>
+      root.render(
+        <WorkspaceToolbar {...createProps({ workspaceView: 'tags' })} />,
+      ),
+    )
+    expect(buttonWith(container, 'Add phase')).toBeUndefined()
   })
 
   it('keeps the exploration tools available', () => {
@@ -93,8 +99,22 @@ describe('roadmap navigation and tools card', () => {
     expect(search).not.toBeNull()
     expect(search?.placeholder).toBe('Search tasks, phases, tags, or people...')
     expect(buttonWith(container, 'Filters')).toBeInstanceOf(HTMLButtonElement)
-    expect(buttonWith(container, 'Tags')).toBeInstanceOf(HTMLButtonElement)
     expect(buttonWith(container, 'Expand all')).toBeInstanceOf(HTMLButtonElement)
+    expect(container.querySelector('.workspace-tools-row .toolbar-tags-action')).toBeNull()
+    expect(
+      container.querySelector('[role="tab"][data-workspace-view="tags"]'),
+    ).toBeInstanceOf(HTMLButtonElement)
+  })
+
+  it('hides task exploration tools while Tags is selected', () => {
+    act(() =>
+      root.render(
+        <WorkspaceToolbar {...createProps({ workspaceView: 'tags' })} />,
+      ),
+    )
+
+    expect(container.querySelector('.workspace-tools-row')).toBeNull()
+    expect(container.querySelector('.active-filter-chips')).toBeNull()
   })
 
   it('routes search input through the filter contract unchanged', () => {
@@ -125,13 +145,15 @@ describe('roadmap navigation and tools card', () => {
     expect(tablist?.getAttribute('aria-label')).toBe('Workspace views')
 
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'))
-    expect(tabs).toHaveLength(2)
+    expect(tabs).toHaveLength(3)
     expect(tabs[0].id).toBe(WORKSPACE_VIEW_TAB_ID.roadmap)
     expect(tabs[0].getAttribute('aria-selected')).toBe('true')
     expect(tabs[0].getAttribute('aria-controls')).toBe(WORKSPACE_VIEW_PANEL_ID)
     expect(tabs[0].getAttribute('tabindex')).toBe('0')
     expect(tabs[1].getAttribute('aria-selected')).toBe('false')
     expect(tabs[1].getAttribute('tabindex')).toBe('-1')
+    expect(tabs[1].id).toBe(WORKSPACE_VIEW_TAB_ID.tags)
+    expect(tabs[2].id).toBe(WORKSPACE_VIEW_TAB_ID.team)
   })
 
   it('moves between tabs with arrow keys and Home/End', () => {
@@ -154,6 +176,14 @@ describe('roadmap navigation and tools card', () => {
       )
     })
     expect(document.activeElement).toBe(tabs[1])
+    expect(onWorkspaceViewChange).toHaveBeenLastCalledWith('tags')
+
+    act(() => {
+      tablist.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'End', bubbles: true }),
+      )
+    })
+    expect(document.activeElement).toBe(tabs[2])
     expect(onWorkspaceViewChange).toHaveBeenLastCalledWith('team')
 
     act(() => {

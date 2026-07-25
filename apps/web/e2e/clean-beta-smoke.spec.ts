@@ -133,6 +133,7 @@ for (const role of ['owner', 'editor', 'viewer'] as const) {
     const id = `browser-${role}`
     await page.goto(`${role === 'viewer' ? '/shared' : '/workspace'}?roadmap=${id}`)
     await expect(page.getByRole('heading', { name: `${role} browser roadmap` })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Tags' })).toBeVisible()
 
     // Phase creation lives after the phase list, never in the top toolbar.
     await expect(page.getByRole('button', { name: 'Add phase', exact: true })).toHaveCount(0)
@@ -150,6 +151,9 @@ for (const role of ['owner', 'editor', 'viewer'] as const) {
       await expect(addPhase).toHaveCount(0)
       await expect(share).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Create your own', exact: true })).toBeVisible()
+      await page.getByRole('tab', { name: 'Tags' }).click()
+      await expect(page.getByText('Tag management is read-only in this view.')).toBeVisible()
+      await expect(page.getByRole('button', { name: 'New tag' })).toHaveCount(0)
     }
   })
 }
@@ -223,7 +227,9 @@ test('does not expose a Help action in the workspace header', async ({ page }) =
 
 const TOOLBAR_VIEWPORTS = [
   { label: 'desktop', width: 1280, height: 800 },
+  { label: '1024px', width: 1024, height: 768 },
   { label: '900px', width: 900, height: 800 },
+  { label: '768px', width: 768, height: 1024 },
   { label: '600px', width: 600, height: 800 },
   { label: '390px', width: 390, height: 844 },
 ] as const
@@ -251,8 +257,20 @@ for (const viewport of TOOLBAR_VIEWPORTS) {
     const search = page.getByRole('textbox', { name: 'Search roadmap tasks' })
     await expect(search).toBeVisible()
     await expect(page.getByRole('button', { name: /Filters/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Tags', exact: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Tags', exact: true })).toBeVisible()
+    await expect(
+      page.locator('.workspace-tools-row').getByRole('button', { name: 'Tags', exact: true }),
+    ).toHaveCount(0)
     await expect(page.getByRole('button', { name: /Expand all|Collapse all/ })).toBeVisible()
+
+    const roadmapTabBox = await page.getByRole('tab', { name: 'Roadmap' }).boundingBox()
+    const activityBox = await page.getByRole('button', { name: 'Activity' }).boundingBox()
+    const tagsTabBox = await page.getByRole('tab', { name: 'Tags' }).boundingBox()
+    expect(roadmapTabBox).not.toBeNull()
+    expect(activityBox).not.toBeNull()
+    expect(tagsTabBox).not.toBeNull()
+    expect(roadmapTabBox!.x).toBeLessThan(activityBox!.x)
+    expect(activityBox!.x).toBeLessThan(tagsTabBox!.x)
 
     const searchBox = await search.boundingBox()
     expect(searchBox!.width).toBeGreaterThanOrEqual(120)
@@ -260,8 +278,113 @@ for (const viewport of TOOLBAR_VIEWPORTS) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true)
+
+    await page.getByRole('tab', { name: 'Tags' }).click()
+    await expect(page.getByRole('textbox', { name: 'Search roadmap tasks' })).toHaveCount(0)
+    await expect(page.locator('.workspace-tools-row')).toHaveCount(0)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true)
   })
 }
+
+test('creates, edits, recolors, reloads, and deletes an unused tag', async ({ page }) => {
+  await createRoadmap(page, {
+    title: 'Tag registry browser roadmap',
+    startingPoint: 'blank',
+  })
+
+  await page.getByRole('tab', { name: 'Tags' }).click()
+  await expect(page.getByText('No tags yet')).toBeVisible()
+  await page.getByRole('button', { name: 'New tag' }).click()
+  await page.getByRole('textbox', { name: 'New tag label' }).fill('Release risk')
+  await page.locator('input[aria-label="New tag color"]').evaluate((element) => {
+    const input = element as HTMLInputElement
+    input.value = '#0891b2'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.locator('.tag-chip', { hasText: 'Release risk' })).toBeVisible()
+  await expect(page.getByText('Not used', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Edit tag Release risk' }).click()
+  await page.getByRole('textbox', { name: 'Tag label for Release risk' }).fill('Launch risk')
+  await page.locator('input[aria-label="Tag color for Release risk"]').evaluate((element) => {
+    const input = element as HTMLInputElement
+    input.value = '#9333ea'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  const chip = page.locator('.tag-chip', { hasText: 'Launch risk' })
+  await expect(chip).toBeVisible()
+  await expect(chip).toHaveCSS('border-radius', '4px')
+
+  await page.reload()
+  await page.getByRole('tab', { name: 'Tags' }).click()
+  await expect(page.locator('.tag-chip', { hasText: 'Launch risk' })).toBeVisible()
+  await page.getByRole('button', { name: 'Delete tag Launch risk' }).click()
+  await page
+    .getByRole('alertdialog', { name: 'Delete tag?' })
+    .getByRole('button', { name: 'Delete tag' })
+    .click()
+  await expect(page.getByText('No tags yet')).toBeVisible()
+})
+
+test('uses the same canonical tag chip in task rows and the Tags panel', async ({ page }) => {
+  await createRoadmap(page, {
+    title: 'Canonical tag chip roadmap',
+    startingPoint: 'template',
+  })
+
+  await page.getByRole('tab', { name: 'Tags' }).click()
+  const panelChip = page.locator('.tags-view .tag-chip', {
+    hasText: 'Core workflow',
+  }).first()
+  await expect(panelChip).toBeVisible()
+  const panelStyle = await panelChip.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      backgroundColor: style.backgroundColor,
+      borderColor: style.borderColor,
+      borderRadius: style.borderRadius,
+      color: style.color,
+      fontSize: style.fontSize,
+      fontWeight: style.fontWeight,
+      maxWidth: style.maxWidth,
+      overflow: style.overflow,
+      padding: style.padding,
+      textOverflow: style.textOverflow,
+      whiteSpace: style.whiteSpace,
+    }
+  })
+
+  await page.getByRole('tab', { name: 'Roadmap' }).click()
+  const expand = page.getByRole('button', {
+    name: 'Expand phase Delivered local-first foundation',
+  })
+  if (await expand.isVisible()) await expand.click()
+  const taskChip = page.locator('.task-row .tag-chip', {
+    hasText: 'Core workflow',
+  }).first()
+  await expect(taskChip).toBeVisible()
+  const taskStyle = await taskChip.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      backgroundColor: style.backgroundColor,
+      borderColor: style.borderColor,
+      borderRadius: style.borderRadius,
+      color: style.color,
+      fontSize: style.fontSize,
+      fontWeight: style.fontWeight,
+      maxWidth: style.maxWidth,
+      overflow: style.overflow,
+      padding: style.padding,
+      textOverflow: style.textOverflow,
+      whiteSpace: style.whiteSpace,
+    }
+  })
+  expect(taskStyle).toEqual(panelStyle)
+})
 
 test('keeps phase creation out of the toolbar and after the phase list', async ({ page }) => {
   await createRoadmap(page, { title: 'Creation placement roadmap', startingPoint: 'blank' })

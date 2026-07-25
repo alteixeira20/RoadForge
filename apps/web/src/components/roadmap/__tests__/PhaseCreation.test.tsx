@@ -93,7 +93,6 @@ function createToolbarProps(
     onExpandAll: vi.fn(),
     onOpenActivity: vi.fn(),
     onOpenVersions: vi.fn(),
-    onOpenTagRegistry: vi.fn(),
     hasServerActivity: false,
     canViewTeam: false,
     canViewVersions: false,

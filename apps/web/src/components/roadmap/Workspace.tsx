@@ -18,6 +18,7 @@ import { WorkspaceModals } from './WorkspaceModals'
 import { SyncConflictReviewPanel } from './SyncConflictReviewPanel'
 import { ActivityPanel } from './ActivityPanel'
 import { TeamPanel } from './TeamPanel'
+import { TagsPanel } from './TagsPanel'
 import { VersionsPanel } from './VersionsPanel'
 import { SyncStatusIndicator } from './SyncStatusIndicator'
 import {
@@ -111,15 +112,12 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     showSave,
     showShare,
     showIO,
-    showTagRegistry,
     openSave,
     openShare,
     openIO,
-    openTagRegistry,
     closeSave,
     closeShare,
     closeIO,
-    closeTagRegistry,
   } = useWorkspaceModals()
   const [showActivity, setShowActivity] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
@@ -539,7 +537,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             setShowActivity(false)
             setShowVersions(true)
           }}
-          onOpenTagRegistry={openTagRegistry}
           hasServerActivity={!!serverRoadmapId && !!sessionToken}
           canViewTeam={canViewTeam}
           canViewVersions={
@@ -568,6 +565,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
               return acc
             }, {})}
           />
+        ) : workspaceView === 'tags' ? (
+          <TagsPanel readOnly={readOnly} />
         ) : (
           <PhaseList
             phases={visiblePhases}
@@ -616,15 +615,12 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         showSave={showSave}
         showShare={showShare}
         showIO={showIO}
-        showTagRegistry={showTagRegistry}
         onCloseSave={closeSave}
         onCloseShare={closeShare}
         onCloseIO={closeIO}
-        onCloseTagRegistry={closeTagRegistry}
         onConfirmSave={handleConfirmSave}
         onToast={showToast}
         onRoadmapImported={handleRoadmapImported}
-        readOnly={readOnly}
       />
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />

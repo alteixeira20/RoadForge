@@ -22,11 +22,14 @@
   display: none;
 }
 .workspace-view-tabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: 0 0 auto;
+  display: contents;
 }
+
+.workspace-view-tab[data-workspace-view='roadmap'] { order: 1; }
+.workspace-activity-trigger { order: 2; }
+.workspace-view-tab[data-workspace-view='tags'] { order: 3; }
+.workspace-view-tab[data-workspace-view='team'] { order: 4; }
+.workspace-versions-trigger { order: 5; }
 
 /* Row 2 — exploration tools. Search takes the slack; utilities stay compact. */
 .workspace-tools-row {
