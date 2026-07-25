@@ -4,9 +4,11 @@ import {
   createRoadmapCheckpoint,
   deleteTaskClaim,
   exportRoadmap,
+  getRoadmapVersion,
   patchTask,
   patchTaskClaim,
   patchTaskDone,
+  restoreRoadmapVersion,
 } from '@/services/roadmap-crud.service'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 import type { Phase, TagDefinition, Task } from '@/types/roadmap'
@@ -190,6 +192,62 @@ describe('createRoadmapCheckpoint', () => {
       created: true,
       version: { id: 'rv_1', versionNumber: 4, phaseCount: 2, taskCount: 8 },
     })
+  })
+})
+
+describe('roadmap versions', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('maps the tag registry in version detail', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'rv_1',
+        version_number: 1,
+        roadmap_name: 'Launch',
+        phases: [],
+        tag_registry: [{
+          id: 'frontend',
+          label: 'Frontend',
+          createdAt: '2026-01-05T08:00:00.000Z',
+        }],
+        created_at: '2026-07-25T10:00:00Z',
+        actor_name: 'Owner',
+        action: 'roadmap.created',
+        phase_count: 0,
+        task_count: 0,
+        metadata_json: null,
+      }),
+    }))
+
+    const version = await getRoadmapVersion('rm_1', 'rv_1', 'owner-token')
+
+    expect(version.tagRegistry).toEqual([{
+      id: 'frontend',
+      label: 'Frontend',
+      createdAt: '2026-01-05T08:00:00.000Z',
+    }])
+  })
+
+  it('maps the restored roadmap tag registry', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ...apiRoadmap,
+        tag_registry: [{ id: 'frontend', label: 'Frontend', color: '#a78bfa' }],
+      }),
+    }))
+
+    const restored = await restoreRoadmapVersion('rm_1', 'rv_1', 'owner-token')
+
+    expect(restored.tagRegistry).toEqual([
+      { id: 'frontend', label: 'Frontend', color: '#a78bfa' },
+    ])
   })
 })
 

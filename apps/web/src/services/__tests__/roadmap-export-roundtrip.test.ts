@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { exportRoadmap } from '@/services/roadmap-crud.service'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 import type { Phase, Task, TagDefinition, TaskExternalLink } from '@/types/roadmap'
@@ -20,104 +21,23 @@ import type { Phase, Task, TagDefinition, TaskExternalLink } from '@/types/roadm
 // label collectively, plus one link with only the required fields (id,
 // provider, kind, url) to cover the minimal shape.
 
-const markdownDesc = [
-  'Summary paragraph with context for reviewers.',
-  '',
-  '- First bullet point',
-  '- Second bullet point',
-  '',
-  '- [ ] Pending checklist item',
-  '- [x] Completed checklist item',
-  '',
-  'See the [design doc](https://example.com/design-doc) for details.',
-].join('\n')
-
-const issueLink: TaskExternalLink = {
-  id: 'link-issue',
-  provider: 'github',
-  kind: 'issue',
-  url: 'https://github.com/anvilary/roadforge/issues/601',
-  owner: 'anvilary',
-  repo: 'roadforge',
-  number: 601,
-  label: 'Foundation issue',
+const fixture = JSON.parse(readFileSync(
+  new URL('../../../../../fixtures/roadmaps/maximal-v1.roadforge.json', import.meta.url),
+  'utf8',
+)) as {
+  roadmap: { name: string }
+  phases: Phase[]
+  tagRegistry: TagDefinition[]
 }
-
-const commitLink: TaskExternalLink = {
-  id: 'link-commit',
-  provider: 'github',
-  kind: 'commit',
-  url: 'https://github.com/anvilary/roadforge/commit/abc1234',
-  owner: 'anvilary',
-  repo: 'roadforge',
-  sha: 'abc1234',
-}
-
-const releaseLink: TaskExternalLink = {
-  id: 'link-release',
-  provider: 'github',
-  kind: 'release',
-  url: 'https://github.com/anvilary/roadforge/releases/tag/v1.2.0',
-  owner: 'anvilary',
-  repo: 'roadforge',
-  tag: 'v1.2.0',
-}
-
-const bareUrlLink: TaskExternalLink = {
-  id: 'link-spec',
-  provider: 'url',
-  kind: 'url',
-  url: 'https://example.com/spec',
-}
-
-const parentTask: Task = {
-  id: 'RF-2',
-  title: 'Parent task',
-  done: false,
-  tags: ['delivery'],
-  assignees: [],
-  deps: [],
-}
-
-const maximalSubtask: Task = {
-  id: 'RF-3',
-  title: 'Maximal round-trip subtask',
-  done: false,
-  next: true,
-  est: '3d',
-  assignees: ['Alex', 'Sam'],
-  tags: ['delivery', 'frontend'],
-  deps: ['RF-2'],
-  desc: markdownDesc,
-  parentId: 'RF-2',
-  claimedBy: 'Alex',
-  claimedById: 'pt_alex',
-  claimedAt: '2026-07-03T09:00:00.000Z',
-  links: [issueLink, commitLink, releaseLink, bareUrlLink],
-} satisfies Required<Task>
-
-const phases: Phase[] = [
-  {
-    id: 'phase-1',
-    num: '01',
-    name: 'Implementation',
-    color: '#38bdf8',
-    status: 'active',
-    progress: 50,
-    tasks: [parentTask, maximalSubtask],
-  },
-]
-
-const tagRegistry: TagDefinition[] = [
-  { id: 'delivery', label: 'Delivery', color: '#38bdf8' },
-  {
-    id: 'frontend',
-    label: 'Frontend',
-    color: '#a78bfa',
-    createdAt: '2026-01-05T08:00:00.000Z',
-    updatedAt: '2026-06-01T12:30:00.000Z',
-  },
-]
+const phases = fixture.phases
+const tagRegistry = fixture.tagRegistry
+const parentTask = phases[1].tasks[0]
+const maximalSubtask = phases[1].tasks[1] as Required<Task>
+const allLinks = phases.flatMap((phase) => phase.tasks.flatMap((task) => task.links ?? []))
+const issueLink = allLinks.find((link) => link.id === 'link-issue')!
+const commitLink = allLinks.find((link) => link.id === 'link-commit')!
+const releaseLink = allLinks.find((link) => link.id === 'link-release')!
+const bareUrlLink = allLinks.find((link) => link.id === 'link-spec')!
 
 // ─── Compile-time field canary ─────────────────────────────────────────────────
 //
@@ -153,7 +73,7 @@ describe('export/import round trip', () => {
     })
     const exportedJson = await blob.text()
     const imported = parseImportedRoadmapJson(exportedJson)
-    const roundTrippedTask = imported.phases[0].tasks[1]
+    const roundTrippedTask = imported.phases[1].tasks[1]
 
     expect(imported.warnings).toEqual([])
     expect(imported.repairs).toEqual([])
@@ -180,11 +100,11 @@ describe('export/import round trip', () => {
       tagRegistry,
     })
     const imported = parseImportedRoadmapJson(await blob.text())
-    const [roundTrippedParent, roundTrippedSubtask] = imported.phases[0].tasks
+    const [roundTrippedParent, roundTrippedSubtask] = imported.phases[1].tasks
 
     expect(roundTrippedParent.id).toBe(parentTask.id)
     expect(roundTrippedSubtask.parentId).toBe(roundTrippedParent.id)
-    expect(roundTrippedSubtask.deps).toEqual([roundTrippedParent.id])
+    expect(roundTrippedSubtask.deps).toContain(roundTrippedParent.id)
   })
 
   it('preserves each TaskExternalLink field across kinds', async () => {
@@ -193,25 +113,18 @@ describe('export/import round trip', () => {
       tagRegistry,
     })
     const imported = parseImportedRoadmapJson(await blob.text())
-    const links = imported.phases[0].tasks[1].links ?? []
+    const links = imported.phases.flatMap(
+      (phase) => phase.tasks.flatMap((task) => task.links ?? []),
+    )
 
-    expect(links).toHaveLength(4)
-    expect(links[0]).toEqual(issueLink)
-    expect(links[1]).toEqual(commitLink)
-    expect(links[2]).toEqual(releaseLink)
-    expect(links[3]).toEqual(bareUrlLink)
+    expect(links).toHaveLength(6)
+    expect(links).toContainEqual(issueLink)
+    expect(links).toContainEqual(commitLink)
+    expect(links).toContainEqual(releaseLink)
+    expect(links).toContainEqual(bareUrlLink)
   })
 
-  // NOTE: this assertion currently fails. parseImportedRoadmapJson ->
-  // tagRegistryFromPayload (apps/web/src/lib/roadmap-validation.ts) rebuilds
-  // each TagDefinition as `{ id, label, ...(color ? { color } : {}) }`,
-  // dropping `createdAt`/`updatedAt` even though exportRoadmap/
-  // buildRoadmapExport writes the full TagDefinition (including
-  // createdAt/updatedAt) into the exported JSON's tagRegistry. This is a
-  // real round-trip gap, not a fixture mistake — see the task report for
-  // details. Left as `.failing` so this test suite documents the gap
-  // without blocking the rest of the suite.
-  it.fails('preserves TagDefinition.createdAt and updatedAt', async () => {
+  it('preserves TagDefinition.createdAt and updatedAt', async () => {
     const blob = await exportRoadmap(phases, 'json', {
       roadmapName: 'Round Trip Fixture',
       tagRegistry,
@@ -235,5 +148,31 @@ describe('export/import round trip', () => {
     expect(roundTrippedDelivery?.id).toBe('delivery')
     expect(roundTrippedDelivery?.label).toBe('Delivery')
     expect(roundTrippedDelivery?.color).toBe('#38bdf8')
+  })
+
+  it('excludes credential, lock, session, and other volatile state', async () => {
+    const poisonedPhases = structuredClone(phases) as unknown as Array<
+      Phase & Record<string, unknown>
+    >
+    poisonedPhases[0].sessionToken = 'session-secret'
+    poisonedPhases[0].tasks[0] = {
+      ...poisonedPhases[0].tasks[0],
+      password: 'password-secret',
+      inviteToken: 'invite-secret',
+      lock: { participantId: 'pt_secret' },
+    } as Task
+
+    const blob = await exportRoadmap(poisonedPhases, 'json', {
+      roadmapName: fixture.roadmap.name,
+      tagRegistry,
+    })
+    const exported = await blob.text()
+
+    expect(exported).not.toContain('session-secret')
+    expect(exported).not.toContain('password-secret')
+    expect(exported).not.toContain('invite-secret')
+    expect(exported).not.toContain('pt_secret')
+    expect(exported).not.toContain('sessionToken')
+    expect(exported).not.toContain('"lock"')
   })
 })

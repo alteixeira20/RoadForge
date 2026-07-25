@@ -90,6 +90,23 @@ async def _post_checkpoint(client: AsyncClient, roadmap_id: str, owner_token: st
     return resp.json()
 
 
+async def _create_roadmap_with_tags(
+    client: AsyncClient,
+    tag_registry: list[dict],
+) -> dict:
+    resp = await client.post(
+        "/api/roadmaps",
+        json={
+            "name": "Versioned Tags",
+            "owner_display_name": "Owner",
+            "phases": [],
+            "tag_registry": tag_registry,
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
 async def _list_versions(client: AsyncClient, roadmap_id: str, owner_token: str) -> list:
     resp = await client.get(
         f"/api/roadmaps/{roadmap_id}/versions",
@@ -155,6 +172,31 @@ async def test_checkpoint_is_idempotent_when_state_unchanged(client: AsyncClient
     assert "version_number" in version
     assert isinstance(version["phase_count"], int)
     assert isinstance(version["task_count"], int)
+
+
+async def test_tag_only_change_creates_checkpoint(client: AsyncClient):
+    body = await _create_roadmap_with_tags(
+        client,
+        [{"id": "frontend", "label": "Frontend"}],
+    )
+
+    update_resp = await client.put(
+        f"/api/roadmaps/{body['id']}",
+        headers=_auth(body["owner_session_token"]),
+        json={
+            "tag_registry": [{"id": "backend", "label": "Backend"}],
+            "last_updated_at": body["updated_at"],
+        },
+    )
+    assert update_resp.status_code == 200, update_resp.text
+
+    checkpoint = await _post_checkpoint(
+        client,
+        body["id"],
+        body["owner_session_token"],
+    )
+
+    assert checkpoint["created"] is True
 
 
 # ─── Group B — Version list (RF-1904) ────────────────────────────────────────
@@ -241,6 +283,29 @@ async def test_owner_can_fetch_version_detail(client: AsyncClient):
     assert "action" in detail
     assert "phase_count" in detail
     assert "task_count" in detail
+
+
+async def test_version_detail_includes_historical_tag_registry(client: AsyncClient):
+    historical_registry = [{
+        "id": "frontend",
+        "label": "Frontend",
+        "color": "#a78bfa",
+        "createdAt": "2026-01-05T08:00:00.000Z",
+    }]
+    body = await _create_roadmap_with_tags(client, historical_registry)
+    versions = await _list_versions(
+        client,
+        body["id"],
+        body["owner_session_token"],
+    )
+
+    resp = await client.get(
+        f"/api/roadmaps/{body['id']}/versions/{versions[0]['id']}",
+        headers=_auth(body["owner_session_token"]),
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["tag_registry"] == historical_registry
 
 
 async def test_editor_can_fetch_version_detail(client: AsyncClient):
@@ -467,6 +532,91 @@ async def test_restore_persists_state_on_subsequent_get(client: AsyncClient):
     )
     assert get_resp.status_code == 200
     assert get_resp.json()["name"] == "Persist Test"
+
+
+async def test_restore_persists_historical_tag_registry(client: AsyncClient):
+    original_registry = [{"id": "frontend", "label": "Frontend"}]
+    body = await _create_roadmap_with_tags(client, original_registry)
+    versions = await _list_versions(
+        client,
+        body["id"],
+        body["owner_session_token"],
+    )
+    version_id = versions[0]["id"]
+
+    update_resp = await client.put(
+        f"/api/roadmaps/{body['id']}",
+        headers=_auth(body["owner_session_token"]),
+        json={
+            "tag_registry": [{"id": "backend", "label": "Backend"}],
+            "last_updated_at": body["updated_at"],
+        },
+    )
+    assert update_resp.status_code == 200, update_resp.text
+
+    restore_resp = await client.post(
+        f"/api/roadmaps/{body['id']}/versions/{version_id}/restore",
+        headers=_auth(body["owner_session_token"]),
+    )
+    assert restore_resp.status_code == 200, restore_resp.text
+    assert restore_resp.json()["tag_registry"] == original_registry
+
+    get_resp = await client.get(
+        f"/api/roadmaps/{body['id']}",
+        headers=_auth(body["owner_session_token"]),
+    )
+    assert get_resp.status_code == 200
+    assert get_resp.json()["tag_registry"] == original_registry
+
+
+async def test_restore_legacy_version_preserves_current_tag_registry(
+    client: AsyncClient,
+    db_session: AsyncSession,
+):
+    current_registry = [{"id": "frontend", "label": "Frontend"}]
+    body = await _create_roadmap_with_tags(client, current_registry)
+    legacy_version = RoadmapVersion(
+        id=generate_id("rv_"),
+        roadmap_id=body["id"],
+        version_number=50,
+        roadmap_name="Legacy phase-only version",
+        snapshot_json={"phases": []},
+        action="roadmap.checkpoint",
+    )
+    db_session.add(legacy_version)
+    await db_session.commit()
+
+    restore_resp = await client.post(
+        f"/api/roadmaps/{body['id']}/versions/{legacy_version.id}/restore",
+        headers=_auth(body["owner_session_token"]),
+    )
+
+    assert restore_resp.status_code == 200, restore_resp.text
+    assert restore_resp.json()["tag_registry"] == current_registry
+
+
+async def test_version_snapshot_excludes_server_only_state(
+    client: AsyncClient,
+    db_session: AsyncSession,
+):
+    body = await _create_roadmap_with_tags(
+        client,
+        [{"id": "frontend", "label": "Frontend"}],
+    )
+    result = await db_session.execute(
+        select(RoadmapVersion)
+        .where(RoadmapVersion.roadmap_id == body["id"])
+        .order_by(RoadmapVersion.version_number.desc())
+    )
+    version = result.scalars().first()
+
+    assert version is not None
+    assert set(version.snapshot_json) == {"phases", "tag_registry"}
+    serialized = str(version.snapshot_json).lower()
+    assert "token" not in serialized
+    assert "password" not in serialized
+    assert "session" not in serialized
+    assert "lock" not in serialized
 
 
 async def test_restore_creates_version_entry_with_restored_action(client: AsyncClient):

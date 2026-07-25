@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from api.schemas.tags import TagDefinitionDTO
 from api.schemas.tasks import PhaseDTO
 
 
@@ -25,6 +26,7 @@ class RoadmapVersionDetailResponse(BaseModel):
     version_number: int
     roadmap_name: str
     phases: list[PhaseDTO]
+    tag_registry: list[TagDefinitionDTO] | None = None
     created_at: datetime
     actor_name: str | None = None
     action: str | None = None

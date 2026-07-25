@@ -1,0 +1,147 @@
+{
+  "schema": "roadforge.roadmap.export",
+  "version": 1,
+  "exportedAt": "2026-07-25T10:00:00.000Z",
+  "roadmap": {
+    "id": "fixture-maximal-v1",
+    "name": "Maximal RoadForge Compatibility Fixture"
+  },
+  "phases": [
+    {
+      "id": "phase-foundation",
+      "num": "01",
+      "name": "Foundation",
+      "color": "#f97316",
+      "colorMode": "manual",
+      "status": "done",
+      "progress": 100,
+      "tasks": [
+        {
+          "id": "RF-FIX-1",
+          "title": "Completed dependency",
+          "done": true,
+          "next": false,
+          "est": "1d",
+          "assignees": ["Alex"],
+          "tags": ["delivery"],
+          "deps": [],
+          "desc": "Historical prerequisite retained for dependency compatibility.",
+          "links": [
+            {
+              "id": "link-discussion",
+              "provider": "github",
+              "kind": "discussion",
+              "url": "https://github.com/alteixeira20/RoadForge/discussions/12",
+              "owner": "alteixeira20",
+              "repo": "RoadForge",
+              "number": 12,
+              "label": "Foundation discussion"
+            },
+            {
+              "id": "link-pull",
+              "provider": "github",
+              "kind": "pull",
+              "url": "https://github.com/alteixeira20/RoadForge/pull/34",
+              "owner": "alteixeira20",
+              "repo": "RoadForge",
+              "number": 34
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-implementation",
+      "num": "02",
+      "name": "Implementation",
+      "color": "#38bdf8",
+      "colorMode": "auto",
+      "status": "active",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-FIX-2",
+          "title": "Parent task",
+          "done": false,
+          "next": false,
+          "est": "5d",
+          "assignees": [],
+          "tags": ["delivery"],
+          "deps": ["RF-FIX-1"],
+          "desc": "Parent task for the maximal portable subtask.",
+          "links": [
+            {
+              "id": "link-issue",
+              "provider": "github",
+              "kind": "issue",
+              "url": "https://github.com/alteixeira20/RoadForge/issues/601",
+              "owner": "alteixeira20",
+              "repo": "RoadForge",
+              "number": 601,
+              "label": "Foundation issue"
+            }
+          ]
+        },
+        {
+          "id": "RF-FIX-3",
+          "title": "Maximal round-trip subtask",
+          "done": false,
+          "next": true,
+          "est": "3d",
+          "assignees": ["Alex", "Sam"],
+          "tags": ["delivery", "frontend"],
+          "deps": ["RF-FIX-1", "RF-FIX-2"],
+          "desc": "Summary paragraph with **bold**, *italic*, and `inline code`.\n\n- First bullet point\n- Second bullet point\n\n- [ ] Pending checklist item\n- [x] Completed checklist item\n\nSee the [design doc](https://example.com/design-doc) for details.",
+          "parentId": "RF-FIX-2",
+          "claimedBy": "Alex",
+          "claimedById": "pt_alex",
+          "claimedAt": "2026-07-03T09:00:00.000Z",
+          "links": [
+            {
+              "id": "link-commit",
+              "provider": "github",
+              "kind": "commit",
+              "url": "https://github.com/alteixeira20/RoadForge/commit/abc1234",
+              "owner": "alteixeira20",
+              "repo": "RoadForge",
+              "sha": "abc1234"
+            },
+            {
+              "id": "link-release",
+              "provider": "github",
+              "kind": "release",
+              "url": "https://github.com/alteixeira20/RoadForge/releases/tag/v1.2.0",
+              "owner": "alteixeira20",
+              "repo": "RoadForge",
+              "tag": "v1.2.0"
+            },
+            {
+              "id": "link-spec",
+              "provider": "url",
+              "kind": "url",
+              "url": "https://example.com/spec"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "tagRegistry": [
+    {
+      "id": "delivery",
+      "label": "Delivery",
+      "color": "#38bdf8"
+    },
+    {
+      "id": "frontend",
+      "label": "Frontend",
+      "color": "#a78bfa",
+      "createdAt": "2026-01-05T08:00:00.000Z",
+      "updatedAt": "2026-06-01T12:30:00.000Z"
+    }
+  ],
+  "meta": {
+    "phaseCount": 2,
+    "taskCount": 3
+  }
+}

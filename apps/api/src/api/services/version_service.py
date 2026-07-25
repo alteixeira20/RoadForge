@@ -1,6 +1,7 @@
 """Roadmap version checkpoint, list, detail, and restore logic."""
 
 import logging
+from copy import deepcopy
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
@@ -47,6 +48,26 @@ def _snapshot_counts(snapshot_json: dict) -> tuple[int, int]:
     return len(phases), task_count
 
 
+def _version_snapshot(roadmap: Roadmap) -> dict:
+    """Build the portable version envelope without copying volatile server state."""
+    phases = roadmap.snapshot_json.get("phases", [])
+    return {
+        "phases": deepcopy(phases) if isinstance(phases, list) else [],
+        "tag_registry": deepcopy(roadmap.tag_registry_json or []),
+    }
+
+
+def _version_tag_registry(snapshot_json: dict) -> list[dict] | None:
+    """Return None for legacy phase-only versions so restore can preserve current tags."""
+    registry = snapshot_json.get("tag_registry")
+    return deepcopy(registry) if isinstance(registry, list) else None
+
+
+def _roadmap_snapshot_from_version(snapshot_json: dict) -> dict:
+    phases = snapshot_json.get("phases", [])
+    return {"phases": deepcopy(phases) if isinstance(phases, list) else []}
+
+
 async def _trim_old_versions(db: AsyncSession, roadmap_id: str) -> None:
     old_ids_result = await db.execute(
         select(RoadmapVersion.id)
@@ -74,9 +95,10 @@ async def _create_roadmap_version(
         .limit(1)
     )
     latest = latest_result.scalar_one_or_none()
+    current_snapshot = _version_snapshot(roadmap)
 
     if not force and latest and (
-        latest.roadmap_name == roadmap.name and latest.snapshot_json == roadmap.snapshot_json
+        latest.roadmap_name == roadmap.name and latest.snapshot_json == current_snapshot
     ):
         return
 
@@ -86,7 +108,7 @@ async def _create_roadmap_version(
         roadmap_id=roadmap.id,
         version_number=next_number,
         roadmap_name=roadmap.name,
-        snapshot_json=roadmap.snapshot_json,
+        snapshot_json=current_snapshot,
         participant_id=participant.id if participant else None,
         actor_name=participant.display_name if participant else None,
         action=action,
@@ -174,6 +196,7 @@ async def get_roadmap_version(
         version_number=version.version_number,
         roadmap_name=version.roadmap_name,
         phases=_phases_from_snapshot(version.snapshot_json),
+        tag_registry=_version_tag_registry(version.snapshot_json),
         created_at=version.created_at,
         actor_name=version.actor_name,
         action=version.action,
@@ -208,7 +231,10 @@ async def restore_roadmap_version(
     }
     phase_count, task_count = _snapshot_counts(version.snapshot_json)
     roadmap.name = version.roadmap_name
-    roadmap.snapshot_json = version.snapshot_json
+    roadmap.snapshot_json = _roadmap_snapshot_from_version(version.snapshot_json)
+    restored_registry = _version_tag_registry(version.snapshot_json)
+    if restored_registry is not None:
+        roadmap.tag_registry_json = restored_registry
     roadmap.updated_at = datetime.now(timezone.utc)
 
     metadata_json = {
@@ -273,10 +299,11 @@ async def create_roadmap_checkpoint(
         .limit(1)
     )
     latest = latest_result.scalar_one_or_none()
+    current_snapshot = _version_snapshot(roadmap)
 
     # Return latest unchanged when snapshot is identical to current state
     if latest and (
-        latest.roadmap_name == roadmap.name and latest.snapshot_json == roadmap.snapshot_json
+        latest.roadmap_name == roadmap.name and latest.snapshot_json == current_snapshot
     ):
         phase_count, task_count = _snapshot_counts(latest.snapshot_json)
         return False, RoadmapVersionSummaryResponse(
@@ -296,7 +323,7 @@ async def create_roadmap_checkpoint(
         roadmap_id=roadmap_id,
         version_number=next_number,
         roadmap_name=roadmap.name,
-        snapshot_json=roadmap.snapshot_json,
+        snapshot_json=current_snapshot,
         participant_id=participant.id,
         actor_name=participant.display_name,
         action="roadmap.checkpoint",

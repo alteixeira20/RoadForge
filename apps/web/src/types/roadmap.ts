@@ -253,6 +253,7 @@ export interface RoadmapVersionSummary {
 export interface RoadmapVersionDetail extends RoadmapVersionSummary {
   roadmapName: string
   phases: Phase[]
+  tagRegistry?: TagDefinition[]
   metadataJson: Record<string, unknown> | null
 }
 

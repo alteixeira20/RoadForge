@@ -462,7 +462,7 @@
           "id": "RF-022",
           "title": "Complete import, export, restore, and recovery contract gates",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "data",
             "quality"
@@ -472,13 +472,13 @@
             "RF-011"
           ],
           "est": "3 days",
-          "desc": "**Why**\nPortable JSON is a core product promise.\n\n**Finding**\nStrong import/merge/upgrade modules and tests exist, but maximal round-trip, credential exclusion, restore, and user-facing repair diagnostics need one Beta contract gate.\n\n**Scope**\nDefine maximal fixture and explicit merge/replace/repair/restore assertions; ensure volatile credentials and sessions never export.\n\n**Acceptance criteria**\nMaximal roadmap round-trips links, tags, dependencies, subtasks, claims, and descriptions; invalid/empty imports give actionable recovery; restore is checkpointed and explained.\n\n**Validation / gate**\nWeb/API contract tests and manual import/export compatibility check.\n\n**Risk**\nA regression can silently corrupt portable planning data.\n\n**Evidence**\nExport/import services, validation, merge tests, versions modules.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nPortable JSON is a core product promise.\n\n**Finding**\nPortable data paths now share a maximal fixture and preserve tag timestamps and historical tag registries across checkpoints and restore. Legacy phase-only versions preserve the current registry.\n\n**Scope**\nDefine maximal fixture and explicit merge/replace/repair/restore assertions; ensure volatile credentials and sessions never export.\n\n**Acceptance criteria**\nMaximal roadmap round-trips links, tags, dependencies, subtasks, claims, and descriptions; invalid/empty imports give actionable recovery; restore is checkpointed and explained.\n\n**Validation / gate**\nWeb/API contract tests and manual import/export compatibility check.\n\n**Risk**\nA regression can silently corrupt portable planning data.\n\n**Evidence**\nMaximal and legacy fixtures; parser/export regressions; version envelope, tag-only checkpoint, legacy restore, and volatile-state exclusion tests.\n\n**Implementation status**\nAutomated web contract tests, lint, typecheck, API helper/schema checks, and API test collection pass. PostgreSQL-backed assertions and the manual import/export compatibility check remain pending.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-023",
           "title": "Close collaboration safety evidence gaps",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "collab",
             "security",

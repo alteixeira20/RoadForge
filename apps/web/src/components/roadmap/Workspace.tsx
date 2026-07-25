@@ -432,6 +432,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     })
     setRoadmapName(upgraded.roadmapName || restored.roadmap.name)
     setPhases(upgraded.phases)
+    setTagRegistry(restored.tagRegistry ?? [])
     setOwnerDisplayName(restored.ownerDisplayName)
     setUpdatedAt(restored.updatedAt)
     setSaved(!upgraded.changed)

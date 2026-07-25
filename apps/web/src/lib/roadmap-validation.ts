@@ -739,7 +739,25 @@ function tagRegistryFromPayload(value: unknown): {
       ? normalizeTagColor(item.color)
       : undefined
     if (item.color !== undefined && color === undefined) repaired = true
-    result.push({ id, label, ...(color ? { color } : {}) })
+    const createdAt = typeof item.createdAt === 'string'
+      && item.createdAt.length <= 64
+      && !Number.isNaN(Date.parse(item.createdAt))
+      ? item.createdAt
+      : undefined
+    const updatedAt = typeof item.updatedAt === 'string'
+      && item.updatedAt.length <= 64
+      && !Number.isNaN(Date.parse(item.updatedAt))
+      ? item.updatedAt
+      : undefined
+    if (item.createdAt !== undefined && createdAt === undefined) repaired = true
+    if (item.updatedAt !== undefined && updatedAt === undefined) repaired = true
+    result.push({
+      id,
+      label,
+      ...(color ? { color } : {}),
+      ...(createdAt ? { createdAt } : {}),
+      ...(updatedAt ? { updatedAt } : {}),
+    })
     ids.add(id)
     labels.add(labelKey)
   }

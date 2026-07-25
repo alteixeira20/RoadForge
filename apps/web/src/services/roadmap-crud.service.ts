@@ -41,6 +41,7 @@ interface ApiRoadmapVersionSummaryResponse {
 interface ApiRoadmapVersionDetailResponse extends ApiRoadmapVersionSummaryResponse {
   roadmap_name: string
   phases: Phase[]
+  tag_registry?: TagDefinition[] | null
   metadata_json: Record<string, unknown> | null
 }
 
@@ -84,6 +85,7 @@ function toRoadmapVersionDetail(r: ApiRoadmapVersionDetailResponse): RoadmapVers
     ...toRoadmapVersionSummary(r),
     roadmapName: r.roadmap_name,
     phases: r.phases,
+    tagRegistry: r.tag_registry ?? undefined,
     metadataJson: r.metadata_json,
   }
 }

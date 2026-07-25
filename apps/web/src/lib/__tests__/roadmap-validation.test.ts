@@ -71,12 +71,32 @@ describe('roadmap-validation', () => {
 
     it.each([
       '../../../../../examples/public-alpha-demo-roadmap.json',
+      '../../../../../fixtures/roadmaps/maximal-v1.roadforge.json',
     ])('accepts tracked roadmap example %s', (relativePath) => {
       const input = readFileSync(new URL(relativePath, import.meta.url), 'utf8')
       const result = parseImportedRoadmapJson(input)
 
       expect(result.warnings).toEqual([])
       expect(result.repairs).toEqual([])
+    })
+
+    it('repairs the tracked legacy phase-array fixture through the real parser', () => {
+      const input = readFileSync(
+        new URL(
+          '../../../../../fixtures/roadmaps/legacy-phase-array.json',
+          import.meta.url,
+        ),
+        'utf8',
+      )
+      const result = parseImportedRoadmapJson(input)
+      const task = result.phases[0].tasks[0]
+
+      expect(result.phases).toHaveLength(1)
+      expect(task.assignees).toEqual(['Alex', 'Sam'])
+      expect(task.tags).toEqual([])
+      expect(task.deps).toEqual([])
+      expect(task.parentId).toBeUndefined()
+      expect(result.repairs.length).toBeGreaterThan(0)
     })
 
     it('accepts the canonical RoadForge roadmap template without warnings or repairs', () => {
@@ -473,7 +493,13 @@ describe('roadmap-validation', () => {
       const result = parseImportedRoadmapJson(JSON.stringify({
         phases: [],
         tagRegistry: [
-          { id: 'infra', label: 'Infrastructure', color: '#AABBCC' },
+          {
+            id: 'infra',
+            label: 'Infrastructure',
+            color: '#AABBCC',
+            createdAt: 'not-a-date',
+            updatedAt: '2026-07-25T09:30:00.000Z',
+          },
           { id: 'infra-copy', label: ' infrastructure ' },
           { id: 'Invalid ID', label: 'Invalid' },
           { id: 'design', label: 'Design', color: 'red' },
@@ -481,7 +507,12 @@ describe('roadmap-validation', () => {
       }))
 
       expect(result.tagRegistry).toEqual([
-        { id: 'infra', label: 'Infrastructure', color: '#aabbcc' },
+        {
+          id: 'infra',
+          label: 'Infrastructure',
+          color: '#aabbcc',
+          updatedAt: '2026-07-25T09:30:00.000Z',
+        },
         { id: 'design', label: 'Design' },
       ])
       expect(result.repairs.map((repair) => repair.code)).toContain(
