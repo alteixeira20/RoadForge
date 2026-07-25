@@ -107,7 +107,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--ink-3);
-  opacity: 0;
+  opacity: 0.55;
   transition: opacity 160ms, background 160ms, border-color 160ms;
 }
 .phase:hover .phase-settings-trigger,
@@ -306,12 +306,13 @@
   height: 32px;
   color: var(--ink-4);
   cursor: grab;
-  opacity: 0;
+  opacity: 0.55;
   transition: opacity 160ms, color 160ms;
   touch-action: none;
   flex-shrink: 0;
 }
-.phase-head:hover .phase-drag-handle { opacity: 1; }
+.phase-head:hover .phase-drag-handle,
+.phase-drag-handle:focus-visible { opacity: 1; }
 .phase-drag-handle:hover { color: var(--ember); }
 .phase-drag-handle:active { cursor: grabbing; color: var(--ember); }
 

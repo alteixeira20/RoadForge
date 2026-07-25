@@ -33,6 +33,7 @@ interface WorkspaceToolbarProps {
   hasServerActivity: boolean
   canViewTeam: boolean
   canViewVersions: boolean
+  canTogglePhaseExpansion: boolean
 }
 
 function FilterSelect({
@@ -77,6 +78,7 @@ export function WorkspaceToolbar({
   hasServerActivity,
   canViewTeam,
   canViewVersions,
+  canTogglePhaseExpansion,
 }: WorkspaceToolbarProps) {
   const [filterOpen, setFilterOpen] = useState(false)
   const filterRef = useRef<HTMLDivElement | null>(null)
@@ -146,8 +148,8 @@ export function WorkspaceToolbar({
           <button
             type="button"
             className="workspace-view-tab"
-            onClick={onOpenActivity}
-            disabled={!hasServerActivity}
+            onClick={hasServerActivity ? onOpenActivity : undefined}
+            aria-disabled={!hasServerActivity || undefined}
             aria-describedby={!hasServerActivity ? activityHelpId : undefined}
             title={hasServerActivity ? 'View recent activity' : 'Available after save or sync.'}
           >
@@ -167,6 +169,18 @@ export function WorkspaceToolbar({
           <span id={activityHelpId} className="activity-helper">
             Activity is available after save or sync.
           </span>
+        )}
+
+        {workspaceView !== 'roadmap' && !readOnly && (
+          <div className="workspace-roadmap-tools workspace-primary-tools">
+            <button
+              type="button"
+              className="toolbar-action toolbar-add-phase-action"
+              onClick={onAddPhase}
+            >
+              <Icon name="plus" size={14} /> Add phase
+            </button>
+          </div>
         )}
 
         {workspaceView === 'roadmap' && (
@@ -300,13 +314,15 @@ export function WorkspaceToolbar({
               Tags
             </button>
 
-            <button
-              type="button"
-              className="toolbar-action toolbar-collapse-action"
-              onClick={allOpen ? onCollapseAll : onExpandAll}
-            >
-              <Icon name="fold" size={14} /> {allOpen ? 'Collapse all' : 'Expand all'}
-            </button>
+            {canTogglePhaseExpansion && (
+              <button
+                type="button"
+                className="toolbar-action toolbar-collapse-action"
+                onClick={allOpen ? onCollapseAll : onExpandAll}
+              >
+                <Icon name="fold" size={14} /> {allOpen ? 'Collapse all' : 'Expand all'}
+              </button>
+            )}
           </div>
         )}
       </div>

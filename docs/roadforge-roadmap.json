@@ -430,7 +430,7 @@
           "id": "RF-020",
           "title": "Establish a visible primary-action hierarchy",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "ui",
             "a11y"
@@ -440,13 +440,13 @@
             "RF-016"
           ],
           "est": "2 days",
-          "desc": "**Why**\nCreation should be easier to discover than secondary panels.\n\n**Finding**\nWorkspace toolbar exposes filters, activity, versions, tags, and expand/collapse while structural phase creation is absent.\n\n**Scope**\nDefine desktop, narrow, mobile, and read-only action hierarchy; keep required creation visible and move only contextual actions behind appropriate affordances.\n\n**Acceptance criteria**\nPhase/task creation is discoverable in editable views; secondary actions remain keyboard/touch accessible; read-only action labels remain truthful.\n\n**Validation / gate**\nResponsive browser smoke and accessibility review.\n\n**Risk**\nControls may become hidden rather than clarified if redesigned without role-state coverage.\n\n**Evidence**\n`Workspace.tsx`, `WorkspaceToolbar.tsx`, `WorkspaceHead.tsx`.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nCreation should be easier to discover than secondary panels.\n\n**Finding**\nAdd phase became primary during RF-016, but it disappeared in Team view; rename, settings, and reorder affordances remained hover-only; Collapse could be a visible no-op; and local Activity exposed its availability reason only to assistive text.\n\n**Scope**\nDefine desktop, narrow, mobile, and read-only action hierarchy; keep required creation visible and move only contextual actions behind appropriate affordances.\n\n**Acceptance criteria**\nPhase/task creation is discoverable in editable views; secondary actions remain keyboard/touch accessible; read-only action labels remain truthful.\n\n**Validation / gate**\nResponsive browser smoke and accessibility review.\n\n**Implementation status**\nAutomated implementation is complete. The action matrix covers local, owner/editor, and viewer states. Add phase remains the first emphasized action in Roadmap view and stays available from Team view, while contextual search/filter/tag/expansion controls remain Roadmap-only. Empty/filter states keep task-specific recovery, no-op expansion controls are hidden, local Activity is focusable with a visible after-save explanation, mobile Add phase owns a full row, and rename/settings/reorder affordances retain visible low-emphasis defaults without hover. Twenty-three focused role, interaction, and accessibility tests pass; lint and typecheck pass. Remaining gate: responsive browser smoke at desktop, narrow, mobile, touch, and 200% zoom.\n\n**Risk**\nControls may become hidden rather than clarified if redesigned without role-state coverage.\n\n**Evidence**\n`WorkspaceToolbar`, `Workspace`, `WorkspaceHead`, phase/roadmap/toolbar CSS, and the focused action-matrix tests.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-021",
           "title": "Truthful save, error, offline, and session recovery states",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "sync",
             "ui"

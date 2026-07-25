@@ -52,12 +52,14 @@
   background: var(--lava-glow);
   border-color: rgba(217,116,66,0.28);
 }
-.workspace-view-tab:disabled {
+.workspace-view-tab:disabled,
+.workspace-view-tab[aria-disabled='true'] {
   cursor: not-allowed;
   color: var(--ink-4);
   opacity: 0.65;
 }
-.workspace-view-tab:disabled:hover {
+.workspace-view-tab:disabled:hover,
+.workspace-view-tab[aria-disabled='true']:hover {
   color: var(--ink-4);
   background: transparent;
 }
@@ -228,15 +230,9 @@
   background: transparent;
 }
 .activity-helper {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+  padding: 0 8px;
+  color: var(--ink-4);
+  font-size: 11.5px;
 }
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
@@ -254,6 +250,7 @@
   .workspace-view-tabs { margin: 0 -2px; }
   .workspace-view-tab { min-width: max-content; padding: 0 10px; }
   .workspace-roadmap-tools { padding-top: 6px; }
+  .toolbar-add-phase-action { flex: 1 1 100%; justify-content: center; }
   .workspace-bar .search { flex: 1 1 calc(100% - 132px); min-width: 0; }
   .workspace-bar .search input { min-width: 0; }
   .task-filter { flex: 0 0 124px; min-width: 0; }

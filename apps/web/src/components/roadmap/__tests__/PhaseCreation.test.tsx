@@ -99,6 +99,7 @@ function createToolbarProps(
     hasServerActivity: false,
     canViewTeam: false,
     canViewVersions: false,
+    canTogglePhaseExpansion: true,
     ...overrides,
   }
 }
@@ -245,6 +246,60 @@ describe('phase creation controls', () => {
     })
     expect(Array.from(container.querySelectorAll('button'))
       .some((candidate) => candidate.textContent?.includes('Add phase'))).toBe(false)
+  })
+
+  it('keeps the primary action and secondary controls truthful across role states', () => {
+    const onAddPhase = vi.fn()
+    act(() => {
+      root.render(
+        <WorkspaceToolbar
+          {...createToolbarProps({
+            workspaceView: 'team',
+            canViewTeam: true,
+            hasServerActivity: true,
+            canViewVersions: true,
+            onAddPhase,
+          })}
+        />,
+      )
+    })
+    expect(container.textContent).toContain('Add phase')
+    expect(container.querySelector('input[aria-label="Search roadmap tasks"]')).toBeNull()
+    const teamAdd = Array.from(container.querySelectorAll('button'))
+      .find((button) => button.textContent?.includes('Add phase'))
+    act(() => teamAdd?.click())
+    expect(onAddPhase).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      root.render(
+        <WorkspaceToolbar
+          {...createToolbarProps({
+            canTogglePhaseExpansion: false,
+          })}
+        />,
+      )
+    })
+    const activity = Array.from(container.querySelectorAll('button'))
+      .find((button) => button.textContent?.includes('Activity')) as HTMLButtonElement
+    expect(activity.getAttribute('aria-disabled')).toBe('true')
+    expect(container.textContent).toContain('Activity is available after save or sync')
+    expect(container.textContent).not.toContain('Collapse all')
+    expect(container.textContent).not.toContain('Expand all')
+
+    act(() => {
+      root.render(
+        <WorkspaceToolbar
+          {...createToolbarProps({
+            readOnly: true,
+            hasServerActivity: true,
+          })}
+        />,
+      )
+    })
+    expect(container.textContent).not.toContain('Add phase')
+    const viewerActivity = Array.from(container.querySelectorAll('button'))
+      .find((button) => button.textContent?.includes('Activity')) as HTMLButtonElement
+    expect(viewerActivity.hasAttribute('aria-disabled')).toBe(false)
   })
 
   it('focuses phase-name editing when the rename key changes', async () => {

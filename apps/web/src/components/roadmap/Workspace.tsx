@@ -512,6 +512,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           canViewVersions={
             (role === 'owner' || role === 'editor') && !!serverRoadmapId && !!sessionToken
           }
+          canTogglePhaseExpansion={phases.length > 0 && !isFiltering}
         />
         {workspaceView === 'team' && canViewTeam ? (
           <TeamPanel
