@@ -7,6 +7,10 @@ describe('workspace sync status', () => {
     expect(resolveWorkspaceSyncStatus('live', 'offline')).toBe('offline')
   })
 
+  it('keeps a rejected save distinct from offline and conflict states', () => {
+    expect(resolveWorkspaceSyncStatus('error', 'live')).toBe('error')
+  })
+
   it('distinguishes saving and remote updates', () => {
     expect(resolveWorkspaceSyncStatus('syncing', 'live')).toBe('saving')
     expect(resolveWorkspaceSyncStatus('live', 'updating')).toBe('updating')

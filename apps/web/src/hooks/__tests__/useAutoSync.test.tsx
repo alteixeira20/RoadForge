@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { saveToServer } from '@/services/roadmap-crud.service'
+import { ApiConnectionError, ApiError } from '@/services/roadmap-http'
 import type { ActivityChange, Phase } from '@/types/roadmap'
 
 vi.mock('@/services/roadmap-crud.service', () => ({
@@ -25,9 +26,17 @@ const phase: Phase = {
 }
 
 type AutoSyncParams = Parameters<typeof useAutoSync>[0]
+type AutoSyncResult = ReturnType<typeof useAutoSync>
 
-function Harness({ params }: { params: AutoSyncParams }) {
-  useAutoSync(params)
+function Harness({
+  params,
+  onResult,
+}: {
+  params: AutoSyncParams
+  onResult?: (result: AutoSyncResult) => void
+}) {
+  const result = useAutoSync(params)
+  onResult?.(result)
   return null
 }
 
@@ -50,6 +59,27 @@ function saveResponse(updatedAt: string): Awaited<ReturnType<typeof saveToServer
     is_password_enabled: false,
     created_at: '2026-07-25T16:00:00Z',
     updated_at: updatedAt,
+  }
+}
+
+function createParams(overrides: Partial<AutoSyncParams> = {}): AutoSyncParams {
+  return {
+    serverRoadmapId: 'roadmap-1',
+    sessionToken: 'session-token',
+    readOnly: false,
+    saved: false,
+    phases: [phase],
+    roadmapName: 'RoadForge',
+    tagRegistry: [],
+    updatedAt: '2026-07-25T17:00:00Z',
+    pendingActivityChanges: [],
+    partialWriteInFlight: false,
+    showActivity: false,
+    onSyncSuccess: vi.fn(),
+    onActivityRefresh: vi.fn(),
+    onToast: vi.fn(),
+    onSessionExpired: vi.fn(),
+    ...overrides,
   }
 }
 
@@ -163,5 +193,89 @@ describe('useAutoSync pending activity', () => {
       true,
       [color],
     )
+  })
+
+  it('reports queued work as saving and validation rejection as attention needed', async () => {
+    const onToast = vi.fn()
+    mockedSaveToServer.mockRejectedValueOnce(new ApiError(
+      422,
+      'Validation failed',
+      undefined,
+      undefined,
+      [{ loc: ['body', 'phases'], msg: 'Invalid phase data', type: 'value_error' }],
+    ))
+    const resultRef = { current: null as AutoSyncResult | null }
+    act(() => {
+      root.render(
+        <Harness
+          params={createParams({ onToast })}
+          onResult={(value) => { resultRef.current = value }}
+        />,
+      )
+    })
+    expect(resultRef.current?.syncStatus).toBe('syncing')
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(resultRef.current?.syncStatus).toBe('error')
+    expect(onToast).toHaveBeenCalledWith(expect.stringContaining('Invalid phase data'))
+  })
+
+  it('distinguishes connection, permission, and expired-session failures', async () => {
+    const cases = [
+      {
+        error: new ApiConnectionError(),
+        expectedStatus: 'offline',
+        expectedToast: 'Could not reach the server',
+        expiresSession: false,
+      },
+      {
+        error: new ApiError(403, 'Forbidden'),
+        expectedStatus: 'error',
+        expectedToast: 'do not have permission',
+        expiresSession: false,
+      },
+      {
+        error: new ApiError(401, 'Session expired', 'session_expired'),
+        expectedStatus: 'syncing',
+        expectedToast: null,
+        expiresSession: true,
+      },
+    ] as const
+
+    for (const testCase of cases) {
+      mockedSaveToServer.mockReset()
+      mockedSaveToServer.mockRejectedValueOnce(testCase.error)
+      const onToast = vi.fn()
+      const onSessionExpired = vi.fn()
+      const resultRef = { current: null as AutoSyncResult | null }
+      act(() => {
+        root.render(
+          <Harness
+            params={createParams({ onToast, onSessionExpired })}
+            onResult={(value) => { resultRef.current = value }}
+          />,
+        )
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(1500)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(resultRef.current?.syncStatus).toBe(testCase.expectedStatus)
+      if (testCase.expectedToast) {
+        expect(onToast).toHaveBeenCalledWith(
+          expect.stringContaining(testCase.expectedToast),
+        )
+      } else {
+        expect(onToast).not.toHaveBeenCalled()
+      }
+      expect(onSessionExpired).toHaveBeenCalledTimes(testCase.expiresSession ? 1 : 0)
+    }
   })
 })

@@ -446,7 +446,7 @@
           "id": "RF-021",
           "title": "Truthful save, error, offline, and session recovery states",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "sync",
             "ui"
@@ -456,13 +456,13 @@
             "RF-006"
           ],
           "est": "3 days",
-          "desc": "**Why**\nUsers must distinguish local save, server sync, validation, conflict, and expired session outcomes.\n\n**Finding**\nSave flow has specific conflict/session handling, but no audit evidence proves the full offline/retry/draft/caret matrix or that all errors are outcome-specific.\n\n**Scope**\nMap save states and messages across local and server roadmaps; preserve drafts; remove generic/misleading errors; document deliberate limitations.\n\n**Acceptance criteria**\nNo network condition is described as synced incorrectly; validation differs from connectivity; retry/reload/keep-local outcomes preserve user input.\n\n**Validation / gate**\nFocused hook tests and manual fault-injection browser matrix.\n\n**Risk**\nIncorrect status can cause accidental loss or false confidence.\n\n**Evidence**\n`useSaveFlow.ts`, `useAutoSync.ts`, task patch hooks; classification needs verification.\n\n**Classification**\nneeds verification"
+          "desc": "**Why**\nUsers must distinguish local save, server sync, validation, conflict, and expired session outcomes.\n\n**Finding**\nTyped classification existed, but queued server edits reported Live during debounce, validation and unexpected failures had no stable attention state, connectivity could fail silently in autosync, and some forbidden paths revoked a valid session as if it had expired.\n\n**Scope**\nMap save states and messages across local and server roadmaps; preserve drafts; remove generic/misleading errors; document deliberate limitations.\n\n**Acceptance criteria**\nNo network condition is described as synced incorrectly; validation differs from connectivity; retry/reload/keep-local outcomes preserve user input.\n\n**Validation / gate**\nFocused hook tests and manual fault-injection browser matrix.\n\n**Implementation status**\nAutomated implementation is complete. Server-backed unsaved work reports Saving during debounce/in-flight work; validation, permission, and unexpected failures report Save needs attention; connection failures report Offline; conflicts remain distinct; and only expired/unauthorized sessions clear credentials. Autosync, manual save/reload/keep-local, and task patch flows provide outcome-specific messages and explicitly preserve local edits or task drafts. Retry/review actions remain available, newer in-flight edits remain queued, and existing idle-render/caret tests cover stable typing. Twenty-nine focused save, error, task-draft, and caret tests pass; lint and typecheck pass. Remaining gate: manual browser fault injection for connection loss/recovery, validation, 403, expiry, conflict reload, and keep-local across local and synced sessions.\n\n**Risk**\nIncorrect status can cause accidental loss or false confidence.\n\n**Evidence**\n`roadmap-sync-errors`, `useAutoSync`, `useSaveFlow`, `useTaskPatch`, sync status/indicator/header components, and controlled failure tests.\n\n**Classification**\nneeds verification"
         },
         {
           "id": "RF-022",
           "title": "Complete import, export, restore, and recovery contract gates",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "data",
             "quality"

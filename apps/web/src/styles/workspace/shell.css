@@ -36,4 +36,5 @@
 .sync-status-indicator.is-updating .sync-status-dot,
 .sync-status-indicator.is-reconnecting .sync-status-dot { background: var(--ember); }
 .sync-status-indicator.is-offline .sync-status-dot,
-.sync-status-indicator.is-conflict .sync-status-dot { background: #e05252; }
+.sync-status-indicator.is-conflict .sync-status-dot,
+.sync-status-indicator.is-error .sync-status-dot { background: #e05252; }

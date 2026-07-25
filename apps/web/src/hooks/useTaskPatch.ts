@@ -139,20 +139,25 @@ interface TaskPatchErrorHandlers {
   showToast: (message: string) => void
 }
 
-function handleTaskPatchError(
+export function handleTaskPatchError(
   error: unknown,
   handlers: TaskPatchErrorHandlers,
 ) {
-  const { kind, conflictMetadata } = classifyRoadmapSaveError(error)
+  const { kind, conflictMetadata, validationMessage } = classifyRoadmapSaveError(error)
   if (kind === 'conflict') {
     handlers.onConflict(conflictMetadata)
     handlers.showToast('This task changed on the server. Your draft is preserved for review.')
   } else if (
     kind === 'session-expired'
     || kind === 'unauthorized'
-    || kind === 'forbidden'
   ) {
     handlers.onSessionExpired()
+  } else if (kind === 'forbidden') {
+    handlers.showToast('You do not have permission to update this task. Your draft is preserved.')
+  } else if (kind === 'validation') {
+    handlers.showToast(
+      validationMessage ?? 'The server rejected this task update. Your draft is preserved.',
+    )
   } else if (kind === 'connection') {
     handlers.showToast('Could not reach the server. Your task draft is preserved.')
   } else {

@@ -61,6 +61,7 @@ export function useAutoSync({
   const [isSyncing, setIsSyncing] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
   const [isConflict, setIsConflict] = useState(false)
+  const [hasSaveError, setHasSaveError] = useState(false)
   const [conflictMetadata, setConflictMetadata] = useState<RoadmapConflictMetadata | null>(null)
 
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -108,6 +109,10 @@ export function useAutoSync({
     onConflictMetadata,
   }
 
+  useEffect(() => {
+    if (saved) setHasSaveError(false)
+  }, [saved])
+
   // ─── Debounced autosync for server-backed roadmaps ─────────────────────────
   useEffect(() => {
     if (phases !== lastEditedSnapshotRef.current.phases || roadmapName !== lastEditedSnapshotRef.current.roadmapName) {
@@ -128,6 +133,7 @@ export function useAutoSync({
       }
       isSyncingRef.current = true
       setIsSyncing(true)
+      setHasSaveError(false)
 
       const {
         phases: p,
@@ -166,6 +172,7 @@ export function useAutoSync({
         syncSuccess(data.updated_at, requestRevision === revisionRef.current, pac)
         setIsOffline(false)
         setIsConflict(false)
+        setHasSaveError(false)
         setConflictMetadata(null)
         if (showAct) activityRefresh()
       } catch (err) {
@@ -180,18 +187,26 @@ export function useAutoSync({
           setConflictMetadata(nextConflict)
           if (nextConflict) openConflict?.(nextConflict)
           setIsOffline(false)
+          setHasSaveError(false)
           toast('The roadmap changed elsewhere. Your edits are preserved locally.')
-        } else if (kind === 'session-expired') {
+        } else if (kind === 'session-expired' || kind === 'unauthorized') {
           sessionExpired()
         } else if (kind === 'validation') {
           setIsOffline(false)
+          setHasSaveError(true)
           toast(validationMessage ?? 'Save rejected: the server could not validate this roadmap.')
         } else if (kind === 'connection') {
           setIsOffline(true)
-        } else if (kind === 'unauthorized' || kind === 'forbidden') {
-          sessionExpired()
+          setHasSaveError(false)
+          toast('Could not reach the server. Your edits are preserved locally.')
+        } else if (kind === 'forbidden') {
+          setIsOffline(false)
+          setHasSaveError(true)
+          toast('You do not have permission to save this roadmap. Your edits are preserved locally.')
         } else {
-          setIsOffline(true)
+          setIsOffline(false)
+          setHasSaveError(true)
+          toast('Save failed unexpectedly. Your edits are preserved locally.')
         }
       } finally {
         isSyncingRef.current = false
@@ -216,7 +231,11 @@ export function useAutoSync({
         ? 'conflict'
         : isOffline
           ? 'offline'
-          : 'live'
+          : hasSaveError
+            ? 'error'
+            : !saved && !readOnly
+              ? 'syncing'
+              : 'live'
 
   return {
     isSyncing,

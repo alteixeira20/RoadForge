@@ -18,6 +18,7 @@ const STATUS_LABELS: Record<WorkspaceSyncStatus, string> = {
   reconnecting: 'Reconnecting…',
   offline: 'Offline',
   conflict: 'Conflict',
+  error: 'Save needs attention',
 }
 
 function isTransient(status: WorkspaceSyncStatus): boolean {
@@ -25,7 +26,7 @@ function isTransient(status: WorkspaceSyncStatus): boolean {
 }
 
 function isUrgent(status: WorkspaceSyncStatus): boolean {
-  return status === 'offline' || status === 'conflict'
+  return status === 'offline' || status === 'conflict' || status === 'error'
 }
 
 export function SyncStatusIndicator({ status }: SyncStatusIndicatorProps) {

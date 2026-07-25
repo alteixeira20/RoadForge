@@ -65,15 +65,17 @@ export function AppHeader({
                 <Icon name="cloud" size={14} />
                 <span className="header-save-label">Reload</span>
               </button>
-            ) : syncStatus === 'offline' ? (
+            ) : syncStatus === 'offline' || syncStatus === 'error' ? (
               <button
                 className="btn sm header-save-btn"
                 onClick={onSave}
-                title="Retry sync"
-                aria-label="Retry sync"
+                title={syncStatus === 'offline' ? 'Retry sync' : 'Review or retry save'}
+                aria-label={syncStatus === 'offline' ? 'Retry sync' : 'Review or retry save'}
               >
                 <Icon name="cloud" size={14} />
-                <span className="header-save-label">Retry</span>
+                <span className="header-save-label">
+                  {syncStatus === 'offline' ? 'Retry' : 'Review'}
+                </span>
               </button>
             ) : canManageShare ? (
               <button className="btn sm" onClick={onShare}>

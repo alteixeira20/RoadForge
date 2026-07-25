@@ -16,7 +16,7 @@ export type WorkspaceMode = 'owner' | 'viewer'
 export type WorkspaceView = 'roadmap' | 'team'
 export type ExportFormat = 'json'
 export type ShareRole = 'owner' | 'editor' | 'viewer'
-export type SyncStatus = 'local' | 'live' | 'syncing' | 'offline' | 'conflict'
+export type SyncStatus = 'local' | 'live' | 'syncing' | 'offline' | 'conflict' | 'error'
 export type RealtimeConnectionStatus =
   | 'local'
   | 'connecting'

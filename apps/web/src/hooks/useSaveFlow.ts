@@ -201,7 +201,7 @@ export function useSaveFlow({
       } else if (kind === 'session-expired') {
         handleSessionExpired()
       } else if (kind === 'unauthorized') {
-        showToast('Session expired — rejoin from the invite link')
+        handleSessionExpired()
       } else if (kind === 'forbidden') {
         showToast('You do not have permission for this action')
       } else if (kind === 'validation') {
@@ -253,15 +253,26 @@ export function useSaveFlow({
       showToast('Saved your local version.')
       return null
     } catch (err) {
-      const { kind, conflictMetadata: nextConflict } = classifyRoadmapSaveError(err)
+      const {
+        kind,
+        conflictMetadata: nextConflict,
+        validationMessage,
+      } = classifyRoadmapSaveError(err)
       if (kind === 'conflict') {
         setIsConflict(true)
         if (nextConflict) setConflictMetadata(nextConflict)
         showToast('The server changed again. Review the latest conflict.')
         return 'The server changed again. Review the latest conflict.'
-      } else if (kind === 'session-expired') {
+      } else if (kind === 'session-expired' || kind === 'unauthorized') {
         handleSessionExpired()
         return 'Session expired. Rejoin through an active invite link before resolving this conflict.'
+      } else if (kind === 'forbidden') {
+        showToast('You do not have permission to replace the server version.')
+        return 'You do not have permission to replace the server version. Your local edits are unchanged.'
+      } else if (kind === 'validation') {
+        const message = validationMessage ?? 'The server rejected this roadmap.'
+        showToast(message)
+        return `${message} Your local edits are unchanged.`
       } else if (kind === 'connection') {
         setIsOffline(true)
         showToast('Could not reach the server — try again later.')
@@ -301,8 +312,10 @@ export function useSaveFlow({
         showToast('Could not reach the server — try again later.')
       } else if (kind === 'session-expired') {
         handleSessionExpired()
-      } else if (kind === 'unauthorized' || kind === 'forbidden') {
-        showToast('Session expired — rejoin from the invite link.')
+      } else if (kind === 'unauthorized') {
+        handleSessionExpired()
+      } else if (kind === 'forbidden') {
+        showToast('You do not have permission to reload this roadmap.')
       } else {
         showToast('Could not reload server version.')
       }
