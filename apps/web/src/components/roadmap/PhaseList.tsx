@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -62,7 +62,7 @@ interface PhaseListProps {
   onToast: (message: string, tone?: ToastTone) => void
 }
 
-export function PhaseList({
+function PhaseListComponent({
   phases,
   openPhases,
   expandedTaskId,
@@ -239,3 +239,5 @@ export function PhaseList({
     </>
   )
 }
+
+export const PhaseList = memo(PhaseListComponent)

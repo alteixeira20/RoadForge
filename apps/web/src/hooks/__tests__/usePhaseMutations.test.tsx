@@ -236,4 +236,32 @@ describe('usePhaseMutations', () => {
     expect(harness.params.setSaved).not.toHaveBeenCalled()
     expect(harness.params.addPendingActivityChange).not.toHaveBeenCalled()
   })
+
+  it('keeps mutation callbacks stable when unrelated parents rerender', () => {
+    const params: MutationParams = {
+      phases: [phase],
+      setPhases: vi.fn(),
+      setSaved: vi.fn(),
+      readOnly: false,
+      serverRoadmapId: 'roadmap-1',
+      addPendingActivityChange: vi.fn(),
+    }
+    let mutations: Mutations | null = null
+    const capture = (value: Mutations) => {
+      mutations = value
+    }
+
+    act(() => {
+      root.render(<Harness params={params} onReady={capture} />)
+    })
+    if (!mutations) throw new Error('Mutation harness did not initialize')
+    const first = mutations
+
+    act(() => {
+      root.render(<Harness params={params} onReady={capture} />)
+    })
+    if (!mutations) throw new Error('Mutation harness did not rerender')
+
+    expect(mutations).toEqual(first)
+  })
 })

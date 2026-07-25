@@ -132,9 +132,11 @@ export function useWorkspaceViewModel({
   ), [deferredQuery, displayName, filterState, participantId, phases, tagLabels])
 
   const isFiltering = isFilterStateActive(filterState)
-  const effectiveOpenPhases = isFiltering
-    ? visiblePhases.map((phase) => phase.id)
-    : collapse.openPhases
+  const effectiveOpenPhases = useMemo(() => (
+    isFiltering
+      ? visiblePhases.map((phase) => phase.id)
+      : collapse.openPhases
+  ), [collapse.openPhases, isFiltering, visiblePhases])
 
   const setFilterField = useCallback(<K extends keyof FilterState>(
     field: K,

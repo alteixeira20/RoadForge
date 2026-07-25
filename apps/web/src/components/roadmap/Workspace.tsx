@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ToastViewport } from '@/components/ui/Toast'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -353,18 +353,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     return true
   }
 
-  const {
-    hasCycle,
-    onCheckTask,
-    handleAddTask,
-    handleAddSubtask,
-    handleUpdateTask,
-    handleLinkDependency,
-    handleUnlinkDependency,
-    handleReorderTasks,
-    handleReorderSubtasks,
-    handleDeleteSubtask,
-  } = createTaskMutations({
+  const taskMutations = useMemo(() => createTaskMutations({
     phases,
     setPhases,
     setSaved,
@@ -378,7 +367,33 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     isTaskDonePatchInFlight,
     patchSyncedTaskDone,
     patchSyncedTask,
-  })
+  }), [
+    addPendingActivityChange,
+    isTaskDonePatchInFlight,
+    patchSyncedTask,
+    patchSyncedTaskDone,
+    phases,
+    readOnly,
+    serverRoadmapId,
+    sessionToken,
+    setExpandedTaskId,
+    setPhases,
+    setSaved,
+    showToast,
+    updatedAt,
+  ])
+  const {
+    hasCycle,
+    onCheckTask,
+    handleAddTask,
+    handleAddSubtask,
+    handleUpdateTask,
+    handleLinkDependency,
+    handleUnlinkDependency,
+    handleReorderTasks,
+    handleReorderSubtasks,
+    handleDeleteSubtask,
+  } = taskMutations
 
   const {
     handleAddPhase,
@@ -396,7 +411,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     addPendingActivityChange,
   })
 
-  const handleAddPhaseRequest = () => {
+  const handleAddPhaseRequest = useCallback(() => {
     if (readOnly || phaseCreateGuardRef.current) return
     phaseCreateGuardRef.current = true
     const phaseId = handleAddPhase()
@@ -409,7 +424,16 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     queueMicrotask(() => {
       phaseCreateGuardRef.current = false
     })
-  }
+  }, [
+    clearFilters,
+    handleAddPhase,
+    openPhase,
+    readOnly,
+    setWorkspaceView,
+  ])
+  const handlePhaseNameEditRequestHandled = useCallback(() => {
+    setPhaseNameEditRequestId(null)
+  }, [])
 
   const handleRoadmapImported = (
     importedName: string | undefined,
@@ -549,7 +573,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             onClearFilters={clearFilters}
             onAddPhase={handleAddPhaseRequest}
             phaseNameEditRequestId={phaseNameEditRequestId}
-            onPhaseNameEditRequestHandled={() => setPhaseNameEditRequestId(null)}
+            onPhaseNameEditRequestHandled={handlePhaseNameEditRequestHandled}
             onTogglePhase={togglePhase}
             onToggleTask={toggleExpandedTask}
             onCheckTask={onCheckTask}

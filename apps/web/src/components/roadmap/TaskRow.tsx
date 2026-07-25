@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import { useRoadmap } from '@/context/RoadmapContext'
+import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
 import { dedupeNames, getTaskAssignees, getVisibleTaskTags } from '@/lib/task-assignment'
 import { SubtaskForm, DependencyPicker } from './TaskActionForms'
 import { TaskEditForm } from './TaskEditForm'
@@ -86,11 +86,13 @@ export function TaskRow({
     displayName,
     tagRegistry,
     setTagRegistry,
+  } = useRoadmapData()
+  const {
     locks,
     serverRoadmapId,
     sessionToken,
     participantId,
-  } = useRoadmap()
+  } = useRoadmapSession()
 
   const [showSubtaskForm, setShowSubtaskForm] = useState(false)
   const [showDepPicker, setShowDepPicker] = useState(false)

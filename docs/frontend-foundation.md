@@ -38,6 +38,13 @@ Old roadmap snapshots pass through `roadmap-upgrade.ts` before rendering.
 
 - `Workspace.tsx` composes the workspace and delegates stateful behavior to hooks.
 - `PhaseList`, `Phase`, and `TaskRow` own roadmap presentation and focused interactions.
+- `PhaseList` is the memoized render boundary for phase/task editors. Workspace
+  structural mutation callbacks and filtered disclosure data remain referentially
+  stable until their roadmap inputs change, so unrelated toast or panel state does
+  not rerender active editors.
+- `TaskRow` and task-claim behavior subscribe to the roadmap data/session slices
+  they use rather than the combined compatibility context, so lifecycle-only
+  updates do not invalidate active task editors.
 - `useAutoSync` handles aggregate saves; task done/claim and tag registry changes have
   focused service calls.
 - `useRoadmapRealtime` obtains a short-lived ticket and reconciles SSE events.

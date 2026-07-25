@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { useRoadmap } from '@/context/RoadmapContext'
+import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
 import { addTaskAssignee } from '@/lib/task-assignment'
 import { patchTaskClaim, deleteTaskClaim } from '@/services/roadmap-crud.service'
 import { isAuthError, isApiConnectionError, isConflictError } from '@/services/roadmap-http'
@@ -24,15 +24,17 @@ export interface UseTaskClaimResult {
 export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskClaimResult {
   const {
     displayName,
-    participantId,
-    role,
-    serverRoadmapId,
-    sessionToken,
     phases,
     setPhases,
     setSaved,
     setUpdatedAt,
-  } = useRoadmap()
+  } = useRoadmapData()
+  const {
+    participantId,
+    role,
+    serverRoadmapId,
+    sessionToken,
+  } = useRoadmapSession()
 
   const [isClaiming, setIsClaiming] = useState(false)
 

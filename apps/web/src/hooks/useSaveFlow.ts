@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
 import {
@@ -71,14 +71,14 @@ export function useSaveFlow({
   const [showConflictReview, setShowConflictReview] = useState(false)
   const [keepLocalLoading, setKeepLocalLoading] = useState(false)
 
-  const addPendingActivityChange = (change: ActivityChange) => {
+  const addPendingActivityChange = useCallback((change: ActivityChange) => {
     setPendingActivityChanges((prev) => mergePendingActivityChange(prev, change))
-  }
+  }, [])
 
   const clearPendingActivityChanges = () => setPendingActivityChanges([])
-  const replacePendingActivityChanges = (changes: ActivityChange[]) => {
+  const replacePendingActivityChanges = useCallback((changes: ActivityChange[]) => {
     setPendingActivityChanges(changes)
-  }
+  }, [])
   const refreshActivity = () => setActivityRefreshKey((k) => k + 1)
 
   function handleSessionExpired() {

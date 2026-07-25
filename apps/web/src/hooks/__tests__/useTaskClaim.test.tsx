@@ -8,12 +8,14 @@ import { patchTaskClaim, deleteTaskClaim } from '@/services/roadmap-crud.service
 import { ApiError } from '@/services/roadmap-http'
 import type { Phase, Roadmap, Task } from '@/types/roadmap'
 
-const { mockedUseRoadmap } = vi.hoisted(() => ({
-  mockedUseRoadmap: vi.fn(),
+const { mockedUseRoadmapData, mockedUseRoadmapSession } = vi.hoisted(() => ({
+  mockedUseRoadmapData: vi.fn(),
+  mockedUseRoadmapSession: vi.fn(),
 }))
 
 vi.mock('@/context/RoadmapContext', () => ({
-  useRoadmap: mockedUseRoadmap,
+  useRoadmapData: mockedUseRoadmapData,
+  useRoadmapSession: mockedUseRoadmapSession,
 }))
 vi.mock('@/services/roadmap-crud.service', () => ({
   patchTaskClaim: vi.fn(),
@@ -106,7 +108,8 @@ describe('useTaskClaim', () => {
       setSaved: vi.fn(),
       setUpdatedAt: vi.fn(),
     }
-    mockedUseRoadmap.mockImplementation(() => context)
+    mockedUseRoadmapData.mockImplementation(() => context)
+    mockedUseRoadmapSession.mockImplementation(() => context)
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)

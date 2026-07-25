@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { createPhase } from '@/lib/roadmap-factory'
 import { renumberPhases } from '@/lib/phase-progress'
 import type { ActivityChange, Phase, PhaseColorMode } from '@/types/roadmap'
@@ -28,7 +29,7 @@ export function usePhaseMutations({
   serverRoadmapId,
   addPendingActivityChange,
 }: UsePhaseMutationsParams): UsePhaseMutationsResult {
-  const handleAddPhase = () => {
+  const handleAddPhase = useCallback(() => {
     if (readOnly) return null
 
     const phase = createPhase(phases)
@@ -44,9 +45,9 @@ export function usePhaseMutations({
     })
     setSaved(false)
     return phase.id
-  }
+  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
 
-  const handleUpdatePhaseColor = (phaseId: string, color: string) => {
+  const handleUpdatePhaseColor = useCallback((phaseId: string, color: string) => {
     if (readOnly) return
 
     const phase = phases.find((p) => p.id === phaseId)
@@ -70,9 +71,9 @@ export function usePhaseMutations({
       details: `${phase.num} — ${phase.name}`,
     })
     setSaved(false)
-  }
+  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
 
-  const handleUpdatePhaseColorMode = (phaseId: string, colorMode: PhaseColorMode) => {
+  const handleUpdatePhaseColorMode = useCallback((phaseId: string, colorMode: PhaseColorMode) => {
     if (readOnly) return
     const phase = phases.find((item) => item.id === phaseId)
     if (!phase || phase.colorMode === colorMode) return
@@ -92,9 +93,9 @@ export function usePhaseMutations({
       details: `${phase.num} — ${phase.name}`,
     })
     setSaved(false)
-  }
+  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
 
-  const handleUpdatePhaseName = (phaseId: string, name: string) => {
+  const handleUpdatePhaseName = useCallback((phaseId: string, name: string) => {
     if (readOnly) return
 
     const phase = phases.find((p) => p.id === phaseId)
@@ -116,9 +117,9 @@ export function usePhaseMutations({
       details: `${phase.num} — ${name}`,
     })
     setSaved(false)
-  }
+  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
 
-  const handleReorderPhases = (phaseIds: string[]) => {
+  const handleReorderPhases = useCallback((phaseIds: string[]) => {
     if (readOnly) return
     const uniqueIds = new Set(phaseIds)
     const isExactPhaseSet = phaseIds.length === phases.length
@@ -140,9 +141,16 @@ export function usePhaseMutations({
       details: `${phases.length} phases`,
     })
     setSaved(false)
-  }
+  }, [
+    addPendingActivityChange,
+    phases,
+    readOnly,
+    serverRoadmapId,
+    setPhases,
+    setSaved,
+  ])
 
-  const handleDeletePhase = (phaseId: string) => {
+  const handleDeletePhase = useCallback((phaseId: string) => {
     if (readOnly) return
     const phase = phases.find((item) => item.id === phaseId)
     if (!phase) return
@@ -159,7 +167,7 @@ export function usePhaseMutations({
       details: `${phase.num} — ${phase.name}`,
     })
     setSaved(false)
-  }
+  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
 
   return {
     handleAddPhase,

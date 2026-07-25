@@ -625,13 +625,13 @@
       "color": "#b85a2e",
       "colorMode": "auto",
       "status": "future",
-      "progress": 0,
+      "progress": 33,
       "tasks": [
         {
           "id": "RF-030",
           "title": "Split Workspace ownership at proven seams",
-          "done": false,
-          "next": true,
+          "done": true,
+          "next": false,
           "tags": [
             "core",
             "ui",
@@ -651,13 +651,13 @@
             "RF-029"
           ],
           "est": "3 days",
-          "desc": "**Why**\nThe central composition point is difficult to change and test safely.\n\n**Finding**\n`Workspace` spans lifecycle/session state, modal state, save/conflict plumbing, mutations, view model, panels, and rendering (over 500 lines), though several hooks already exist.\n\n**Scope**\nExtract only cohesive remaining boundaries and retain existing public behavior; do not rewrite stable hooks.\n\n**Acceptance criteria**\nWorkspace is a thin composition root with explicit ownership for structural actions, panels, and lifecycle bridges; focused tests remain readable.\n\n**Validation / gate**\nTypecheck, focused components/hooks tests, diff review.\n\n**Risk**\nOver-refactoring could destabilize sync behavior.\n\n**Evidence**\n`Workspace.tsx` and extracted hooks; classification confirmed.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nThe central composition point is difficult to change and test safely.\n\n**Finding**\nWorkspace already delegates hydration, save/conflict, participants, modal state, view-model state, and structural mutations. The remaining proven seam was render churn: unrelated composition-root or lifecycle state recreated structural callbacks and could rerender the phase/task editor tree.\n\n**Scope**\nExtract only cohesive remaining boundaries and retain existing public behavior; do not rewrite stable hooks.\n\n**Acceptance criteria**\nWorkspace is a thin composition root with explicit ownership for structural actions, panels, and lifecycle bridges; focused tests remain readable.\n\n**Validation / gate**\nTypecheck, focused components/hooks tests, diff review.\n\n**Risk**\nOver-refactoring could destabilize sync behavior.\n\n**Evidence**\nExisting ownership hooks and modal/panel components; stable task/phase mutation callbacks; memoized filtered disclosure and `PhaseList` boundary; TaskRow/task-claim use focused context slices; 33 focused behavior/render tests; lint and typecheck.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-031",
           "title": "Standardize overlay, layer, and responsive CSS ownership",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "ui",
             "a11y"
