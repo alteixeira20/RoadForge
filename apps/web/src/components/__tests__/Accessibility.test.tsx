@@ -10,7 +10,7 @@ import { SiteFooter } from '../layout/SiteFooter'
 import { TaskRowHeader } from '../roadmap/task-row/TaskRowHeader'
 import { TaskDetailActions } from '../roadmap/task-row/TaskDetailActions'
 import { TaskEditForm } from '../roadmap/TaskEditForm'
-import { WorkspaceWelcomeBanner } from '../roadmap/WorkspaceBanners'
+import { WorkspaceBanners, WorkspaceWelcomeBanner } from '../roadmap/WorkspaceBanners'
 import { CreateWizard } from '../wizard/CreateWizard'
 
 // Mock sub-components/modules to avoid deep workspace and context dependencies
@@ -71,6 +71,9 @@ describe('Accessibility Unit Tests', () => {
     expect(feedbackLink?.textContent).toBe('Report a problem')
     expect(feedbackLink?.getAttribute('target')).toBe('_blank')
     expect(feedbackLink?.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(feedbackLink?.getAttribute('aria-label')).toContain('Privacy warning')
+    expect(feedbackLink?.getAttribute('href')).not.toContain('?')
+    expect(container.textContent).toContain('Do not include tokens, secrets, private logs')
     expect(container.textContent).toContain('Local-first. Portable. Self-hostable.')
   })
 
@@ -105,6 +108,12 @@ describe('Accessibility Unit Tests', () => {
     expect(ioButton?.getAttribute('aria-label')).toBe('Import / Export')
     const helpLink = container.querySelector('a[href="/help"]')
     expect(helpLink?.getAttribute('aria-label')).toBe('Help and user guide')
+    const reportLink = container.querySelector(
+      'a[href="https://github.com/alteixeira20/RoadForge/issues/new/choose"]',
+    )
+    expect(reportLink?.getAttribute('target')).toBe('_blank')
+    expect(reportLink?.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(reportLink?.getAttribute('aria-label')).toContain('Privacy warning')
 
     // Dark-only UI: no theme toggle is rendered anywhere in the header
     expect(container.querySelector('.theme-toggle')).toBeNull()
@@ -143,6 +152,34 @@ describe('Accessibility Unit Tests', () => {
     expect(checkbox?.getAttribute('aria-label')).toBe('Mark task "Accessible Task" as complete')
     expect(container.querySelector('.title')?.tagName).toBe('SPAN')
     expect(container.querySelector('.inline-title-trigger')).toBeNull()
+  })
+
+  it('keeps the static safe reporting path available in recovery states', () => {
+    act(() => {
+      root.render(
+        <WorkspaceBanners
+          readOnly={false}
+          roadmapName="Test Roadmap"
+          ownerDisplayName={null}
+          isConflict={true}
+          sessionExpired={true}
+          onDismissSessionExpired={vi.fn()}
+          onReviewConflict={vi.fn()}
+          onReloadServerVersion={vi.fn()}
+        />,
+      )
+    })
+
+    const reportLinks = container.querySelectorAll(
+      'a[href="https://github.com/alteixeira20/RoadForge/issues/new/choose"]',
+    )
+    expect(reportLinks).toHaveLength(2)
+    reportLinks.forEach((link) => {
+      expect(link.getAttribute('href')).not.toContain('?')
+      expect(link.getAttribute('target')).toBe('_blank')
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+      expect(link.getAttribute('aria-label')).toContain('Privacy warning')
+    })
   })
 
   it('keeps one explicit task editor action alongside subtask and dependency actions', () => {

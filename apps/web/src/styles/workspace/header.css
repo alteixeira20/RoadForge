@@ -56,6 +56,7 @@
   line-height: 1;
 }
 .header-help-glyph { display: none; }
+.app-header .header-report-link::after { display: none; content: "!"; }
 /* Force consistent line-height on every interactive element in the header */
 .app-header .btn,
 .app-header .iconbtn,
@@ -104,6 +105,12 @@
   .app-header .header-save-btn { width: 36px; min-width: 36px; padding: 0; }
   .app-header .header-save-label { display: none; }
   .app-header .header-help-link { width: 36px; min-width: 36px; padding: 0; }
+  .app-header .header-report-link { width: 36px; min-width: 36px; padding: 0; }
+  .app-header .header-report-link .problem-report-link-label { display: none; }
+  .app-header .header-report-link::after {
+    display: inline;
+    font-weight: 800;
+  }
   .header-help-label { display: none; }
   .header-help-glyph { display: inline; font-weight: 700; }
 }

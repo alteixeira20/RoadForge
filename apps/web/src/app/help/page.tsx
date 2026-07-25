@@ -2,14 +2,13 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Brand } from '@/components/ui/Brand'
 import { SiteFooter } from '@/components/layout/SiteFooter'
+import { ProblemReportLink } from '@/components/ui/ProblemReportLink'
 import './help.css'
 
 export const metadata: Metadata = {
   title: 'Help · RoadForge',
   description: 'Task-based help for local roadmaps, collaboration, recovery, and portable backups.',
 }
-
-const REPORT_URL = 'https://github.com/alteixeira20/RoadForge/issues/new/choose'
 
 export default function HelpPage() {
   return (
@@ -146,14 +145,7 @@ export default function HelpPage() {
             </ul>
             <p>
               Need help?{' '}
-              <a
-                href={REPORT_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Report a problem with RoadForge on GitHub (opens in a new tab)"
-              >
-                Report a problem
-              </a>
+              <ProblemReportLink />
               . Do not include invite links, tokens, private roadmap exports,
               secrets, or private logs in a public issue.
             </p>

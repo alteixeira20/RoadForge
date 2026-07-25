@@ -1,6 +1,10 @@
 'use client'
 
 import { Brand } from '@/components/ui/Brand'
+import {
+  ProblemReportLink,
+  PROBLEM_REPORT_PRIVACY_WARNING,
+} from '@/components/ui/ProblemReportLink'
 
 export function SiteFooter() {
   return (
@@ -16,13 +20,8 @@ export function SiteFooter() {
         <a href="https://anvilary.tools" target="_blank" rel="noopener noreferrer">
           anvilary.tools
         </a>
-        <a
-          href="https://github.com/alteixeira20/RoadForge/issues/new/choose"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Report a problem
-        </a>
+        <ProblemReportLink />
+        <span className="problem-report-privacy">{PROBLEM_REPORT_PRIVACY_WARNING}</span>
         <span className="flex-1" />
         <span>Local-first. Portable. Self-hostable.</span>
       </div>

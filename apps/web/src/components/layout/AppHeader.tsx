@@ -2,6 +2,7 @@
 
 import { Icon } from '@/components/ui/Icon'
 import { Brand } from '@/components/ui/Brand'
+import { ProblemReportLink } from '@/components/ui/ProblemReportLink'
 import { RoadmapSwitcher } from '@/components/roadmap/RoadmapSwitcher'
 import Link from 'next/link'
 import type { SyncStatus } from '@/types/roadmap'
@@ -41,6 +42,7 @@ export function AppHeader({
       </div>
 
       <div className="header-end">
+        <ProblemReportLink className="btn sm header-report-link" />
         <Link
           className="btn sm header-help-link"
           href="/help"

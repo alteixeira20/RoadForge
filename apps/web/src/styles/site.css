@@ -539,6 +539,11 @@
 .site-footer a { color: var(--ink-3); }
 .site-footer a:hover { color: var(--ink); }
 .site-footer .links { display: flex; gap: 18px; flex-wrap: wrap; }
+.problem-report-privacy {
+  max-width: 420px;
+  color: var(--ink-4);
+  font-size: 12px;
+}
 
 /* ─── Closing CTA ──────────────────────────────────────────────────────────── */
 .closing-cta {

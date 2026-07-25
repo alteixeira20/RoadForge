@@ -1,6 +1,7 @@
 'use client'
 
 import { Icon } from '@/components/ui/Icon'
+import { ProblemReportLink } from '@/components/ui/ProblemReportLink'
 
 interface WorkspaceBannersProps {
   readOnly: boolean
@@ -60,6 +61,7 @@ export function WorkspaceBanners({
           <button className="btn sm" onClick={onReloadServerVersion}>
             <Icon name="cloud" size={13} /> Reload server version
           </button>
+          <ProblemReportLink className="btn sm" />
         </div>
       )}
 
@@ -75,6 +77,7 @@ export function WorkspaceBanners({
           <button className="btn sm" onClick={onDismissSessionExpired}>
             <Icon name="x" size={13} /> Dismiss
           </button>
+          <ProblemReportLink className="btn sm" />
         </div>
       )}
     </>

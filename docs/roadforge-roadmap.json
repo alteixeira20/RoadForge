@@ -564,7 +564,7 @@
       "color": "#76746e",
       "colorMode": "auto",
       "status": "future",
-      "progress": 33,
+      "progress": 67,
       "tasks": [
         {
           "id": "RF-027",
@@ -602,8 +602,8 @@
         {
           "id": "RF-029",
           "title": "Keep in-app and landing problem-report links safe",
-          "done": false,
-          "next": true,
+          "done": true,
+          "next": false,
           "tags": [
             "ui",
             "contributors",
@@ -614,7 +614,7 @@
             "RF-027"
           ],
           "est": "1 day",
-          "desc": "**Why**\nUsers need a direct feedback path without data exfiltration.\n\n**Finding**\nFooter already links to `/issues/new/choose` with `noopener`; audit has not verified all landing/application entry points or attachment behavior.\n\n**Scope**\nExpose one visible Report a problem entry point in app and landing as appropriate; never prefill or attach roadmap data, exports, tokens, sessions, logs, or private URLs.\n\n**Acceptance criteria**\nEvery reporting link targets the chooser and carries no private state; accessibility labels are present.\n\n**Validation / gate**\nComponent/link tests and manual URL inspection.\n\n**Risk**\nConvenience reporting can leak private planning data.\n\n**Evidence**\n`SiteFooter.tsx`, accessibility test; classification likely.\n\n**Classification**\nlikely"
+          "desc": "**Why**\nUsers need a direct feedback path without data exfiltration.\n\n**Finding**\nOne reusable reporting component now owns the static chooser URL, safe new-tab attributes, accessible name, and privacy warning. Landing, Help, workspace, conflict, and expired-session recovery surfaces expose it without query parameters or application data.\n\n**Scope**\nExpose one visible Report a problem entry point in app and landing as appropriate; never prefill or attach roadmap data, exports, tokens, sessions, logs, or private URLs.\n\n**Acceptance criteria**\nEvery reporting link targets the chooser and carries no private state; accessibility labels are present.\n\n**Validation / gate**\nComponent/link tests and manual URL inspection.\n\n**Risk**\nConvenience reporting can leak private planning data.\n\n**Evidence**\n`ProblemReportLink`; footer, Help, AppHeader, and recovery banners; 23 focused URL, privacy, safe-target, accessibility, and recovery tests; lint and typecheck.\n\n**Classification**\nconfirmed"
         }
       ]
     },
@@ -631,7 +631,7 @@
           "id": "RF-030",
           "title": "Split Workspace ownership at proven seams",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "core",
             "ui",
