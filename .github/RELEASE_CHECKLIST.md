@@ -63,6 +63,8 @@ Target environment : <staging | production>
   build, API lint, API tests against PostgreSQL, and migration drift.
 - [ ] **[auto]** `corepack pnpm --dir apps/web test:browser` passes with no
   retries and no skips.
+- [ ] **[auto]** `corepack pnpm --dir apps/web test:browser:production` passes
+  the production-build hydration regression with no hydration or page errors.
 - [ ] **[auto]** `corepack pnpm --dir apps/web benchmark:roadmap` passes every
   budget in [performance.md](../docs/performance.md).
 - [ ] **[auto]** `make audit` and `make api-audit` both report no known

@@ -212,13 +212,16 @@ source-of-truth decision.
 
 ---
 
-## 11c — Tag Registry: delete unused tag (styled confirmation)
+## 11c — Tags view and unused-tag deletion
 
-- [ ] Open the **Tag Registry** modal.
-- [ ] A tag that is used by at least one task shows a usage count; its delete (✕) control is disabled with a "Cannot delete: used by N task(s)" tooltip. No confirm appears.
+- [ ] Open the **Tags** tab. The Roadmap task search/filter/expansion toolbar is absent, and the navigation contains only one Roadmap and one Tags control.
+- [ ] Task rows and the Tags view render the same chip foreground, translucent background, border, radius, spacing, typography, truncation, and invalid-color fallback.
+- [ ] Create, rename, and recolor an unused tag → the chip updates and survives reload. Viewer sees the same registry and usage counts without mutation controls.
+- [ ] Usage wording is exactly **Not used**, **1 task**, or **N tasks**.
+- [ ] A tag that is used by at least one task shows its usage wording; its delete (✕) control is disabled with a "Cannot delete" accessible name. No confirm appears.
 - [ ] For an **unused** tag, click its delete (✕) control → a styled in-app confirm dialog opens (shared `ConfirmDialog`, not a native `confirm()`), titled "Delete tag?" naming the tag, with a destructive **Delete tag** confirm button.
 - [ ] Press Cancel or Escape → the tag remains.
-- [ ] Reopen and confirm **Delete tag** → the unused tag is removed and the roadmap is marked unsaved (autosync/Save persists it).
+- [ ] Confirm **Delete tag** → the unused tag is removed and the roadmap is marked unsaved (autosync/Save persists it).
 
 ---
 
@@ -262,8 +265,10 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 ## 14 — Phase drag-and-drop
 
 - [ ] Drag a phase to a new position (drag handle appears on hover).
+- [ ] No phase, task, or subtask row/menu/detail state exposes a Move earlier/later/up/down button.
+- [ ] Focus each drag handle and use **Space → Arrow key → Space** → ordering changes without pointer input.
 - [ ] Phases reorder immediately with animation.
-- [ ] Phase display numbers are recomputed from the new order: first phase `00`, second `01`, third `02`, etc.
+- [ ] Phase display numbers are recomputed from the new order: first phase `01`, second `02`, third `03`, etc.
 - [ ] Phase IDs and tasks stay with their moved phase.
 - [ ] Save → reload → order persists.
 - [ ] Export JSON after reorder and confirm phase `num` values match the visible order.
@@ -634,7 +639,7 @@ or staging stack are available. Do not mark these as complete until you run them
 
 ## 32 — Modal keyboard accessibility (focus trap)
 
-All overlays built on the shared `Modal` (Save, Share, Import/Export, Tag Registry, and every `ConfirmDialog`) trap keyboard focus. Verify on at least the Share modal and one `ConfirmDialog`.
+All overlays built on the shared `Modal` (Save, Share, Import/Export, and every `ConfirmDialog`) trap keyboard focus. Verify on at least the Share modal and one `ConfirmDialog`.
 
 - [ ] Open the modal. Focus moves into the dialog (the dialog or its first control), not left behind on the page underneath.
 - [ ] Press **Tab** repeatedly → focus cycles only through controls inside the modal and wraps from the last focusable control back to the first. It never lands on page content behind the scrim.
@@ -657,8 +662,8 @@ Record browser, assistive-technology version, operating system, and any defect.
 - [ ] Expand and collapse a phase, open its settings menu, inspect color mode
   state, close with Escape, and confirm focus returns to the trigger.
 - [ ] Create, edit, complete, and reorder a task and subtask. Confirm checkbox
-  state, validation errors, move actions, and dependency navigation are
-  announced without relying on pointer drag.
+  state, validation errors, drag handles, Space → Arrow → Space ordering, and
+  dependency navigation are announced without relying on pointer drag.
 - [ ] Exercise empty, filtered-empty, final-phase recovery, and viewer
   restriction states; each explanation and available action is announced once.
 - [ ] Trigger local, saving, offline, conflict, expired-session, and restored
