@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createRoadmap } from './helpers'
 
 /** Pointer drag with enough intermediate moves to clear dnd-kit's activation distance. */
-async function dragPhaseHandleOnto(page: Page, handle: Locator, target: Locator) {
+async function dragHandleOnto(page: Page, handle: Locator, target: Locator) {
   const from = await handle.boundingBox()
   const to = await target.boundingBox()
   expect(from).not.toBeNull()
@@ -84,7 +84,7 @@ test('reorders phases by dragging only, with no move actions in the phase menu',
   await expect(menu.getByRole('menuitem', { name: /move/i })).toHaveCount(0)
   await page.keyboard.press('Escape')
 
-  await dragPhaseHandleOnto(
+  await dragHandleOnto(
     page,
     page.getByRole('button', { name: 'Reorder phase Planning' }),
     page.getByRole('button', { name: 'Reorder phase Delivery' }),
@@ -92,6 +92,99 @@ test('reorders phases by dragging only, with no move actions in the phase menu',
 
   await expect(page.locator('.phase-head .name')).toHaveText(['Delivery', 'Planning'])
   await expect(page.locator('.phase-head .num')).toHaveText(['01', '02'])
+})
+
+test('reorders tasks and subtasks by drag only and persists local order', async ({ page }) => {
+  await createRoadmap(page, {
+    title: 'Drag-only task roadmap',
+    startingPoint: 'blank',
+  })
+
+  await page.getByRole('button', { name: 'Add first task' }).click()
+  await page.getByRole('textbox', { name: 'New task title' }).fill('First task')
+  await page.getByRole('textbox', { name: 'New task title' }).press('Enter')
+  await page.getByRole('button', { name: 'Add task' }).click()
+  await page.getByRole('textbox', { name: 'New task title' }).fill('Second task')
+  await page.getByRole('textbox', { name: 'New task title' }).press('Enter')
+  await page
+    .locator('.task')
+    .filter({ hasText: 'Second task' })
+    .first()
+    .getByRole('button', { name: 'Collapse task' })
+    .click()
+
+  await expect(
+    page.getByRole('button', { name: /move (earlier|later|up|down)/i }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('button', {
+      name: /move (phase|task|subtask).*(earlier|later|up|down)/i,
+    }),
+  ).toHaveCount(0)
+
+  const firstTask = page.locator('.task').filter({ hasText: 'First task' }).first()
+  const secondTask = page.locator('.task').filter({ hasText: 'Second task' }).first()
+  await dragHandleOnto(
+    page,
+    firstTask.locator('.drag-handle'),
+    secondTask.locator('.drag-handle'),
+  )
+
+  await expect(page.locator('.task-row .title')).toHaveText(['Second task', 'First task'])
+  await expect(page.locator('.task-row .task-num')).toHaveText(['1.1', '1.2'])
+
+  await page.reload()
+  await expect(page.locator('.task-row .title')).toHaveText(['Second task', 'First task'])
+  await expect(page.locator('.task-row .task-num')).toHaveText(['1.1', '1.2'])
+
+  const reorderedTask = page.locator('.task').filter({ hasText: 'Second task' }).first()
+  await reorderedTask.getByRole('button', { name: 'Expand task' }).click()
+  await reorderedTask.getByRole('button', { name: 'Add subtask' }).click()
+  await page.getByRole('textbox', { name: 'Subtask title' }).fill('First subtask')
+  await page.getByRole('textbox', { name: 'Subtask title' }).press('Enter')
+  await reorderedTask.getByRole('button', { name: 'Add subtask' }).click()
+  await page.getByRole('textbox', { name: 'Subtask title' }).fill('Second subtask')
+  await page.getByRole('textbox', { name: 'Subtask title' }).press('Enter')
+
+  await expect(
+    page.getByRole('button', { name: /move (earlier|later|up|down)/i }),
+  ).toHaveCount(0)
+  await expect(page.locator('.subtask-move')).toHaveCount(0)
+
+  const firstSubtask = reorderedTask.locator('.subtask-row').filter({
+    hasText: 'First subtask',
+  })
+  const secondSubtask = reorderedTask.locator('.subtask-row').filter({
+    hasText: 'Second subtask',
+  })
+  await dragHandleOnto(
+    page,
+    firstSubtask.locator('.subtask-drag-handle'),
+    secondSubtask.locator('.subtask-drag-handle'),
+  )
+
+  await expect(reorderedTask.locator('.subtask-title')).toHaveText([
+    'Second subtask',
+    'First subtask',
+  ])
+  await expect(reorderedTask.locator('.subtask-row .task-num')).toHaveText([
+    '1.1.1',
+    '1.1.2',
+  ])
+
+  await page.reload()
+  const persistedTask = page.locator('.task').filter({ hasText: 'Second task' }).first()
+  if (await persistedTask.getByRole('button', { name: 'Expand task' }).isVisible()) {
+    await persistedTask.getByRole('button', { name: 'Expand task' }).click()
+  }
+  await expect(persistedTask.locator('.subtask-title')).toHaveText([
+    'Second subtask',
+    'First subtask',
+  ])
+  await expect(persistedTask.locator('.subtask-row .task-num')).toHaveText([
+    '1.1.1',
+    '1.1.2',
+  ])
 })
 
 test('honors reduced motion and critical mobile touch targets', async ({ page }) => {

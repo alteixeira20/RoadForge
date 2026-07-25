@@ -10,8 +10,6 @@ interface SubtaskRowProps {
   dragHandleProps?: Record<string, unknown>
   onCheck: (id: string) => void
   onDelete: (id: string) => void
-  onMoveEarlier?: () => void
-  onMoveLater?: () => void
   displayNumber?: string
 }
 
@@ -22,8 +20,6 @@ export function SubtaskRow({
   dragHandleProps,
   onCheck,
   onDelete,
-  onMoveEarlier,
-  onMoveLater,
   displayNumber,
 }: SubtaskRowProps) {
   const isPending = pendingTaskDoneIds.has(task.id)
@@ -53,26 +49,6 @@ export function SubtaskRow({
       <span className="subtask-title">{task.title}</span>
       {displayNumber && <span className="task-num">{displayNumber}</span>}
       <span className="subtask-id">{task.id}</span>
-      {onMoveEarlier && (
-        <button
-          type="button"
-          className="subtask-move"
-          aria-label={`Move subtask "${task.title}" earlier`}
-          onClick={() => onMoveEarlier()}
-        >
-          <Icon name="chevron-up" size={12} />
-        </button>
-      )}
-      {onMoveLater && (
-        <button
-          type="button"
-          className="subtask-move"
-          aria-label={`Move subtask "${task.title}" later`}
-          onClick={() => onMoveLater()}
-        >
-          <Icon name="chevron-down" size={12} />
-        </button>
-      )}
       {!isEffectivelyReadOnly && (
         <button
           type="button"

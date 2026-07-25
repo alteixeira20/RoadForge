@@ -390,12 +390,6 @@ export function Phase({
                       onLinkDependency={onLinkDependency}
                       onUnlinkDependency={onUnlinkDependency}
                       onReorderSubtasks={onReorderSubtasks}
-                      onMoveEarlier={index > 0
-                        ? () => onReorderTasks(phase.id, arrayMove(taskIds, index, index - 1))
-                        : undefined}
-                      onMoveLater={index < topLevelTasks.length - 1
-                        ? () => onReorderTasks(phase.id, arrayMove(taskIds, index, index + 1))
-                        : undefined}
                       onDeleteSubtask={onDeleteSubtask}
                       hasCycle={hasCycle}
                       onToast={onToast}

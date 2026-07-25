@@ -79,12 +79,6 @@ export function TaskSubtaskList({
             dragDisabled={readOnly}
             onCheck={onCheck}
             onDelete={onDelete}
-            onMoveEarlier={!readOnly && idx > 0
-              ? () => onReorder(parentId, arrayMove(subtaskIds, idx, idx - 1))
-              : undefined}
-            onMoveLater={!readOnly && idx < subtasks.length - 1
-              ? () => onReorder(parentId, arrayMove(subtaskIds, idx, idx + 1))
-              : undefined}
             displayNumber={parentDisplayNumber ? `${parentDisplayNumber}.${idx + 1}` : undefined}
           />
         ))}

@@ -12,8 +12,6 @@ interface SortableSubtaskItemProps {
   dragDisabled: boolean
   onCheck: (id: string) => void
   onDelete: (id: string) => void
-  onMoveEarlier?: () => void
-  onMoveLater?: () => void
   displayNumber?: string
 }
 

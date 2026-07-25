@@ -134,28 +134,6 @@
 }
 .drag-handle.disabled:hover { color: var(--ink-4); }
 
-.task-move-button {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 32px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--ink-3);
-}
-.task-move-button:hover,
-.task-move-button:focus-visible {
-  color: var(--ink);
-  border-color: var(--border);
-  background: var(--bg-3);
-}
-
-@media (hover: none), (pointer: coarse) {
-  .task-move-button { width: 36px; height: 36px; flex-basis: 36px; }
-}
-
 /* ─── Task-level sortable drag states ─────────────────────────────────────── */
 .sortable-dragging {
   opacity: 0.3;

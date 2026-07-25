@@ -4,7 +4,9 @@ import { act, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PhaseList } from '@/components/roadmap/PhaseList'
-import type { Phase } from '@/types/roadmap'
+import { SubtaskRow } from '@/components/roadmap/SubtaskRow'
+import { TaskRowHeader } from '@/components/roadmap/task-row/TaskRowHeader'
+import type { Phase, Task } from '@/types/roadmap'
 
 vi.mock('@/context/RoadmapContext', () => ({
   useRoadmapSession: () => ({
@@ -15,7 +17,21 @@ vi.mock('@/context/RoadmapContext', () => ({
   }),
 }))
 
-const MOVE_CONTROL_PATTERN = /move\s*(phase)?\s*(up|down|earlier|later)/i
+const MOVE_CONTROL_PATTERN = /move(?:\s+\w+)*\s+(up|down|earlier|later)/i
+
+const task: Task = {
+  id: 'rf-t-1',
+  title: 'Draft release notes',
+  done: false,
+  tags: [],
+}
+
+const subtask: Task = {
+  id: 'rf-st-1',
+  title: 'Confirm screenshots',
+  done: false,
+  parentId: task.id,
+}
 
 const phases: Phase[] = [
   {
@@ -91,7 +107,7 @@ function controlLabels(): string[] {
   )
 }
 
-describe('phase reorder controls', () => {
+describe('drag-only roadmap ordering controls', () => {
   let container: HTMLDivElement
   let root: Root
 
@@ -168,5 +184,117 @@ describe('phase reorder controls', () => {
     expect(collapse?.getAttribute('aria-expanded')).toBe('true')
     act(() => collapse!.click())
     expect(onTogglePhase).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps task drag and disclosure controls without move buttons', () => {
+    const onToggle = vi.fn()
+    act(() => {
+      root.render(
+        <TaskRowHeader
+          task={task}
+          expanded={false}
+          status="ready"
+          statusTitle="Ready"
+          visibleTags={[]}
+          registry={[]}
+          lockedByOther={false}
+          lockHolderName=""
+          showEstimate={false}
+          canDrag
+          dragHandleTitle="Drag to reorder"
+          dragHandleProps={{
+            role: 'button',
+            tabIndex: 0,
+            'aria-label': `Reorder task ${task.title}`,
+          }}
+          checkDisabled={false}
+          onCheck={vi.fn()}
+          onToggle={onToggle}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector(`[aria-label="Reorder task ${task.title}"]`),
+    ).not.toBeNull()
+    expect(controlLabels().some((label) => MOVE_CONTROL_PATTERN.test(label))).toBe(false)
+
+    const disclosure = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Expand task"]',
+    )
+    expect(disclosure?.getAttribute('aria-expanded')).toBe('false')
+    act(() => disclosure!.click())
+    expect(onToggle).toHaveBeenCalledOnce()
+
+    act(() => {
+      root.render(
+        <TaskRowHeader
+          task={task}
+          expanded={false}
+          status="ready"
+          statusTitle="Ready"
+          visibleTags={[]}
+          registry={[]}
+          lockedByOther={false}
+          lockHolderName=""
+          showEstimate={false}
+          canDrag={false}
+          dragHandleTitle="Reordering unavailable in read-only mode"
+          dragHandleProps={{
+            role: 'button',
+            tabIndex: 0,
+            'aria-label': `Reorder task ${task.title}`,
+          }}
+          checkDisabled
+          onCheck={vi.fn()}
+          onToggle={onToggle}
+        />,
+      )
+    })
+    expect(container.querySelector('.drag-handle')?.getAttribute('aria-hidden')).toBe('true')
+    expect(container.querySelector('.drag-handle[role="button"]')).toBeNull()
+    expect(controlLabels().some((label) => MOVE_CONTROL_PATTERN.test(label))).toBe(false)
+  })
+
+  it('keeps subtask drag behavior without move controls or move-button slots', () => {
+    act(() => {
+      root.render(
+        <SubtaskRow
+          task={subtask}
+          readOnly={false}
+          pendingTaskDoneIds={new Set()}
+          dragHandleProps={{
+            role: 'button',
+            tabIndex: 0,
+            'aria-label': `Reorder subtask ${subtask.title}`,
+          }}
+          onCheck={vi.fn()}
+          onDelete={vi.fn()}
+          displayNumber="01.1.1"
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector(`[aria-label="Reorder subtask ${subtask.title}"]`),
+    ).not.toBeNull()
+    expect(container.querySelector('.subtask-move')).toBeNull()
+    expect(controlLabels().some((label) => MOVE_CONTROL_PATTERN.test(label))).toBe(false)
+
+    act(() => {
+      root.render(
+        <SubtaskRow
+          task={subtask}
+          readOnly
+          pendingTaskDoneIds={new Set()}
+          onCheck={vi.fn()}
+          onDelete={vi.fn()}
+          displayNumber="01.1.1"
+        />,
+      )
+    })
+    expect(container.querySelector('.subtask-drag-handle')?.getAttribute('aria-hidden')).toBe('true')
+    expect(container.querySelector('.subtask-drag-handle[role="button"]')).toBeNull()
+    expect(controlLabels().some((label) => MOVE_CONTROL_PATTERN.test(label))).toBe(false)
   })
 })
