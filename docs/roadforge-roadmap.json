@@ -456,7 +456,7 @@
             "RF-006"
           ],
           "est": "3 days",
-          "desc": "**Why**\nUsers must distinguish local save, server sync, validation, conflict, and expired session outcomes.\n\n**Finding**\nSave flow has specific conflict/session handling, but no audit evidence proves the full offline/retry/draft/caret matrix or that all errors are outcome-specific.\n\n**Scope**\nMap save states and messages across local and server roadmaps; preserve drafts; remove generic/misleading errors; document deliberate limitations.\n\n**Acceptance criteria**\nNo network condition is described as synced incorrectly; validation differs from connectivity; retry/reload/keep-local outcomes preserve user input.\n\n**Validation / gate**\nFocused hook tests and manual fault-injection browser matrix.\n\n**Risk**\nIncorrect status can cause accidental loss or false confidence.\n\n**Evidence**\n`useSaveFlow.ts`, `useAutoSync.ts`, task patch hooks; classification needs verification.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nUsers must distinguish local save, server sync, validation, conflict, and expired session outcomes.\n\n**Finding**\nSave flow has specific conflict/session handling, but no audit evidence proves the full offline/retry/draft/caret matrix or that all errors are outcome-specific.\n\n**Scope**\nMap save states and messages across local and server roadmaps; preserve drafts; remove generic/misleading errors; document deliberate limitations.\n\n**Acceptance criteria**\nNo network condition is described as synced incorrectly; validation differs from connectivity; retry/reload/keep-local outcomes preserve user input.\n\n**Validation / gate**\nFocused hook tests and manual fault-injection browser matrix.\n\n**Risk**\nIncorrect status can cause accidental loss or false confidence.\n\n**Evidence**\n`useSaveFlow.ts`, `useAutoSync.ts`, task patch hooks; classification needs verification.\n\n**Classification**\nneeds verification"
         },
         {
           "id": "RF-022",
@@ -490,7 +490,7 @@
             "RF-009"
           ],
           "est": "4 days",
-          "desc": "**Why**\nOptional collaboration must be safe before wider Beta use.\n\n**Finding**\nCode and API tests cover roles, claims, locks, conflicts, and Redis startup boundaries; live multi-worker, idle-release, takeover, and realtime propagation remain unverified.\n\n**Scope**\nCreate a role/lock/claim/conflict matrix and fill confirmed gaps without expanding platform scope.\n\n**Acceptance criteria**\nOwner/editor/viewer enforcement, lock release/reacquisition, claim override, partial writes, activity attribution, and Redis multi-worker behavior each have automated or documented manual evidence.\n\n**Validation / gate**\nTwo-session and multi-worker smoke; API permission matrix.\n\n**Risk**\nConcurrency defects can overwrite work or expose edit actions.\n\n**Evidence**\nAPI tests listed under `apps/api/tests`; realtime/lock/claim modules; classification likely.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nOptional collaboration must be safe before wider Beta use.\n\n**Finding**\nCode and API tests cover roles, claims, locks, conflicts, and Redis startup boundaries; live multi-worker, idle-release, takeover, and realtime propagation remain unverified.\n\n**Scope**\nCreate a role/lock/claim/conflict matrix and fill confirmed gaps without expanding platform scope.\n\n**Acceptance criteria**\nOwner/editor/viewer enforcement, lock release/reacquisition, claim override, partial writes, activity attribution, and Redis multi-worker behavior each have automated or documented manual evidence.\n\n**Validation / gate**\nTwo-session and multi-worker smoke; API permission matrix.\n\n**Risk**\nConcurrency defects can overwrite work or expose edit actions.\n\n**Evidence**\nAPI tests listed under `apps/api/tests`; realtime/lock/claim modules; classification likely.\n\n**Classification**\nlikely"
         }
       ]
     },
@@ -533,10 +533,11 @@
           "deps": [
             "RF-019",
             "RF-021",
-            "RF-022"
+            "RF-022",
+            "RF-024"
           ],
           "est": "3 days",
-          "desc": "**Why**\nNew users need a clear local-first workflow without reading implementation docs.\n\n**Finding**\nOnboarding exists, but this audit found no verified Help path covering phases, next task, saving, sharing/roles, locks, versions, import/export, and recovery.\n\n**Scope**\nAdd contextual Help entry points and a task-based user guide with known limitations and troubleshooting.\n\n**Acceptance criteria**\nA first-time user can find where data lives, create phase/task, export, save/share, understand roles/locks/conflicts, restore a version, and report a problem.\n\n**Validation / gate**\nUsability walkthrough and link/content tests.\n\n**Risk**\nVerbose technical docs can hide the essential actions.\n\n**Evidence**\n`WorkspaceWelcomeBanner`, README, self-hosting and support docs; classification likely.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nNew users need a clear local-first workflow without reading implementation docs.\n\n**Finding**\nOnboarding exists, but this audit found no verified Help path covering phases, next task, saving, sharing/roles, locks, versions, import/export, and recovery. First-time template selection still uses a separately maintained hard-coded sample.\n\n**Scope**\nAdd contextual Help entry points and a task-based user guide with known limitations and troubleshooting. Make `docs/roadforge-roadmap.json` the canonical bundled template instead of maintaining duplicate sample content.\n\n**Acceptance criteria**\nA first-time user can find where data lives, create phase/task, export, save/share, understand roles/locks/conflicts, restore a version, and report a problem. Selecting the RoadForge template deep-clones the canonical JSON into an independent roadmap, resets runtime/export metadata, preserves its registered tags, and cannot mutate the source through user editing. No separately maintained hard-coded roadmap can drift. CI validates the canonical file through RoadForge's real parser and strict template invariants. Template selection has component and browser regression coverage.\n\n**Validation / gate**\nParser and invariant tests, template factory/component tests, browser template-selection smoke, usability walkthrough, and link/content tests.\n\n**Risk**\nVerbose technical docs can hide the essential actions; duplicated template data can silently drift.\n\n**Evidence**\n`CreateWizard`, `useRoadmapHydration`, `SAMPLE_ROADMAP`, `WorkspaceWelcomeBanner`, README, self-hosting and support docs; classification likely.\n\n**Classification**\nlikely"
         },
         {
           "id": "RF-026",
@@ -552,7 +553,7 @@
             "RF-020"
           ],
           "est": "2 days",
-          "desc": "**Why**\nA calm interface should expose only meaningful outcomes.\n\n**Finding**\nNo confirmed dead control was found in the sampled UI, but secondary action density and stale wording warrant a value-first inventory.\n\n**Scope**\nClassify every visible control as essential, contextual, advanced, duplicated, deferred, or removable; implement only approved removals/consolidations.\n\n**Acceptance criteria**\nEach retained control has a user outcome, role behavior, and accessible label; no unshipped promise remains.\n\n**Validation / gate**\nUI inventory review and component tests for changed controls.\n\n**Risk**\nOver-pruning can hide required creation actions.\n\n**Evidence**\nWorkspace header/toolbar, footer, landing and share surfaces; classification likely.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nA calm interface should expose only meaningful outcomes.\n\n**Finding**\nNo confirmed dead control was found in the sampled UI, but secondary action density and stale wording warrant a value-first inventory.\n\n**Scope**\nClassify every visible control as essential, contextual, advanced, duplicated, deferred, or removable; implement only approved removals/consolidations.\n\n**Acceptance criteria**\nEach retained control has a user outcome, role behavior, and accessible label; no unshipped promise remains.\n\n**Validation / gate**\nUI inventory review and component tests for changed controls.\n\n**Risk**\nOver-pruning can hide required creation actions.\n\n**Evidence**\nWorkspace header/toolbar, footer, landing and share surfaces; classification likely.\n\n**Classification**\nlikely"
         }
       ]
     },
@@ -596,7 +597,7 @@
             "RF-015"
           ],
           "est": "3 days",
-          "desc": "**Why**\nExternal contributors need safe boundaries before making broad changes.\n\n**Finding**\nCONTRIBUTING and README provide setup and contribution terms, but this audit did not find a PR template, module-ownership map, or one concise architecture/migration/roadmap-schema guide.\n\n**Scope**\nDocument module ownership, contracts, migrations, tests, local validation, PR conventions, triage, and good-first-issue policy; add a PR template.\n\n**Acceptance criteria**\nA new contributor can run, test, locate ownership, understand data/security boundaries, and open a scoped PR without reverse-engineering the repository.\n\n**Validation / gate**\nFresh-clone contributor walkthrough and link check.\n\n**Risk**\nAmbiguous ownership encourages unsafe cross-layer changes.\n\n**Evidence**\nREADME, CONTRIBUTING, API/web structure, `.github`; classification likely.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nExternal contributors need safe boundaries before making broad changes.\n\n**Finding**\nCONTRIBUTING and README provide setup and contribution terms, but this audit did not find a PR template, module-ownership map, or one concise architecture/migration/roadmap-schema guide.\n\n**Scope**\nDocument module ownership, contracts, migrations, tests, local validation, PR conventions, triage, and good-first-issue policy; add a PR template.\n\n**Acceptance criteria**\nA new contributor can run, test, locate ownership, understand data/security boundaries, and open a scoped PR without reverse-engineering the repository.\n\n**Validation / gate**\nFresh-clone contributor walkthrough and link check.\n\n**Risk**\nAmbiguous ownership encourages unsafe cross-layer changes.\n\n**Evidence**\nREADME, CONTRIBUTING, API/web structure, `.github`; classification likely.\n\n**Classification**\nlikely"
         },
         {
           "id": "RF-029",
@@ -613,7 +614,7 @@
             "RF-027"
           ],
           "est": "1 day",
-          "desc": "**Why**\nUsers need a direct feedback path without data exfiltration.\n\n**Finding**\nFooter already links to `/issues/new/choose` with `noopener`; audit has not verified all landing/application entry points or attachment behavior.\n\n**Scope**\nExpose one visible Report a problem entry point in app and landing as appropriate; never prefill or attach roadmap data, exports, tokens, sessions, logs, or private URLs.\n\n**Acceptance criteria**\nEvery reporting link targets the chooser and carries no private state; accessibility labels are present.\n\n**Validation / gate**\nComponent/link tests and manual URL inspection.\n\n**Risk**\nConvenience reporting can leak private planning data.\n\n**Evidence**\n`SiteFooter.tsx`, accessibility test; classification likely.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nUsers need a direct feedback path without data exfiltration.\n\n**Finding**\nFooter already links to `/issues/new/choose` with `noopener`; audit has not verified all landing/application entry points or attachment behavior.\n\n**Scope**\nExpose one visible Report a problem entry point in app and landing as appropriate; never prefill or attach roadmap data, exports, tokens, sessions, logs, or private URLs.\n\n**Acceptance criteria**\nEvery reporting link targets the chooser and carries no private state; accessibility labels are present.\n\n**Validation / gate**\nComponent/link tests and manual URL inspection.\n\n**Risk**\nConvenience reporting can leak private planning data.\n\n**Evidence**\n`SiteFooter.tsx`, accessibility test; classification likely.\n\n**Classification**\nlikely"
         }
       ]
     },
@@ -639,7 +640,15 @@
           "assignees": [],
           "deps": [
             "RF-016",
-            "RF-020"
+            "RF-017",
+            "RF-018",
+            "RF-020",
+            "RF-021",
+            "RF-023",
+            "RF-025",
+            "RF-026",
+            "RF-028",
+            "RF-029"
           ],
           "est": "3 days",
           "desc": "**Why**\nThe central composition point is difficult to change and test safely.\n\n**Finding**\n`Workspace` spans lifecycle/session state, modal state, save/conflict plumbing, mutations, view model, panels, and rendering (over 500 lines), though several hooks already exist.\n\n**Scope**\nExtract only cohesive remaining boundaries and retain existing public behavior; do not rewrite stable hooks.\n\n**Acceptance criteria**\nWorkspace is a thin composition root with explicit ownership for structural actions, panels, and lifecycle bridges; focused tests remain readable.\n\n**Validation / gate**\nTypecheck, focused components/hooks tests, diff review.\n\n**Risk**\nOver-refactoring could destabilize sync behavior.\n\n**Evidence**\n`Workspace.tsx` and extracted hooks; classification confirmed.\n\n**Classification**\nconfirmed"
@@ -675,7 +684,7 @@
             "RF-030"
           ],
           "est": "2 days",
-          "desc": "**Why**\nThe removed phase action and uneven activity show a risk of drift.\n\n**Finding**\nHistory records a removed no-op add-phase button; phase and task mutations use different activity/persistence paths.\n\n**Scope**\nTrace candidate unused exports/flags and consolidate only demonstrated dead paths or duplicated vocabulary.\n\n**Acceptance criteria**\nNo removed workflow leaves dangling UI/state; canonical factories, validation, and activity names are documented and tested.\n\n**Validation / gate**\nTypecheck, targeted reference search, and focused tests.\n\n**Risk**\nDeleting compatibility paths prematurely can break imports or collaboration.\n\n**Evidence**\n`usePhaseMutations.ts`, `createTaskMutations`, history `ceddb72`; classification likely.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nThe removed phase action and uneven activity show a risk of drift.\n\n**Finding**\nHistory records a removed no-op add-phase button; phase and task mutations use different activity/persistence paths.\n\n**Scope**\nTrace candidate unused exports/flags and consolidate only demonstrated dead paths or duplicated vocabulary.\n\n**Acceptance criteria**\nNo removed workflow leaves dangling UI/state; canonical factories, validation, and activity names are documented and tested.\n\n**Validation / gate**\nTypecheck, targeted reference search, and focused tests.\n\n**Risk**\nDeleting compatibility paths prematurely can break imports or collaboration.\n\n**Evidence**\n`usePhaseMutations.ts`, `createTaskMutations`, history `ceddb72`; classification likely.\n\n**Classification**\nlikely"
         }
       ]
     },
@@ -701,10 +710,14 @@
           "deps": [
             "RF-016",
             "RF-017",
-            "RF-019"
+            "RF-019",
+            "RF-021",
+            "RF-022",
+            "RF-023",
+            "RF-029"
           ],
           "est": "4 days",
-          "desc": "**Why**\nUnit coverage cannot prove focus, overlay placement, drag alternatives, and responsive recovery.\n\n**Finding**\nVitest/API tests are extensive, but repository inspection found no full browser suite covering phase creation and key mobile/zoom flows.\n\n**Scope**\nAdd focused browser smoke for local and synced owner/editor/viewer paths, phase/task creation, import failure, conflict/session recovery, and reporting links.\n\n**Acceptance criteria**\nCritical workflows pass at desktop, narrow desktop, mobile, and 200% zoom; failures include actionable artifacts.\n\n**Validation / gate**\nCI browser smoke gate.\n\n**Risk**\nBeta regressions can escape component/API tests.\n\n**Evidence**\nWeb test inventory, `Accessibility.test.tsx`; classification likely.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nUnit coverage cannot prove focus, overlay placement, drag alternatives, and responsive recovery.\n\n**Finding**\nVitest/API tests are extensive, but repository inspection found no full browser suite covering phase creation and key mobile/zoom flows.\n\n**Scope**\nAdd focused browser smoke for local and synced owner/editor/viewer paths, phase/task creation, import failure, conflict/session recovery, and reporting links.\n\n**Acceptance criteria**\nCritical workflows pass at desktop, narrow desktop, mobile, and 200% zoom; failures include actionable artifacts.\n\n**Validation / gate**\nCI browser smoke gate.\n\n**Risk**\nBeta regressions can escape component/API tests.\n\n**Evidence**\nWeb test inventory, `Accessibility.test.tsx`; classification likely.\n\n**Classification**\nlikely"
         },
         {
           "id": "RF-034",
@@ -719,10 +732,12 @@
           "assignees": [],
           "deps": [
             "RF-017",
-            "RF-020"
+            "RF-020",
+            "RF-025",
+            "RF-029"
           ],
           "est": "3 days",
-          "desc": "**Why**\nExisting accessibility tests are a foundation, not proof of complete interaction coverage.\n\n**Finding**\nTests cover selected labels/focus behavior, while phase menu keyboard semantics, focus return, reflow, touch targets, and non-drag alternatives remain unverified.\n\n**Scope**\nDefine and automate the keyboard, screen-reader expectation, focus, reflow, contrast, reduced-motion, and touch-target matrix.\n\n**Acceptance criteria**\nNo essential workflow relies on hover or drag alone; dialogs/menus meet focus and Escape expectations; 200% reflow remains usable.\n\n**Validation / gate**\nAutomated checks plus manual assistive-technology smoke.\n\n**Risk**\nAccessibility defects can make a local-first product unusable.\n\n**Evidence**\n`Accessibility.test.tsx`, dialog-focus tests, phase menu; classification likely.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nExisting accessibility tests are a foundation, not proof of complete interaction coverage.\n\n**Finding**\nTests cover selected labels/focus behavior, while phase menu keyboard semantics, focus return, reflow, touch targets, and non-drag alternatives remain unverified.\n\n**Scope**\nDefine and automate the keyboard, screen-reader expectation, focus, reflow, contrast, reduced-motion, and touch-target matrix.\n\n**Acceptance criteria**\nNo essential workflow relies on hover or drag alone; dialogs/menus meet focus and Escape expectations; 200% reflow remains usable.\n\n**Validation / gate**\nAutomated checks plus manual assistive-technology smoke.\n\n**Risk**\nAccessibility defects can make a local-first product unusable.\n\n**Evidence**\n`Accessibility.test.tsx`, dialog-focus tests, phase menu; classification likely.\n\n**Classification**\nlikely"
         },
         {
           "id": "RF-035",
@@ -736,10 +751,12 @@
           ],
           "assignees": [],
           "deps": [
-            "RF-016"
+            "RF-016",
+            "RF-030",
+            "RF-031"
           ],
           "est": "3 days",
-          "desc": "**Why**\nPlanning tools must remain responsive with realistic data.\n\n**Finding**\nNo evidence was found of a large-roadmap benchmark for hydration, typing, filters, expand/collapse, import/export, autosync payloads, or realtime updates.\n\n**Scope**\nCreate a representative fixture and budgets; profile subscriptions before proposing optimizations.\n\n**Acceptance criteria**\nHundreds-task workflow meets agreed interaction and sync budgets; regressions fail a repeatable gate; only evidenced optimizations enter scope.\n\n**Validation / gate**\nBenchmark/trace in CI or reproducible local command.\n\n**Risk**\nSpeculative optimization can obscure real bottlenecks.\n\n**Evidence**\nWorkspace view model, storage, autosync, import/export; classification needs verification.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nPlanning tools must remain responsive with realistic data.\n\n**Finding**\nNo evidence was found of a large-roadmap benchmark for hydration, typing, filters, expand/collapse, import/export, autosync payloads, or realtime updates.\n\n**Scope**\nCreate a representative fixture and budgets; profile subscriptions before proposing optimizations.\n\n**Acceptance criteria**\nHundreds-task workflow meets agreed interaction and sync budgets; regressions fail a repeatable gate; only evidenced optimizations enter scope.\n\n**Validation / gate**\nBenchmark/trace in CI or reproducible local command.\n\n**Risk**\nSpeculative optimization can obscure real bottlenecks.\n\n**Evidence**\nWorkspace view model, storage, autosync, import/export; classification needs verification.\n\n**Classification**\nneeds verification"
         },
         {
           "id": "RF-036",
@@ -754,10 +771,13 @@
           "assignees": [],
           "deps": [
             "RF-023",
+            "RF-024",
+            "RF-027",
+            "RF-029",
             "RF-033"
           ],
           "est": "3 days",
-          "desc": "**Why**\nCode and documentation cannot substitute for operational proof.\n\n**Finding**\nCI includes audits/migration checks and self-hosting docs prescribe backup/restore, but no audit evidence proves a deployed candidate, restore drill, rollback, or monitored smoke.\n\n**Scope**\nRun the documented security/privacy, dependency, backup/restore, rollback, and deployed smoke matrix against a candidate SHA.\n\n**Acceptance criteria**\nNo token/secret leaks through URLs/logs; migration backup restores; rollback path is rehearsed; health/realtime behavior is observed.\n\n**Validation / gate**\nManual/deployment checklist with recorded candidate evidence.\n\n**Risk**\nOperational failures are high impact and cannot be inferred locally.\n\n**Evidence**\nCI workflow, self-hosting docs, release checklist; classification needs verification.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nCode and documentation cannot substitute for operational proof.\n\n**Finding**\nCI includes audits/migration checks and self-hosting docs prescribe backup/restore, but no audit evidence proves a deployed candidate, restore drill, rollback, or monitored smoke.\n\n**Scope**\nRun the documented security/privacy, dependency, backup/restore, rollback, and deployed smoke matrix against a candidate SHA.\n\n**Acceptance criteria**\nNo token/secret leaks through URLs/logs; migration backup restores; rollback path is rehearsed; health/realtime behavior is observed.\n\n**Validation / gate**\nManual/deployment checklist with recorded candidate evidence.\n\n**Risk**\nOperational failures are high impact and cannot be inferred locally.\n\n**Evidence**\nCI workflow, self-hosting docs, release checklist; classification needs verification.\n\n**Classification**\nneeds verification"
         }
       ]
     },
@@ -781,13 +801,30 @@
           ],
           "assignees": [],
           "deps": [
+            "RF-016",
+            "RF-017",
+            "RF-018",
+            "RF-019",
+            "RF-020",
+            "RF-021",
+            "RF-022",
+            "RF-023",
+            "RF-024",
+            "RF-025",
+            "RF-026",
+            "RF-027",
+            "RF-028",
+            "RF-029",
+            "RF-030",
+            "RF-031",
+            "RF-032",
             "RF-033",
             "RF-034",
             "RF-035",
             "RF-036"
           ],
           "est": "2 days",
-          "desc": "**Why**\nA Beta claim needs a reproducible, bounded release decision.\n\n**Finding**\nThe repository has a release checklist and CI gates, but no current candidate SHA or complete manual evidence was supplied to this audit.\n\n**Scope**\nFeature-freeze at a candidate SHA; resolve only release-blocking regressions; record gate results and known limitations.\n\n**Acceptance criteria**\nAll required automated/manual gates pass or an explicit release decision records the exception; candidate SHA is immutable.\n\n**Validation / gate**\nFull release checklist and CI status verification.\n\n**Risk**\nLate feature work invalidates prior evidence.\n\n**Evidence**\n`.github/RELEASE_CHECKLIST.md`; classification needs verification.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nA Beta claim needs a reproducible, bounded release decision.\n\n**Finding**\nThe repository has a release checklist and CI gates, but no current candidate SHA or complete manual evidence was supplied to this audit.\n\n**Scope**\nFeature-freeze at a candidate SHA; resolve only release-blocking regressions; record gate results and known limitations.\n\n**Acceptance criteria**\nAll required automated/manual gates pass or an explicit release decision records the exception; candidate SHA is immutable.\n\n**Validation / gate**\nFull release checklist and CI status verification.\n\n**Risk**\nLate feature work invalidates prior evidence.\n\n**Evidence**\n`.github/RELEASE_CHECKLIST.md`; classification needs verification.\n\n**Classification**\nneeds verification"
         },
         {
           "id": "RF-038",
@@ -804,7 +841,7 @@
             "RF-037"
           ],
           "est": "2 days",
-          "desc": "**Why**\nRelease requires verified rollout and recovery, not just a tag.\n\n**Finding**\nDeployment and monitoring evidence is unavailable in this repository audit.\n\n**Scope**\nPublish release notes and limitations, take backup, deploy candidate, smoke-test, monitor, and retain rollback instructions.\n\n**Acceptance criteria**\nRelease artifacts, backup, deployment smoke, and rollback owner are recorded; no platform expansion is bundled.\n\n**Validation / gate**\nDeployed smoke and post-release monitoring window.\n\n**Risk**\nA clean local build does not prove a safe release.\n\n**Evidence**\nRelease checklist and self-hosting documentation; classification needs verification.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nRelease requires verified rollout and recovery, not just a tag.\n\n**Finding**\nDeployment and monitoring evidence is unavailable in this repository audit.\n\n**Scope**\nPublish release notes and limitations, take backup, deploy candidate, smoke-test, monitor, and retain rollback instructions.\n\n**Acceptance criteria**\nRelease artifacts, backup, deployment smoke, and rollback owner are recorded; no platform expansion is bundled.\n\n**Validation / gate**\nDeployed smoke and post-release monitoring window.\n\n**Risk**\nA clean local build does not prove a safe release.\n\n**Evidence**\nRelease checklist and self-hosting documentation; classification needs verification.\n\n**Classification**\nneeds verification"
         }
       ]
     },

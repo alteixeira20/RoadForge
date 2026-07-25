@@ -79,6 +79,81 @@ describe('roadmap-validation', () => {
       expect(result.repairs).toEqual([])
     })
 
+    it('accepts the canonical RoadForge roadmap template without warnings or repairs', () => {
+      const input = readFileSync(
+        new URL('../../../../../docs/roadforge-roadmap.json', import.meta.url),
+        'utf8',
+      )
+      const result = parseImportedRoadmapJson(input)
+
+      expect(result.roadmapName).toBe('RoadForge - Clean Beta Foundation')
+      expect(result.phases).toHaveLength(11)
+      expect(result.phases.flatMap((phase) => phase.tasks)).toHaveLength(40)
+      expect(result.warnings).toEqual([])
+      expect(result.repairs).toEqual([])
+    })
+
+    it('enforces strict invariants for the canonical RoadForge roadmap template', () => {
+      const input = readFileSync(
+        new URL('../../../../../docs/roadforge-roadmap.json', import.meta.url),
+        'utf8',
+      )
+      const raw = JSON.parse(input) as {
+        meta: { phaseCount: number; taskCount: number }
+      }
+      const result = parseImportedRoadmapJson(input)
+      const tasks = result.phases.flatMap((phase) => phase.tasks)
+      const phaseIds = result.phases.map((phase) => phase.id)
+      const taskIds = tasks.map((task) => task.id)
+      const taskIdSet = new Set(taskIds)
+      const registeredTags = new Set(
+        (result.tagRegistry ?? []).map((tag) => tag.id),
+      )
+
+      expect(new Set(phaseIds).size).toBe(phaseIds.length)
+      expect(taskIdSet.size).toBe(taskIds.length)
+      expect(tasks.filter((task) => task.next).map((task) => task.id))
+        .toEqual(['RF-016'])
+      expect(tasks.flatMap((task) => task.tags ?? [])
+        .every((tag) => registeredTags.has(tag))).toBe(true)
+      expect(tasks.flatMap((task) => task.deps ?? [])
+        .every((dependency) => taskIdSet.has(dependency))).toBe(true)
+
+      for (const phase of result.phases) {
+        const expectedProgress = phase.tasks.length === 0
+          ? 0
+          : Math.round(
+            (phase.tasks.filter((task) => task.done).length / phase.tasks.length) * 100,
+          )
+        expect(phase.progress).toBe(expectedProgress)
+      }
+
+      const indegree = new Map(taskIds.map((id) => [id, 0]))
+      const dependents = new Map(taskIds.map((id) => [id, [] as string[]]))
+      for (const task of tasks) {
+        for (const dependency of task.deps ?? []) {
+          indegree.set(task.id, (indegree.get(task.id) ?? 0) + 1)
+          dependents.get(dependency)?.push(task.id)
+        }
+      }
+      const ready = taskIds.filter((id) => indegree.get(id) === 0)
+      let visited = 0
+      for (let index = 0; index < ready.length; index += 1) {
+        const id = ready[index]
+        visited += 1
+        for (const dependent of dependents.get(id) ?? []) {
+          const nextIndegree = (indegree.get(dependent) ?? 0) - 1
+          indegree.set(dependent, nextIndegree)
+          if (nextIndegree === 0) ready.push(dependent)
+        }
+      }
+      expect(visited).toBe(tasks.length)
+      expect(raw.meta).toEqual({
+        phaseCount: result.phases.length,
+        taskCount: tasks.length,
+      })
+    })
+
     it('accepts a minimal valid fixture with one phase and no tasks', () => {
       const input = JSON.stringify({
         schema: 'anvilary.roadmap.export',
