@@ -402,7 +402,7 @@
           "id": "RF-019",
           "title": "Protect destructive final-phase and empty-workspace paths",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "core",
             "ui",
@@ -413,7 +413,7 @@
             "RF-016"
           ],
           "est": "2 days",
-          "desc": "**Why**\nDestructive actions must never leave an editor without a recovery route.\n\n**Finding**\nPhase deletion confirms removal but the current UI has no phase creation or role-specific empty explanation.\n\n**Scope**\nSpecify final-phase confirmation/recovery, empty-phase first-task action, filtered-empty action, and owner/editor/viewer copy.\n\n**Acceptance criteria**\nEvery editable empty state has a relevant action; every viewer state explains why editing is unavailable; final-phase deletion has an immediate recovery path.\n\n**Validation / gate**\nComponent tests for empty states and browser smoke across roles.\n\n**Risk**\nA recoverability failure is a Beta blocker even if data deletion is confirmed.\n\n**Evidence**\n`PhaseSettingsMenu.tsx`, `PhaseList`, `Workspace`, and `WorkspaceBanners`.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nDestructive actions must never leave an editor without a recovery route.\n\n**Finding**\nRecovery actions existed after phase creation work, but the delete confirmation did not identify the final-phase recovery path, viewer empty phases did not explain task restrictions, and menu-to-dialog focus could land on the dialog container instead of the safe action.\n\n**Scope**\nSpecify final-phase confirmation/recovery, empty-phase first-task action, filtered-empty action, and owner/editor/viewer copy.\n\n**Acceptance criteria**\nEvery editable empty state has a relevant action; every viewer state explains why editing is unavailable; final-phase deletion has an immediate recovery path.\n\n**Validation / gate**\nComponent tests for empty states and browser smoke across roles.\n\n**Implementation status**\nAutomated implementation is complete. Delete confirmation accurately reports top-level tasks and subtasks, identifies final-phase deletion, and names Create first phase as the recovery action. Its menu-to-alertdialog handoff reliably focuses Keep phase; buttons have explicit non-submit types and Escape remains safe. Empty phases expose Add first task to editors and explain the viewer restriction; zero-phase and filtered-empty states retain distinct create/reset actions based on the unfiltered roadmap phase count. Twenty-nine focused interaction and accessibility tests pass; the full Wave 1 web gate passes 404 tests, lint, typecheck, and production build. The API gate is environment-blocked by the unavailable local test PostgreSQL service. Remaining gate: browser smoke across owner/editor/viewer states, including final-phase deletion and recovery.\n\n**Risk**\nA recoverability failure is a Beta blocker even if data deletion is confirmed.\n\n**Evidence**\n`PhaseSettingsMenu`, `ConfirmDialog`, `PhaseEmptyState`, `PhaseList`, `Workspace`, and focused empty/destructive-state tests.\n\n**Classification**\nconfirmed"
         }
       ]
     },
@@ -430,7 +430,7 @@
           "id": "RF-020",
           "title": "Establish a visible primary-action hierarchy",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "ui",
             "a11y"

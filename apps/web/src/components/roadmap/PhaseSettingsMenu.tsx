@@ -20,6 +20,7 @@ const PHASE_COLOR_PRESETS = [
 
 interface PhaseSettingsMenuProps {
   phase: PhaseType
+  isOnlyPhase: boolean
   readOnly: boolean
   isColorLockedByOther: boolean
   showColorPicker: boolean
@@ -35,6 +36,7 @@ interface PhaseSettingsMenuProps {
 
 export function PhaseSettingsMenu({
   phase,
+  isOnlyPhase,
   readOnly,
   isColorLockedByOther,
   showColorPicker,
@@ -85,7 +87,7 @@ export function PhaseSettingsMenu({
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     closeMenu()
-    setShowDeleteConfirm(true)
+    queueMicrotask(() => setShowDeleteConfirm(true))
   }
 
   const topLevelCount = phase.tasks.filter((t) => !t.parentId).length
@@ -93,12 +95,15 @@ export function PhaseSettingsMenu({
   const subCount = totalCount - topLevelCount
 
   let deleteMsg = `This will remove "${phase.name}"`
-  if (topLevelCount === 0) {
+  if (totalCount === 0) {
     deleteMsg += '. It has no tasks.'
   } else if (subCount > 0) {
-    deleteMsg += ` and all ${topLevelCount} task${topLevelCount === 1 ? '' : 's'} (${totalCount} total with subtasks) inside it.`
+    deleteMsg += ` and its ${topLevelCount} top-level task${topLevelCount === 1 ? '' : 's'} and ${subCount} subtask${subCount === 1 ? '' : 's'}.`
   } else {
-    deleteMsg += ` and all ${topLevelCount} task${topLevelCount === 1 ? '' : 's'} inside it.`
+    deleteMsg += ` and its ${topLevelCount} task${topLevelCount === 1 ? '' : 's'}.`
+  }
+  if (isOnlyPhase) {
+    deleteMsg += ' This is the final phase. After deletion, use Create first phase to recover the roadmap.'
   }
 
   return (

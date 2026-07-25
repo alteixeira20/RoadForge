@@ -8,6 +8,7 @@ import type { Phase as PhaseType, Task } from '@/types/roadmap'
 
 interface SortablePhaseItemProps {
   phase: PhaseType
+  isOnlyPhase: boolean
   dragDisabled: boolean
   isOpen: boolean
   onToggle: (id: string) => void

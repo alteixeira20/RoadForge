@@ -537,6 +537,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             allTasks={allTasks}
             readOnly={readOnly}
             hasRoadmapPhases={phases.length > 0}
+            totalPhaseCount={phases.length}
             isFiltering={isFiltering}
             emptyStateMessage={
               filterState.query.trim()

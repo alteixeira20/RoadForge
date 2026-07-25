@@ -8,6 +8,7 @@ import type { Phase as PhaseType } from '@/types/roadmap'
 
 interface PhaseHeaderProps {
   phase: PhaseType
+  isOnlyPhase: boolean
   isActive: boolean
   displayStatus: PhaseType['status']
   doneCount: number
@@ -32,6 +33,7 @@ interface PhaseHeaderProps {
 
 export function PhaseHeader({
   phase,
+  isOnlyPhase,
   isActive,
   displayStatus,
   doneCount,
@@ -84,6 +86,7 @@ export function PhaseHeader({
       {!readOnly && !isColorLockedByOther && (
         <PhaseSettingsMenu
           phase={phase}
+          isOnlyPhase={isOnlyPhase}
           readOnly={readOnly}
           isColorLockedByOther={isColorLockedByOther}
           showColorPicker={showColorPicker}

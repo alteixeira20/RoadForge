@@ -22,6 +22,7 @@ function createProps(
 ): ComponentProps<typeof PhaseSettingsMenu> {
   return {
     phase,
+    isOnlyPhase: false,
     readOnly: false,
     isColorLockedByOther: false,
     showColorPicker: false,
@@ -122,5 +123,56 @@ describe('PhaseSettingsMenu', () => {
     expect((document.body.querySelector(
       'input[aria-label="Custom phase hex color"]',
     ) as HTMLInputElement).value).toBe('#38bdf8')
+  })
+
+  it('reports contained work and the final-phase recovery path before deletion', async () => {
+    const onDeletePhase = vi.fn()
+    const phaseWithWork: Phase = {
+      ...phase,
+      tasks: [
+        { id: 'RF-101', title: 'Parent task', done: false },
+        {
+          id: 'RF-101.1',
+          title: 'Subtask',
+          done: false,
+          parentId: 'RF-101',
+        },
+      ],
+    }
+    act(() => {
+      root.render(
+        <PhaseSettingsMenu
+          {...createProps({
+            phase: phaseWithWork,
+            isOnlyPhase: true,
+            onDeletePhase,
+          })}
+        />,
+      )
+    })
+    const trigger = container.querySelector('button') as HTMLButtonElement
+    act(() => trigger.click())
+    const deleteItem = Array.from(document.body.querySelectorAll<HTMLButtonElement>(
+      '[role="menuitem"]',
+    )).find((button) => button.textContent?.includes('Delete phase'))
+    await act(async () => {
+      deleteItem?.click()
+      await Promise.resolve()
+    })
+
+    const dialog = document.body.querySelector('[role="alertdialog"]') as HTMLElement
+    expect(dialog.textContent).toContain('1 top-level task and 1 subtask')
+    expect(dialog.textContent).toContain('This is the final phase')
+    expect(dialog.textContent).toContain('Create first phase')
+    expect(document.activeElement?.textContent).toBe('Keep phase')
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+      }))
+    })
+    expect(document.body.querySelector('[role="alertdialog"]')).toBeNull()
+    expect(onDeletePhase).not.toHaveBeenCalled()
   })
 })

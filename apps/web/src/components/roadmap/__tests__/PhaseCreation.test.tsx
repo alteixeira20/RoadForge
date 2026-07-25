@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PhaseList } from '@/components/roadmap/PhaseList'
 import { PhaseNameEditor } from '@/components/roadmap/PhaseNameEditor'
+import { PhaseEmptyState } from '@/components/roadmap/Phase'
 import { WorkspaceToolbar } from '@/components/roadmap/WorkspaceToolbar'
 import type { Phase } from '@/types/roadmap'
 
@@ -35,6 +36,7 @@ function createPhaseListProps(
     allTasks: [],
     readOnly: false,
     hasRoadmapPhases: false,
+    totalPhaseCount: 0,
     isFiltering: false,
     emptyStateMessage: 'No tasks match.',
     onClearFilters: vi.fn(),
@@ -158,6 +160,28 @@ describe('phase creation controls', () => {
     expect(container.textContent).toContain('No matching tasks')
     expect(container.textContent).toContain('Clear search and filters')
     expect(container.textContent).not.toContain('Create first phase')
+    const clearButton = Array.from(container.querySelectorAll('button'))
+      .find((candidate) => candidate.textContent?.includes('Clear search and filters'))
+    act(() => clearButton?.click())
+    expect(onClearFilters).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers first-task recovery to editors and explains viewer restrictions', () => {
+    const onAddTask = vi.fn()
+    act(() => {
+      root.render(<PhaseEmptyState readOnly={false} onAddTask={onAddTask} />)
+    })
+    const addButton = container.querySelector('button') as HTMLButtonElement
+    expect(addButton.textContent).toContain('Add first task')
+    expect(addButton.type).toBe('button')
+    act(() => addButton.click())
+    expect(onAddTask).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      root.render(<PhaseEmptyState readOnly={true} onAddTask={onAddTask} />)
+    })
+    expect(container.textContent).toContain('Viewers cannot add tasks')
+    expect(container.querySelector('button')).toBeNull()
   })
 
   it('offers another phase after the final phase only to editors', () => {
@@ -168,6 +192,7 @@ describe('phase creation controls', () => {
           {...createPhaseListProps({
             phases: [phase],
             hasRoadmapPhases: true,
+            totalPhaseCount: 1,
             onAddPhase,
           })}
         />,
@@ -186,6 +211,7 @@ describe('phase creation controls', () => {
           {...createPhaseListProps({
             phases: [phase],
             hasRoadmapPhases: true,
+            totalPhaseCount: 1,
             readOnly: true,
           })}
         />,

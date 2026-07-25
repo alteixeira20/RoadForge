@@ -33,6 +33,7 @@ interface PhaseListProps {
   allTasks: Task[]
   readOnly: boolean
   hasRoadmapPhases: boolean
+  totalPhaseCount: number
   isFiltering: boolean
   emptyStateMessage: string
   onClearFilters: () => void
@@ -68,6 +69,7 @@ export function PhaseList({
   allTasks,
   readOnly,
   hasRoadmapPhases,
+  totalPhaseCount,
   isFiltering,
   emptyStateMessage,
   onClearFilters,
@@ -179,6 +181,7 @@ export function PhaseList({
               <SortablePhaseItem
                 key={p.id}
                 phase={p}
+                isOnlyPhase={totalPhaseCount === 1}
                 dragDisabled={phaseDragDisabled}
                 isOpen={openPhases.includes(p.id)}
                 onToggle={onTogglePhase}

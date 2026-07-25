@@ -32,6 +32,7 @@ export function ConfirmDialog({
   const footer = (
     <>
       <button
+        type="button"
         className="btn sm ghost"
         onClick={onClose}
         disabled={loading}
@@ -41,6 +42,7 @@ export function ConfirmDialog({
       </button>
       <span className="spacer" />
       <button
+        type="button"
         className={confirmClass}
         onClick={onConfirm}
         disabled={loading}

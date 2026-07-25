@@ -38,6 +38,7 @@ import type { ForgeStyle } from '@/types/ui'
 
 interface PhaseProps {
   phase: PhaseType
+  isOnlyPhase: boolean
   isOpen: boolean
   onToggle: (id: string) => void
   expandedTaskId: string | null
@@ -68,6 +69,7 @@ interface PhaseProps {
 
 export function Phase({
   phase,
+  isOnlyPhase,
   isOpen,
   onToggle,
   expandedTaskId,
@@ -323,6 +325,7 @@ export function Phase({
     >
       <PhaseHeader
         phase={phase}
+        isOnlyPhase={isOnlyPhase}
         isActive={isActive}
         displayStatus={displayStatus}
         doneCount={doneCount}
@@ -348,14 +351,7 @@ export function Phase({
       {isOpen && (
         <div className="phase-body">
           {topLevelTasks.length === 0 && !hasDraft ? (
-            <div className="empty-phase">
-              <p>No tasks yet.</p>
-              {!readOnly && (
-                <button className="btn sm ghost" onClick={handleOpenDraft}>
-                  <Icon name="plus" size={13} /> Add first task
-                </button>
-              )}
-            </div>
+            <PhaseEmptyState readOnly={readOnly} onAddTask={handleOpenDraft} />
           ) : topLevelTasks.length === 0 && hasDraft ? (
             <div className="empty-phase-draft">
               <DraftTaskRow
@@ -456,6 +452,29 @@ export function Phase({
             </div>
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+export function PhaseEmptyState({
+  readOnly,
+  onAddTask,
+}: {
+  readOnly: boolean
+  onAddTask: () => void
+}) {
+  return (
+    <div className="empty-phase" role="status">
+      <p>
+        {readOnly
+          ? 'No tasks yet. Viewers cannot add tasks.'
+          : 'No tasks yet. Add the first task to start this phase.'}
+      </p>
+      {!readOnly && (
+        <button type="button" className="btn sm ghost" onClick={onAddTask}>
+          <Icon name="plus" size={13} /> Add first task
+        </button>
       )}
     </div>
   )
