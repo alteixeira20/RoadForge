@@ -40,7 +40,7 @@ include = ["src/", "alembic/", "alembic.ini"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "unit_tests"]
 
 [tool.ruff]
 line-length = 100

@@ -478,7 +478,7 @@
           "id": "RF-023",
           "title": "Close collaboration safety evidence gaps",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "collab",
             "security",
@@ -490,7 +490,7 @@
             "RF-009"
           ],
           "est": "4 days",
-          "desc": "**Why**\nOptional collaboration must be safe before wider Beta use.\n\n**Finding**\nCode and API tests cover roles, claims, locks, conflicts, and Redis startup boundaries; live multi-worker, idle-release, takeover, and realtime propagation remain unverified.\n\n**Scope**\nCreate a role/lock/claim/conflict matrix and fill confirmed gaps without expanding platform scope.\n\n**Acceptance criteria**\nOwner/editor/viewer enforcement, lock release/reacquisition, claim override, partial writes, activity attribution, and Redis multi-worker behavior each have automated or documented manual evidence.\n\n**Validation / gate**\nTwo-session and multi-worker smoke; API permission matrix.\n\n**Risk**\nConcurrency defects can overwrite work or expose edit actions.\n\n**Evidence**\nAPI tests listed under `apps/api/tests`; realtime/lock/claim modules; classification likely.\n\n**Classification**\nlikely"
+          "desc": "**Why**\nOptional collaboration must be safe before wider Beta use.\n\n**Finding**\nAutomated contracts now cover in-memory and Redis-adapter realtime stores, role-based locks and tickets, claim override abuse, actor attribution, lock lifecycle, dirty-draft preservation, realtime reconciliation, and access loss. Live multi-worker behavior remains unverified.\n\n**Scope**\nCreate a role/lock/claim/conflict matrix and fill confirmed gaps without expanding platform scope.\n\n**Acceptance criteria**\nOwner/editor/viewer enforcement, lock release/reacquisition, claim override, partial writes, activity attribution, and Redis multi-worker behavior each have automated or documented manual evidence.\n\n**Validation / gate**\nTwo-session and multi-worker smoke; API permission matrix.\n\n**Risk**\nConcurrency defects can overwrite work or expose edit actions.\n\n**Evidence**\nRealtime store unit suite; lock/ticket and claim API matrices; edit-lock, task-claim, and realtime hook suites; manual QA sections 25b and 30b.\n\n**Implementation status**\nWeb tests, lint, typecheck, build, API lint, and six database-free realtime tests pass. Database-backed cases collect but PostgreSQL is unavailable locally. Exact two-profile and deployed Redis multi-worker checks remain manual.\n\n**Classification**\nconfirmed"
         }
       ]
     },
@@ -507,7 +507,7 @@
           "id": "RF-024",
           "title": "Remove stale Alpha terminology and align product/license copy",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "docs",
             "ui",

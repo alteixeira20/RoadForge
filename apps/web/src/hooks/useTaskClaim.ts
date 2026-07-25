@@ -106,7 +106,7 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
   }, [isClaiming, task.done, task.id, task.claimedBy, role, serverRoadmapId, sessionToken, applyLocalClaim, displayName, setPhases, setUpdatedAt, showToast])
 
   const handleUnclaim = useCallback(async (override = false) => {
-    if (isClaiming) return
+    if (isClaiming || role === 'viewer') return
 
     if (serverRoadmapId && sessionToken) {
       setIsClaiming(true)
@@ -135,7 +135,7 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
     } else {
       applyLocalClaim(null)
     }
-  }, [isClaiming, task.id, task.claimedBy, serverRoadmapId, sessionToken, applyLocalClaim, setPhases, setUpdatedAt, showToast])
+  }, [isClaiming, task.id, task.claimedBy, role, serverRoadmapId, sessionToken, applyLocalClaim, setPhases, setUpdatedAt, showToast])
 
   return {
     isClaiming,

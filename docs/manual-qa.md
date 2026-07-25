@@ -461,6 +461,35 @@ Color is no longer a bare swatch in the header. It opens from the phase **settin
 
 ---
 
+## 25b — RF-023 two-session collaboration evidence
+
+Use separate browser profiles so session storage and auth caches are independent.
+Save the same roadmap, then join it as Owner **Alex**, Editor **Jordan**, and
+Viewer **Casey**.
+
+- [ ] All three contexts reach **Live** and can read the roadmap, activity, and visible edit-lock state.
+- [ ] Casey cannot edit, complete, claim, acquire/release locks, manage links, or reveal mutation controls.
+- [ ] Jordan claims an incomplete task. Alex sees “Jordan is working on this” without reloading.
+- [ ] A second editor cannot replace or clear Jordan's claim, including direct requests with `override=true`.
+- [ ] Alex opens **Override claim**, cancels with Escape, and confirms Jordan retains the claim.
+- [ ] Alex confirms **Override claim**. The claim transfers once; Activity has one `task.claimed` event attributed to Alex with Jordan as the previous claimer.
+- [ ] Mark the claimed task done. The claim clears, assignment remains, and exactly one completion event appears.
+- [ ] Alex edits a task. Jordan sees “Alex is editing”; conflicting mutation controls are disabled.
+- [ ] Interact before 90 seconds. The lock refreshes while the editor and caret remain stable.
+- [ ] Leave the form untouched for 90 seconds. The draft remains, editing pauses, release is attempted, and Jordan sees the lock disappear.
+- [ ] Jordan acquires the released lock. Alex tries **Resume editing**; Alex's draft remains and Save stays disabled with Jordan identified.
+- [ ] Jordan releases. Alex resumes, reacquires, and saves the preserved draft.
+- [ ] Simulate a failed 20-second refresh. Alex loses commit permission while the draft remains mounted.
+- [ ] Keep an unsaved draft in one context, commit a server update in the other, then save the stale context.
+- [ ] A structured 409 shows server/client timestamps and server state; the local draft is not discarded.
+- [ ] Exercise **Keep editing locally**, **Keep my local version**, and confirmed server reload; each resulting sync state is truthful.
+- [ ] Jordan patches one task while Alex has unrelated dirty state. Alex's unrelated draft is not overwritten.
+- [ ] Each claim, task patch, completion, and aggregate save creates exactly one correctly attributed Activity row, including after autosync and realtime refresh.
+- [ ] Revoke Jordan with the SSE stream active. Jordan loses server authority, keeps a dirty local cache, and receives 401 on later writes.
+- [ ] Record browser versions, roadmap ID, participant roles, timestamps, and pass/fail evidence without copying invite or session tokens.
+
+---
+
 ## 26 — Mobile layout at 375px
 
 Set browser devtools to 375×812 (iPhone SE / 13 mini):

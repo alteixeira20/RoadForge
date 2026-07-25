@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { acquireLock, releaseLock } from '@/services/roadmap-locks.service'
+import { ApiError } from '@/services/roadmap-http'
 
 interface UseEditLockParams {
   target: string
@@ -102,8 +103,7 @@ export function useEditLock({
       setOwnsLock(true)
       return true
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      onAcquireError?.(msg.includes('409'))
+      onAcquireError?.(err instanceof ApiError && err.status === 409)
       return false
     } finally {
       setIsAcquiring(false)

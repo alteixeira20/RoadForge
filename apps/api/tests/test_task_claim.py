@@ -138,6 +138,45 @@ async def test_editor_cannot_replace_existing_claim(client: AsyncClient):
     assert "Owner" in resp.json()["detail"]
 
 
+async def test_editor_can_claim_and_clear_own_claim(client: AsyncClient):
+    body = await create_with_phases(client)
+    editor_url = await _rotate_link(client, body["id"], body["owner_session_token"], "editor")
+    editor = await _join(client, editor_url, "Editor")
+
+    claimed = await _claim(client, body["id"], editor["session_token"], "tk_a1")
+    assert claimed.status_code == 200, claimed.text
+    assert _task_field(claimed.json(), "tk_a1", "claimedBy") == "Editor"
+
+    cleared = await _unclaim(client, body["id"], editor["session_token"], "tk_a1")
+    assert cleared.status_code == 200, cleared.text
+    assert _task_field(cleared.json(), "tk_a1", "claimedBy") is None
+
+
+async def test_editor_cannot_override_another_participants_claim(client: AsyncClient):
+    body = await create_with_phases(client)
+    editor_url = await _rotate_link(client, body["id"], body["owner_session_token"], "editor")
+    editor = await _join(client, editor_url, "Editor")
+    await _claim(client, body["id"], body["owner_session_token"], "tk_a1")
+
+    replace = await _claim(
+        client,
+        body["id"],
+        editor["session_token"],
+        "tk_a1",
+        override=True,
+    )
+    clear = await _unclaim(
+        client,
+        body["id"],
+        editor["session_token"],
+        "tk_a1",
+        override=True,
+    )
+
+    assert replace.status_code == 409, replace.text
+    assert clear.status_code == 409, clear.text
+
+
 async def test_owner_can_explicitly_override_existing_claim(client: AsyncClient):
     body = await create_with_phases(client)
     editor_url = await _rotate_link(client, body["id"], body["owner_session_token"], "editor")
@@ -154,6 +193,20 @@ async def test_owner_can_explicitly_override_existing_claim(client: AsyncClient)
 
     assert resp.status_code == 200, resp.text
     assert _task_field(resp.json(), "tk_a1", "claimedBy") == "Owner"
+
+    activity = await client.get(
+        f"/api/roadmaps/{body['id']}/activity",
+        headers=auth(body["owner_session_token"]),
+    )
+    claimed = next(
+        log
+        for log in activity.json()["logs"]
+        if log["action"] == "task.claimed"
+        and log["metadata_json"].get("override") is True
+    )
+    assert claimed["actor_name"] == "Owner"
+    assert claimed["participant_id"] != editor["participant_id"]
+    assert claimed["metadata_json"]["previous_claimed_by"] == "Editor"
 
 
 async def test_editor_cannot_clear_another_participants_claim(client: AsyncClient):
