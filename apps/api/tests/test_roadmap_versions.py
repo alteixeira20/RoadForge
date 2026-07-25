@@ -107,6 +107,14 @@ async def _create_roadmap_with_tags(
     return resp.json()
 
 
+def _echoed(tag_registry: list[dict]) -> list[dict]:
+    """Tag responses always carry every optional field, unset ones as null."""
+    return [
+        {"color": None, "createdAt": None, "updatedAt": None, **tag}
+        for tag in tag_registry
+    ]
+
+
 async def _list_versions(client: AsyncClient, roadmap_id: str, owner_token: str) -> list:
     resp = await client.get(
         f"/api/roadmaps/{roadmap_id}/versions",
@@ -305,7 +313,7 @@ async def test_version_detail_includes_historical_tag_registry(client: AsyncClie
     )
 
     assert resp.status_code == 200, resp.text
-    assert resp.json()["tag_registry"] == historical_registry
+    assert resp.json()["tag_registry"] == _echoed(historical_registry)
 
 
 async def test_editor_can_fetch_version_detail(client: AsyncClient):
@@ -559,14 +567,14 @@ async def test_restore_persists_historical_tag_registry(client: AsyncClient):
         headers=_auth(body["owner_session_token"]),
     )
     assert restore_resp.status_code == 200, restore_resp.text
-    assert restore_resp.json()["tag_registry"] == original_registry
+    assert restore_resp.json()["tag_registry"] == _echoed(original_registry)
 
     get_resp = await client.get(
         f"/api/roadmaps/{body['id']}",
         headers=_auth(body["owner_session_token"]),
     )
     assert get_resp.status_code == 200
-    assert get_resp.json()["tag_registry"] == original_registry
+    assert get_resp.json()["tag_registry"] == _echoed(original_registry)
 
 
 async def test_restore_legacy_version_preserves_current_tag_registry(
@@ -592,7 +600,7 @@ async def test_restore_legacy_version_preserves_current_tag_registry(
     )
 
     assert restore_resp.status_code == 200, restore_resp.text
-    assert restore_resp.json()["tag_registry"] == current_registry
+    assert restore_resp.json()["tag_registry"] == _echoed(current_registry)
 
 
 async def test_version_snapshot_excludes_server_only_state(
