@@ -16,6 +16,19 @@ async function dragHandleOnto(page: Page, handle: Locator, target: Locator) {
   await page.mouse.up()
 }
 
+async function keyboardMove(
+  handle: Locator,
+  arrow: 'ArrowDown' | 'ArrowUp' = 'ArrowDown',
+) {
+  await handle.scrollIntoViewIfNeeded()
+  await handle.focus()
+  await handle.press('Space')
+  await expect(handle).toHaveAttribute('aria-pressed', 'true')
+  await handle.press(arrow)
+  await handle.press('Space')
+  await expect(handle).not.toHaveAttribute('aria-pressed', 'true')
+}
+
 async function expectNoAccessibilityViolations(page: Page) {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
@@ -94,6 +107,60 @@ test('reorders phases by dragging only, with no move actions in the phase menu',
   await expect(page.locator('.phase-head .num')).toHaveText(['01', '02'])
 })
 
+test('reorders phases, tasks, and subtasks with Space, Arrow, Space', async ({ page }) => {
+  await createRoadmap(page, {
+    title: 'Keyboard drag roadmap',
+    startingPoint: 'blank',
+  })
+
+  await page.getByRole('button', { name: 'Add first task' }).click()
+  await page.getByRole('textbox', { name: 'New task title' }).fill('First task')
+  await page.getByRole('textbox', { name: 'New task title' }).press('Enter')
+  await page.getByRole('button', { name: 'Add task' }).click()
+  await page.getByRole('textbox', { name: 'New task title' }).fill('Second task')
+  await page.getByRole('textbox', { name: 'New task title' }).press('Enter')
+
+  const firstTask = page.locator('.task').filter({ hasText: 'First task' }).first()
+  const secondTask = page.locator('.task').filter({ hasText: 'Second task' }).first()
+  await secondTask.getByRole('button', { name: 'Collapse task' }).click()
+  await secondTask.getByRole('button', { name: 'Expand task' }).click()
+  await secondTask.getByRole('button', { name: 'Add subtask' }).click()
+  await page.getByRole('textbox', { name: 'Subtask title' }).fill('First subtask')
+  await page.getByRole('textbox', { name: 'Subtask title' }).press('Enter')
+  await secondTask.getByRole('button', { name: 'Add subtask' }).click()
+  await page.getByRole('textbox', { name: 'Subtask title' }).fill('Second subtask')
+  await page.getByRole('textbox', { name: 'Subtask title' }).press('Enter')
+
+  await keyboardMove(
+    secondTask
+      .locator('.subtask-row')
+      .filter({ hasText: 'First subtask' })
+      .locator('.subtask-drag-handle[role="button"]'),
+  )
+  await expect(secondTask.locator('.subtask-title')).toHaveText([
+    'Second subtask',
+    'First subtask',
+  ])
+
+  await secondTask.getByRole('button', { name: 'Collapse task' }).click()
+  await keyboardMove(firstTask.locator('.drag-handle[role="button"]'))
+  await expect(page.locator('.task-row .title')).toHaveText(['Second task', 'First task'])
+
+  await page.getByRole('button', { name: 'Add another phase', exact: true }).click()
+  const phaseName = page.getByRole('textbox', { name: 'Phase name for New phase' })
+  await phaseName.fill('Delivery')
+  await phaseName.press('Enter')
+  await page.getByRole('button', { name: 'Collapse phase Planning' }).click()
+  await page.getByRole('button', { name: 'Collapse phase Delivery' }).click()
+
+  await keyboardMove(
+    page.getByRole('button', { name: 'Reorder phase Delivery' }),
+    'ArrowUp',
+  )
+  await expect(page.locator('.phase-head .name')).toHaveText(['Delivery', 'Planning'])
+  await expect(page.locator('.phase-head .num')).toHaveText(['01', '02'])
+})
+
 test('reorders tasks and subtasks by drag only and persists local order', async ({ page }) => {
   await createRoadmap(page, {
     title: 'Drag-only task roadmap',
@@ -126,8 +193,8 @@ test('reorders tasks and subtasks by drag only and persists local order', async 
   const secondTask = page.locator('.task').filter({ hasText: 'Second task' }).first()
   await dragHandleOnto(
     page,
-    firstTask.locator('.drag-handle'),
     secondTask.locator('.drag-handle'),
+    firstTask.locator('.drag-handle'),
   )
 
   await expect(page.locator('.task-row .title')).toHaveText(['Second task', 'First task'])
@@ -159,8 +226,8 @@ test('reorders tasks and subtasks by drag only and persists local order', async 
   })
   await dragHandleOnto(
     page,
-    firstSubtask.locator('.subtask-drag-handle'),
     secondSubtask.locator('.subtask-drag-handle'),
+    firstSubtask.locator('.subtask-drag-handle'),
   )
 
   await expect(reorderedTask.locator('.subtask-title')).toHaveText([
