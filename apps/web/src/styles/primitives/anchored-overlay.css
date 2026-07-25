@@ -1,0 +1,9 @@
+.anchored-overlay {
+  position: fixed;
+  z-index: var(--z-anchored-overlay);
+  box-sizing: border-box;
+  max-width: calc(100vw - 16px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

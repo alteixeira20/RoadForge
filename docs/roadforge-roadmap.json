@@ -369,7 +369,7 @@
           "id": "RF-017",
           "title": "Make phase settings and color overlays viewport-safe",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "ui",
             "a11y"
@@ -379,13 +379,13 @@
             "RF-016"
           ],
           "est": "3 days",
-          "desc": "**Why**\nA structural action must remain usable at narrow widths and zoom.\n\n**Finding**\nThe phase menu/color popover is an in-tree absolute overlay with a document pointer listener; it has no portal, collision handling, Escape handler, focus management, or focus return.\n\n**Scope**\nAdopt a small shared anchored-menu/popover foundation only where it replaces this duplicated behavior; migrate phase settings/color first and define layering/scroll ownership.\n\n**Acceptance criteria**\nMenu and popover remain within viewport at narrow desktop, mobile, and 200% zoom; Escape/outside click work; trigger regains focus; keyboard semantics and focus order are correct.\n\n**Validation / gate**\nComponent tests plus browser screenshots/interaction smoke at narrow viewport and 200% zoom; manual screen-reader check.\n\n**Risk**\nCurrent overlay can be clipped and keyboard users can lose context.\n\n**Evidence**\n`PhaseSettingsMenu.tsx`, `phase.css`, and `Modal.tsx`; user-reported screenshot; classification confirmed.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nA structural action must remain usable at narrow widths and zoom.\n\n**Finding**\nThe phase menu and color controls previously used clipped in-tree absolute overlays without collision or focus management.\n\n**Scope**\nAdopt a small shared anchored-menu/popover foundation only where it replaces this duplicated behavior; migrate phase settings/color first and define layering/scroll ownership.\n\n**Acceptance criteria**\nMenu and popover remain within viewport at narrow desktop, mobile, and 200% zoom; Escape/outside click work; trigger regains focus; keyboard semantics and focus order are correct.\n\n**Validation / gate**\nComponent tests plus browser screenshots/interaction smoke at narrow viewport and 200% zoom; manual screen-reader check.\n\n**Implementation status**\nAutomated implementation is complete. `AnchoredOverlay` portals fixed-position content, flips and clamps to the viewport, limits height, repositions on resize/scroll/content changes, and owns outside/Escape dismissal, initial focus, focus return, menu arrow/Home/End navigation, and dialog Tab trapping. Phase settings and color controls use the primitive, mobile/touch triggers remain visible, layer order is tokenized, card overflow workarounds are removed, and custom color state follows the active phase. Ten focused interaction/position tests pass; lint and typecheck pass. Remaining gate: browser screenshots and interaction smoke at narrow viewport/mobile/200% zoom plus a manual screen-reader semantics check.\n\n**Risk**\nOverlay regressions can clip structural actions or make keyboard users lose context.\n\n**Evidence**\n`AnchoredOverlay`, anchored-overlay CSS and layer token, `PhaseSettingsMenu`, `Phase`, `phase.css`, and focused overlay/menu tests.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-018",
           "title": "Make phase mutation persistence and activity consistent",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "core",
             "sync",

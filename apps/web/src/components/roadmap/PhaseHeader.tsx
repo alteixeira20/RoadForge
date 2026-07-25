@@ -17,18 +17,17 @@ interface PhaseHeaderProps {
   showColorPicker: boolean
   renameKey?: number
   dragHandleProps?: React.HTMLAttributes<Element>
-  colorControlRef: React.RefObject<HTMLDivElement | null>
   onPhaseToggle: () => void
   onNameSave: (name: string) => void
   onNameEditingChange: (editing: boolean) => void
   onMenuRename: () => void
   onColorTriggerClick: () => void
+  onColorClose: () => void
   onColorSelect: (color: string) => void
   onColorModeSelect: (mode: 'auto' | 'manual') => void
   colorReason: string
   displayColor: string
   onDeletePhase: (phaseId: string) => void
-  onSettingsMenuChange?: (open: boolean) => void
 }
 
 export function PhaseHeader({
@@ -42,18 +41,17 @@ export function PhaseHeader({
   showColorPicker,
   renameKey,
   dragHandleProps,
-  colorControlRef,
   onPhaseToggle,
   onNameSave,
   onNameEditingChange,
   onMenuRename,
   onColorTriggerClick,
+  onColorClose,
   onColorSelect,
   onColorModeSelect,
   colorReason,
   displayColor,
   onDeletePhase,
-  onSettingsMenuChange,
 }: PhaseHeaderProps) {
   return (
     <div className="phase-head">
@@ -89,15 +87,14 @@ export function PhaseHeader({
           readOnly={readOnly}
           isColorLockedByOther={isColorLockedByOther}
           showColorPicker={showColorPicker}
-          containerRef={colorControlRef}
           onRenameClick={onMenuRename}
           onColorTriggerClick={onColorTriggerClick}
+          onColorClose={onColorClose}
           onColorSelect={onColorSelect}
           onColorModeSelect={onColorModeSelect}
           colorReason={colorReason}
           displayColor={displayColor}
           onDeletePhase={onDeletePhase}
-          onMenuOpenChange={onSettingsMenuChange}
         />
       )}
     </div>

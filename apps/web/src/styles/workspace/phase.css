@@ -12,7 +12,6 @@
 .phase.active-phase {
   border-color: color-mix(in srgb, var(--phase-color), transparent 60%);
 }
-.phase.phase-color-open { overflow: visible; }
 
 /* ─── Phase header ─────────────────────────────────────────────────────────── */
 .phase-head {
@@ -122,16 +121,17 @@
   border-color: var(--border);
 }
 .phase-settings-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: var(--z-popover);
   min-width: 148px;
   padding: 4px;
   background: var(--bg-2);
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.phase-settings-menu > [role="presentation"] {
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -179,18 +179,16 @@
   box-shadow: 0 0 0 1px rgba(0,0,0,0.18);
 }
 .phase-color-popover {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  z-index: var(--z-popover);
   width: 232px;
-  display: grid;
-  gap: 10px;
   padding: 10px;
   background: var(--bg-2);
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   box-shadow: var(--shadow-md);
+}
+.phase-color-popover > div {
+  display: grid;
+  gap: 10px;
 }
 .phase-color-presets {
   display: grid;
@@ -375,9 +373,13 @@
 @media (max-width: 760px) {
   .phase-head { padding: 14px 16px; gap: 10px; }
   .phase-toggle-btn { gap: 10px; }
-  .phase-color-trigger { opacity: 1; }
+  .phase-settings-trigger { opacity: 1; width: 36px; height: 36px; }
   .phase-head .progress-mini { display: none; }
   .phase-head .name { font-size: 17px; }
+}
+
+@media (hover: none) {
+  .phase-settings-trigger { opacity: 1; width: 36px; height: 36px; }
 }
 
 /* ── 600px — mobile: compact phase layout ───────────────────────────────── */

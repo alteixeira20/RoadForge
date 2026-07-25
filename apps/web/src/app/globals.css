@@ -15,6 +15,7 @@
 @import '../styles/primitives/atmosphere.css';
 @import '../styles/primitives/toast.css';
 @import '../styles/primitives/avatar.css';
+@import '../styles/primitives/anchored-overlay.css';
 @import '../styles/primitives/roadmap-menu.css';
 @import '../styles/primitives/roadmap-switcher.css';
 @import '../styles/site.css';

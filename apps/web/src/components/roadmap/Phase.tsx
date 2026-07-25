@@ -99,7 +99,6 @@ export function Phase({
   const allDone = doneCount === phase.tasks.length && phase.tasks.length > 0
   const isActive = phase.status === 'active'
   const [showColorPicker, setShowColorPicker] = useState(false)
-  const [showSettingsMenu, setShowSettingsMenu] = useState(false)
   const [renameKey, setRenameKey] = useState(0)
   const [hasDraft, setHasDraft] = useState(false)
   const [draftDirty, setDraftDirty] = useState(false)
@@ -107,7 +106,6 @@ export function Phase({
   const [draftCreatedTaskId, setDraftCreatedTaskId] = useState<string | null>(null)
   const [isNameEditing, setIsNameEditing] = useState(false)
   const beginRenameHandledRef = useRef(false)
-  const colorControlRef = useRef<HTMLDivElement | null>(null)
 
   const { locks, serverRoadmapId, sessionToken, participantId } = useRoadmapSession()
 
@@ -208,26 +206,6 @@ export function Phase({
     beginRenameHandledRef.current = true
     void handleMenuRename().finally(() => onBeginRenameHandled?.())
   }, [beginRename, handleMenuRename, onBeginRenameHandled])
-
-  useEffect(() => {
-    if (!showColorPicker) return
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (target instanceof Node && colorControlRef.current?.contains(target)) return
-      closeColorPicker()
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeColorPicker()
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [showColorPicker, closeColorPicker])
 
   useEffect(() => {
     if (!isOpen && hasDraft) {
@@ -338,7 +316,6 @@ export function Phase({
         'phase',
         isOpen ? 'expanded' : '',
         isActive ? 'active-phase' : '',
-        (showColorPicker || showSettingsMenu) ? 'phase-color-open' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -354,19 +331,18 @@ export function Phase({
         colorLockDisplayName={colorLock?.displayName}
         showColorPicker={showColorPicker}
         dragHandleProps={dragHandleProps}
-        colorControlRef={colorControlRef}
         onPhaseToggle={handlePhaseToggle}
         onNameSave={handleNameSave}
         onNameEditingChange={setIsNameEditing}
         renameKey={renameKey}
         onMenuRename={handleMenuRename}
         onColorTriggerClick={handleColorTriggerClick}
+        onColorClose={closeColorPicker}
         onColorSelect={handleColorSelect}
         onColorModeSelect={(mode) => onUpdatePhaseColorMode(phase.id, mode)}
         colorReason={phaseDisplayColor.reason}
         displayColor={phaseDisplayColor.color}
         onDeletePhase={onDeletePhase}
-        onSettingsMenuChange={setShowSettingsMenu}
       />
 
       {isOpen && (

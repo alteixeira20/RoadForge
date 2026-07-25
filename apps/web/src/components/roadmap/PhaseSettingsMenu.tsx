@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useEffect, useId, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
+import { AnchoredOverlay } from '@/components/ui/AnchoredOverlay'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import type { Phase as PhaseType } from '@/types/roadmap'
 
@@ -22,15 +23,14 @@ interface PhaseSettingsMenuProps {
   readOnly: boolean
   isColorLockedByOther: boolean
   showColorPicker: boolean
-  containerRef: React.RefObject<HTMLDivElement | null>
   onRenameClick: () => void
   onColorTriggerClick: () => void
+  onColorClose: () => void
   onColorSelect: (color: string) => void
   onColorModeSelect: (mode: 'auto' | 'manual') => void
   colorReason: string
   displayColor: string
   onDeletePhase: (phaseId: string) => void
-  onMenuOpenChange?: (open: boolean) => void
 }
 
 export function PhaseSettingsMenu({
@@ -38,42 +38,36 @@ export function PhaseSettingsMenu({
   readOnly,
   isColorLockedByOther,
   showColorPicker,
-  containerRef,
   onRenameClick,
   onColorTriggerClick,
+  onColorClose,
   onColorSelect,
   onColorModeSelect,
   colorReason,
   displayColor,
   onDeletePhase,
-  onMenuOpenChange,
 }: PhaseSettingsMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [customColor, setCustomColor] = useState(phase.color)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const menuId = useId()
+  const colorDialogId = useId()
   const customColorValid = /^#[0-9a-f]{6}$/i.test(customColor)
 
-  const closeMenu = useCallback(() => {
+  const closeMenu = () => {
     setMenuOpen(false)
-    onMenuOpenChange?.(false)
-  }, [onMenuOpenChange])
+  }
 
   useEffect(() => {
-    if (!menuOpen) return
-    const handlePointerDown = (e: PointerEvent) => {
-      if (e.target instanceof Node && containerRef.current?.contains(e.target as Node)) return
-      closeMenu()
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [menuOpen, containerRef, closeMenu])
+    setCustomColor(phase.color)
+  }, [phase.color, phase.id])
 
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (showColorPicker) onColorTriggerClick()
     const next = !menuOpen
     setMenuOpen(next)
-    onMenuOpenChange?.(next)
   }
 
   const handleRenameClick = (e: React.MouseEvent) => {
@@ -108,36 +102,55 @@ export function PhaseSettingsMenu({
   }
 
   return (
-    <div ref={containerRef} className="phase-settings-control">
+    <div className="phase-settings-control">
       <button
+        ref={triggerRef}
         type="button"
         className={`phase-settings-trigger${menuOpen ? ' open' : ''}`}
         title="Phase settings"
         aria-label={`Phase settings for ${phase.name}`}
-        aria-expanded={menuOpen}
+        aria-expanded={menuOpen || showColorPicker}
+        aria-haspopup={showColorPicker ? 'dialog' : 'menu'}
+        aria-controls={menuOpen ? menuId : showColorPicker ? colorDialogId : undefined}
         onClick={handleTriggerClick}
       >
         <Icon name="more" size={14} />
       </button>
 
-      {menuOpen && !readOnly && !isColorLockedByOther && (
-        <div className="phase-settings-menu" role="menu">
-          <button role="menuitem" onClick={handleRenameClick}>
+      <AnchoredOverlay
+        open={menuOpen && !readOnly && !isColorLockedByOther}
+        anchorRef={triggerRef}
+        id={menuId}
+        role="menu"
+        ariaLabel={`Phase settings for ${phase.name}`}
+        className="phase-settings-menu"
+        onClose={closeMenu}
+      >
+        <div role="presentation">
+          <button type="button" role="menuitem" onClick={handleRenameClick}>
             <Icon name="pencil" size={13} /> Rename
           </button>
-          <button role="menuitem" onClick={handleColorClick}>
+          <button type="button" role="menuitem" onClick={handleColorClick}>
             <span className="phase-settings-color-swatch" style={{ backgroundColor: displayColor }} />
             Change color
           </button>
           <div className="phase-settings-sep" role="separator" />
-          <button role="menuitem" className="danger" onClick={handleDeleteClick}>
+          <button type="button" role="menuitem" className="danger" onClick={handleDeleteClick}>
             <Icon name="trash" size={13} /> Delete phase
           </button>
         </div>
-      )}
+      </AnchoredOverlay>
 
-      {showColorPicker && (
-        <div className="phase-color-popover" aria-label="Phase color settings">
+      <AnchoredOverlay
+        open={showColorPicker}
+        anchorRef={triggerRef}
+        id={colorDialogId}
+        role="dialog"
+        ariaLabel={`Color settings for ${phase.name}`}
+        className="phase-color-popover"
+        onClose={onColorClose}
+      >
+        <div>
           <div className="phase-color-modes">
             <button
               type="button"
@@ -193,7 +206,7 @@ export function PhaseSettingsMenu({
             </>
           )}
         </div>
-      )}
+      </AnchoredOverlay>
 
       <ConfirmDialog
         open={showDeleteConfirm}
