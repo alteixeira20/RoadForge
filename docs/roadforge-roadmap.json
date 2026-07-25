@@ -657,7 +657,7 @@
           "id": "RF-031",
           "title": "Standardize overlay, layer, and responsive CSS ownership",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "ui",
             "a11y"
@@ -667,13 +667,13 @@
             "RF-017"
           ],
           "est": "3 days",
-          "desc": "**Why**\nThe phase defect shows repeated local overlay mechanics are fragile.\n\n**Finding**\nPhase settings owns pointer-outside state and absolute positioning; CSS contains component-local z-index/offset behavior, while Modal has separate focus handling.\n\n**Scope**\nCreate minimal shared primitives/tokens for menus/dialogs/popovers and migrate justified duplicates; remove arbitrary overlay offsets only when replaced.\n\n**Acceptance criteria**\nLayer scale, scroll behavior, focus lifecycle, and responsive placement are owned consistently; no visual regression in modal flows.\n\n**Validation / gate**\nVisual regression/smoke at mobile/narrow/zoom and keyboard tests.\n\n**Risk**\nA broad CSS rewrite can create regressions.\n\n**Evidence**\n`PhaseSettingsMenu.tsx`, `Modal.tsx`, workspace/modal CSS; classification confirmed.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nRepeated local overlay mechanics were fragile and used conflicting layer values.\n\n**Implementation status**\nImplementation complete; manual responsive visual evidence remains.\n\n**Implemented**\n`AnchoredOverlay` now owns phase, filter, and roadmap-switcher placement, clamping, flipping, dismissal, keyboard behavior, and focus return. `SidePanel` owns Activity and Versions focus lifecycle, and Workspace keeps those panels mutually exclusive. Portalled modals give Escape and Tab ownership to the topmost nested dialog. Named layer tokens replace header, panel, modal, and popover magic values; component CSS retains only component-specific sizing and presentation.\n\n**Automated evidence**\n42 focused overlay, dialog, panel, switcher, workspace, phase, and layer-contract tests pass; web lint and typecheck pass. Existing shared-overlay tests cover collision, resize, scroll, narrow-viewport clamping, outside pointer dismissal, keyboard navigation, focus trapping, and focus return.\n\n**Manual remainder**\nRun visual smoke for every current dialog/menu at desktop, narrow mobile, and 200% zoom to confirm no presentation regression.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-032",
           "title": "Remove stale flags, dead paths, and duplicated mutation vocabulary",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "core",
             "quality"

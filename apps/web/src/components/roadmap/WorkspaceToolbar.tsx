@@ -1,7 +1,15 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { Icon } from '@/components/ui/Icon'
+import { AnchoredOverlay } from '@/components/ui/AnchoredOverlay'
 import type {
   FilterState,
   TaskClaimFilter,
@@ -81,9 +89,10 @@ export function WorkspaceToolbar({
   canTogglePhaseExpansion,
 }: WorkspaceToolbarProps) {
   const [filterOpen, setFilterOpen] = useState(false)
-  const filterRef = useRef<HTMLDivElement | null>(null)
+  const filterAnchorRef = useRef<HTMLButtonElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
   const activityHelpId = useId()
+  const closeFilters = useCallback(() => setFilterOpen(false), [])
   const activeCount = [
     filterState.status !== 'all',
     filterState.assignees.length > 0,
@@ -92,24 +101,6 @@ export function WorkspaceToolbar({
     filterState.claim !== 'all',
     filterState.recommended,
   ].filter(Boolean).length
-
-  useEffect(() => {
-    if (!filterOpen) return
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (target instanceof Node && filterRef.current?.contains(target)) return
-      setFilterOpen(false)
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setFilterOpen(false)
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [filterOpen])
 
   useEffect(() => {
     if (workspaceView !== 'roadmap') return
@@ -206,8 +197,9 @@ export function WorkspaceToolbar({
               />
             </div>
 
-            <div className="task-filter" ref={filterRef}>
+            <div className="task-filter">
               <button
+                ref={filterAnchorRef}
                 type="button"
                 className={`task-filter-trigger ${filterOpen ? 'open' : ''}`}
                 aria-expanded={filterOpen}
@@ -218,8 +210,14 @@ export function WorkspaceToolbar({
                 Filters{activeCount > 0 ? ` (${activeCount})` : ''}
                 <Icon name="chevron-down" size={13} />
               </button>
-              {filterOpen && (
-                <div className="filter-panel" role="dialog" aria-label="Task filters">
+              <AnchoredOverlay
+                open={filterOpen}
+                anchorRef={filterAnchorRef}
+                role="dialog"
+                ariaLabel="Task filters"
+                className="filter-panel"
+                onClose={closeFilters}
+              >
                   <FilterSelect
                     label="Status"
                     value={filterState.status}
@@ -302,8 +300,7 @@ export function WorkspaceToolbar({
                   >
                     Clear filters
                   </button>
-                </div>
-              )}
+              </AnchoredOverlay>
             </div>
 
             <button

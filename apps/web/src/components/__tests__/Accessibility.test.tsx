@@ -224,9 +224,9 @@ describe('Accessibility Unit Tests', () => {
         </Modal>
       )
     })
-    const modalContainer = container.querySelector('[role="dialog"]')
+    const modalContainer = document.body.querySelector('[role="dialog"]')
     expect(modalContainer).not.toBeNull()
-    const heading = container.querySelector('h2')
+    const heading = document.body.querySelector('h2')
     expect(heading?.textContent).toBe('My Accessible Dialog')
     expect(modalContainer?.getAttribute('aria-labelledby')).toBe(heading?.getAttribute('id'))
 
@@ -244,7 +244,7 @@ describe('Accessibility Unit Tests', () => {
         />
       )
     })
-    const confirmModal = container.querySelector('[role="alertdialog"]')
+    const confirmModal = document.body.querySelector('[role="alertdialog"]')
     expect(confirmModal).not.toBeNull()
   })
 
@@ -260,7 +260,7 @@ describe('Accessibility Unit Tests', () => {
     await act(async () => {
       await new Promise((resolve) => window.requestAnimationFrame(resolve))
     })
-    const modalContainer = container.querySelector('[role="dialog"]') as HTMLDivElement
+    const modalContainer = document.body.querySelector('[role="dialog"]') as HTMLDivElement
     expect(document.activeElement).toBe(modalContainer)
 
     // ConfirmDialog standard tone focuses Confirm button
@@ -279,7 +279,7 @@ describe('Accessibility Unit Tests', () => {
         />
       )
     })
-    const confirmBtn = Array.from(container.querySelectorAll('button')).find(
+    const confirmBtn = Array.from(document.body.querySelectorAll('button')).find(
       (btn) => btn.textContent === 'Confirm'
     )
     expect(document.activeElement).toBe(confirmBtn)
@@ -300,7 +300,7 @@ describe('Accessibility Unit Tests', () => {
         />
       )
     })
-    const cancelBtn = Array.from(container.querySelectorAll('button')).find(
+    const cancelBtn = Array.from(document.body.querySelectorAll('button')).find(
       (btn) => btn.textContent === 'Cancel'
     )
     expect(document.activeElement).toBe(cancelBtn)
@@ -316,8 +316,8 @@ describe('Accessibility Unit Tests', () => {
         </Modal>
       )
     })
-    const closeBtn = container.querySelector('button.close') as HTMLButtonElement
-    const btn2 = container.querySelector('#btn2') as HTMLButtonElement
+    const closeBtn = document.body.querySelector('button.close') as HTMLButtonElement
+    const btn2 = document.body.querySelector('#btn2') as HTMLButtonElement
 
     btn2.focus()
     expect(document.activeElement).toBe(btn2)
@@ -368,6 +368,52 @@ describe('Accessibility Unit Tests', () => {
     const escEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
     window.dispatchEvent(escEvent)
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('keeps Escape and focus ownership with the topmost nested modal', () => {
+    function NestedModalHarness() {
+      const [confirmOpen, setConfirmOpen] = React.useState(false)
+      const closeOuter = React.useCallback(() => {}, [])
+      return (
+        <Modal open={true} onClose={closeOuter} title="Tag registry">
+          <button type="button" onClick={() => setConfirmOpen(true)}>
+            Delete tag
+          </button>
+          <ConfirmDialog
+            open={confirmOpen}
+            title="Delete tag?"
+            message="This tag is in use."
+            confirmLabel="Delete"
+            tone="danger"
+            onConfirm={vi.fn()}
+            onClose={() => setConfirmOpen(false)}
+          />
+        </Modal>
+      )
+    }
+
+    act(() => root.render(<NestedModalHarness />))
+    const outerDialog = document.body.querySelector('[role="dialog"]') as HTMLElement
+    const openConfirm = outerDialog.querySelector('button:not(.close)') as HTMLButtonElement
+    expect(container.querySelector('.modal-scrim')).toBeNull()
+    expect(outerDialog.closest('.modal-scrim')?.parentElement).toBe(document.body)
+
+    act(() => {
+      openConfirm.focus()
+      openConfirm.click()
+    })
+    expect(document.body.querySelector('[role="alertdialog"]')).not.toBeNull()
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+      }))
+    })
+
+    expect(document.body.querySelector('[role="alertdialog"]')).toBeNull()
+    expect(document.body.querySelector('[role="dialog"]')).toBe(outerDialog)
+    expect(document.activeElement).toBe(openConfirm)
   })
 
   it('verifies focus restoration in Modal', async () => {

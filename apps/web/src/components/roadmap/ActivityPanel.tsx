@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Icon } from '@/components/ui/Icon'
+import { SidePanel } from '@/components/ui/SidePanel'
 import { getRoadmapActivity } from '@/services/roadmap-realtime.service'
 import { isApiConnectionError } from '@/services/roadmap-http'
 import {
@@ -232,14 +233,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
   }
 
   return (
-    <div className="slide-panel activity-panel">
-      <div className="panel-head">
-        <h3>Activity</h3>
-        <button className="close-btn" onClick={onClose}>
-          <Icon name="x" size={18} />
-        </button>
-      </div>
-
+    <SidePanel title="Activity" className="activity-panel" onClose={onClose}>
       <div className="panel-body">
         {state === 'loading' ? (
           <div className="state-msg">
@@ -291,6 +285,6 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
           </div>
         )}
       </div>
-    </div>
+    </SidePanel>
   )
 }

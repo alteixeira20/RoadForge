@@ -122,10 +122,6 @@
   color: var(--ember);
 }
 .filter-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: var(--z-popover);
   width: 290px;
   display: grid;
   gap: 10px;
@@ -255,8 +251,6 @@
   .workspace-bar .search input { min-width: 0; }
   .task-filter { flex: 0 0 124px; min-width: 0; }
   .filter-panel {
-    left: 0;
-    right: auto;
     max-width: calc(100vw - 32px);
     width: 280px;
   }

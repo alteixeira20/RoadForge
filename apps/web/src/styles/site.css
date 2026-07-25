@@ -2,7 +2,7 @@
 
 /* ─── Site header ──────────────────────────────────────────────────────────── */
 .site-header {
-  position: sticky; top: 0; z-index: 50;
+  position: sticky; top: 0; z-index: var(--z-header);
   display: flex; align-items: center; gap: 24px;
   padding: 16px 32px;
   background: color-mix(in oklab, var(--bg) 88%, transparent);

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { canRestoreFocus, trapDialogTabFocus } from '@/lib/dialog-focus'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
@@ -27,6 +28,14 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
   const titleId = useId()
   const descriptionId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null)
+  const wasOpenRef = useRef(false)
+  if (open && !wasOpenRef.current && typeof document !== 'undefined') {
+    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+  }
+  wasOpenRef.current = open
   const ariaDescription = [
     sub ? descriptionId : null,
     describedBy,
@@ -37,17 +46,18 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
     const dialog = dialogRef.current
     if (!dialog) return
 
-    const previouslyFocused = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null
     const focusFrame = window.requestAnimationFrame(() => {
       if (!dialog.contains(document.activeElement)) {
         dialog.focus()
       }
     })
     const onKey = (event: KeyboardEvent) => {
+      const openDialogs = document.querySelectorAll<HTMLElement>('[aria-modal="true"]')
+      const isTopmost = openDialogs.item(openDialogs.length - 1) === dialog
+      if (!isTopmost) return
       if (event.key === 'Escape') {
         if (event.defaultPrevented) return
+        event.preventDefault()
         onClose()
         return
       }
@@ -59,6 +69,7 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
       window.cancelAnimationFrame(focusFrame)
       window.removeEventListener('keydown', onKey)
 
+      const previouslyFocused = previouslyFocusedRef.current
       if (canRestoreFocus(previouslyFocused)) {
         const currentActive = document.activeElement
         const focusInside = currentActive instanceof Node && dialog.contains(currentActive)
@@ -70,9 +81,9 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
     }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!open || typeof document === 'undefined') return null
 
-  return (
+  return createPortal(
     <div className="modal-scrim">
       <div
         ref={dialogRef}
@@ -101,6 +112,7 @@ export function Modal({ open, onClose, icon, title, sub, describedBy, children, 
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

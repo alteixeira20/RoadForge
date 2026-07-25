@@ -237,7 +237,9 @@ describe('phase creation controls', () => {
     const filterButton = Array.from(container.querySelectorAll('button'))
       .find((candidate) => candidate.textContent?.includes('Filters'))
     act(() => filterButton?.click())
-    expect(container.textContent).toContain('Choose phase...')
+    const filterDialog = document.body.querySelector('[role="dialog"][aria-label="Task filters"]')
+    expect(filterDialog?.textContent).toContain('Choose phase...')
+    expect(filterDialog?.classList.contains('anchored-overlay')).toBe(true)
 
     act(() => {
       root.render(

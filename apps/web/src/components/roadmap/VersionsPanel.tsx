@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { SidePanel } from '@/components/ui/SidePanel'
 import { createRoadmapCheckpoint, getRoadmapVersions, restoreRoadmapVersion } from '@/services/roadmap-crud.service'
 import type { Roadmap, RoadmapVersionSummary } from '@/types/roadmap'
 
@@ -140,10 +141,11 @@ export function VersionsPanel({
       onConfirm={handleRestoreConfirm}
       onClose={handleRestoreCancel}
     />
-    <div className="slide-panel versions-panel">
-      <div className="panel-head">
-        <h3>Versions</h3>
-        {canManageVersions && (
+    <SidePanel
+      title="Versions"
+      className="versions-panel"
+      onClose={onClose}
+      headerActions={canManageVersions ? (
           <div className="panel-head-actions">
             <button
               className="btn sm ghost"
@@ -154,12 +156,8 @@ export function VersionsPanel({
               {checkpointLoading ? 'Saving…' : 'Create checkpoint'}
             </button>
           </div>
-        )}
-        <button className="close-btn" onClick={onClose}>
-          <Icon name="x" size={18} />
-        </button>
-      </div>
-
+      ) : undefined}
+    >
       <div className="panel-body">
         {!canManageVersions && (
           <div className="state-msg">
@@ -215,7 +213,7 @@ export function VersionsPanel({
           </div>
         )}
       </div>
-    </div>
+    </SidePanel>
     </>
   )
 }

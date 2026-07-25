@@ -14,6 +14,8 @@ let root: Root
 
 let mockIsSample = false
 let mockActiveRoadmapId = 'local-123'
+let mockServerRoadmapId: string | null = null
+let mockSessionToken: string | null = null
 
 vi.mock('@/context/RoadmapContext', () => ({
   useRoadmapData: () => ({
@@ -33,9 +35,9 @@ vi.mock('@/context/RoadmapContext', () => ({
     isSample: mockIsSample,
   }),
   useRoadmapSession: () => ({
-    serverRoadmapId: null,
+    serverRoadmapId: mockServerRoadmapId,
     setServerRoadmapId: vi.fn(),
-    sessionToken: null,
+    sessionToken: mockSessionToken,
     setSessionToken: vi.fn(),
     participantId: null,
     setParticipantId: vi.fn(),
@@ -92,6 +94,24 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     replace: vi.fn(),
   }),
+}))
+
+vi.mock('@/components/roadmap/ActivityPanel', () => ({
+  ActivityPanel: ({ onClose }: { onClose: () => void }) => (
+    <aside role="dialog" aria-label="Activity panel">
+      Activity panel
+      <button type="button" onClick={onClose}>Close activity</button>
+    </aside>
+  ),
+}))
+
+vi.mock('@/components/roadmap/VersionsPanel', () => ({
+  VersionsPanel: ({ onClose }: { onClose: () => void }) => (
+    <aside role="dialog" aria-label="Versions panel">
+      Versions panel
+      <button type="button" onClick={onClose}>Close versions</button>
+    </aside>
+  ),
 }))
 
 vi.mock('@/hooks/useWorkspaceModals', () => ({
@@ -254,6 +274,8 @@ beforeEach(() => {
   window.sessionStorage.clear()
   mockIsSample = false
   mockActiveRoadmapId = 'local-123'
+  mockServerRoadmapId = null
+  mockSessionToken = null
   vi.clearAllMocks()
 })
 
@@ -357,6 +379,27 @@ describe('WorkspaceHead unit tests for Sample Roadmap', () => {
 })
 
 describe('Workspace integration tests for onboarding dismissal', () => {
+  it('keeps Activity and Versions panels mutually exclusive', () => {
+    mockServerRoadmapId = 'server-123'
+    mockSessionToken = 'session-token'
+    storage.setOnboardingDismissed(mockActiveRoadmapId, true)
+    act(() => {
+      root.render(<Workspace mode="owner" onCreateOwn={vi.fn()} />)
+    })
+    const buttons = Array.from(container.querySelectorAll('button'))
+    const activityButton = buttons.find((button) => button.textContent?.includes('Activity')) as HTMLButtonElement
+    const versionsButton = buttons.find((button) => button.textContent?.includes('Versions')) as HTMLButtonElement
+
+    act(() => activityButton.click())
+    expect(container.querySelector('[aria-label="Activity panel"]')).not.toBeNull()
+    expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+
+    act(() => versionsButton.click())
+    expect(container.querySelector('[aria-label="Activity panel"]')).toBeNull()
+    expect(container.querySelector('[aria-label="Versions panel"]')).not.toBeNull()
+    expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+  })
+
   it('shows welcome banner when onboarding is not dismissed', () => {
     expect(storage.hasDismissedOnboarding()).toBe(false)
     act(() => {

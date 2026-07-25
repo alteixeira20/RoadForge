@@ -56,6 +56,19 @@ Old roadmap snapshots pass through `roadmap-upgrade.ts` before rendering.
 - `SyncStatusIndicator` presents local/live/saving/updating/reconnecting/offline/conflict
   state.
 
+## Overlay and focus ownership
+
+- `AnchoredOverlay` owns portal rendering, collision-aware placement, viewport
+  clamping, resize/scroll repositioning, dismissal, keyboard navigation, and focus
+  return for toolbar and header popovers.
+- `Modal` owns portalled modal-dialog focus trapping. When dialogs are nested, only
+  the topmost dialog handles Escape and Tab before returning focus to its parent.
+- `SidePanel` owns Activity and Versions panel structure, initial focus, Escape, and
+  focus return. Workspace keeps those panels mutually exclusive.
+- Layer ordering is defined only by the `--z-*` tokens in `styles/tokens.css`:
+  local popovers, workspace/site headers, dropdowns, anchored overlays, side panels,
+  modal dialogs and wizards, then toasts.
+
 ## Service boundary
 
 Only modules under `src/services/` call `fetch()`:

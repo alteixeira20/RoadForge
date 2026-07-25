@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useCallback, useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { AnchoredOverlay } from '@/components/ui/AnchoredOverlay'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { storage, type AuthCache, type RoadmapCache } from '@/lib/storage'
@@ -53,23 +54,17 @@ export function RoadmapSwitcher({
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  const menuRef = useRef<HTMLDivElement>(null)
+  const anchorRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    const handleDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-        setShowAddForm(false)
-        setError(null)
-      }
-    }
-    if (isOpen) document.addEventListener('mousedown', handleDown)
-    return () => document.removeEventListener('mousedown', handleDown)
-  }, [isOpen])
+  const closeSwitcher = useCallback(() => {
+    setIsOpen(false)
+    setShowAddForm(false)
+    setError(null)
+  }, [])
 
   const caches = mounted ? storage.listRoadmapCaches() : []
   const visibleCaches = caches
@@ -83,7 +78,7 @@ export function RoadmapSwitcher({
   }
 
   const handleCreateNew = () => {
-    setIsOpen(false)
+    closeSwitcher()
     if (onCreate) {
       onCreate()
       return
@@ -94,7 +89,7 @@ export function RoadmapSwitcher({
   const handleActivateRoadmap = (id: string) => {
     const auth = storage.getAuthCache(id)
     activateRoadmap(id)
-    setIsOpen(false)
+    closeSwitcher()
     router.push(getRoadmapPath(id, auth?.role))
   }
 
@@ -135,8 +130,7 @@ export function RoadmapSwitcher({
       }
 
       activateRoadmap(roadmapId)
-      setIsOpen(false)
-      setShowAddForm(false)
+      closeSwitcher()
       setInviteLink('')
       setPassword('')
       setNeedsPassword(false)
@@ -201,13 +195,19 @@ export function RoadmapSwitcher({
   const isWorkspaceVariant = variant === 'workspace'
 
   return (
-    <div className={`roadmap-switcher ${variant}`} ref={menuRef}>
+    <div className={`roadmap-switcher ${variant}`}>
       <button
+        ref={anchorRef}
         className={isWorkspaceVariant ? 'roadmap-menu-trigger' : 'iconbtn'}
         title={label}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (isOpen) closeSwitcher()
+          else setIsOpen(true)
+        }}
         aria-label={label}
         aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        aria-controls="roadmap-switcher-dialog"
       >
         {isWorkspaceVariant ? (
           <>
@@ -219,8 +219,15 @@ export function RoadmapSwitcher({
         )}
       </button>
 
-      {isOpen && (
-        <div className="switcher-dropdown">
+      <AnchoredOverlay
+        id="roadmap-switcher-dialog"
+        open={isOpen}
+        anchorRef={anchorRef}
+        role="dialog"
+        ariaLabel="Your roadmaps"
+        className="switcher-dropdown"
+        onClose={closeSwitcher}
+      >
           <div className="switcher-head">
             <div>Your roadmaps</div>
             <div>Stored on this browser</div>
@@ -281,8 +288,7 @@ export function RoadmapSwitcher({
               </div>
             )}
           </div>
-        </div>
-      )}
+      </AnchoredOverlay>
       <Modal
         open={deleteTarget !== null}
         onClose={() => { setDeleteTarget(null); setError(null) }}

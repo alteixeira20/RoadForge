@@ -527,8 +527,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           allOpen={allOpen}
           onCollapseAll={collapseAll}
           onExpandAll={expandAll}
-          onOpenActivity={() => setShowActivity(true)}
-          onOpenVersions={() => setShowVersions(true)}
+          onOpenActivity={() => {
+            setShowVersions(false)
+            setShowActivity(true)
+          }}
+          onOpenVersions={() => {
+            setShowActivity(false)
+            setShowVersions(true)
+          }}
           onOpenTagRegistry={openTagRegistry}
           onAddPhase={handleAddPhaseRequest}
           readOnly={readOnly}

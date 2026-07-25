@@ -79,12 +79,15 @@
   --workspace-y-pad-top: 40px;
   --workspace-y-pad-bottom: 80px;
 
-  --z-header: 50;
+  /* Layer contract: local content < sticky chrome < menus < portalled overlays
+     < side panels < modal dialogs < transient notifications. */
   --z-popover: 30;
+  --z-workspace-header: 40;
+  --z-header: 50;
+  --z-dropdown: 60;
   --z-anchored-overlay: 70;
-  --z-modal: 80;
-  --z-dropdown: 100;
-  --z-panel: 100;
+  --z-panel: 80;
+  --z-modal: 100;
   --z-wizard: 100;
-  --z-toast: 200;
+  --z-toast: 120;
 }
