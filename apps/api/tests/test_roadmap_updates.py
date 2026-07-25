@@ -173,7 +173,21 @@ async def test_owner_can_update_phases(client: AsyncClient):
     assert data["phases"][0]["tasks"][0]["title"] == "First task"
 
 
-async def test_valid_change_summary_action_is_accepted(client: AsyncClient):
+@pytest.mark.parametrize(
+    "action",
+    [
+        "phase.created",
+        "phase.updated",
+        "phase.deleted",
+        "phase.reordered",
+        "phase.completed",
+        "phase.reopened",
+    ],
+)
+async def test_phase_change_summary_actions_are_recorded(
+    client: AsyncClient,
+    action: str,
+):
     body = await create_roadmap(client)
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
@@ -184,7 +198,11 @@ async def test_valid_change_summary_action_is_accepted(client: AsyncClient):
         json={
             "name": "Summary Test",
             "last_updated_at": body["updated_at"],
-            "change_summary": {"action": "roadmap.updated"},
+            "change_summary": {
+                "action": action,
+                "phaseId": "rf-p-1",
+                "phaseName": "Planning",
+            },
         },
     )
     assert resp.status_code == 200
@@ -195,7 +213,7 @@ async def test_valid_change_summary_action_is_accepted(client: AsyncClient):
     )
     assert activity_resp.status_code == 200
     actions = [log["action"] for log in activity_resp.json()["logs"]]
-    assert "roadmap.updated" in actions
+    assert action in actions
 
 
 async def test_owner_can_update_name_and_phases_together(client: AsyncClient):

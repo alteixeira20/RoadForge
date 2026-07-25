@@ -17,6 +17,14 @@ const phase: Phase = {
   tasks: [],
 }
 
+const deliveryPhase: Phase = {
+  ...phase,
+  id: 'rf-p-2',
+  num: '02',
+  name: 'Delivery',
+  status: 'future',
+}
+
 type MutationParams = Parameters<typeof usePhaseMutations>[0]
 type Mutations = ReturnType<typeof usePhaseMutations>
 
@@ -31,7 +39,7 @@ function Harness({
   return null
 }
 
-describe('usePhaseMutations phase creation', () => {
+describe('usePhaseMutations', () => {
   let container: HTMLDivElement
   let root: Root
 
@@ -122,6 +130,108 @@ describe('usePhaseMutations phase creation', () => {
     const harness = renderMutations({ readOnly: true })
 
     expect(harness.mutations.handleAddPhase()).toBeNull()
+    expect(harness.params.setPhases).not.toHaveBeenCalled()
+    expect(harness.params.setSaved).not.toHaveBeenCalled()
+    expect(harness.params.addPendingActivityChange).not.toHaveBeenCalled()
+  })
+
+  it('records rename, color, and color-mode changes with useful metadata', () => {
+    const rename = renderMutations()
+    act(() => rename.mutations.handleUpdatePhaseName(phase.id, 'Discovery'))
+    expect(rename.params.addPendingActivityChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'phase.updated',
+        phaseId: phase.id,
+        phaseField: 'name',
+        previousValue: 'Planning',
+        nextValue: 'Discovery',
+      }),
+    )
+
+    const color = renderMutations()
+    act(() => color.mutations.handleUpdatePhaseColor(phase.id, '#38bdf8'))
+    expect(color.params.addPendingActivityChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'phase.updated',
+        phaseId: phase.id,
+        phaseField: 'color',
+        previousValue: '#76746e',
+        nextValue: '#38bdf8',
+      }),
+    )
+
+    const mode = renderMutations()
+    act(() => mode.mutations.handleUpdatePhaseColorMode(phase.id, 'manual'))
+    expect(mode.params.addPendingActivityChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'phase.updated',
+        phaseId: phase.id,
+        phaseField: 'colorMode',
+        previousValue: 'auto',
+        nextValue: 'manual',
+      }),
+    )
+  })
+
+  it('records one reorder only for a changed, complete phase permutation', () => {
+    const harness = renderMutations({ phases: [phase, deliveryPhase] })
+
+    act(() => harness.mutations.handleReorderPhases([deliveryPhase.id, phase.id]))
+
+    expect(harness.params.setPhases).toHaveBeenCalledWith([
+      expect.objectContaining({ id: deliveryPhase.id, num: '01' }),
+      expect.objectContaining({ id: phase.id, num: '02' }),
+    ])
+    expect(harness.params.addPendingActivityChange).toHaveBeenCalledTimes(1)
+    expect(harness.params.addPendingActivityChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'phase.reordered',
+        entity_type: 'roadmap',
+        entity_id: 'roadmap-1',
+      }),
+    )
+
+    const unchanged = renderMutations({ phases: [phase, deliveryPhase] })
+    act(() => {
+      unchanged.mutations.handleReorderPhases([phase.id, deliveryPhase.id])
+      unchanged.mutations.handleReorderPhases([phase.id])
+      unchanged.mutations.handleReorderPhases([phase.id, phase.id])
+    })
+    expect(unchanged.params.setPhases).not.toHaveBeenCalled()
+    expect(unchanged.params.addPendingActivityChange).not.toHaveBeenCalled()
+  })
+
+  it('records deletion before renumbering and ignores a missing phase', () => {
+    const harness = renderMutations({ phases: [phase, deliveryPhase] })
+    act(() => harness.mutations.handleDeletePhase(phase.id))
+
+    expect(harness.params.setPhases).toHaveBeenCalledWith([
+      expect.objectContaining({ id: deliveryPhase.id, num: '01' }),
+    ])
+    expect(harness.params.addPendingActivityChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'phase.deleted',
+        phaseId: phase.id,
+        phaseNum: '01',
+        phaseName: 'Planning',
+      }),
+    )
+
+    const missing = renderMutations()
+    act(() => missing.mutations.handleDeletePhase('missing'))
+    expect(missing.params.setPhases).not.toHaveBeenCalled()
+    expect(missing.params.addPendingActivityChange).not.toHaveBeenCalled()
+  })
+
+  it('does not emit activity or dirty the roadmap for no-op updates', () => {
+    const harness = renderMutations()
+
+    act(() => {
+      harness.mutations.handleUpdatePhaseName(phase.id, phase.name)
+      harness.mutations.handleUpdatePhaseColorMode(phase.id, 'auto')
+      harness.mutations.handleUpdatePhaseColor('missing', '#38bdf8')
+    })
+
     expect(harness.params.setPhases).not.toHaveBeenCalled()
     expect(harness.params.setSaved).not.toHaveBeenCalled()
     expect(harness.params.addPendingActivityChange).not.toHaveBeenCalled()

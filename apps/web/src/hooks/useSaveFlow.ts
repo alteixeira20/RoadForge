@@ -3,7 +3,11 @@
 import { useState } from 'react'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
-import { buildChangeSummary, mergePendingActivityChange } from '@/lib/activity-changes'
+import {
+  buildChangeSummary,
+  mergePendingActivityChange,
+  removeAcknowledgedActivityChanges,
+} from '@/lib/activity-changes'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { classifyRoadmapSaveError } from '@/lib/roadmap-sync-errors'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
@@ -111,13 +115,15 @@ export function useSaveFlow({
     pendingActivityChanges,
     partialWriteInFlight,
     showActivity,
-    onSyncSuccess: (newUpdatedAt, isCurrent) => {
+    onSyncSuccess: (newUpdatedAt, isCurrent, acknowledgedActivityChanges) => {
       setUpdatedAt(newUpdatedAt)
+      setPendingActivityChanges((pending) => (
+        removeAcknowledgedActivityChanges(pending, acknowledgedActivityChanges)
+      ))
       // Skip if edits landed after this request captured its snapshot —
       // marking saved here would hide those edits from the next autosync.
       if (!isCurrent) return
       setSaved(true)
-      setPendingActivityChanges([])
     },
     onActivityRefresh: refreshActivity,
     onToast: showToast,

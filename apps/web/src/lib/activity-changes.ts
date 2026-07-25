@@ -30,6 +30,9 @@ const changePriority: Record<ActivityAction, number> = {
   'import.replaced': 1,
   'roadmap.restored': 1,
   'phase.created': 2,
+  'phase.updated': 2,
+  'phase.deleted': 2,
+  'phase.reordered': 7,
   'phase.completed': 2,
   'phase.reopened': 2,
   'task.created': 3,
@@ -54,6 +57,9 @@ export function countKeyForAction(action: ActivityAction): string {
     case 'roadmap.restored': return 'restores'
     case 'roadmap.renamed': return 'roadmaps_renamed'
     case 'phase.created': return 'phases_added'
+    case 'phase.updated': return 'phases_updated'
+    case 'phase.deleted': return 'phases_deleted'
+    case 'phase.reordered': return 'phases_reordered'
     case 'phase.completed': return 'phases_completed'
     case 'phase.reopened': return 'phases_reopened'
     case 'task.created': return 'tasks_added'
@@ -70,9 +76,35 @@ export function countKeyForAction(action: ActivityAction): string {
 
 export function dedupeKey(change: ActivityChange): string {
   if (change.taskId) return `task:${change.taskId}`
-  if (change.phaseId) return `phase:${change.phaseId}`
+  if (change.phaseId) {
+    if (change.action === 'phase.completed' || change.action === 'phase.reopened') {
+      return `phase:${change.phaseId}:completion`
+    }
+    if (change.action === 'phase.updated') {
+      return `phase:${change.phaseId}:updated:${change.phaseField || 'general'}`
+    }
+    return `phase:${change.phaseId}:${change.action}`
+  }
   if (change.action === 'roadmap.renamed') return 'roadmap:renamed'
   return `${change.action}:${change.entity_id || change.roadmapName || 'roadmap'}`
+}
+
+export function removeAcknowledgedActivityChanges(
+  pending: ActivityChange[],
+  acknowledged: ActivityChange[],
+): ActivityChange[] {
+  if (acknowledged.length === 0) return pending
+  const acknowledgedReferences = new Set(acknowledged)
+  return pending.filter((change) => !acknowledgedReferences.has(change))
+}
+
+export function getPhaseUpdateLabel(metadata: Record<string, unknown> | null): string {
+  switch (metadata?.phaseField) {
+    case 'name': return 'Renamed phase'
+    case 'color': return 'Changed phase color'
+    case 'colorMode': return 'Changed phase color mode'
+    default: return 'Updated phase'
+  }
 }
 
 export function areOppositeActions(a: ActivityAction, b: ActivityAction): boolean {
@@ -161,9 +193,15 @@ export function mergePendingActivityChange(prev: ActivityChange[], change: Activ
     ))
   }
   if (existing && existing.action === change.action) {
-    const merged = change.action === 'task.updated'
-      ? mergeTaskUpdateFields(existing, change)
-      : change
+    let merged = change
+    if (change.action === 'task.updated') {
+      merged = mergeTaskUpdateFields(existing, change)
+    } else if (change.action === 'phase.updated') {
+      merged = {
+        ...change,
+        previousValue: existing.previousValue ?? change.previousValue,
+      }
+    }
     return prev.map((item) => (dedupeKey(item) === key ? merged : item))
   }
   return [...prev, change]

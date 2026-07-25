@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   buildChangeSummary,
   getChangedTaskFields,
+  getPhaseUpdateLabel,
   getTaskUpdateFieldSummary,
   getTaskUpdateLabel,
   mergePendingActivityChange,
+  removeAcknowledgedActivityChanges,
 } from '@/lib/activity-changes'
 import type { ActivityChange, Task } from '@/types/roadmap'
 
@@ -99,5 +101,61 @@ describe('mergePendingActivityChange', () => {
     )
 
     expect(merged).toEqual([taskUpdate(undefined)])
+  })
+
+  it('keeps distinct phase mutation kinds while merging repeated edits to one field', () => {
+    const rename: ActivityChange = {
+      action: 'phase.updated',
+      phaseId: 'rf-p-1',
+      phaseField: 'name',
+      previousValue: 'Planning',
+      nextValue: 'Discovery',
+    }
+    const nextRename = {
+      ...rename,
+      previousValue: 'Discovery',
+      nextValue: 'Planning complete',
+    }
+    const color: ActivityChange = {
+      action: 'phase.updated',
+      phaseId: 'rf-p-1',
+      phaseField: 'color',
+      nextValue: '#38bdf8',
+    }
+
+    const withColor = mergePendingActivityChange([rename], color)
+    expect(withColor).toEqual([rename, color])
+    expect(mergePendingActivityChange(withColor, nextRename)).toEqual([
+      { ...nextRename, previousValue: 'Planning' },
+      color,
+    ])
+  })
+})
+
+describe('autosync activity acknowledgement', () => {
+  it('removes only object references captured by the completed request', () => {
+    const captured = taskUpdate(['title'])
+    const untouched = taskUpdate(['desc'])
+    const replacement = { ...captured, taskTitle: 'Edited while saving' }
+
+    expect(removeAcknowledgedActivityChanges(
+      [captured, untouched],
+      [captured],
+    )).toEqual([untouched])
+    expect(removeAcknowledgedActivityChanges(
+      [replacement, untouched],
+      [captured],
+    )).toEqual([replacement, untouched])
+  })
+})
+
+describe('phase update activity text', () => {
+  it.each([
+    ['name', 'Renamed phase'],
+    ['color', 'Changed phase color'],
+    ['colorMode', 'Changed phase color mode'],
+    [undefined, 'Updated phase'],
+  ] as const)('labels %s changes', (phaseField, label) => {
+    expect(getPhaseUpdateLabel(phaseField ? { phaseField } : null)).toBe(label)
   })
 })

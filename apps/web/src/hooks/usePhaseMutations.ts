@@ -57,6 +57,18 @@ export function usePhaseMutations({
         p.id === phaseId ? { ...p, color, colorMode: 'manual' as const } : p
       )),
     )
+    addPendingActivityChange({
+      action: 'phase.updated',
+      entity_type: 'phase',
+      entity_id: phase.id,
+      phaseId: phase.id,
+      phaseName: phase.name,
+      phaseNum: phase.num,
+      phaseField: 'color',
+      previousValue: phase.color,
+      nextValue: color,
+      details: `${phase.num} — ${phase.name}`,
+    })
     setSaved(false)
   }
 
@@ -67,6 +79,18 @@ export function usePhaseMutations({
     setPhases(phases.map((item) => (
       item.id === phaseId ? { ...item, colorMode } : item
     )))
+    addPendingActivityChange({
+      action: 'phase.updated',
+      entity_type: 'phase',
+      entity_id: phase.id,
+      phaseId: phase.id,
+      phaseName: phase.name,
+      phaseNum: phase.num,
+      phaseField: 'colorMode',
+      previousValue: phase.colorMode,
+      nextValue: colorMode,
+      details: `${phase.num} — ${phase.name}`,
+    })
     setSaved(false)
   }
 
@@ -79,11 +103,30 @@ export function usePhaseMutations({
     setPhases(
       phases.map((p) => (p.id === phaseId ? { ...p, name } : p)),
     )
+    addPendingActivityChange({
+      action: 'phase.updated',
+      entity_type: 'phase',
+      entity_id: phase.id,
+      phaseId: phase.id,
+      phaseName: name,
+      phaseNum: phase.num,
+      phaseField: 'name',
+      previousValue: phase.name,
+      nextValue: name,
+      details: `${phase.num} — ${name}`,
+    })
     setSaved(false)
   }
 
   const handleReorderPhases = (phaseIds: string[]) => {
     if (readOnly) return
+    const uniqueIds = new Set(phaseIds)
+    const isExactPhaseSet = phaseIds.length === phases.length
+      && uniqueIds.size === phases.length
+      && phases.every((phase) => uniqueIds.has(phase.id))
+    const orderChanged = phaseIds.some((id, index) => id !== phases[index]?.id)
+    if (!isExactPhaseSet || !orderChanged) return
+
     const reordered = renumberPhases(
       phaseIds
         .map((id) => phases.find((p) => p.id === id))
@@ -91,17 +134,30 @@ export function usePhaseMutations({
     )
     setPhases(reordered)
     addPendingActivityChange({
-      action: 'roadmap.phases_reordered',
+      action: 'phase.reordered',
       entity_type: 'roadmap',
       entity_id: serverRoadmapId || undefined,
+      details: `${phases.length} phases`,
     })
     setSaved(false)
   }
 
   const handleDeletePhase = (phaseId: string) => {
     if (readOnly) return
+    const phase = phases.find((item) => item.id === phaseId)
+    if (!phase) return
+
     const remaining = phases.filter((p) => p.id !== phaseId)
     setPhases(renumberPhases(remaining))
+    addPendingActivityChange({
+      action: 'phase.deleted',
+      entity_type: 'phase',
+      entity_id: phase.id,
+      phaseId: phase.id,
+      phaseName: phase.name,
+      phaseNum: phase.num,
+      details: `${phase.num} — ${phase.name}`,
+    })
     setSaved(false)
   }
 

@@ -385,7 +385,7 @@
           "id": "RF-018",
           "title": "Make phase mutation persistence and activity consistent",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "core",
             "sync",
@@ -396,13 +396,13 @@
             "RF-016"
           ],
           "est": "2 days",
-          "desc": "**Why**\nParticipants need truthful, useful history for structural changes.\n\n**Finding**\nOnly reorder calls `addPendingActivityChange`; rename, delete, color, and color-mode mutations merely set state unsaved. Create is absent.\n\n**Scope**\nDefine canonical phase mutation/activity vocabulary and no-op rules; make local/synced persistence and attribution consistent without duplicate events.\n\n**Acceptance criteria**\nCreate, rename, delete, reorder, color, and color-mode each produce at most one useful activity event when changed and none for no-ops; synced save retains the events.\n\n**Validation / gate**\nFocused mutation/activity tests and two-session manual check.\n\n**Risk**\nMissing or duplicate structural history undermines collaboration recovery.\n\n**Evidence**\n`usePhaseMutations.ts`, `activity-changes.ts`, `useSaveFlow.ts`.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nParticipants need truthful, useful history for structural changes.\n\n**Finding**\nCreate was the only fully attributed structural phase mutation; other phase changes were missing events or used legacy reorder vocabulary, and an edit landing during an in-flight autosync could retain acknowledged activity or miss its retry.\n\n**Scope**\nDefine canonical phase mutation/activity vocabulary and no-op rules; make local/synced persistence and attribution consistent without duplicate events.\n\n**Acceptance criteria**\nCreate, rename, delete, reorder, color, and color-mode each produce at most one useful activity event when changed and none for no-ops; synced save retains the events.\n\n**Validation / gate**\nFocused mutation/activity tests and two-session manual check.\n\n**Implementation status**\nAutomated implementation is complete. Phase mutations emit `phase.created`, `phase.updated`, `phase.deleted`, or `phase.reordered` with useful field and phase metadata; unchanged, missing, duplicate, and malformed operations emit nothing. Pending activity now acknowledges only the object references captured by a successful request, preserves newer edits, and retries a debounce blocked by an in-flight save. Activity labels and batch counts cover the canonical vocabulary while legacy reorder display remains compatible. Twenty-five focused frontend tests pass; lint, typecheck, and direct validation of all six backend phase actions pass. A database-backed API regression is prepared but requires the repository test PostgreSQL service. Remaining gate: run that API test and verify attribution, save, and realtime refresh in the manual two-session check.\n\n**Risk**\nMissing or duplicate structural history undermines collaboration recovery.\n\n**Evidence**\n`usePhaseMutations.ts`, `activity-changes.ts`, `useAutoSync.ts`, `useSaveFlow.ts`, `ActivityPanel.tsx`, and focused web/API regressions.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-019",
           "title": "Protect destructive final-phase and empty-workspace paths",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "core",
             "ui",

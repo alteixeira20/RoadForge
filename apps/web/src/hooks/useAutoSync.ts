@@ -18,7 +18,11 @@ interface AutoSyncParams {
   pendingActivityChanges: ActivityChange[]
   partialWriteInFlight: boolean
   showActivity: boolean
-  onSyncSuccess: (updatedAt: string, isCurrent: boolean) => void
+  onSyncSuccess: (
+    updatedAt: string,
+    isCurrent: boolean,
+    acknowledgedActivityChanges: ActivityChange[],
+  ) => void
   onActivityRefresh: () => void
   onToast: (msg: string) => void
   onSessionExpired: () => void
@@ -115,9 +119,13 @@ export function useAutoSync({
     if (!serverRoadmapId || !sessionToken || readOnly || saved || partialWriteInFlight) return
 
     const requestRevision = revisionRef.current
+    let cancelled = false
 
-    syncTimerRef.current = setTimeout(async () => {
-      if (isSyncingRef.current) return
+    const runSync = async () => {
+      if (isSyncingRef.current) {
+        if (!cancelled) syncTimerRef.current = setTimeout(runSync, 250)
+        return
+      }
       isSyncingRef.current = true
       setIsSyncing(true)
 
@@ -155,7 +163,7 @@ export function useAutoSync({
       const changeSummary = buildChangeSummary(pac, rid)
       try {
         const data = await saveToServer(rid, n, p, tok, ua, changeSummary, tr)
-        syncSuccess(data.updated_at, requestRevision === revisionRef.current)
+        syncSuccess(data.updated_at, requestRevision === revisionRef.current, pac)
         setIsOffline(false)
         setIsConflict(false)
         setConflictMetadata(null)
@@ -189,9 +197,12 @@ export function useAutoSync({
         isSyncingRef.current = false
         setIsSyncing(false)
       }
-    }, 1500)
+    }
+
+    syncTimerRef.current = setTimeout(runSync, 1500)
 
     return () => {
+      cancelled = true
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
     }
   // phases/roadmapName resets the debounce; other values read from syncParamsRef to avoid stale closures

@@ -149,6 +149,9 @@ export type ActivityAction =
   | 'roadmap.batch_changed'
   | 'roadmap.phases_reordered'
   | 'phase.created'
+  | 'phase.updated'
+  | 'phase.deleted'
+  | 'phase.reordered'
   | 'phase.completed'
   | 'phase.reopened'
   | 'task.created'
@@ -169,6 +172,8 @@ export type TaskActivityField =
   | 'tags'
   | 'links'
 
+export type PhaseActivityField = 'name' | 'color' | 'colorMode'
+
 export interface ActivityChange {
   action: ActivityAction
   entity_type?: string
@@ -179,6 +184,9 @@ export interface ActivityChange {
   phaseId?: string
   phaseName?: string
   phaseNum?: string
+  phaseField?: PhaseActivityField
+  previousValue?: string
+  nextValue?: string
   parentId?: string
   dependencyId?: string
   dependencyTitle?: string

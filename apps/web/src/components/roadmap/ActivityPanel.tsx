@@ -5,6 +5,7 @@ import { Icon } from '@/components/ui/Icon'
 import { getRoadmapActivity } from '@/services/roadmap-realtime.service'
 import { isApiConnectionError } from '@/services/roadmap-http'
 import {
+  getPhaseUpdateLabel,
   getTaskUpdateFieldSummary,
   getTaskUpdateLabel,
 } from '@/lib/activity-changes'
@@ -77,6 +78,9 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
         return `Saved ${changes || 'multiple'} changes`
       }
       case 'phase.created': return 'Added phase'
+      case 'phase.updated': return getPhaseUpdateLabel(metadata)
+      case 'phase.deleted': return 'Deleted phase'
+      case 'phase.reordered': return 'Reordered phases'
       case 'phase.completed': return 'Completed phase'
       case 'phase.reopened': return 'Reopened phase'
       case 'task.created': return 'Added task'
@@ -110,6 +114,8 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
     }
     add('tasks_added', 'task added', 'tasks added')
     add('phases_added', 'phase added', 'phases added')
+    add('phases_updated', 'phase updated', 'phases updated')
+    add('phases_deleted', 'phase deleted', 'phases deleted')
     add('phases_completed', 'phase completed', 'phases completed')
     add('phases_reopened', 'phase reopened', 'phases reopened')
     add('tasks_completed', 'task completed', 'tasks completed')
@@ -164,7 +170,25 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
       const details = getBatchDetails(metadata_json)
       return details ? <span>{details}</span> : <span className="dim">Snapshot saved</span>
     }
-    if (action === 'phase.created' || action === 'phase.completed' || action === 'phase.reopened') {
+    if (
+      action === 'phase.created'
+      || action === 'phase.updated'
+      || action === 'phase.deleted'
+      || action === 'phase.completed'
+      || action === 'phase.reopened'
+    ) {
+      if (
+        action === 'phase.updated'
+        && metadata_json?.previousValue
+        && metadata_json?.nextValue
+      ) {
+        const phase = [metadata_json.phaseNum, metadata_json.phaseName]
+          .filter(Boolean)
+          .map(String)
+          .join(' — ')
+        const change = `${String(metadata_json.previousValue)} to ${String(metadata_json.nextValue)}`
+        return <span>{phase}{phase ? ' · ' : ''}{change}</span>
+      }
       if (metadata_json?.details) return <span>{String(metadata_json.details)}</span>
       if (metadata_json?.phaseNum || metadata_json?.phaseName) {
         return <span>{[metadata_json.phaseNum, metadata_json.phaseName].filter(Boolean).map(String).join(' — ')}</span>
@@ -194,6 +218,11 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
         return <span>Phase {String(metadata_json?.phaseName || metadata_json?.phaseId)}</span>
       }
       return <span>{String(metadata_json?.taskId)} — {String(metadata_json?.taskTitle)}</span>
+    }
+    if (action === 'phase.reordered' || action === 'roadmap.phases_reordered') {
+      return metadata_json?.details
+        ? <span>{String(metadata_json.details)}</span>
+        : <span className="dim">Phase order changed</span>
     }
     if (action === 'participant.revoked') {
       const label = [metadata_json?.display_name, metadata_json?.role].filter(Boolean).map(String).join(' · ')
