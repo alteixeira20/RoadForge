@@ -501,7 +501,7 @@
       "color": "#6b8e7b",
       "colorMode": "auto",
       "status": "future",
-      "progress": 33,
+      "progress": 67,
       "tasks": [
         {
           "id": "RF-024",
@@ -542,8 +542,8 @@
         {
           "id": "RF-026",
           "title": "Inventory and remove low-value or dead visible controls",
-          "done": false,
-          "next": true,
+          "done": true,
+          "next": false,
           "tags": [
             "ui",
             "docs"
@@ -553,7 +553,7 @@
             "RF-020"
           ],
           "est": "2 days",
-          "desc": "**Why**\nA calm interface should expose only meaningful outcomes.\n\n**Finding**\nNo confirmed dead control was found in the sampled UI, but secondary action density and stale wording warrant a value-first inventory.\n\n**Scope**\nClassify every visible control as essential, contextual, advanced, duplicated, deferred, or removable; implement only approved removals/consolidations.\n\n**Acceptance criteria**\nEach retained control has a user outcome, role behavior, and accessible label; no unshipped promise remains.\n\n**Validation / gate**\nUI inventory review and component tests for changed controls.\n\n**Risk**\nOver-pruning can hide required creation actions.\n\n**Evidence**\nWorkspace header/toolbar, footer, landing and share surfaces; classification likely.\n\n**Classification**\nlikely"
+          "desc": "**Why**\nA calm interface should expose only meaningful outcomes.\n\n**Finding**\nThe value-first inventory found no dead or safely removable visible control. Apparent duplicates provide responsive, accessible, or recovery paths; advanced actions are state-scoped and support portability, collaboration, or recovery. Report wording is now consistent.\n\n**Scope**\nClassify every visible control as essential, contextual, advanced, duplicated, deferred, or removable; implement only approved removals/consolidations.\n\n**Acceptance criteria**\nEach retained control has a user outcome, role behavior, and accessible label; no unshipped promise remains.\n\n**Validation / gate**\nUI inventory review and component tests for changed controls.\n\n**Risk**\nOver-pruning can hide required creation actions.\n\n**Evidence**\n`docs/ui-control-inventory.md`; landing, workspace, phase/task, modal, and recovery surfaces; focused footer accessibility regression.\n\n**Classification**\nconfirmed"
         }
       ]
     },
@@ -570,7 +570,7 @@
           "id": "RF-027",
           "title": "Complete the public GitHub issue chooser",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "contributors",
             "docs",

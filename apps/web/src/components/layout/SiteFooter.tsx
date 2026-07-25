@@ -21,7 +21,7 @@ export function SiteFooter() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Report an issue or give feedback
+          Report a problem
         </a>
         <span className="flex-1" />
         <span>Local-first. Portable. Self-hostable.</span>

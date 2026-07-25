@@ -68,7 +68,7 @@ describe('Accessibility Unit Tests', () => {
     })
 
     const feedbackLink = container.querySelector('a[href="https://github.com/alteixeira20/RoadForge/issues/new/choose"]')
-    expect(feedbackLink?.textContent).toBe('Report an issue or give feedback')
+    expect(feedbackLink?.textContent).toBe('Report a problem')
     expect(feedbackLink?.getAttribute('target')).toBe('_blank')
     expect(feedbackLink?.getAttribute('rel')).toBe('noopener noreferrer')
     expect(container.textContent).toContain('Local-first. Portable. Self-hostable.')
