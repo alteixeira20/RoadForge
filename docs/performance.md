@@ -66,23 +66,29 @@ budgets above are the gate.
 | Metric | Result | Budget |
 | --- | ---: | ---: |
 | Autosync request body | 297.0 KiB | 384 KiB |
-| Parse, upgrade, hydration preparation | 22.3 ms | 400 ms |
-| Cache serialize/parse round trip | 3.3 ms | 150 ms |
-| Search/filter computation | 3.4 ms | 100 ms |
+| Parse, upgrade, hydration preparation | 27.5 ms | 400 ms |
+| Cache serialize/parse round trip | 2.0 ms | 150 ms |
+| Search/filter computation | 1.5 ms | 100 ms |
 | Display-number preparation | 0.5 ms | 150 ms |
-| Import parser | 3.3 ms | 250 ms |
-| JSON export | 18.0 ms | 250 ms |
-| Markdown export | 10.9 ms | 200 ms |
-| Production hydration to usable | 893.6 ms | 2,500 ms |
-| Controlled keystroke and caret | 48.3 ms | 500 ms |
-| Broad 1,000-task search stabilization | 1,480.8 ms | 2,000 ms |
-| Expand one 50-task phase | 309.9 ms | 750 ms |
+| Import parser | 2.9 ms | 250 ms |
+| JSON export | 9.3 ms | 250 ms |
+| Markdown export | 8.8 ms | 200 ms |
+| Production hydration to usable | 628.6 ms | 2,500 ms |
+| Controlled keystroke and caret | 80.8 ms | 500 ms |
+| Broad 1,000-task search stabilization | 1,764.1 ms | 2,000 ms |
+| Expand one 50-task phase | 435.1 ms | 750 ms |
 
-Browser timings vary noticeably between runs on the same machine. Across three
-consecutive runs, hydration measured 825–947 ms, keystroke/caret 48–185 ms,
-search stabilization 1,481–1,561 ms, and phase expansion 277–355 ms. Broad
-search has the least headroom of any metric — roughly 25% below its budget — so
-treat a search regression as the first signal worth investigating.
+Browser timings vary widely between runs on the same machine, so a single run is
+not a baseline. Across five consecutive runs, hydration measured 629–947 ms,
+keystroke/caret 48–185 ms, search stabilization 1,350–1,764 ms, and phase
+expansion 262–435 ms.
+
+Broad search has far less headroom than any other metric: its worst observed run
+sat about 12% below budget, while every other metric stayed several times
+clear. Treat a search regression as the first signal worth investigating, and
+expect this to be the metric that fails first on slower hardware. It is
+deliberately not exempted or given a looser budget — a gate that only just
+passes is the useful early warning here.
 
 ## Known boundaries
 
