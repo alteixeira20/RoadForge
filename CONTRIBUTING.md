@@ -21,11 +21,14 @@ is not granted by contributing.
   for bug, usability, feature, documentation, self-hosting, or accessibility reports.
 - Read the [issue reporting guide](docs/issue-reporting.md) before sharing
   diagnostics; never attach roadmap exports, private logs, tokens, or secrets.
-- Report vulnerabilities privately through [GitHub security advisories](../../security/advisories/new), not a public issue.
+- Report vulnerabilities privately through [GitHub security advisories](https://github.com/alteixeira20/RoadForge/security/advisories/new), not a public issue.
 
 ## Development
 
-Prerequisites and commands are documented in `README.md`.
+Follow the [contributor guide](docs/contributor-guide.md) for the fresh-clone
+walkthrough, architecture and module ownership, roadmap schema, storage and
+security boundaries, tests, migrations, triage, and good-first-issue policy.
+Runtime prerequisites and commands are also indexed in [README.md](README.md).
 
 Run focused tests while developing. Before opening a pull request, run the complete
 repository gate:

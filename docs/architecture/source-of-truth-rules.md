@@ -6,10 +6,10 @@ Date: 2026-07-04
 ## Context
 
 RoadForge is an accountless, local-first roadmap planning tool. A roadmap can
-exist only in the browser or be synchronized with RoadForge's API. Planned
-GitHub links will connect roadmap tasks to implementation work, but must not
-blur ownership of planning state, implementation state, credentials, or
-portable roadmap data.
+exist only in the browser or be synchronized with RoadForge's API. External
+task links can connect roadmap tasks to implementation work, but must not blur
+ownership of planning state, implementation state, credentials, or portable
+roadmap data.
 
 Focused task write endpoints are also replacing some aggregate saves. That work
 must reduce full-snapshot write amplification without changing which data is

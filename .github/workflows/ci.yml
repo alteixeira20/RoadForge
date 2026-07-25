@@ -160,7 +160,7 @@ jobs:
         working-directory: apps/api
         env:
           TEST_DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge_test
-        run: pytest tests/ -v
+        run: python3 -m pytest -q
 
   js-audit:
     name: JS Dependency Audit

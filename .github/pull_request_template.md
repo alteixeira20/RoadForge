@@ -16,7 +16,7 @@
 
 ## Risk and compatibility
 
-<!-- Describe behavior, security, data, deployment, or import/export risks. -->
+<!-- Describe behavior, security, data/storage, deployment, migration, or import/export risks and recovery. -->
 
 ## Screenshots
 
@@ -31,4 +31,6 @@
 - [ ] Documentation was updated when contracts or behavior changed, or this is not applicable.
 - [ ] No credentials, invite links, tokens, passwords, private roadmaps, or generated artifacts were committed.
 - [ ] Backward compatibility for portable roadmap imports is preserved or explicitly handled.
+- [ ] Roadmap source-of-truth and runtime/credential exclusion boundaries are preserved.
+- [ ] Persisted-data changes include a reviewed migration, compatibility evidence, and backup/rollback notes, or are not applicable.
 - [ ] Security-sensitive changes were reviewed carefully, or this is not applicable.

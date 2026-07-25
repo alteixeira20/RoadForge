@@ -112,7 +112,9 @@ Before self-hosting or releasing RoadForge publicly:
   pass and move to enforcement only after the release candidate works without
   required exceptions.
 - **API worker mode** — the API defaults to one Uvicorn worker. Set `ROADFORGE_API_WORKERS` above `1` only with `ROADFORGE_REALTIME_BACKEND=redis`; application and container startup refuse unsafe memory-backed multi-worker mode.
-- **Run `make check` before deploying** — this runs `pnpm lint`, `pnpm typecheck`, and `pnpm build`. All three must pass with zero errors and zero warnings.
+- **Run `make check` before deploying** — this validates current product copy,
+  documentation links, issue forms, lint, types, and the production build. Every
+  gate must pass.
 - **Database migrations before rollback** — Alembic migrations are not reversible by default. Take a Postgres snapshot before any release that includes new files under `apps/api/alembic/versions/`.
 - **Run migrations on deploy** — releases at or after `0005_add_public_viewer_tokens.py` require `make migrate` so active viewer links can remain copyable as public read-only demo links.
 
@@ -128,7 +130,7 @@ Before self-hosting or releasing RoadForge publicly:
 | `make status` | Show status of all services |
 | `make logs` | Follow all logs (API, Postgres, Web) |
 | `make reset` | Destructive reset: wipe DB and start fresh |
-| `make check` | Run linting, typechecking, and production build |
+| `make check` | Validate copy, documentation links, issue forms, lint, types, and production build |
 | `make release-check` | Run web tests/lint/typecheck/build, API lint/tests/migration drift, and `git diff --check` |
 | `make audit` | Run dependency security audit |
 | `make audit-prod` | Run dependency security audit (production only) |
@@ -181,7 +183,11 @@ docker compose down
 
 ## Environment variables
 
-Defined in `.env.example`. Copy to `.env.local` for local overrides.
+Defaults are listed below and set by Compose or application configuration.
+`deploy/self-hosted/.env.example` is the production-oriented deployment
+template. For direct web development, put only required public web overrides
+such as `NEXT_PUBLIC_API_URL` in `apps/web/.env.local`; never place secrets in a
+`NEXT_PUBLIC_*` variable.
 
 | Variable | Default | Used by |
 |---|---|---|
@@ -276,6 +282,7 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 | `/workspace` | `Workspace` (owner mode) | Editable, save/share controls |
 | `/shared` | `Workspace` (viewer mode) | Read-only with viewer banner |
 | `/join` | `JoinPage` | Reads `?token=`, optional name + password |
+| `/help` | Help page | Task-based user guide and safe reporting path |
 
 ---
 
@@ -306,7 +313,7 @@ roadforge/
 │       └── src/
 │           ├── app/          # App Router routes
 │           ├── components/   # UI components by feature
-│           ├── context/      # RoadmapContext, ThemeContext
+│           ├── context/      # RoadmapContext and provider state
 │           ├── hooks/        # Custom hooks
 │           ├── lib/          # storage.ts (localStorage helpers)
 │           ├── services/     # domain API clients + legacy compatibility barrel
@@ -314,3 +321,7 @@ roadforge/
 │           └── types/        # TypeScript types
 └── docs/                     # Architecture and API documentation
 ```
+
+Contributors should start with the [contributor guide](docs/contributor-guide.md)
+for module ownership, data and security boundaries, roadmap schema compatibility,
+migrations, tests, triage, and a reproducible fresh-clone walkthrough.

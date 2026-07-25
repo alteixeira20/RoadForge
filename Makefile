@@ -126,7 +126,7 @@ dev: ensure-deps
 	NEXT_PUBLIC_API_URL=$(API_URL) pnpm --dir apps/web dev --hostname $(WEB_HOST) --port $(WEB_PORT)
 
 check: ensure-deps
-	pnpm check:copy && pnpm check:issues && pnpm lint && pnpm typecheck && pnpm build
+	pnpm check:copy && pnpm check:docs && pnpm check:issues && pnpm lint && pnpm typecheck && pnpm build
 
 web-test: ensure-deps
 	pnpm --dir apps/web test
@@ -301,11 +301,11 @@ api-test-prepare:
 
 api-test: api-test-prepare
 	cd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
-		uv run --no-sync python3 -m pytest tests/ -v
+		uv run --no-sync python3 -m pytest -q
 
 api-test-fast:
 	cd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
-		uv run --no-sync python3 -m pytest tests/ -v
+		uv run --no-sync python3 -m pytest -q
 
 api-reset: api-down
 	docker compose down -v

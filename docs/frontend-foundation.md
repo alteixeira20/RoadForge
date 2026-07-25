@@ -12,6 +12,7 @@ browser cache, bearer participant session, optimistic concurrency, and SSE refre
 | `/workspace` | Editable owner/editor workspace |
 | `/shared` | Read-only viewer workspace |
 | `/join` | Invite-token join and optional password gate |
+| `/help` | Task-based user guide and safe reporting path |
 
 ## State and persistence
 

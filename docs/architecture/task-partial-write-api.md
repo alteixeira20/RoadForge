@@ -1,6 +1,8 @@
 # Task Partial Write API
 
-Status: Proposed for RF-301  
+Status: Implemented design record; see
+[Partial Roadmap Write Endpoints](partial-roadmap-write-endpoints.md) for the
+current endpoint inventory.
 Date: 2026-07-04
 
 ## Decision
