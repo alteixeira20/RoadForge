@@ -29,8 +29,6 @@ interface PhaseSettingsMenuProps {
   onColorClose: () => void
   onColorSelect: (color: string) => void
   onColorModeSelect: (mode: 'auto' | 'manual') => void
-  onMoveEarlier?: () => void
-  onMoveLater?: () => void
   colorReason: string
   displayColor: string
   onDeletePhase: (phaseId: string) => void
@@ -47,8 +45,6 @@ export function PhaseSettingsMenu({
   onColorClose,
   onColorSelect,
   onColorModeSelect,
-  onMoveEarlier,
-  onMoveLater,
   colorReason,
   displayColor,
   onDeletePhase,
@@ -143,22 +139,6 @@ export function PhaseSettingsMenu({
             <span className="phase-settings-color-swatch" style={{ backgroundColor: displayColor }} />
             Change color
           </button>
-          {onMoveEarlier && (
-            <button type="button" role="menuitem" onClick={() => {
-              closeMenu()
-              onMoveEarlier()
-            }}>
-              <Icon name="chevron-up" size={13} /> Move earlier
-            </button>
-          )}
-          {onMoveLater && (
-            <button type="button" role="menuitem" onClick={() => {
-              closeMenu()
-              onMoveLater()
-            }}>
-              <Icon name="chevron-down" size={13} /> Move later
-            </button>
-          )}
           <div className="phase-settings-sep" role="separator" />
           <button type="button" role="menuitem" className="danger" onClick={handleDeleteClick}>
             <Icon name="trash" size={13} /> Delete phase

@@ -27,8 +27,6 @@ interface PhaseHeaderProps {
   onColorClose: () => void
   onColorSelect: (color: string) => void
   onColorModeSelect: (mode: 'auto' | 'manual') => void
-  onMoveEarlier?: () => void
-  onMoveLater?: () => void
   colorReason: string
   displayColor: string
   onDeletePhase: (phaseId: string) => void
@@ -55,8 +53,6 @@ export function PhaseHeader({
   onColorClose,
   onColorSelect,
   onColorModeSelect,
-  onMoveEarlier,
-  onMoveLater,
   colorReason,
   displayColor,
   onDeletePhase,
@@ -103,8 +99,6 @@ export function PhaseHeader({
           onColorClose={onColorClose}
           onColorSelect={onColorSelect}
           onColorModeSelect={onColorModeSelect}
-          onMoveEarlier={onMoveEarlier}
-          onMoveLater={onMoveLater}
           colorReason={colorReason}
           displayColor={displayColor}
           onDeletePhase={onDeletePhase}

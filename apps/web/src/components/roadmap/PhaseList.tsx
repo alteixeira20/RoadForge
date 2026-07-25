@@ -177,7 +177,7 @@ function PhaseListComponent({
       >
         <SortableContext items={phaseIds} strategy={verticalListSortingStrategy}>
           <div className="phases">
-            {phases.map((p, index) => (
+            {phases.map((p) => (
               <SortablePhaseItem
                 key={p.id}
                 phase={p}
@@ -194,12 +194,6 @@ function PhaseListComponent({
                 onUpdatePhaseColorMode={onUpdatePhaseColorMode}
                 onUpdatePhaseName={onUpdatePhaseName}
                 onDeletePhase={onDeletePhase}
-                onMoveEarlier={index > 0
-                  ? () => onReorderPhases(arrayMove(phaseIds, index, index - 1))
-                  : undefined}
-                onMoveLater={index < phases.length - 1
-                  ? () => onReorderPhases(arrayMove(phaseIds, index, index + 1))
-                  : undefined}
                 onAddTask={onAddTask}
                 onAddSubtask={onAddSubtask}
                 onLinkDependency={onLinkDependency}

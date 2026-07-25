@@ -125,22 +125,17 @@ describe('PhaseSettingsMenu', () => {
     ) as HTMLInputElement).value).toBe('#38bdf8')
   })
 
-  it('exposes non-drag move actions and selected color-mode state', () => {
-    const onMoveLater = vi.fn()
+  it('offers no phase reorder actions and exposes selected color-mode state', () => {
     act(() => {
-      root.render(
-        <PhaseSettingsMenu
-          {...createProps({ onMoveLater })}
-        />,
-      )
+      root.render(<PhaseSettingsMenu {...createProps()} />)
     })
     const trigger = container.querySelector('button') as HTMLButtonElement
     act(() => trigger.click())
-    const moveLater = Array.from(document.body.querySelectorAll<HTMLButtonElement>(
+    const menuLabels = Array.from(document.body.querySelectorAll<HTMLButtonElement>(
       '[role="menuitem"]',
-    )).find((button) => button.textContent?.includes('Move later'))
-    act(() => moveLater?.click())
-    expect(onMoveLater).toHaveBeenCalledOnce()
+    )).map((button) => (button.textContent ?? '').trim())
+    expect(menuLabels).toEqual(['Rename', 'Change color', 'Delete phase'])
+    expect(menuLabels.some((label) => /move|up|down|earlier|later/i.test(label))).toBe(false)
 
     act(() => {
       root.render(

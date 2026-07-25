@@ -50,8 +50,6 @@ interface PhaseProps {
   onUpdatePhaseColorMode: (phaseId: string, mode: 'auto' | 'manual') => void
   onUpdatePhaseName: (phaseId: string, name: string) => void
   onDeletePhase: (phaseId: string) => void
-  onMoveEarlier?: () => void
-  onMoveLater?: () => void
   onAddTask: (phaseId: string, title?: string) => string
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
@@ -83,8 +81,6 @@ export function Phase({
   onUpdatePhaseColorMode,
   onUpdatePhaseName,
   onDeletePhase,
-  onMoveEarlier,
-  onMoveLater,
   onAddTask,
   onAddSubtask,
   onLinkDependency,
@@ -348,8 +344,6 @@ export function Phase({
         onColorClose={closeColorPicker}
         onColorSelect={handleColorSelect}
         onColorModeSelect={(mode) => onUpdatePhaseColorMode(phase.id, mode)}
-        onMoveEarlier={onMoveEarlier}
-        onMoveLater={onMoveLater}
         colorReason={phaseDisplayColor.reason}
         displayColor={phaseDisplayColor.color}
         onDeletePhase={onDeletePhase}
