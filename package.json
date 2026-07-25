@@ -27,5 +27,14 @@
   },
   "devDependencies": {
     "yaml": "^2.9.0"
+  },
+  "pnpm": {
+    "comments": {
+      "overrides": "Next pins vulnerable transitive versions; these raise them to the patched ranges reported by `make audit`. Drop an entry once Next ships it."
+    },
+    "overrides": {
+      "postcss": "^8.5.23",
+      "sharp": "^0.35.3"
+    }
   }
 }
