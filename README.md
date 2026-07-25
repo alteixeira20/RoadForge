@@ -2,20 +2,21 @@
 
 RoadForge by Anvilary is a structured roadmap planning tool for indie hackers and small teams. Break a release into phases, track task dependencies, and share access through private owner/editor invite links or a stable public read-only viewer link. No accounts required.
 
-> **Public Alpha · Work in Progress**
+> **Pre-release software**
 >
 > RoadForge is pre-release software. Core create/save/share/join and realtime
 > collaboration are implemented, but behavior, data formats, and deployment
 > requirements may change. Export important roadmaps regularly and do not treat
-> the hosted alpha as the only copy of critical data.
+> any hosted instance as the only copy of critical data.
 
-**Current status:** v0.1 Public Alpha. Security, collaboration,
+**Current status:** Clean Beta preparation. Security, collaboration,
 accessibility, and UX hardening remain active work.
 
 **Source availability:** This repository is distributed as non-commercial
 source-available software under the
-[PolyForm Noncommercial License 1.0.0](LICENSE). It is not permissive open
-source, and commercial use remains restricted.
+[PolyForm Noncommercial License 1.0.0](LICENSE). It is source-available but
+not open source under the Open Source Definition or an OSI-approved license;
+commercial use remains restricted.
 
 ---
 
@@ -48,7 +49,7 @@ Both export paths run entirely in the browser and exclude RoadForge session, inv
 
 ## Security note
 
-RoadForge is built with a security-first mindset, but remains Public Alpha software.
+RoadForge is built with a security-first mindset, but remains pre-release software.
 
 CI defines dependency, lint, test, migration, and build gates. Those checks are
 point-in-time evidence and must be rerun for each release candidate. See
@@ -280,7 +281,7 @@ Full reference: [docs/backend-api.md](docs/backend-api.md)
 
 ## Current limitations / deferred features
 
-- **PDF export** - deferred and absent from the Public Alpha UI.
+- **PDF export** - deferred and absent from the current UI.
 - **Email verification** — not implemented. Planned as an optional future security layer.
 - **Rate limiting** — app-level rate limiting is active. It is shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`.
 - **Content Security Policy** — a report-only policy is active; enforcement remains deferred.

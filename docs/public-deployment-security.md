@@ -39,7 +39,7 @@ The API sets `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, 
 
 SSE responses at `/api/roadmaps/{id}/events` keep their streaming headers and are not forced into `no-store` by the roadmap response rule.
 
-The frontend CSP remains report-only for Public Alpha. Enforcement is blocked on
+The frontend CSP remains report-only during pre-release. Enforcement is blocked on
 a recorded production-build browser pass across Next.js bootstrap, styled
 JSX/inline styles, Markdown, API calls, import/export, and SSE. There is no CSP
 report collector, so browser console and Network inspection are authoritative.

@@ -37,7 +37,7 @@ GitHub owns implementation artifacts and their native state: issues, pull
 requests, discussions, commits, checks, and related GitHub metadata.
 
 A GitHub link on a RoadForge task is a reference to an implementation artifact.
-It is not an automatic roadmap state driver. During alpha:
+It is not an automatic roadmap state driver. In the current product:
 
 - GitHub state does not automatically complete, reopen, reorder, or otherwise
   mutate a RoadForge task.
@@ -87,7 +87,7 @@ to export a complete roadmap snapshot.
 - GitHub references can enrich task context without becoming planning truth.
 - External metadata can be stale or unavailable without corrupting a roadmap.
 - Automatic completion and bidirectional synchronization require a future,
-  explicit architecture decision; they are not alpha behavior.
+  explicit architecture decision; they are not current behavior.
 - Provider credentials require storage and lifecycle rules outside roadmap
   content and sharing URLs.
 
@@ -107,7 +107,7 @@ Do:
 Don't:
 
 - Infer RoadForge completion or sequencing from GitHub state.
-- Add bidirectional synchronization during alpha.
+- Add bidirectional synchronization without an approved platform-scope decision.
 - Put GitHub secrets in roadmap content, browser roadmap storage, exports, or
   shared URLs.
 - Require GitHub authentication to open, import, export, or edit a local

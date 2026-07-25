@@ -19,7 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://roadforge.anvilary.tools'),
-  title: 'RoadForge · Public Alpha',
+  title: 'RoadForge',
   description:
     'RoadForge by Anvilary is a local-first roadmap planner with portable exports and optional accountless collaboration.',
   alternates: {
@@ -29,13 +29,13 @@ export const metadata: Metadata = {
     type: 'website',
     url: '/',
     siteName: 'RoadForge',
-    title: 'RoadForge · Public Alpha',
+    title: 'RoadForge',
     description:
       'Local-first roadmap planning with portable exports and optional accountless collaboration.',
   },
   twitter: {
     card: 'summary',
-    title: 'RoadForge · Public Alpha',
+    title: 'RoadForge',
     description:
       'Local-first roadmap planning with portable exports and optional accountless collaboration.',
   },

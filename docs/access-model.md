@@ -146,4 +146,4 @@ This adds a second factor without requiring accounts. It is purely opt-in per ro
 - **No development server exposure** — `next dev` (or `make dev`) should never be exposed publicly. Use a production build for hosting.
 - **Content Security Policy** — RoadForge currently reports CSP violations without
   enforcing the policy. Enforcement is required before moving beyond the public
-  alpha because script injection can expose `localStorage` tokens.
+  pre-release status because script injection can expose `localStorage` tokens.

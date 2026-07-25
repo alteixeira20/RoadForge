@@ -6,7 +6,7 @@ RoadForge follows a pre-1.0 changelog. Dates use ISO format.
 
 ### Added
 
-- Public Alpha release labeling.
+- Release-state terminology cleanup and durable product-copy validation.
 - Source-available non-commercial licensing.
 - Repository contribution, support, issue, pull request, and release checklist files.
 - A footer feedback link for feature requests and reproducible issues; security reports remain directed to `SECURITY.md`.
@@ -14,7 +14,7 @@ RoadForge follows a pre-1.0 changelog. Dates use ISO format.
 ### Changed
 
 - Project positioning now uses “source-available,” not “open source.”
-- Public release copy consistently identifies the product as Public Alpha.
+- Current product copy consistently identifies RoadForge as pre-release software.
 
 ## 0.1.0-alpha
 

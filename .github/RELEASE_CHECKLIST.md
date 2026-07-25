@@ -1,4 +1,4 @@
-# Public Alpha Release Checklist
+# Beta Candidate Release Checklist
 
 Run once against the final release candidate. Record the candidate revision,
 operator, environment, and result beside the release ticket.
@@ -10,7 +10,7 @@ operator, environment, and result beside the release ticket.
 - [ ] `git status --short` is clean and the candidate revision is recorded.
 - [ ] `make release-check` passes without skipped steps.
 - [ ] CI is green for the candidate; dependency-audit results are reviewed.
-- [ ] Version, changelog, Public Alpha wording, license terminology, demo
+- [ ] Version, changelog, release-state wording, license terminology, demo
   data, and secret/generated-artifact scan are reviewed.
 
 ## Deploy preflight

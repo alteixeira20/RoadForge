@@ -501,13 +501,13 @@
       "color": "#6b8e7b",
       "colorMode": "auto",
       "status": "future",
-      "progress": 0,
+      "progress": 33,
       "tasks": [
         {
           "id": "RF-024",
           "title": "Remove stale Alpha terminology and align product/license copy",
-          "done": false,
-          "next": true,
+          "done": true,
+          "next": false,
           "tags": [
             "docs",
             "ui",
@@ -518,13 +518,13 @@
             "RF-015"
           ],
           "est": "2 days",
-          "desc": "**Why**\nBeta-facing copy must not promise the wrong maturity or license.\n\n**Finding**\nWorkspace title, metadata, footer, CONTRIBUTING, and release checklist still use Public Alpha wording; source-available/non-commercial wording is otherwise substantially present.\n\n**Scope**\nInventory all user-facing/metadata/release copy and make maturity and PolyForm terminology consistent; do not call the project OSI open source.\n\n**Acceptance criteria**\nNo stale Alpha/WIP/coming-soon promise remains in user UI or current docs; source-available and non-commercial terms are accurate.\n\n**Validation / gate**\nTargeted copy tests and repository search.\n\n**Risk**\nInconsistent maturity/language confuses users and contributors.\n\n**Evidence**\n`Workspace.tsx`, `app/layout.tsx`, `SiteFooter.tsx`, CONTRIBUTING, README, release checklist.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nRelease-facing copy must not promise the wrong maturity or license.\n\n**Finding**\nCurrent UI and documentation now use neutral pre-release wording. PolyForm copy explicitly describes RoadForge as non-commercial source-available software that is not OSI-approved open source.\n\n**Scope**\nInventory all user-facing/metadata/release copy and make maturity and PolyForm terminology consistent; do not call the project OSI open source.\n\n**Acceptance criteria**\nNo stale Alpha/WIP/coming-soon promise remains in user UI or current docs; source-available and non-commercial terms are accurate.\n\n**Validation / gate**\nTargeted copy tests and repository search.\n\n**Risk**\nInconsistent maturity/language confuses users and contributors.\n\n**Evidence**\nNeutral metadata, document titles, footer, current docs, and release checklist; allowlisted product-copy gate wired into `make check`; focused UI copy regression.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-025",
           "title": "Publish task-based first-run help and recovery guidance",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "docs",
             "ui"

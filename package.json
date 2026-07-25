@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "pnpm --dir apps/web dev",
     "build": "pnpm --dir apps/web build",
+    "check:copy": "node tools/check-product-copy.mjs",
     "lint": "pnpm --dir apps/web lint",
     "typecheck": "pnpm --dir apps/web typecheck",
     "test": "pnpm --dir apps/web test",

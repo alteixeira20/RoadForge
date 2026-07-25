@@ -71,7 +71,7 @@ legacy `anvilary.roadmap.export` ID so older RoadForge deployments can read new 
 Markdown export is produced by `src/lib/roadmap-markdown.ts` as a deterministic
 client-side presentation format. It preserves phase/task order and user-authored task
 descriptions, includes planning metadata, omits session and volatile claim state, and
-cannot be imported. PDF export is deferred and has no control in the Public Alpha UI.
+cannot be imported. PDF export is deferred and has no control in the current UI.
 JSON remains the canonical portable and importable format.
 
 ## Collaboration behavior

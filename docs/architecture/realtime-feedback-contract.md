@@ -1,6 +1,6 @@
 # Realtime Feedback Contract
 
-Status: Public Alpha contract
+Status: current pre-release contract
 
 Realtime refreshes must never overwrite unsaved local edits silently.
 

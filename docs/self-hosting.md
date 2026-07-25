@@ -1,13 +1,14 @@
 # Self-Hosting RoadForge
 
-RoadForge is a Public Alpha product from Anvilary. Its source is available
-under the PolyForm Noncommercial License 1.0.0. The repository is not permissive
-open source, and commercial hosting or monetized use is not permitted by the
-repository license.
+RoadForge is a pre-release product from Anvilary. Its source is available under
+the PolyForm Noncommercial License 1.0.0. The repository is source-available,
+not open source under the Open Source Definition or an OSI-approved license,
+and commercial hosting or monetized use is not permitted by the repository
+license.
 
 ## Topology
 
-The supported alpha topology is:
+The supported pre-release topology is:
 
 - Next.js web app;
 - FastAPI API;
@@ -34,7 +35,7 @@ Exact commands and environment variables are documented in
 
 ## Authentication modes
 
-The alpha has no accounts or OAuth. Access uses role-scoped invite links, optional
+The current product has no accounts or OAuth. Access uses role-scoped invite links, optional
 roadmap passwords, and participant session tokens.
 
 - Owner and editor join URLs are credentials that grant their named role. Do not
@@ -260,7 +261,7 @@ Each step names what to inspect and the command to inspect it with.
 
 ## Content Security Policy
 
-The production CSP remains `Content-Security-Policy-Report-Only` for Public Alpha.
+The production CSP remains `Content-Security-Policy-Report-Only` during pre-release.
 Enforcement is deferred because the repository has no CSP report collector and no
 recorded production-build browser run proving that Next.js bootstrap scripts,
 styled JSX/inline React styles, Markdown rendering, API requests, and SSE work
@@ -276,5 +277,5 @@ not blocking protection.
 ## Operations
 
 Use HTTPS, narrow trusted proxy CIDRs, non-default secrets, private database/Redis
-networks, log retention controls, and dependency monitoring. The alpha has no uptime,
+networks, log retention controls, and dependency monitoring. The project has no uptime,
 support, or hosted-data recovery guarantee.

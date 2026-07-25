@@ -231,7 +231,7 @@ The development policy can be noisier and less strict than production. The produ
 - Rollback: switch enforcement back to report-only or remove the CSP header.
 - Risk: medium to high; an incorrect enforced policy can break app load, API calls, SSE, images, fonts, or import/export flows.
 
-Current Public Alpha decision: remain in Phase D/report-only. The repository has
+Current pre-release decision: remain in Phase D/report-only. The repository has
 no CSP report collector and no recorded production-build browser evidence that
 Next.js bootstrap scripts, styled JSX/inline React styles, Markdown, API calls,
 and SSE satisfy the proposed enforced policy. Do not add production
