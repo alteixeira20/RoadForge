@@ -1,0 +1,856 @@
+{
+  "schema": "anvilary.roadmap.export",
+  "version": 1,
+  "exportedAt": "2026-07-25T00:00:00.000Z",
+  "roadmap": {
+    "name": "RoadForge - Clean Beta Foundation",
+    "saved": false,
+    "id": null,
+    "updatedAt": null
+  },
+  "collaborator": {
+    "role": null,
+    "ownerDisplayName": null
+  },
+  "meta": {
+    "phaseCount": 11,
+    "taskCount": 40
+  },
+  "tagRegistry": [
+    {
+      "id": "core",
+      "label": "Core workflow"
+    },
+    {
+      "id": "ui",
+      "label": "UI and UX"
+    },
+    {
+      "id": "a11y",
+      "label": "Accessibility"
+    },
+    {
+      "id": "sync",
+      "label": "Sync and recovery"
+    },
+    {
+      "id": "collab",
+      "label": "Collaboration"
+    },
+    {
+      "id": "data",
+      "label": "Portable data"
+    },
+    {
+      "id": "quality",
+      "label": "Quality gate"
+    },
+    {
+      "id": "docs",
+      "label": "Documentation"
+    },
+    {
+      "id": "contributors",
+      "label": "Contributors"
+    },
+    {
+      "id": "security",
+      "label": "Security"
+    },
+    {
+      "id": "performance",
+      "label": "Performance"
+    },
+    {
+      "id": "post-beta",
+      "label": "Post-Beta"
+    }
+  ],
+  "phases": [
+    {
+      "id": "p01",
+      "num": "01",
+      "name": "Delivered local-first foundation",
+      "color": "#76746e",
+      "colorMode": "auto",
+      "status": "done",
+      "progress": 100,
+      "tasks": [
+        {
+          "id": "RF-001",
+          "title": "Local-first roadmap creation and persistence",
+          "done": true,
+          "next": false,
+          "tags": [
+            "core",
+            "data"
+          ],
+          "assignees": [],
+          "deps": [],
+          "est": "3 days",
+          "desc": "Delivered capability: Local-first roadmap creation and persistence.\n\nEvidence: `storage.ts`, `useRoadmapHydration.ts`, `roadmap-crud.service.ts`, and storage tests implement browser-resident roadmaps and hydration.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-002",
+          "title": "Typed roadmap model, validation, and upgrades",
+          "done": true,
+          "next": false,
+          "tags": [
+            "core",
+            "data"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-001"
+          ],
+          "est": "3 days",
+          "desc": "Delivered capability: Typed roadmap model, validation, and upgrades.\n\nEvidence: `types/roadmap.ts`, `roadmap-validation.ts`, `roadmap-upgrade.ts`, and focused validation/upgrade tests.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-003",
+          "title": "Task editing, subtasks, ordering, completion, and deletion",
+          "done": true,
+          "next": false,
+          "tags": [
+            "core",
+            "ui"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-002"
+          ],
+          "est": "5 days",
+          "desc": "Delivered capability: Task editing, subtasks, ordering, completion, and deletion.\n\nEvidence: `createTaskMutations`, `TaskRow`, subtask components, task graph helpers, and mutation tests.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-004",
+          "title": "Dependencies, tags, estimates, assignees, and next-task display",
+          "done": true,
+          "next": false,
+          "tags": [
+            "core",
+            "ui"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-003"
+          ],
+          "est": "4 days",
+          "desc": "Delivered capability: Dependencies, tags, estimates, assignees, and next-task display.\n\nEvidence: Task graph, tag registry, assignment, filtering, and task-display modules with focused unit tests.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-005",
+          "title": "Markdown task descriptions and roadmap Markdown export",
+          "done": true,
+          "next": false,
+          "tags": [
+            "core",
+            "data"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-002"
+          ],
+          "est": "2 days",
+          "desc": "Delivered capability: Markdown task descriptions and roadmap Markdown export.\n\nEvidence: `MarkdownDescription`, `roadmap-markdown.ts`, and Markdown component/library tests.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        }
+      ]
+    },
+    {
+      "id": "p02",
+      "num": "02",
+      "name": "Delivered collaboration and server persistence",
+      "color": "#c97553",
+      "colorMode": "auto",
+      "status": "done",
+      "progress": 100,
+      "tasks": [
+        {
+          "id": "RF-006",
+          "title": "Accountless server roadmap creation and save flow",
+          "done": true,
+          "next": false,
+          "tags": [
+            "sync",
+            "collab"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-001"
+          ],
+          "est": "5 days",
+          "desc": "Delivered capability: Accountless server roadmap creation and save flow.\n\nEvidence: Roadmap CRUD service, save flow, API routes, and CRUD/API tests.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-007",
+          "title": "Owner, editor, and viewer sharing with participant sessions",
+          "done": true,
+          "next": false,
+          "tags": [
+            "collab",
+            "security"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-006"
+          ],
+          "est": "5 days",
+          "desc": "Delivered capability: Owner, editor, and viewer sharing with participant sessions.\n\nEvidence: Auth/share-link services, participant UI, API authorization tests, and session-expiry handling.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-008",
+          "title": "Task partial writes, locks, claims, and conflict recovery",
+          "done": true,
+          "next": false,
+          "tags": [
+            "collab",
+            "sync"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-006"
+          ],
+          "est": "6 days",
+          "desc": "Delivered capability: Task partial writes, locks, claims, and conflict recovery.\n\nEvidence: Task PATCH hooks/routes, lock and claim modules, conflict UI, and focused API/web tests.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-009",
+          "title": "Activity, versions, restore, and realtime propagation",
+          "done": true,
+          "next": false,
+          "tags": [
+            "collab",
+            "sync"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-006"
+          ],
+          "est": "6 days",
+          "desc": "Delivered capability: Activity, versions, restore, and realtime propagation.\n\nEvidence: Activity/versions panels, realtime hook, backend services, and API tests; production topology remains a gate.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-010",
+          "title": "Security and operational baseline",
+          "done": true,
+          "next": false,
+          "tags": [
+            "security",
+            "quality"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-006"
+          ],
+          "est": "4 days",
+          "desc": "Delivered capability: Security and operational baseline.\n\nEvidence: Rate/body limit, CSP, safe logging, migration drift, dependency audit CI, and self-hosting/release documentation.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        }
+      ]
+    },
+    {
+      "id": "p03",
+      "num": "03",
+      "name": "Delivered portability and planning intelligence",
+      "color": "#6b8e7b",
+      "colorMode": "auto",
+      "status": "done",
+      "progress": 100,
+      "tasks": [
+        {
+          "id": "RF-011",
+          "title": "JSON export, import repair, replace, and merge",
+          "done": true,
+          "next": false,
+          "tags": [
+            "data",
+            "core"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-002"
+          ],
+          "est": "5 days",
+          "desc": "Delivered capability: JSON export, import repair, replace, and merge.\n\nEvidence: Export service, validation/repair and import-merge modules with round-trip and merge tests.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-012",
+          "title": "Schema-aware import compatibility and tag registry repair",
+          "done": true,
+          "next": false,
+          "tags": [
+            "data",
+            "core"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-011"
+          ],
+          "est": "3 days",
+          "desc": "Delivered capability: Schema-aware import compatibility and tag registry repair.\n\nEvidence: `roadmap-validation.ts`, `tag-registry.ts`, import notices, and related focused tests.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-013",
+          "title": "Search, filters, phase/task expansion, and onboarding",
+          "done": true,
+          "next": false,
+          "tags": [
+            "ui",
+            "core"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-003"
+          ],
+          "est": "4 days",
+          "desc": "Delivered capability: Search, filters, phase/task expansion, and onboarding.\n\nEvidence: Workspace view model, filters, expansion persistence, welcome UI, and component tests.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-014",
+          "title": "Responsive workspace and accessibility foundations",
+          "done": true,
+          "next": false,
+          "tags": [
+            "ui",
+            "a11y"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-003"
+          ],
+          "est": "4 days",
+          "desc": "Delivered capability: Responsive workspace and accessibility foundations.\n\nEvidence: Semantic controls, shared `Modal`, dialog-focus tests, accessibility tests, and targeted responsive styling.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        },
+        {
+          "id": "RF-015",
+          "title": "Contributor and release baseline",
+          "done": true,
+          "next": false,
+          "tags": [
+            "contributors",
+            "quality"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-010"
+          ],
+          "est": "3 days",
+          "desc": "Delivered capability: Contributor and release baseline.\n\nEvidence: README, CONTRIBUTING, SECURITY, SUPPORT, CI, migration checks, dependency audits, and release checklist exist.\n\nBoundary: recorded as implemented; browser, deployment, and multi-user production behavior remain gated by the open Beta work."
+        }
+      ]
+    },
+    {
+      "id": "p04",
+      "num": "04",
+      "name": "Immediate Beta blockers",
+      "color": "#d97442",
+      "colorMode": "auto",
+      "status": "active",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-016",
+          "title": "Restore Add phase and zero-phase recovery",
+          "done": false,
+          "next": true,
+          "tags": [
+            "core",
+            "ui",
+            "sync"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-001",
+            "RF-002"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nA roadmap without phases cannot be structurally recovered in the current workspace.\n\n**Finding**\n`createBlankPhases` exists, but `usePhaseMutations` exposes no create operation and Workspace/PhaseList render no Add phase, Create first phase, or Add another phase action.\n\n**Scope**\nAdd one canonical phase factory/mutation; wire visible toolbar, zero-state, and end-of-list creation actions; respect owner/editor/viewer modes; persist local and synced edits; record activity; focus the new phase.\n\n**Acceptance criteria**\nA zero-phase owner/editor can create a phase by keyboard, pointer, and touch; viewers get an explanatory read-only state; new phase survives reload/sync and creates one attributed activity event.\n\n**Validation / gate**\nUnit and component tests for factory/mutation/permissions/focus; browser smoke for local and synced paths; regression test deleting the final phase then recovering.\n\n**Risk**\nWithout this, destructive phase deletion can strand an editable roadmap.\n\n**Evidence**\n`apps/web/src/lib/roadmap-factory.ts`, `usePhaseMutations.ts`, and `Workspace.tsx`; history `ceddb72 Remove no-op add phase button`.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-017",
+          "title": "Make phase settings and color overlays viewport-safe",
+          "done": false,
+          "next": false,
+          "tags": [
+            "ui",
+            "a11y"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-016"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nA structural action must remain usable at narrow widths and zoom.\n\n**Finding**\nThe phase menu/color popover is an in-tree absolute overlay with a document pointer listener; it has no portal, collision handling, Escape handler, focus management, or focus return.\n\n**Scope**\nAdopt a small shared anchored-menu/popover foundation only where it replaces this duplicated behavior; migrate phase settings/color first and define layering/scroll ownership.\n\n**Acceptance criteria**\nMenu and popover remain within viewport at narrow desktop, mobile, and 200% zoom; Escape/outside click work; trigger regains focus; keyboard semantics and focus order are correct.\n\n**Validation / gate**\nComponent tests plus browser screenshots/interaction smoke at narrow viewport and 200% zoom; manual screen-reader check.\n\n**Risk**\nCurrent overlay can be clipped and keyboard users can lose context.\n\n**Evidence**\n`PhaseSettingsMenu.tsx`, `phase.css`, and `Modal.tsx`; user-reported screenshot; classification confirmed.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-018",
+          "title": "Make phase mutation persistence and activity consistent",
+          "done": false,
+          "next": false,
+          "tags": [
+            "core",
+            "sync",
+            "collab"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-016"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nParticipants need truthful, useful history for structural changes.\n\n**Finding**\nOnly reorder calls `addPendingActivityChange`; rename, delete, color, and color-mode mutations merely set state unsaved. Create is absent.\n\n**Scope**\nDefine canonical phase mutation/activity vocabulary and no-op rules; make local/synced persistence and attribution consistent without duplicate events.\n\n**Acceptance criteria**\nCreate, rename, delete, reorder, color, and color-mode each produce at most one useful activity event when changed and none for no-ops; synced save retains the events.\n\n**Validation / gate**\nFocused mutation/activity tests and two-session manual check.\n\n**Risk**\nMissing or duplicate structural history undermines collaboration recovery.\n\n**Evidence**\n`usePhaseMutations.ts`, `activity-changes.ts`, `useSaveFlow.ts`.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-019",
+          "title": "Protect destructive final-phase and empty-workspace paths",
+          "done": false,
+          "next": false,
+          "tags": [
+            "core",
+            "ui",
+            "a11y"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-016"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nDestructive actions must never leave an editor without a recovery route.\n\n**Finding**\nPhase deletion confirms removal but the current UI has no phase creation or role-specific empty explanation.\n\n**Scope**\nSpecify final-phase confirmation/recovery, empty-phase first-task action, filtered-empty action, and owner/editor/viewer copy.\n\n**Acceptance criteria**\nEvery editable empty state has a relevant action; every viewer state explains why editing is unavailable; final-phase deletion has an immediate recovery path.\n\n**Validation / gate**\nComponent tests for empty states and browser smoke across roles.\n\n**Risk**\nA recoverability failure is a Beta blocker even if data deletion is confirmed.\n\n**Evidence**\n`PhaseSettingsMenu.tsx`, `PhaseList`, `Workspace`, and `WorkspaceBanners`.\n\n**Classification**\nconfirmed"
+        }
+      ]
+    },
+    {
+      "id": "p05",
+      "num": "05",
+      "name": "Workflow and recovery consistency",
+      "color": "#c97553",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-020",
+          "title": "Establish a visible primary-action hierarchy",
+          "done": false,
+          "next": false,
+          "tags": [
+            "ui",
+            "a11y"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-016"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nCreation should be easier to discover than secondary panels.\n\n**Finding**\nWorkspace toolbar exposes filters, activity, versions, tags, and expand/collapse while structural phase creation is absent.\n\n**Scope**\nDefine desktop, narrow, mobile, and read-only action hierarchy; keep required creation visible and move only contextual actions behind appropriate affordances.\n\n**Acceptance criteria**\nPhase/task creation is discoverable in editable views; secondary actions remain keyboard/touch accessible; read-only action labels remain truthful.\n\n**Validation / gate**\nResponsive browser smoke and accessibility review.\n\n**Risk**\nControls may become hidden rather than clarified if redesigned without role-state coverage.\n\n**Evidence**\n`Workspace.tsx`, `WorkspaceToolbar.tsx`, `WorkspaceHead.tsx`.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-021",
+          "title": "Truthful save, error, offline, and session recovery states",
+          "done": false,
+          "next": false,
+          "tags": [
+            "sync",
+            "ui"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-006"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nUsers must distinguish local save, server sync, validation, conflict, and expired session outcomes.\n\n**Finding**\nSave flow has specific conflict/session handling, but no audit evidence proves the full offline/retry/draft/caret matrix or that all errors are outcome-specific.\n\n**Scope**\nMap save states and messages across local and server roadmaps; preserve drafts; remove generic/misleading errors; document deliberate limitations.\n\n**Acceptance criteria**\nNo network condition is described as synced incorrectly; validation differs from connectivity; retry/reload/keep-local outcomes preserve user input.\n\n**Validation / gate**\nFocused hook tests and manual fault-injection browser matrix.\n\n**Risk**\nIncorrect status can cause accidental loss or false confidence.\n\n**Evidence**\n`useSaveFlow.ts`, `useAutoSync.ts`, task patch hooks; classification needs verification.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-022",
+          "title": "Complete import, export, restore, and recovery contract gates",
+          "done": false,
+          "next": false,
+          "tags": [
+            "data",
+            "quality"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-011"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nPortable JSON is a core product promise.\n\n**Finding**\nStrong import/merge/upgrade modules and tests exist, but maximal round-trip, credential exclusion, restore, and user-facing repair diagnostics need one Beta contract gate.\n\n**Scope**\nDefine maximal fixture and explicit merge/replace/repair/restore assertions; ensure volatile credentials and sessions never export.\n\n**Acceptance criteria**\nMaximal roadmap round-trips links, tags, dependencies, subtasks, claims, and descriptions; invalid/empty imports give actionable recovery; restore is checkpointed and explained.\n\n**Validation / gate**\nWeb/API contract tests and manual import/export compatibility check.\n\n**Risk**\nA regression can silently corrupt portable planning data.\n\n**Evidence**\nExport/import services, validation, merge tests, versions modules.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-023",
+          "title": "Close collaboration safety evidence gaps",
+          "done": false,
+          "next": false,
+          "tags": [
+            "collab",
+            "security",
+            "quality"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-008",
+            "RF-009"
+          ],
+          "est": "4 days",
+          "desc": "**Why**\nOptional collaboration must be safe before wider Beta use.\n\n**Finding**\nCode and API tests cover roles, claims, locks, conflicts, and Redis startup boundaries; live multi-worker, idle-release, takeover, and realtime propagation remain unverified.\n\n**Scope**\nCreate a role/lock/claim/conflict matrix and fill confirmed gaps without expanding platform scope.\n\n**Acceptance criteria**\nOwner/editor/viewer enforcement, lock release/reacquisition, claim override, partial writes, activity attribution, and Redis multi-worker behavior each have automated or documented manual evidence.\n\n**Validation / gate**\nTwo-session and multi-worker smoke; API permission matrix.\n\n**Risk**\nConcurrency defects can overwrite work or expose edit actions.\n\n**Evidence**\nAPI tests listed under `apps/api/tests`; realtime/lock/claim modules; classification likely.\n\n**Classification**\nconfirmed"
+        }
+      ]
+    },
+    {
+      "id": "p06",
+      "num": "06",
+      "name": "Product clarity and guidance",
+      "color": "#6b8e7b",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-024",
+          "title": "Remove stale Alpha terminology and align product/license copy",
+          "done": false,
+          "next": false,
+          "tags": [
+            "docs",
+            "ui",
+            "contributors"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-015"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nBeta-facing copy must not promise the wrong maturity or license.\n\n**Finding**\nWorkspace title, metadata, footer, CONTRIBUTING, and release checklist still use Public Alpha wording; source-available/non-commercial wording is otherwise substantially present.\n\n**Scope**\nInventory all user-facing/metadata/release copy and make maturity and PolyForm terminology consistent; do not call the project OSI open source.\n\n**Acceptance criteria**\nNo stale Alpha/WIP/coming-soon promise remains in user UI or current docs; source-available and non-commercial terms are accurate.\n\n**Validation / gate**\nTargeted copy tests and repository search.\n\n**Risk**\nInconsistent maturity/language confuses users and contributors.\n\n**Evidence**\n`Workspace.tsx`, `app/layout.tsx`, `SiteFooter.tsx`, CONTRIBUTING, README, release checklist.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-025",
+          "title": "Publish task-based first-run help and recovery guidance",
+          "done": false,
+          "next": false,
+          "tags": [
+            "docs",
+            "ui"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-019",
+            "RF-021",
+            "RF-022"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nNew users need a clear local-first workflow without reading implementation docs.\n\n**Finding**\nOnboarding exists, but this audit found no verified Help path covering phases, next task, saving, sharing/roles, locks, versions, import/export, and recovery.\n\n**Scope**\nAdd contextual Help entry points and a task-based user guide with known limitations and troubleshooting.\n\n**Acceptance criteria**\nA first-time user can find where data lives, create phase/task, export, save/share, understand roles/locks/conflicts, restore a version, and report a problem.\n\n**Validation / gate**\nUsability walkthrough and link/content tests.\n\n**Risk**\nVerbose technical docs can hide the essential actions.\n\n**Evidence**\n`WorkspaceWelcomeBanner`, README, self-hosting and support docs; classification likely.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-026",
+          "title": "Inventory and remove low-value or dead visible controls",
+          "done": false,
+          "next": false,
+          "tags": [
+            "ui",
+            "docs"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-020"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nA calm interface should expose only meaningful outcomes.\n\n**Finding**\nNo confirmed dead control was found in the sampled UI, but secondary action density and stale wording warrant a value-first inventory.\n\n**Scope**\nClassify every visible control as essential, contextual, advanced, duplicated, deferred, or removable; implement only approved removals/consolidations.\n\n**Acceptance criteria**\nEach retained control has a user outcome, role behavior, and accessible label; no unshipped promise remains.\n\n**Validation / gate**\nUI inventory review and component tests for changed controls.\n\n**Risk**\nOver-pruning can hide required creation actions.\n\n**Evidence**\nWorkspace header/toolbar, footer, landing and share surfaces; classification likely.\n\n**Classification**\nconfirmed"
+        }
+      ]
+    },
+    {
+      "id": "p07",
+      "num": "07",
+      "name": "Contributor readiness and issue reporting",
+      "color": "#76746e",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-027",
+          "title": "Complete the public GitHub issue chooser",
+          "done": false,
+          "next": false,
+          "tags": [
+            "contributors",
+            "docs",
+            "security"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-015"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nPublic reports need safe, actionable routing.\n\n**Finding**\n`config.yml` disables blank issues and routes security privately, but only bug and feature forms exist; UX, docs, self-hosting, and accessibility forms are absent.\n\n**Scope**\nAdd the four missing forms with concise context, consistent labels/title prefixes, and no sensitive data fields; document labels/triage.\n\n**Acceptance criteria**\nChooser offers exactly the six requested report paths; security remains private; forms request useful reproduction context without roadmap/session/token upload.\n\n**Validation / gate**\nYAML validation and manual chooser check.\n\n**Risk**\nPoor intake wastes maintainer time or leaks private data.\n\n**Evidence**\n`.github/ISSUE_TEMPLATE/config.yml`, `bug_report.yml`, `feature_request.yml`.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-028",
+          "title": "Complete contributor architecture, ownership, and PR guidance",
+          "done": false,
+          "next": false,
+          "tags": [
+            "contributors",
+            "docs"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-015"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nExternal contributors need safe boundaries before making broad changes.\n\n**Finding**\nCONTRIBUTING and README provide setup and contribution terms, but this audit did not find a PR template, module-ownership map, or one concise architecture/migration/roadmap-schema guide.\n\n**Scope**\nDocument module ownership, contracts, migrations, tests, local validation, PR conventions, triage, and good-first-issue policy; add a PR template.\n\n**Acceptance criteria**\nA new contributor can run, test, locate ownership, understand data/security boundaries, and open a scoped PR without reverse-engineering the repository.\n\n**Validation / gate**\nFresh-clone contributor walkthrough and link check.\n\n**Risk**\nAmbiguous ownership encourages unsafe cross-layer changes.\n\n**Evidence**\nREADME, CONTRIBUTING, API/web structure, `.github`; classification likely.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-029",
+          "title": "Keep in-app and landing problem-report links safe",
+          "done": false,
+          "next": false,
+          "tags": [
+            "ui",
+            "contributors",
+            "security"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-027"
+          ],
+          "est": "1 day",
+          "desc": "**Why**\nUsers need a direct feedback path without data exfiltration.\n\n**Finding**\nFooter already links to `/issues/new/choose` with `noopener`; audit has not verified all landing/application entry points or attachment behavior.\n\n**Scope**\nExpose one visible Report a problem entry point in app and landing as appropriate; never prefill or attach roadmap data, exports, tokens, sessions, logs, or private URLs.\n\n**Acceptance criteria**\nEvery reporting link targets the chooser and carries no private state; accessibility labels are present.\n\n**Validation / gate**\nComponent/link tests and manual URL inspection.\n\n**Risk**\nConvenience reporting can leak private planning data.\n\n**Evidence**\n`SiteFooter.tsx`, accessibility test; classification likely.\n\n**Classification**\nconfirmed"
+        }
+      ]
+    },
+    {
+      "id": "p08",
+      "num": "08",
+      "name": "Architecture and visual-system cleanup",
+      "color": "#b85a2e",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-030",
+          "title": "Split Workspace ownership at proven seams",
+          "done": false,
+          "next": false,
+          "tags": [
+            "core",
+            "ui",
+            "quality"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-016",
+            "RF-020"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nThe central composition point is difficult to change and test safely.\n\n**Finding**\n`Workspace` spans lifecycle/session state, modal state, save/conflict plumbing, mutations, view model, panels, and rendering (over 500 lines), though several hooks already exist.\n\n**Scope**\nExtract only cohesive remaining boundaries and retain existing public behavior; do not rewrite stable hooks.\n\n**Acceptance criteria**\nWorkspace is a thin composition root with explicit ownership for structural actions, panels, and lifecycle bridges; focused tests remain readable.\n\n**Validation / gate**\nTypecheck, focused components/hooks tests, diff review.\n\n**Risk**\nOver-refactoring could destabilize sync behavior.\n\n**Evidence**\n`Workspace.tsx` and extracted hooks; classification confirmed.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-031",
+          "title": "Standardize overlay, layer, and responsive CSS ownership",
+          "done": false,
+          "next": false,
+          "tags": [
+            "ui",
+            "a11y"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-017"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nThe phase defect shows repeated local overlay mechanics are fragile.\n\n**Finding**\nPhase settings owns pointer-outside state and absolute positioning; CSS contains component-local z-index/offset behavior, while Modal has separate focus handling.\n\n**Scope**\nCreate minimal shared primitives/tokens for menus/dialogs/popovers and migrate justified duplicates; remove arbitrary overlay offsets only when replaced.\n\n**Acceptance criteria**\nLayer scale, scroll behavior, focus lifecycle, and responsive placement are owned consistently; no visual regression in modal flows.\n\n**Validation / gate**\nVisual regression/smoke at mobile/narrow/zoom and keyboard tests.\n\n**Risk**\nA broad CSS rewrite can create regressions.\n\n**Evidence**\n`PhaseSettingsMenu.tsx`, `Modal.tsx`, workspace/modal CSS; classification confirmed.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-032",
+          "title": "Remove stale flags, dead paths, and duplicated mutation vocabulary",
+          "done": false,
+          "next": false,
+          "tags": [
+            "core",
+            "quality"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-018",
+            "RF-030"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nThe removed phase action and uneven activity show a risk of drift.\n\n**Finding**\nHistory records a removed no-op add-phase button; phase and task mutations use different activity/persistence paths.\n\n**Scope**\nTrace candidate unused exports/flags and consolidate only demonstrated dead paths or duplicated vocabulary.\n\n**Acceptance criteria**\nNo removed workflow leaves dangling UI/state; canonical factories, validation, and activity names are documented and tested.\n\n**Validation / gate**\nTypecheck, targeted reference search, and focused tests.\n\n**Risk**\nDeleting compatibility paths prematurely can break imports or collaboration.\n\n**Evidence**\n`usePhaseMutations.ts`, `createTaskMutations`, history `ceddb72`; classification likely.\n\n**Classification**\nconfirmed"
+        }
+      ]
+    },
+    {
+      "id": "p09",
+      "num": "09",
+      "name": "Accessibility, performance, security, and release gates",
+      "color": "#4f7cac",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-033",
+          "title": "Add browser smoke coverage for essential editable workflows",
+          "done": false,
+          "next": false,
+          "tags": [
+            "quality",
+            "a11y"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-016",
+            "RF-017",
+            "RF-019"
+          ],
+          "est": "4 days",
+          "desc": "**Why**\nUnit coverage cannot prove focus, overlay placement, drag alternatives, and responsive recovery.\n\n**Finding**\nVitest/API tests are extensive, but repository inspection found no full browser suite covering phase creation and key mobile/zoom flows.\n\n**Scope**\nAdd focused browser smoke for local and synced owner/editor/viewer paths, phase/task creation, import failure, conflict/session recovery, and reporting links.\n\n**Acceptance criteria**\nCritical workflows pass at desktop, narrow desktop, mobile, and 200% zoom; failures include actionable artifacts.\n\n**Validation / gate**\nCI browser smoke gate.\n\n**Risk**\nBeta regressions can escape component/API tests.\n\n**Evidence**\nWeb test inventory, `Accessibility.test.tsx`; classification likely.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-034",
+          "title": "Establish accessibility and responsive acceptance gates",
+          "done": false,
+          "next": false,
+          "tags": [
+            "a11y",
+            "quality",
+            "ui"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-017",
+            "RF-020"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nExisting accessibility tests are a foundation, not proof of complete interaction coverage.\n\n**Finding**\nTests cover selected labels/focus behavior, while phase menu keyboard semantics, focus return, reflow, touch targets, and non-drag alternatives remain unverified.\n\n**Scope**\nDefine and automate the keyboard, screen-reader expectation, focus, reflow, contrast, reduced-motion, and touch-target matrix.\n\n**Acceptance criteria**\nNo essential workflow relies on hover or drag alone; dialogs/menus meet focus and Escape expectations; 200% reflow remains usable.\n\n**Validation / gate**\nAutomated checks plus manual assistive-technology smoke.\n\n**Risk**\nAccessibility defects can make a local-first product unusable.\n\n**Evidence**\n`Accessibility.test.tsx`, dialog-focus tests, phase menu; classification likely.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-035",
+          "title": "Measure large-roadmap performance and sync payload limits",
+          "done": false,
+          "next": false,
+          "tags": [
+            "performance",
+            "quality",
+            "sync"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-016"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nPlanning tools must remain responsive with realistic data.\n\n**Finding**\nNo evidence was found of a large-roadmap benchmark for hydration, typing, filters, expand/collapse, import/export, autosync payloads, or realtime updates.\n\n**Scope**\nCreate a representative fixture and budgets; profile subscriptions before proposing optimizations.\n\n**Acceptance criteria**\nHundreds-task workflow meets agreed interaction and sync budgets; regressions fail a repeatable gate; only evidenced optimizations enter scope.\n\n**Validation / gate**\nBenchmark/trace in CI or reproducible local command.\n\n**Risk**\nSpeculative optimization can obscure real bottlenecks.\n\n**Evidence**\nWorkspace view model, storage, autosync, import/export; classification needs verification.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-036",
+          "title": "Execute security, backup, and deployment proof gates",
+          "done": false,
+          "next": false,
+          "tags": [
+            "security",
+            "quality",
+            "sync"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-023",
+            "RF-033"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nCode and documentation cannot substitute for operational proof.\n\n**Finding**\nCI includes audits/migration checks and self-hosting docs prescribe backup/restore, but no audit evidence proves a deployed candidate, restore drill, rollback, or monitored smoke.\n\n**Scope**\nRun the documented security/privacy, dependency, backup/restore, rollback, and deployed smoke matrix against a candidate SHA.\n\n**Acceptance criteria**\nNo token/secret leaks through URLs/logs; migration backup restores; rollback path is rehearsed; health/realtime behavior is observed.\n\n**Validation / gate**\nManual/deployment checklist with recorded candidate evidence.\n\n**Risk**\nOperational failures are high impact and cannot be inferred locally.\n\n**Evidence**\nCI workflow, self-hosting docs, release checklist; classification needs verification.\n\n**Classification**\nconfirmed"
+        }
+      ]
+    },
+    {
+      "id": "p10",
+      "num": "10",
+      "name": "Beta candidate and release",
+      "color": "#4f7cac",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-037",
+          "title": "Freeze a Beta candidate and execute regression-only stabilization",
+          "done": false,
+          "next": false,
+          "tags": [
+            "quality",
+            "security"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-033",
+            "RF-034",
+            "RF-035",
+            "RF-036"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nA Beta claim needs a reproducible, bounded release decision.\n\n**Finding**\nThe repository has a release checklist and CI gates, but no current candidate SHA or complete manual evidence was supplied to this audit.\n\n**Scope**\nFeature-freeze at a candidate SHA; resolve only release-blocking regressions; record gate results and known limitations.\n\n**Acceptance criteria**\nAll required automated/manual gates pass or an explicit release decision records the exception; candidate SHA is immutable.\n\n**Validation / gate**\nFull release checklist and CI status verification.\n\n**Risk**\nLate feature work invalidates prior evidence.\n\n**Evidence**\n`.github/RELEASE_CHECKLIST.md`; classification needs verification.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-038",
+          "title": "Publish Beta release and monitor the first self-hosted deployment",
+          "done": false,
+          "next": false,
+          "tags": [
+            "quality",
+            "security",
+            "docs"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-037"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nRelease requires verified rollout and recovery, not just a tag.\n\n**Finding**\nDeployment and monitoring evidence is unavailable in this repository audit.\n\n**Scope**\nPublish release notes and limitations, take backup, deploy candidate, smoke-test, monitor, and retain rollback instructions.\n\n**Acceptance criteria**\nRelease artifacts, backup, deployment smoke, and rollback owner are recorded; no platform expansion is bundled.\n\n**Validation / gate**\nDeployed smoke and post-release monitoring window.\n\n**Risk**\nA clean local build does not prove a safe release.\n\n**Evidence**\nRelease checklist and self-hosting documentation; classification needs verification.\n\n**Classification**\nconfirmed"
+        }
+      ]
+    },
+    {
+      "id": "p11",
+      "num": "11",
+      "name": "Parked post-Beta platform expansion",
+      "color": "#76746e",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-039",
+          "title": "Reassess identity and external API expansion from Beta evidence",
+          "done": false,
+          "next": false,
+          "tags": [
+            "post-beta",
+            "security"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-038"
+          ],
+          "est": "1 day",
+          "desc": "**Why**\nAccounts, API v1, OAuth/OIDC, personal access tokens, and service accounts change the product’s security and support model.\n\n**Finding**\nProduct direction explicitly pauses platform expansion until real Beta usage evidence exists.\n\n**Scope**\nCollect usage evidence and publish a decision record before adding identity or external API work.\n\n**Acceptance criteria**\nNo account/API implementation starts before Beta release review and a new threat/model ownership decision.\n\n**Validation / gate**\nPost-Beta product/security review.\n\n**Risk**\nPremature identity expansion would distract from local-first stability.\n\n**Evidence**\nProduct direction in this roadmap; classification confirmed.\n\n**Classification**\nconfirmed"
+        },
+        {
+          "id": "RF-040",
+          "title": "Reassess automation integrations from Beta evidence",
+          "done": false,
+          "next": false,
+          "tags": [
+            "post-beta",
+            "contributors"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-038",
+            "RF-039"
+          ],
+          "est": "1 day",
+          "desc": "**Why**\nMCP, agent change sets, webhooks, GitHub metadata/sync, and billing require stable contracts and operational support.\n\n**Finding**\nThese capabilities are explicitly deferred and no Beta dependency justifies them.\n\n**Scope**\nDecide whether to pursue any automation integration only after Beta workflow evidence and contract/versioning strategy.\n\n**Acceptance criteria**\nNo MCP, webhooks, agent writes, GitHub sync, or billing is included in Beta scope.\n\n**Validation / gate**\nPost-Beta product/architecture review.\n\n**Risk**\nAutomation can magnify data-integrity and privacy failures.\n\n**Evidence**\nProduct direction in this roadmap; classification confirmed.\n\n**Classification**\nconfirmed"
+        }
+      ]
+    }
+  ]
+}
