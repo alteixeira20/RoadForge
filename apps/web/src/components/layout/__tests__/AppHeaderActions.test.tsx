@@ -46,6 +46,21 @@ describe('workspace header actions', () => {
     container.remove()
   })
 
+  it('keeps the report action available to viewers, who get no Save', () => {
+    const readOnly = document.createElement('div')
+    const readOnlyRoot = createRoot(readOnly)
+    act(() => {
+      readOnlyRoot.render(
+        <AppHeader roadmapName="Shared roadmap" syncStatus="live" readOnly />,
+      )
+    })
+
+    expect(readOnly.querySelector('.header-report-link')).not.toBeNull()
+    expect(readOnly.querySelector('.header-save-btn')).toBeNull()
+    expect(readOnly.querySelector('.header-end > .iconbtn')).toBeNull()
+    act(() => readOnlyRoot.unmount())
+  })
+
   it('does not render a Help action in the workspace header', () => {
     expect(container.querySelector('a[href="/help"]')).toBeNull()
     expect(container.querySelector('.header-help-link')).toBeNull()
@@ -87,6 +102,22 @@ describe('workspace header actions', () => {
     expect(label).toContain(PROBLEM_REPORT_PRIVACY_WARNING)
     expect(title).toContain('Report a problem')
     expect(title).toContain(PROBLEM_REPORT_PRIVACY_WARNING)
+  })
+
+  it('orders the actions Import/Export, Report a problem, then Save', () => {
+    const order = Array.from(
+      container.querySelectorAll(
+        '.header-end > .iconbtn, .header-end > .header-report-link, .header-end > .header-save-btn',
+      ),
+    ).map((node) =>
+      node.classList.contains('header-report-link')
+        ? 'report'
+        : node.classList.contains('header-save-btn')
+          ? 'save'
+          : 'io',
+    )
+
+    expect(order).toEqual(['io', 'report', 'save'])
   })
 
   it('keeps the label text in the markup so wide layouts can show it', () => {

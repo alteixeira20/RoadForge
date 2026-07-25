@@ -43,12 +43,16 @@ export function AppHeader({
       <div className="header-end">
         {/* The Help action is hidden from the workspace header pending
             refinement. /help stays routable and linked from the site header. */}
+        {!readOnly && (
+          <button className="iconbtn" title="Import / Export" aria-label="Import / Export" onClick={onIO}>
+            <Icon name="export" size={16} />
+          </button>
+        )}
+        {/* Sits between Import/Export and Save, and stays available to viewers,
+            who get no Import/Export or Save action at all. */}
         <ProblemReportLink className="btn sm header-report-link" />
         {!readOnly && (
           <>
-            <button className="iconbtn" title="Import / Export" aria-label="Import / Export" onClick={onIO}>
-              <Icon name="export" size={16} />
-            </button>
             {!isServerBacked ? (
               <button
                 className="btn sm header-save-btn"
