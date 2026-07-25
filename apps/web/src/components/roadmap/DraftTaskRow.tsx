@@ -40,6 +40,7 @@ export function DraftTaskRow({ onConfirm, onDiscard, onDirtyChange }: DraftTaskR
       <input
         ref={inputRef}
         className="draft-task-input"
+        aria-label="New task title"
         value={title}
         onChange={(e) => {
         setTitle(e.target.value)

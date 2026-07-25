@@ -1,32 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
+import { createRoadmap } from './helpers'
 
 const ISSUE_CHOOSER_URL = 'https://github.com/alteixeira20/RoadForge/issues/new/choose'
-
-async function createRoadmap(
-  page: Page,
-  {
-    title,
-    startingPoint,
-  }: {
-    title: string
-    startingPoint: 'blank' | 'template'
-  },
-) {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Create roadmap' }).first().click()
-  await page.getByLabel('Display name').fill('Browser Tester')
-  await page.getByRole('button', { name: /Continue/ }).click()
-  await page.getByLabel('Roadmap title').fill(title)
-  await page.getByRole('button', { name: /Continue/ }).click()
-  if (startingPoint === 'template') {
-    await page.getByRole('button', { name: /Use RoadForge template/ }).click()
-  }
-  await page.getByRole('button', { name: /Continue/ }).click()
-  await page.getByRole('button', { name: /Continue/ }).click()
-  await page.getByRole('button', { name: /Open roadmap/ }).click()
-  await page.waitForURL(/\/workspace\?roadmap=/, { timeout: 30_000 })
-  await expect(page.getByRole('heading', { name: title })).toBeVisible()
-}
 
 async function seedSyncedRoadmap(page: Page, role: 'owner' | 'editor' | 'viewer') {
   await page.addInitScript(({ seededRole }) => {

@@ -374,13 +374,13 @@
 @media (max-width: 760px) {
   .phase-head { padding: 14px 16px; gap: 10px; }
   .phase-toggle-btn { gap: 10px; }
-  .phase-settings-trigger { opacity: 1; width: 36px; height: 36px; }
+  .phase-settings-trigger { opacity: 1; width: 44px; height: 44px; }
   .phase-head .progress-mini { display: none; }
   .phase-head .name { font-size: 17px; }
 }
 
 @media (hover: none) {
-  .phase-settings-trigger { opacity: 1; width: 36px; height: 36px; }
+  .phase-settings-trigger { opacity: 1; width: 44px; height: 44px; }
 }
 
 /* ── 600px — mobile: compact phase layout ───────────────────────────────── */
@@ -392,5 +392,5 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .phase-drag-handle { opacity: 1; width: 24px; height: 36px; }
+  .phase-drag-handle { opacity: 1; width: 44px; height: 44px; }
 }

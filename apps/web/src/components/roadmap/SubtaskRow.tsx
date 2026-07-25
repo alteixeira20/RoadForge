@@ -10,6 +10,8 @@ interface SubtaskRowProps {
   dragHandleProps?: Record<string, unknown>
   onCheck: (id: string) => void
   onDelete: (id: string) => void
+  onMoveEarlier?: () => void
+  onMoveLater?: () => void
   displayNumber?: string
 }
 
@@ -20,6 +22,8 @@ export function SubtaskRow({
   dragHandleProps,
   onCheck,
   onDelete,
+  onMoveEarlier,
+  onMoveLater,
   displayNumber,
 }: SubtaskRowProps) {
   const isPending = pendingTaskDoneIds.has(task.id)
@@ -39,6 +43,7 @@ export function SubtaskRow({
         className={`subtask-check${isEffectivelyReadOnly ? ' disabled' : ''}`}
         role="checkbox"
         aria-checked={task.done}
+        aria-label={`Mark subtask "${task.title}" as ${task.done ? 'incomplete' : 'complete'}`}
         tabIndex={isEffectivelyReadOnly ? -1 : 0}
         onClick={() => { if (!isEffectivelyReadOnly) onCheck(task.id) }}
         onKeyDown={(e) => {
@@ -48,11 +53,32 @@ export function SubtaskRow({
       <span className="subtask-title">{task.title}</span>
       {displayNumber && <span className="task-num">{displayNumber}</span>}
       <span className="subtask-id">{task.id}</span>
+      {onMoveEarlier && (
+        <button
+          type="button"
+          className="subtask-move"
+          aria-label={`Move subtask "${task.title}" earlier`}
+          onClick={() => onMoveEarlier()}
+        >
+          <Icon name="chevron-up" size={12} />
+        </button>
+      )}
+      {onMoveLater && (
+        <button
+          type="button"
+          className="subtask-move"
+          aria-label={`Move subtask "${task.title}" later`}
+          onClick={() => onMoveLater()}
+        >
+          <Icon name="chevron-down" size={12} />
+        </button>
+      )}
       {!isEffectivelyReadOnly && (
         <button
           type="button"
           className="subtask-delete"
           title="Delete subtask"
+          aria-label={`Delete subtask "${task.title}"`}
           onClick={(e) => { e.stopPropagation(); onDelete(task.id) }}
         >
           <Icon name="x" size={12} />

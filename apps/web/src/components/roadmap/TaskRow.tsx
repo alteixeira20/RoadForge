@@ -44,6 +44,8 @@ interface TaskRowProps {
   onLinkDependency: (taskId: string, depId: string) => void
   onUnlinkDependency: (taskId: string, depId: string) => void
   onReorderSubtasks: (parentId: string, subtaskIds: string[]) => void
+  onMoveEarlier?: () => void
+  onMoveLater?: () => void
   onDeleteSubtask: (subtaskId: string) => void
   hasCycle: (taskId: string, depId: string) => boolean
   onToast: (message: string, tone?: ToastTone) => void
@@ -71,6 +73,8 @@ export function TaskRow({
   onLinkDependency,
   onUnlinkDependency,
   onReorderSubtasks,
+  onMoveEarlier,
+  onMoveLater,
   onDeleteSubtask,
   hasCycle,
   onToast,
@@ -339,6 +343,8 @@ export function TaskRow({
         canDrag={canDragTask}
         dragHandleTitle={dragHandleTitle}
         dragHandleProps={dragHandleProps}
+        onMoveEarlier={onMoveEarlier}
+        onMoveLater={onMoveLater}
         checkDisabled={effectivelyReadOnly}
         checkTitle={checkTitle}
         onCheck={() => onCheck(task.id)}

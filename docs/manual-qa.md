@@ -645,6 +645,32 @@ All overlays built on the shared `Modal` (Save, Share, Import/Export, Tag Regist
 
 ---
 
+## 33 — Assistive-technology Beta smoke
+
+Run once with NVDA and Firefox or Chrome, and once with VoiceOver and Safari.
+Record browser, assistive-technology version, operating system, and any defect.
+
+- [ ] Navigate the landing and workspace by landmarks and headings; names and
+  order match the visual structure.
+- [ ] Complete the create wizard; each step change, field name, selected
+  starting point, and final action is announced.
+- [ ] Expand and collapse a phase, open its settings menu, inspect color mode
+  state, close with Escape, and confirm focus returns to the trigger.
+- [ ] Create, edit, complete, and reorder a task and subtask. Confirm checkbox
+  state, validation errors, move actions, and dependency navigation are
+  announced without relying on pointer drag.
+- [ ] Exercise empty, filtered-empty, final-phase recovery, and viewer
+  restriction states; each explanation and available action is announced once.
+- [ ] Trigger local, saving, offline, conflict, expired-session, and restored
+  states where available; live-region wording is timely and does not interrupt
+  typing.
+- [ ] At 200% browser zoom and with the mobile screen reader enabled, reach
+  every primary creation and recovery action without horizontal scrolling.
+- [ ] With reduced motion enabled, confirm no decorative animation continues
+  and no interaction depends on motion.
+
+---
+
 ## Blocker criteria
 
 Stop QA and file a blocker if any of the following are true:

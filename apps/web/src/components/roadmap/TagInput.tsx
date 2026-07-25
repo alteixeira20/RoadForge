@@ -115,6 +115,7 @@ export function TagInput({
       <div className="tag-input-wrap">
         <input
           className="tag-chip-input"
+          aria-label="Tags"
           value={inputValue}
           onChange={handleChange}
           onKeyDown={handleKeyDown}

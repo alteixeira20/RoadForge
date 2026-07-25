@@ -27,7 +27,8 @@
   touch-action: none;
   margin-left: -4px;
 }
-.subtask-row:hover .subtask-drag-handle { opacity: 1; }
+.subtask-row:hover .subtask-drag-handle,
+.subtask-drag-handle:focus-visible { opacity: 1; }
 .subtask-drag-handle.disabled { cursor: default; }
 .subtask-drag-handle:hover { color: var(--ember); }
 .subtask-drag-handle:active { cursor: grabbing; color: var(--ember); }
@@ -63,6 +64,22 @@
   opacity: 0.8;
 }
 
+.subtask-move {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-3);
+}
+.subtask-move:hover,
+.subtask-move:focus-visible {
+  color: var(--ink);
+  border-color: var(--border);
+  background: var(--bg-2);
+}
+
 .subtask-delete {
   width: 22px; height: 22px;
   display: grid; place-items: center;
@@ -73,5 +90,18 @@
   transition: opacity 120ms, color 120ms, background 120ms;
   flex-shrink: 0;
 }
-.subtask-row:hover .subtask-delete { opacity: 1; }
+.subtask-row:hover .subtask-delete,
+.subtask-row:focus-within .subtask-delete { opacity: 1; }
 .subtask-delete:hover { color: var(--ember); background: var(--bg-2); }
+
+@media (hover: none), (pointer: coarse) {
+  .subtask-row { min-height: 44px; }
+  .subtask-drag-handle,
+  .subtask-check,
+  .subtask-move,
+  .subtask-delete {
+    width: 36px;
+    height: 36px;
+    opacity: 1;
+  }
+}

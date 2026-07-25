@@ -57,6 +57,7 @@ export function PhaseSummaryContent({
         <input
           ref={inputRef}
           className="phase-name-input"
+          aria-label={`Phase name for ${name}`}
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           onKeyDown={onKeyDown}

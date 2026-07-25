@@ -723,7 +723,7 @@
           "id": "RF-034",
           "title": "Establish accessibility and responsive acceptance gates",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "a11y",
             "quality",
@@ -737,13 +737,13 @@
             "RF-029"
           ],
           "est": "3 days",
-          "desc": "**Why**\nExisting accessibility tests are a foundation, not proof of complete interaction coverage.\n\n**Finding**\nTests cover selected labels/focus behavior, while phase menu keyboard semantics, focus return, reflow, touch targets, and non-drag alternatives remain unverified.\n\n**Scope**\nDefine and automate the keyboard, screen-reader expectation, focus, reflow, contrast, reduced-motion, and touch-target matrix.\n\n**Acceptance criteria**\nNo essential workflow relies on hover or drag alone; dialogs/menus meet focus and Escape expectations; 200% reflow remains usable.\n\n**Validation / gate**\nAutomated checks plus manual assistive-technology smoke.\n\n**Risk**\nAccessibility defects can make a local-first product unusable.\n\n**Evidence**\n`Accessibility.test.tsx`, dialog-focus tests, phase menu; classification likely.\n\n**Classification**\nlikely"
+          "desc": "**Why**\nAccessibility needs browser-level semantic, keyboard, responsive, motion, and contrast evidence in addition to component tests.\n\n**Implementation status**\nAutomated implementation is complete. The required manual NVDA/VoiceOver assistive-technology smoke remains open in `docs/manual-qa.md` section 33.\n\n**Implemented**\nAdded a Playwright axe WCAG A/AA gate for landing, workspace, phase menu, and color dialog states. Creation editors, phase disclosure, subtask controls, tag/task/link forms, dependency navigation, color selection, and validation relationships now expose explicit accessible semantics. Hover-only subtask/dependency actions become visible on focus and coarse pointers. Phase, task, and subtask ordering now provide explicit Move earlier/later actions in addition to keyboard and pointer drag.\n\n**Automated evidence**\n13 Chromium browser tests pass, including axe scans, initial focus, Escape and focus return, non-drag keyboard reorder, reduced-motion duration, 36px-or-larger critical mobile targets, 390px mobile, 640px reflow, and horizontal-overflow checks. Dialog/menu focus-trap component tests and the full parser-backed browser smoke remain green. The axe gate found and fixed insufficient contrast in the local Activity availability explanation.\n\n**Manual remainder**\nRun section 33 with NVDA plus Firefox or Chrome and VoiceOver plus Safari, including landmarks, wizard step changes, phase/task operations, live announcements, 200% zoom, mobile screen reader, and reduced motion.\n\n**Classification**\nconfirmed"
         },
         {
           "id": "RF-035",
           "title": "Measure large-roadmap performance and sync payload limits",
           "done": false,
-          "next": false,
+          "next": true,
           "tags": [
             "performance",
             "quality",

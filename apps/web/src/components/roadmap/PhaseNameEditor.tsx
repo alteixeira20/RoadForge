@@ -9,6 +9,7 @@ interface PhaseNameEditorProps {
   name: string
   num: string
   isActive: boolean
+  isOpen: boolean
   displayStatus: PhaseType['status']
   progressPercent: number
   doneCount: number
@@ -23,6 +24,7 @@ export function PhaseNameEditor({
   name,
   num,
   isActive,
+  isOpen,
   displayStatus,
   progressPercent,
   doneCount,
@@ -61,7 +63,13 @@ export function PhaseNameEditor({
           <PhaseSummaryContent {...summaryProps} />
         </div>
       ) : (
-        <button type="button" className="phase-toggle-btn" onClick={onPhaseToggle}>
+        <button
+          type="button"
+          className="phase-toggle-btn"
+          aria-expanded={isOpen}
+          aria-label={`${isOpen ? 'Collapse' : 'Expand'} phase ${name}`}
+          onClick={onPhaseToggle}
+        >
           <PhaseSummaryContent {...summaryProps} />
         </button>
       )}

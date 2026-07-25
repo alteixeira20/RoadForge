@@ -23,6 +23,8 @@ interface TaskRowHeaderProps {
   canDrag: boolean
   dragHandleTitle: string
   dragHandleProps?: Record<string, unknown>
+  onMoveEarlier?: () => void
+  onMoveLater?: () => void
   checkDisabled: boolean
   checkTitle?: string
   onCheck: () => void
@@ -43,6 +45,8 @@ export function TaskRowHeader({
   canDrag,
   dragHandleTitle,
   dragHandleProps,
+  onMoveEarlier,
+  onMoveLater,
   checkDisabled,
   checkTitle,
   onCheck,
@@ -58,6 +62,32 @@ export function TaskRowHeader({
       >
         <Icon name="grip" size={14} />
       </div>
+      {onMoveEarlier && (
+        <button
+          type="button"
+          className="task-move-button"
+          aria-label={`Move task "${task.title}" earlier`}
+          onClick={(event) => {
+            event.stopPropagation()
+            onMoveEarlier()
+          }}
+        >
+          <Icon name="chevron-up" size={13} />
+        </button>
+      )}
+      {onMoveLater && (
+        <button
+          type="button"
+          className="task-move-button"
+          aria-label={`Move task "${task.title}" later`}
+          onClick={(event) => {
+            event.stopPropagation()
+            onMoveLater()
+          }}
+        >
+          <Icon name="chevron-down" size={13} />
+        </button>
+      )}
       <div
         role="checkbox"
         aria-checked={task.done}

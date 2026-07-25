@@ -26,6 +26,7 @@ export function SubtaskForm({ onAdd, onCancel, canCommit = true }: SubtaskFormPr
       <input
         autoFocus
         type="text"
+        aria-label="Subtask title"
         placeholder="Subtask title..."
         value={title}
         onChange={(e) => setTitle(e.target.value)}
@@ -80,6 +81,7 @@ export function DependencyPicker({
         <input
           autoFocus
           type="text"
+          aria-label="Search tasks to link"
           placeholder="Search tasks..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}

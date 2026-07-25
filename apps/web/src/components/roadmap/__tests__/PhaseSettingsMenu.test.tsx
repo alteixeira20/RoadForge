@@ -125,6 +125,40 @@ describe('PhaseSettingsMenu', () => {
     ) as HTMLInputElement).value).toBe('#38bdf8')
   })
 
+  it('exposes non-drag move actions and selected color-mode state', () => {
+    const onMoveLater = vi.fn()
+    act(() => {
+      root.render(
+        <PhaseSettingsMenu
+          {...createProps({ onMoveLater })}
+        />,
+      )
+    })
+    const trigger = container.querySelector('button') as HTMLButtonElement
+    act(() => trigger.click())
+    const moveLater = Array.from(document.body.querySelectorAll<HTMLButtonElement>(
+      '[role="menuitem"]',
+    )).find((button) => button.textContent?.includes('Move later'))
+    act(() => moveLater?.click())
+    expect(onMoveLater).toHaveBeenCalledOnce()
+
+    act(() => {
+      root.render(
+        <PhaseSettingsMenu
+          {...createProps({ showColorPicker: true })}
+        />,
+      )
+    })
+    const auto = Array.from(document.body.querySelectorAll<HTMLButtonElement>(
+      '[role="dialog"] button',
+    )).find((button) => button.textContent === 'Auto')
+    const manual = Array.from(document.body.querySelectorAll<HTMLButtonElement>(
+      '[role="dialog"] button',
+    )).find((button) => button.textContent === 'Manual')
+    expect(auto?.getAttribute('aria-pressed')).toBe('false')
+    expect(manual?.getAttribute('aria-pressed')).toBe('true')
+  })
+
   it('reports contained work and the final-phase recovery path before deletion', async () => {
     const onDeletePhase = vi.fn()
     const phaseWithWork: Phase = {

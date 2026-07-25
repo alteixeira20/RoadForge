@@ -26,7 +26,11 @@ export function RoadmapSwitcherInviteForm({
   return (
     <div className="switcher-invite-form">
       <input
+        id="switcher-invite-link"
         type="text"
+        aria-label="Invite link or token"
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? 'switcher-invite-error' : undefined}
         placeholder="Paste invite link or token..."
         value={inviteLink}
         onChange={(e) => onInviteLinkChange(e.target.value)}
@@ -35,14 +39,18 @@ export function RoadmapSwitcherInviteForm({
       />
       {needsPassword && (
         <input
+          id="switcher-invite-password"
           type="password"
+          aria-label="Roadmap password"
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? 'switcher-invite-error' : undefined}
           placeholder="Roadmap password"
           value={password}
           onChange={(e) => onPasswordChange(e.target.value)}
           className="switcher-field"
         />
       )}
-      {error && <div className="switcher-error">{error}</div>}
+      {error && <div id="switcher-invite-error" className="switcher-error" role="alert">{error}</div>}
       <div className="switcher-invite-actions">
         <button className="btn sm primary" onClick={onJoin} disabled={joining}>
           {joining ? 'Joining...' : 'Join'}

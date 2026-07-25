@@ -29,6 +29,8 @@ interface PhaseSettingsMenuProps {
   onColorClose: () => void
   onColorSelect: (color: string) => void
   onColorModeSelect: (mode: 'auto' | 'manual') => void
+  onMoveEarlier?: () => void
+  onMoveLater?: () => void
   colorReason: string
   displayColor: string
   onDeletePhase: (phaseId: string) => void
@@ -45,6 +47,8 @@ export function PhaseSettingsMenu({
   onColorClose,
   onColorSelect,
   onColorModeSelect,
+  onMoveEarlier,
+  onMoveLater,
   colorReason,
   displayColor,
   onDeletePhase,
@@ -139,6 +143,22 @@ export function PhaseSettingsMenu({
             <span className="phase-settings-color-swatch" style={{ backgroundColor: displayColor }} />
             Change color
           </button>
+          {onMoveEarlier && (
+            <button type="button" role="menuitem" onClick={() => {
+              closeMenu()
+              onMoveEarlier()
+            }}>
+              <Icon name="chevron-up" size={13} /> Move earlier
+            </button>
+          )}
+          {onMoveLater && (
+            <button type="button" role="menuitem" onClick={() => {
+              closeMenu()
+              onMoveLater()
+            }}>
+              <Icon name="chevron-down" size={13} /> Move later
+            </button>
+          )}
           <div className="phase-settings-sep" role="separator" />
           <button type="button" role="menuitem" className="danger" onClick={handleDeleteClick}>
             <Icon name="trash" size={13} /> Delete phase
@@ -160,6 +180,7 @@ export function PhaseSettingsMenu({
             <button
               type="button"
               className={phase.colorMode !== 'manual' ? 'selected' : ''}
+              aria-pressed={phase.colorMode !== 'manual'}
               onClick={() => onColorModeSelect('auto')}
             >
               Auto
@@ -167,6 +188,7 @@ export function PhaseSettingsMenu({
             <button
               type="button"
               className={phase.colorMode === 'manual' ? 'selected' : ''}
+              aria-pressed={phase.colorMode === 'manual'}
               onClick={() => onColorModeSelect('manual')}
             >
               Manual
@@ -187,6 +209,7 @@ export function PhaseSettingsMenu({
                     className={preset.value.toLowerCase() === phase.color.toLowerCase() ? 'selected' : ''}
                     title={preset.label}
                     aria-label={preset.label}
+                    aria-pressed={preset.value.toLowerCase() === phase.color.toLowerCase()}
                     onClick={() => onColorSelect(preset.value)}
                   >
                     <span style={{ backgroundColor: preset.value }} />

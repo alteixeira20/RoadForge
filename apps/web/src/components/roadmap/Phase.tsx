@@ -50,6 +50,8 @@ interface PhaseProps {
   onUpdatePhaseColorMode: (phaseId: string, mode: 'auto' | 'manual') => void
   onUpdatePhaseName: (phaseId: string, name: string) => void
   onDeletePhase: (phaseId: string) => void
+  onMoveEarlier?: () => void
+  onMoveLater?: () => void
   onAddTask: (phaseId: string, title?: string) => string
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void
@@ -81,6 +83,8 @@ export function Phase({
   onUpdatePhaseColorMode,
   onUpdatePhaseName,
   onDeletePhase,
+  onMoveEarlier,
+  onMoveLater,
   onAddTask,
   onAddSubtask,
   onLinkDependency,
@@ -327,6 +331,7 @@ export function Phase({
         phase={phase}
         isOnlyPhase={isOnlyPhase}
         isActive={isActive}
+        isOpen={isOpen}
         displayStatus={displayStatus}
         doneCount={doneCount}
         readOnly={readOnly}
@@ -343,6 +348,8 @@ export function Phase({
         onColorClose={closeColorPicker}
         onColorSelect={handleColorSelect}
         onColorModeSelect={(mode) => onUpdatePhaseColorMode(phase.id, mode)}
+        onMoveEarlier={onMoveEarlier}
+        onMoveLater={onMoveLater}
         colorReason={phaseDisplayColor.reason}
         displayColor={phaseDisplayColor.color}
         onDeletePhase={onDeletePhase}
@@ -371,7 +378,7 @@ export function Phase({
             >
               <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                 <div className="sortable-list">
-                  {topLevelTasks.map((t) => (
+                  {topLevelTasks.map((t, index) => (
                     <SortableTaskItem
                       key={t.id}
                       task={t}
@@ -389,6 +396,12 @@ export function Phase({
                       onLinkDependency={onLinkDependency}
                       onUnlinkDependency={onUnlinkDependency}
                       onReorderSubtasks={onReorderSubtasks}
+                      onMoveEarlier={index > 0
+                        ? () => onReorderTasks(phase.id, arrayMove(taskIds, index, index - 1))
+                        : undefined}
+                      onMoveLater={index < topLevelTasks.length - 1
+                        ? () => onReorderTasks(phase.id, arrayMove(taskIds, index, index + 1))
+                        : undefined}
                       onDeleteSubtask={onDeleteSubtask}
                       hasCycle={hasCycle}
                       onToast={onToast}

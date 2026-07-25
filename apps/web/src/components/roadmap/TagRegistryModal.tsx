@@ -180,6 +180,7 @@ export function TagRegistryModal({ open, onClose, readOnly = false }: TagRegistr
                           if (e.key === 'Escape') resetForm()
                         }}
                         autoFocus
+                        aria-label="Tag label"
                         placeholder="Tag label"
                       />
                       <input
@@ -265,6 +266,7 @@ export function TagRegistryModal({ open, onClose, readOnly = false }: TagRegistr
                 if (e.key === 'Escape') resetForm()
               }}
               autoFocus
+              aria-label="Tag label"
               placeholder="Tag label"
             />
             <input

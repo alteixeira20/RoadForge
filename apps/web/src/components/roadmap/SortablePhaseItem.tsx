@@ -21,6 +21,8 @@ interface SortablePhaseItemProps {
   onUpdatePhaseColorMode: (phaseId: string, mode: 'auto' | 'manual') => void
   onUpdatePhaseName: (phaseId: string, name: string) => void
   onDeletePhase: (phaseId: string) => void
+  onMoveEarlier?: () => void
+  onMoveLater?: () => void
   onAddTask: (phaseId: string, title?: string) => string
   onAddSubtask: (parentId: string, title: string) => void
   onLinkDependency: (taskId: string, depId: string) => void

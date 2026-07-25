@@ -309,6 +309,7 @@ describe('phase creation controls', () => {
       name: 'New phase',
       num: '02',
       isActive: false,
+      isOpen: true,
       displayStatus: 'future',
       progressPercent: 0,
       doneCount: 0,

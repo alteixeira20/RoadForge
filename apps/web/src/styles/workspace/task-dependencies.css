@@ -7,10 +7,21 @@
   border: 1px solid var(--border-faint);
   border-radius: 8px;
   font-size: 14px;
-  cursor: pointer;
   transition: all 120ms;
 }
-.dep-row:hover { background: var(--bg); border-color: var(--border); }
+.dep-row:hover,
+.dep-row:focus-within { background: var(--bg); border-color: var(--border); }
+.dep-navigate {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
 .dep-row .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dep-row .did {
   font-family: var(--font-mono);
@@ -35,8 +46,17 @@
   opacity: 0;
   transition: all 160ms;
 }
-.dep-row:hover .btn-remove { opacity: 1; }
+.dep-row:hover .btn-remove,
+.dep-row:focus-within .btn-remove { opacity: 1; }
 .dep-row .btn-remove:hover { color: var(--ember); background: rgba(217,116,66,0.1); }
+
+@media (hover: none), (pointer: coarse) {
+  .dep-row .btn-remove {
+    width: 36px;
+    height: 36px;
+    opacity: 1;
+  }
+}
 
 /* ─── Dependency picker list ───────────────────────────────────────────────── */
 .task-list-mini {
