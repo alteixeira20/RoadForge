@@ -5,8 +5,17 @@ import { HEX_COLOR_PATTERN } from '@/lib/color'
 export const TAG_ID_MAX = 40
 export const TAG_LABEL_MAX = 80
 export const TAG_REGISTRY_MAX = 200
+// Strict grammar for newly generated tag ids (see buildTagId). Lowercase kebab-case only.
 export const TAG_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+// Compatibility grammar for accepting existing tag ids, including legacy formats such as
+// `status:done` or `priority:P0` that predate the canonical kebab-case generator. New ids
+// must still be produced via buildTagId/generateTagId, which only ever emits TAG_ID_PATTERN matches.
+export const TAG_ID_COMPAT_PATTERN = /^[A-Za-z0-9]+(?:[-_:][A-Za-z0-9]+)*$/
 export const TAG_COLOR_PATTERN = HEX_COLOR_PATTERN
+
+export function isValidTagId(id: string): boolean {
+  return id.length > 0 && id.length <= TAG_ID_MAX && TAG_ID_COMPAT_PATTERN.test(id)
+}
 
 export function normalizeTagLabel(label: string): string {
   return label.trim().replace(/\s+/g, ' ').slice(0, TAG_LABEL_MAX)

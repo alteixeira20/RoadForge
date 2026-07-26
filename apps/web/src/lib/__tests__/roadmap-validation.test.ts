@@ -519,5 +519,30 @@ describe('roadmap-validation', () => {
         'tag_registry_repaired',
       )
     })
+
+    it('preserves legacy tag registry ids instead of dropping them on import', () => {
+      const legacyRegistry = [
+        { id: 'status:done', label: 'Done' },
+        { id: 'status:planned', label: 'Planned' },
+        { id: 'priority:P0', label: 'P0' },
+      ]
+      const result = parseImportedRoadmapJson(JSON.stringify({
+        phases: [{
+          ...MINIMAL_PHASE,
+          tasks: [{
+            id: 't-1',
+            title: 'Ship it',
+            done: false,
+            tags: ['status:done', 'priority:P0'],
+          }],
+        }],
+        tagRegistry: legacyRegistry,
+      }))
+
+      expect(result.tagRegistry).toEqual(legacyRegistry)
+      expect(result.repairs.map((repair) => repair.code)).not.toContain(
+        'tag_registry_repaired',
+      )
+    })
   })
 })

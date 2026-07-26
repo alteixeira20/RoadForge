@@ -3,6 +3,7 @@ import {
   buildRegistryFromPhases,
   buildTagId,
   ensureRegistryForTagIds,
+  isValidTagId,
   mergeTagRegistries,
   mergeTagRegistriesWithConflicts,
   normalizeTagColor,
@@ -145,5 +146,45 @@ describe('tag normalization', () => {
     expect(ensureRegistryForTagIds(['infra'], [])).toEqual([
       { id: 'infra', label: 'infra' },
     ])
+  })
+
+  it('always emits ids matching the strict canonical pattern', () => {
+    expect(buildTagId('  API & Platform Work  ')).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  })
+})
+
+describe('isValidTagId', () => {
+  it.each([
+    'status:done',
+    'status:planned',
+    'priority:P0',
+    'priority:p0',
+    'architecture-map',
+    'read_only',
+    'a',
+    'a'.repeat(40),
+  ])('accepts legacy and canonical id %s', (id) => {
+    expect(isValidTagId(id)).toBe(true)
+  })
+
+  it.each([
+    ' status:done',
+    'status:done ',
+    'status::done',
+    '-status',
+    'status-',
+    ':status',
+    'status:',
+    'tag name',
+    'tag/name',
+    'tag\\name',
+    'tag?name',
+    'tag#name',
+    '<tag>',
+    'tag\nname',
+    '',
+    'a'.repeat(41),
+  ])('rejects unsafe id %j', (id) => {
+    expect(isValidTagId(id)).toBe(false)
   })
 })

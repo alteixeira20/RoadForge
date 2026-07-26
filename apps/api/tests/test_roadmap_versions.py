@@ -577,6 +577,60 @@ async def test_restore_persists_historical_tag_registry(client: AsyncClient):
     assert get_resp.json()["tag_registry"] == _echoed(original_registry)
 
 
+async def test_legacy_tag_ids_survive_save_checkpoint_and_restore(client: AsyncClient):
+    """Legacy tag ids such as `status:done` must survive the full save/checkpoint/
+    restore cycle unchanged — this reproduces the reported refresh-then-save rejection."""
+    legacy_registry = [
+        {"id": "status:done", "label": "Done"},
+        {"id": "status:planned", "label": "Planned"},
+        {"id": "priority:P0", "label": "P0"},
+    ]
+    body = await _create_roadmap_with_tags(client, legacy_registry)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    # Re-save the roadmap unchanged, as a refresh-then-save cycle would.
+    resave_resp = await client.put(
+        f"/api/roadmaps/{roadmap_id}",
+        headers=_auth(owner_token),
+        json={
+            "tag_registry": legacy_registry,
+            "phases": [
+                {
+                    "id": "ph_1",
+                    "num": "1",
+                    "name": "Phase One",
+                    "color": "#888",
+                    "status": "active",
+                    "progress": 0,
+                    "tasks": [
+                        {
+                            "id": "tk_1",
+                            "title": "Ship it",
+                            "done": False,
+                            "tags": ["status:done", "priority:P0"],
+                        },
+                    ],
+                },
+            ],
+            "last_updated_at": body["updated_at"],
+        },
+    )
+    assert resave_resp.status_code == 200, resave_resp.text
+    assert resave_resp.json()["tag_registry"] == _echoed(legacy_registry)
+
+    versions = await _list_versions(client, roadmap_id, owner_token)
+    version_id = versions[0]["id"]
+
+    restore_resp = await client.post(
+        f"/api/roadmaps/{roadmap_id}/versions/{version_id}/restore",
+        headers=_auth(owner_token),
+    )
+    assert restore_resp.status_code == 200, restore_resp.text
+    restored_ids = {tag["id"] for tag in restore_resp.json()["tag_registry"]}
+    assert restored_ids == {"status:done", "status:planned", "priority:P0"}
+
+
 async def test_restore_legacy_version_preserves_current_tag_registry(
     client: AsyncClient,
     db_session: AsyncSession,

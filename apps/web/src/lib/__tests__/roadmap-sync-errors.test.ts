@@ -101,6 +101,18 @@ describe('roadmap sync error classification', () => {
     ])).toBe('Save rejected: phases[0].tasks[0].done — Input should be a valid boolean')
   })
 
+  it('gives a friendly message for an unsupported tag id instead of the raw pattern error', () => {
+    expect(formatValidationMessage([
+      {
+        loc: ['body', 'tag_registry', 0, 'id'],
+        msg: "String should match pattern '^[A-Za-z0-9]+(?:[-_:][A-Za-z0-9]+)*$'",
+        type: 'string_pattern_mismatch',
+      },
+    ])).toBe(
+      'Save rejected: a tag ID uses unsupported characters. Tag IDs may only contain letters, numbers, hyphens, underscores, and colons.',
+    )
+  })
+
   it('still classifies a genuine network failure as a connection error', () => {
     const classified = classifyRoadmapSaveError(new ApiConnectionError())
 

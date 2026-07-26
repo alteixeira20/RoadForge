@@ -9,9 +9,17 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from api.schemas.limits import TAG_COLOR_MAX, TAG_LABEL_MAX, TAG_MAX
 from api.schemas.validators import clean_optional_text, clean_required_text
 
+# Strict grammar for newly generated tag ids (see _generated_tag_id in
+# roadmap_tag_service.py). Lowercase kebab-case only.
+TAG_ID_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+# Compatibility grammar for accepting existing tag ids, including legacy formats such as
+# `status:done` or `priority:P0` that predate the canonical kebab-case generator. New ids
+# must still be produced via the canonical generator, which only ever emits TAG_ID_PATTERN matches.
+TAG_ID_COMPAT_PATTERN = r"^[A-Za-z0-9]+(?:[-_:][A-Za-z0-9]+)*$"
+
 
 class TagDefinitionDTO(BaseModel):
-    id: str = Field(max_length=TAG_MAX, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    id: str = Field(max_length=TAG_MAX, pattern=TAG_ID_COMPAT_PATTERN)
     label: str = Field(max_length=TAG_LABEL_MAX)
     color: str | None = Field(
         default=None,
@@ -45,7 +53,7 @@ class CreateTagRequest(BaseModel):
     id: str | None = Field(
         default=None,
         max_length=TAG_MAX,
-        pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        pattern=TAG_ID_PATTERN,
     )
     label: str = Field(min_length=1, max_length=TAG_LABEL_MAX)
     color: str | None = Field(

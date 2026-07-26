@@ -302,6 +302,63 @@ async def test_create_tag_rejects_invalid_id_or_color(client: AsyncClient, paylo
     assert resp.status_code == 422
 
 
+@pytest.mark.parametrize(
+    "legacy_id",
+    ["status:done", "status:planned", "priority:P0", "priority:p0", "read_only", "a"],
+)
+async def test_roadmap_snapshot_accepts_legacy_tag_ids(client: AsyncClient, legacy_id: str):
+    """Tag ids that predate the canonical kebab-case generator must remain loadable
+    and re-savable — this is the RF backward-compatibility contract for tag_registry."""
+    body = await _create_roadmap_with_tags(
+        client, tag_registry=[{"id": legacy_id, "label": legacy_id}]
+    )
+    assert body["tag_registry"][0]["id"] == legacy_id
+
+    resp = await client.put(
+        f"/api/roadmaps/{body['id']}",
+        headers=auth(body["owner_session_token"]),
+        json={
+            "tag_registry": [{"id": legacy_id, "label": legacy_id}],
+            "last_updated_at": body["updated_at"],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["tag_registry"][0]["id"] == legacy_id
+
+
+@pytest.mark.parametrize(
+    "bad_id",
+    [
+        # Leading/trailing whitespace is trimmed before pattern validation (pre-existing
+        # text-cleaning behavior shared with label validation), so it is not exercised here.
+        "status::done",
+        "-status",
+        "status-",
+        ":status",
+        "status:",
+        "tag name",
+        "tag/name",
+        "tag\\name",
+        "tag?name",
+        "tag#name",
+        "<tag>",
+        "",
+        "a" * 41,
+    ],
+)
+async def test_roadmap_snapshot_rejects_unsafe_tag_ids(client: AsyncClient, bad_id: str):
+    resp = await client.post(
+        "/api/roadmaps",
+        json={
+            "name": "Bad Tag Roadmap",
+            "owner_display_name": "Owner",
+            "phases": [],
+            "tag_registry": [{"id": bad_id, "label": "Bad"}],
+        },
+    )
+    assert resp.status_code == 422, resp.text
+
+
 async def test_create_tag_rejects_stale_roadmap_timestamp(client: AsyncClient):
     body = await create_roadmap(client)
     first = await _post_tag(

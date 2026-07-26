@@ -1,11 +1,10 @@
 import { isAssignmentTag, assignmentNameFromTag } from '@/lib/task-assignment'
 import { normalizeTaskLinks, validateTaskLinks } from '@/lib/task-link-validation'
 import {
+  isValidTagId,
   normalizeTagColor,
   normalizeTagLabel,
   normalizedTagLabelKey,
-  TAG_ID_MAX,
-  TAG_ID_PATTERN,
   TAG_REGISTRY_MAX,
 } from '@/lib/tag-registry'
 import type {
@@ -724,7 +723,7 @@ function tagRegistryFromPayload(value: unknown): {
       continue
     }
     const id = typeof item.id === 'string' ? item.id.trim() : ''
-    if (id.length > TAG_ID_MAX || !TAG_ID_PATTERN.test(id) || ids.has(id)) {
+    if (!isValidTagId(id) || ids.has(id)) {
       repaired = true
       continue
     }

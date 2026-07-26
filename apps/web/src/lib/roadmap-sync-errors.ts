@@ -37,10 +37,15 @@ function formatValidationLoc(loc: (string | number)[]): string {
   }, '')
 }
 
+const TAG_ID_PATH_RE = /^tag_registry\[\d+\]\.id$/
+
 export function formatValidationMessage(errors: ApiValidationDetail[]): string {
   const first = errors[0]
   if (!first) return 'Save rejected: the server could not validate this roadmap.'
   const path = formatValidationLoc(first.loc)
+  if (TAG_ID_PATH_RE.test(path) && first.type === 'string_pattern_mismatch') {
+    return 'Save rejected: a tag ID uses unsupported characters. Tag IDs may only contain letters, numbers, hyphens, underscores, and colons.'
+  }
   return path ? `Save rejected: ${path} — ${first.msg}` : `Save rejected: ${first.msg}`
 }
 
