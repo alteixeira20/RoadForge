@@ -235,15 +235,22 @@ async def restore_roadmap_version(
 
     # ── Conflict check ───────────────────────────────────────────────────────
     # Same compare-and-swap contract as PUT/PATCH writes (see roadmap_service
-    # .update_roadmap): a stale base means someone else's work would be
-    # silently discarded. `force` is a separate, explicitly confirmed owner
-    # action, not something a plain retry can trigger.
+    # .update_roadmap): `last_updated_at` must exactly match the roadmap's
+    # current revision or nothing is written. `force` never bypasses this —
+    # it only changes what happens once the match succeeds (see below). This
+    # keeps a second collaborator's save, made after a 409 was already shown
+    # and force-confirmed against, from being silently overwritten: the
+    # force request still carries the now-stale revision, so it gets another
+    # 409 instead of proceeding.
     client_ts = ensure_aware_utc(last_updated_at)
-    overwritten_updated_at: datetime | None = None
-    if roadmap.updated_at > client_ts:
-        if not force:
-            raise RoadmapConflictError(_roadmap_conflict_response(roadmap, client_ts, None))
-        overwritten_updated_at = roadmap.updated_at
+    if roadmap.updated_at != client_ts:
+        raise RoadmapConflictError(_roadmap_conflict_response(roadmap, client_ts, None))
+
+    # `force=True` is the owner's explicit, separately confirmed
+    # acknowledgement that this restore replaces the roadmap's current
+    # state (which they may have only just reviewed via a 409) rather than
+    # a plain restore of a base they already had loaded. Always audit it.
+    overwritten_updated_at: datetime | None = roadmap.updated_at if force else None
 
     # Safety checkpoint of the current (pre-restore) state, so a restore —
     # forced or not — is always recoverable.

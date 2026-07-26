@@ -139,6 +139,68 @@ describe('VersionsPanel', () => {
     expect(onRestored).toHaveBeenCalledWith(restoredRoadmap)
   })
 
+  it('refreshes the conflict dialog instead of showing success on a second 409', async () => {
+    mockedRestore.mockRejectedValueOnce(new ApiError(
+      409,
+      'Roadmap was updated by another session',
+      'roadmap_conflict',
+      {
+        roadmap_id: 'rm_1',
+        server_updated_at: '2026-07-25T19:00:00Z',
+        client_last_updated_at: '2026-07-25T18:00:00Z',
+        server: { name: 'Revision B', phases: [] },
+      },
+    ))
+    render()
+    await flush()
+
+    clickButtonByText('Restore')
+    clickButtonByText('Restore version')
+    await flush()
+
+    // A collaborator saves again before the owner's force confirmation
+    // lands: the force retry (carrying revision B) hits another 409 for
+    // revision C rather than succeeding.
+    mockedRestore.mockRejectedValueOnce(new ApiError(
+      409,
+      'Roadmap was updated by another session',
+      'roadmap_conflict',
+      {
+        roadmap_id: 'rm_1',
+        server_updated_at: '2026-07-25T20:00:00Z',
+        client_last_updated_at: '2026-07-25T19:00:00Z',
+        server: { name: 'Revision C', phases: [] },
+      },
+    ))
+    clickButtonByText('Force restore anyway')
+    await flush()
+
+    expect(onRestored).not.toHaveBeenCalled()
+    expect(onToast).not.toHaveBeenCalled()
+    const message = document.querySelector('.confirm-dialog-message')?.textContent ?? ''
+    expect(message).toContain('Revision C')
+
+    // Forcing again now carries the freshly reviewed revision C.
+    mockedRestore.mockResolvedValueOnce(restoredRoadmap)
+    clickButtonByText('Force restore anyway')
+    await flush()
+
+    expect(mockedRestore).toHaveBeenLastCalledWith(
+      'rm_1', 'rv_1', 'session-token', '2026-07-25T20:00:00Z', true,
+    )
+    expect(onRestored).toHaveBeenCalledWith(restoredRoadmap)
+  })
+
+  it('warns about unsaved local changes before restoring', async () => {
+    render({ hasUnsavedChanges: true })
+    await flush()
+
+    clickButtonByText('Restore')
+
+    const message = document.querySelector('.confirm-dialog-message')?.textContent ?? ''
+    expect(message).toContain('unsaved local changes')
+  })
+
   it('does not expose restore or checkpoint controls to non-owner roles', async () => {
     render({ canManageVersions: false })
     await flush()

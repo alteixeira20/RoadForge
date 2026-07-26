@@ -43,10 +43,15 @@ class CheckpointResponse(BaseModel):
 class RestoreRoadmapVersionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    # The base revision the caller last saw. Restore uses the same
-    # compare-and-swap contract as PUT/PATCH writes: a mismatch means the
-    # roadmap changed since the caller opened the Versions panel.
+    # The revision the caller is confirming as current. Restore uses the
+    # same compare-and-swap contract as PUT/PATCH writes: this must exactly
+    # match the roadmap's current revision or the request is rejected with
+    # a 409 — `force` does not relax this. On a 409, the response carries
+    # the roadmap's actual current revision; a force restore resends that
+    # exact value here.
     last_updated_at: datetime
-    # Owner-only, separately confirmed override: proceed even if the base
-    # revision is stale, recording that a newer revision was overwritten.
+    # Owner-only, explicit confirmation that this restore is expected to
+    # replace the roadmap's current state (e.g. after reviewing a 409).
+    # When true and the restore succeeds, the response and version/activity
+    # history record that the current revision was overwritten.
     force: bool = False

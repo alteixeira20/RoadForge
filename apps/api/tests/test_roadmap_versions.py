@@ -888,6 +888,10 @@ async def test_current_base_restore_succeeds(client: AsyncClient):
 async def test_force_restore_overwrites_newer_revision_and_records_it(
     client: AsyncClient,
 ):
+    """Reproduces the real client sequence: the force retry must carry the
+    exact server revision the 409 returned, not the caller's original stale
+    base — sending the original stale base (as this test used to) hits the
+    same CAS rejection force is not allowed to bypass."""
     body = await create_roadmap(client, name="Restore Contract Test")
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
@@ -902,15 +906,17 @@ async def test_force_restore_overwrites_newer_revision_and_records_it(
         client, roadmap_id, v1_id, owner_token, last_updated_at=stale_base
     )
     assert conflict.status_code == 409
+    server_revision = conflict.json()["conflict"]["server_updated_at"]
 
-    # Owner reviews the conflict and explicitly forces the restore anyway,
-    # intentionally overwriting the newer "Updated Name" revision.
+    # Owner reviews the conflict and explicitly forces the restore using the
+    # exact revision the 409 reported, intentionally overwriting the newer
+    # "Updated Name" revision.
     forced = await _restore(
         client,
         roadmap_id,
         v1_id,
         owner_token,
-        last_updated_at=stale_base,
+        last_updated_at=server_revision,
         force=True,
     )
     assert forced.status_code == 200, forced.text
@@ -923,7 +929,86 @@ async def test_force_restore_overwrites_newer_revision_and_records_it(
         log for log in detail_resp.json()["logs"] if log["action"] == "roadmap.restored"
     )
     assert restored_log["metadata_json"]["force"] is True
-    assert restored_log["metadata_json"]["overwritten_updated_at"]
+    assert datetime.fromisoformat(
+        restored_log["metadata_json"]["overwritten_updated_at"]
+    ) == datetime.fromisoformat(server_revision.replace("Z", "+00:00"))
+
+
+async def test_force_restore_with_stale_base_still_rejected(client: AsyncClient):
+    """`force=true` must not mean 'ignore concurrency' — a force request
+    carrying a base that no longer matches the current revision (e.g. a
+    caller that never actually looked at the 409's revision) is rejected
+    exactly like a normal restore, and nothing is written."""
+    body = await create_roadmap(client, name="Restore Contract Test")
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+    stale_base = body["updated_at"]
+
+    versions = await _list_versions(client, roadmap_id, owner_token)
+    v1_id = versions[0]["id"]
+
+    await _update_name(client, roadmap_id, owner_token, "Updated Name", stale_base)
+
+    forced = await _restore(
+        client, roadmap_id, v1_id, owner_token, last_updated_at=stale_base, force=True
+    )
+    assert forced.status_code == 409
+    data = forced.json()
+    assert data["code"] == "roadmap_conflict"
+
+    get_resp = await client.get(f"/api/roadmaps/{roadmap_id}", headers=_auth(owner_token))
+    assert get_resp.json()["name"] == "Updated Name"
+
+    versions_after = await _list_versions(client, roadmap_id, owner_token)
+    assert "roadmap.restored" not in [v["action"] for v in versions_after]
+
+
+async def test_force_restore_second_order_conflict_returns_another_409(
+    client: AsyncClient,
+):
+    """owner receives conflict for revision B -> owner reviews revision B ->
+    collaborator saves revision C -> owner confirms force restore against B
+    -> revision C must not be silently overwritten; another 409 is returned
+    and nothing is written or recorded."""
+    body = await create_roadmap(client, name="Restore Contract Test")
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+    revision_a = body["updated_at"]
+
+    versions = await _list_versions(client, roadmap_id, owner_token)
+    v1_id = versions[0]["id"]
+
+    # Collaborator saves revision B; owner's restore against A conflicts.
+    updated_b = await _update_name(client, roadmap_id, owner_token, "Revision B", revision_a)
+    conflict = await _restore(client, roadmap_id, v1_id, owner_token, last_updated_at=revision_a)
+    assert conflict.status_code == 409
+    revision_b = conflict.json()["conflict"]["server_updated_at"]
+    assert revision_b == updated_b["updated_at"]
+
+    # Another collaborator saves revision C before the owner's force lands.
+    await _update_name(client, roadmap_id, owner_token, "Revision C", revision_b)
+
+    # Owner's force restore still carries reviewed revision B, now stale.
+    forced = await _restore(
+        client, roadmap_id, v1_id, owner_token, last_updated_at=revision_b, force=True
+    )
+    assert forced.status_code == 409
+    assert forced.json()["code"] == "roadmap_conflict"
+
+    get_resp = await client.get(f"/api/roadmaps/{roadmap_id}", headers=_auth(owner_token))
+    assert get_resp.json()["name"] == "Revision C"
+
+    versions_after = await _list_versions(client, roadmap_id, owner_token)
+    actions = [v["action"] for v in versions_after]
+    assert "roadmap.restored" not in actions
+    assert "roadmap.checkpoint" not in actions
+
+    detail_resp = await client.get(
+        f"/api/roadmaps/{roadmap_id}/activity", headers=_auth(owner_token)
+    )
+    assert "roadmap.restored" not in [
+        log["action"] for log in detail_resp.json()["logs"]
+    ]
 
 
 async def test_editor_cannot_force_restore(client: AsyncClient):
