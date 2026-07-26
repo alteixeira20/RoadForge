@@ -157,31 +157,10 @@
   transition: border-color 160ms, box-shadow 160ms;
 }
 
-.tag-registry-input:focus {
-  border-color: var(--ember);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ember) 18%, transparent);
-}
-
-.tag-registry-color {
-  appearance: none;
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
-  padding: 0;
-  border: 2px solid var(--border);
-  border-radius: 50%;
+.tag-registry-input:focus-visible {
   outline: none;
-  overflow: hidden;
-  background: var(--bg);
-  cursor: pointer;
-  transition: border-color 160ms, box-shadow 160ms;
-}
-.tag-registry-color::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
-.tag-registry-color::-webkit-color-swatch { border: none; border-radius: 50%; }
-.tag-registry-color::-moz-color-swatch { border: none; border-radius: 50%; }
-.tag-registry-color:focus-visible {
   border-color: var(--ember);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ember) 18%, transparent);
+  box-shadow: 0 0 0 3px var(--lava-glow);
 }
 
 .tag-registry-error {
@@ -224,8 +203,7 @@
   }
 
   .tag-drag-handle,
-  .tag-registry-actions .iconbtn,
-  .tag-registry-color {
+  .tag-registry-actions .iconbtn {
     width: 44px;
     height: 44px;
   }

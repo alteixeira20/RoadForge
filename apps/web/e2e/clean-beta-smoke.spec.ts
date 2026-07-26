@@ -289,6 +289,12 @@ for (const viewport of TOOLBAR_VIEWPORTS) {
 }
 
 test('creates, edits, recolors, reloads, and deletes an unused tag', async ({ page }) => {
+  const consoleErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.on('pageerror', (error) => consoleErrors.push(error.message))
+
   await createRoadmap(page, {
     title: 'Tag registry browser roadmap',
     startingPoint: 'blank',
@@ -298,22 +304,40 @@ test('creates, edits, recolors, reloads, and deletes an unused tag', async ({ pa
   await expect(page.getByText('No tags yet')).toBeVisible()
   await page.getByRole('button', { name: 'New tag' }).click()
   await page.getByRole('textbox', { name: 'New tag label' }).fill('Release risk')
-  await page.locator('input[aria-label="New tag color"]').evaluate((element) => {
-    const input = element as HTMLInputElement
-    input.value = '#0891b2'
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-  })
+  const newTagColorButton = page.getByRole('button', { name: 'New tag color' })
+  await newTagColorButton.click()
+  const newTagDialog = page.getByRole('dialog', { name: 'New tag color' })
+  await expect(newTagDialog).toBeVisible()
+  await newTagDialog.getByRole('button', { name: 'Cyan' }).click()
+  // Selecting a preset applies it and closes the popover immediately, same
+  // as phase color selection, and returns focus to the trigger.
+  await expect(newTagDialog).toBeHidden()
+  await expect(newTagColorButton).toBeFocused()
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(page.locator('.tag-chip', { hasText: 'Release risk' })).toBeVisible()
   await expect(page.getByText('Not used', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Edit tag Release risk' }).click()
-  await page.getByRole('textbox', { name: 'Tag label for Release risk' }).fill('Launch risk')
-  await page.locator('input[aria-label="Change color for Release risk"]').evaluate((element) => {
-    const input = element as HTMLInputElement
-    input.value = '#9333ea'
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-  })
+  const nameField = page.getByRole('textbox', { name: 'Tag label for Release risk' })
+  await nameField.fill('Launch risk')
+  await nameField.focus()
+  await expect(nameField).toBeFocused()
+  // Exactly one visible boundary: no native outline, a single box-shadow ring.
+  await expect(nameField).toHaveCSS('outline-style', 'none')
+  const boxShadow = await nameField.evaluate((node) => getComputedStyle(node).boxShadow)
+  expect(boxShadow).not.toBe('none')
+  expect(boxShadow.match(/rgba?\(/g)?.length ?? 0).toBe(1)
+
+  const editColorButton = page.getByRole('button', { name: 'Change color for Release risk' })
+  await editColorButton.click()
+  const editDialog = page.getByRole('dialog', { name: 'Change color for Release risk' })
+  await expect(editDialog).toBeVisible()
+  const customHex = editDialog.getByRole('textbox', { name: 'Custom tag hex color' })
+  await customHex.fill('#9333ea')
+  await editDialog.getByRole('button', { name: 'Apply' }).click()
+  await expect(editDialog).toBeHidden()
+  await expect(editColorButton).toBeFocused()
+
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   const chip = page.locator('.tag-chip', { hasText: 'Launch risk' })
   await expect(chip).toBeVisible()
@@ -322,12 +346,57 @@ test('creates, edits, recolors, reloads, and deletes an unused tag', async ({ pa
   await page.reload()
   await page.getByRole('tab', { name: 'Tags' }).click()
   await expect(page.locator('.tag-chip', { hasText: 'Launch risk' })).toBeVisible()
+
+  // The phase color picker still works, unaffected by the tag refactor.
+  await page.getByRole('tab', { name: 'Roadmap' }).click()
+  await page.getByRole('button', { name: 'Phase settings for Planning' }).click()
+  await page.getByRole('menuitem', { name: 'Change color' }).click()
+  const phaseDialog = page.getByRole('dialog', { name: 'Color settings for Planning' })
+  await phaseDialog.getByRole('button', { name: 'Manual' }).click()
+  await expect(phaseDialog.getByRole('button', { name: 'Teal' })).toBeVisible()
+  await phaseDialog.getByRole('button', { name: 'Teal' }).click()
+  // Phase color selection has always applied and closed immediately; the
+  // shared picker preserves that, same as the tag flow above.
+  await expect(phaseDialog).toBeHidden()
+  await page.getByRole('button', { name: 'Phase settings for Planning' }).click()
+  await page.getByRole('menuitem', { name: 'Change color' }).click()
+  await expect(phaseDialog.getByRole('button', { name: 'Teal' })).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('Escape')
+
+  await page.getByRole('tab', { name: 'Tags' }).click()
   await page.getByRole('button', { name: 'Delete tag Launch risk' }).click()
   await page
     .getByRole('alertdialog', { name: 'Delete tag?' })
     .getByRole('button', { name: 'Delete tag' })
     .click()
   await expect(page.getByText('No tags yet')).toBeVisible()
+
+  expect(consoleErrors).toEqual([])
+})
+
+test('keeps the tag color picker inside narrow and 200%-reflow viewports', async ({ page }) => {
+  for (const viewport of [
+    { label: '200% reflow', width: 640, height: 720 },
+    { label: 'mobile', width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height })
+    await createRoadmap(page, {
+      title: `Tag color viewport roadmap ${viewport.label}`,
+      startingPoint: 'blank',
+    })
+
+    await page.getByRole('tab', { name: 'Tags' }).click()
+    await page.getByRole('button', { name: 'New tag' }).click()
+    await page.getByRole('textbox', { name: 'New tag label' }).fill('Edge case')
+    await page.getByRole('button', { name: 'New tag color' }).click()
+    const dialog = page.getByRole('dialog', { name: 'New tag color' })
+    await expect(dialog).toBeVisible()
+    const bounds = await dialog.boundingBox()
+    expect(bounds).not.toBeNull()
+    expect(bounds!.x).toBeGreaterThanOrEqual(0)
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  }
 })
 
 test('uses the same canonical tag chip in task rows and the Tags panel', async ({ page }) => {

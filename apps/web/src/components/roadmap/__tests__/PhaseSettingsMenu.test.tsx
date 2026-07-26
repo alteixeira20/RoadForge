@@ -93,6 +93,18 @@ describe('PhaseSettingsMenu', () => {
     expect(onColorClose).toHaveBeenCalledTimes(1)
   })
 
+  it('renders the same shared color-picker primitive used by tag color editing', () => {
+    act(() => {
+      root.render(
+        <PhaseSettingsMenu {...createProps({ showColorPicker: true })} />,
+      )
+    })
+    const dialog = document.body.querySelector('[role="dialog"]') as HTMLElement
+    expect(dialog.className).toContain('color-picker-popover')
+    expect(dialog.querySelector('.color-picker-presets')).not.toBeNull()
+    expect(dialog.querySelector('.color-picker-custom')).not.toBeNull()
+  })
+
   it('resynchronizes custom color when the active phase changes', () => {
     act(() => {
       root.render(

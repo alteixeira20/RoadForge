@@ -1,6 +1,8 @@
 'use client'
 
-import type { KeyboardEvent } from 'react'
+import { useId, useRef, useState, type KeyboardEvent } from 'react'
+import { ColorPickerPopover } from '@/components/ui/ColorPickerPopover'
+import { ColorSwatchButton } from '@/components/ui/ColorSwatchButton'
 import { normalizeTagColor } from '@/lib/tag-registry'
 import type { TagDefinition } from '@/types/roadmap'
 import { TagChip } from './TagChip'
@@ -35,6 +37,10 @@ export function TagEditorFields({
   onSubmit,
   onCancel,
 }: TagEditorFieldsProps) {
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const colorTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const colorDialogId = useId()
+
   const previewRegistry: TagDefinition[] = [
     {
       id: PREVIEW_TAG_ID,
@@ -64,12 +70,26 @@ export function TagEditorFields({
         aria-label={labelAriaLabel}
         placeholder="Tag label"
       />
-      <input
-        type="color"
-        className="tag-registry-color"
+      <ColorSwatchButton
+        ref={colorTriggerRef}
+        color={form.color}
+        label={colorAriaLabel}
+        expanded={showColorPicker}
+        controls={showColorPicker ? colorDialogId : undefined}
+        onClick={() => setShowColorPicker((open) => !open)}
+      />
+      <ColorPickerPopover
+        open={showColorPicker}
+        anchorRef={colorTriggerRef}
+        id={colorDialogId}
+        ariaLabel={colorAriaLabel}
         value={form.color}
-        onChange={(event) => onChange({ ...form, color: event.target.value })}
-        aria-label={colorAriaLabel}
+        onSelect={(color) => {
+          onChange({ ...form, color })
+          setShowColorPicker(false)
+        }}
+        onClose={() => setShowColorPicker(false)}
+        customLabel="Custom tag hex color"
       />
       <button
         type="button"

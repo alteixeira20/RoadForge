@@ -128,9 +128,6 @@ describe('TagsPanel', () => {
     const label = container.querySelector<HTMLInputElement>(
       'input[aria-label="Tag label for Unused"]',
     )!
-    const color = container.querySelector<HTMLInputElement>(
-      'input[aria-label="Change color for Unused"]',
-    )!
     const setter = Object.getOwnPropertyDescriptor(
       window.HTMLInputElement.prototype,
       'value',
@@ -138,9 +135,32 @@ describe('TagsPanel', () => {
     act(() => {
       setter.call(label, 'Updated')
       label.dispatchEvent(new Event('input', { bubbles: true }))
-      setter.call(color, '#9333ea')
-      color.dispatchEvent(new Event('input', { bubbles: true }))
     })
+
+    act(() => {
+      container
+        .querySelector<HTMLButtonElement>(
+          'button[aria-label="Change color for Unused"]',
+        )!
+        .click()
+    })
+    const colorDialog = document.body.querySelector('[role="dialog"]') as HTMLElement
+    expect(colorDialog.className).toContain('color-picker-popover')
+    expect(colorDialog.querySelector('.color-picker-presets')).not.toBeNull()
+
+    const customHex = document.body.querySelector<HTMLInputElement>(
+      'input[aria-label="Custom tag hex color"]',
+    )!
+    act(() => {
+      setter.call(customHex, '#9333ea')
+      customHex.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    act(() => {
+      Array.from(document.body.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Apply',
+      )!.click()
+    })
+
     act(() => {
       Array.from(container.querySelectorAll('button')).find(
         (button) => button.textContent === 'Save',
@@ -157,6 +177,61 @@ describe('TagsPanel', () => {
       tagRegistry[2],
     ])
     expect(setSaved).toHaveBeenCalledWith(false)
+  })
+
+  it('discards label and color edits when Cancel is clicked', () => {
+    act(() => root.render(<TagsPanel />))
+    act(() => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Edit tag Unused"]')!
+        .click()
+    })
+
+    const label = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Tag label for Unused"]',
+    )!
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value',
+    )!.set!
+    act(() => {
+      setter.call(label, 'Discarded edit')
+      label.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    act(() => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Change color for Unused"]')!
+        .click()
+    })
+    act(() => {
+      document.body
+        .querySelector<HTMLButtonElement>('.color-picker-presets button[aria-label="Purple"]')!
+        .click()
+    })
+
+    act(() => {
+      Array.from(container.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Cancel',
+      )!.click()
+    })
+    expect(setTagRegistry).not.toHaveBeenCalled()
+    expect(container.querySelector('input[aria-label="Tag label for Unused"]')).toBeNull()
+
+    act(() => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Edit tag Unused"]')!
+        .click()
+    })
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[aria-label="Tag label for Unused"]',
+      )!.value,
+    ).toBe('Unused')
+    expect(
+      container.querySelector<HTMLButtonElement>(
+        'button[aria-label="Change color for Unused"]',
+      )!.querySelector<HTMLElement>('.color-swatch-button-dot')!.style.backgroundColor,
+    ).toBe('rgb(217, 119, 6)')
   })
 
   it('deletes an unused tag through the existing registry setter path', () => {
@@ -213,9 +288,6 @@ describe('TagsPanel', () => {
     const label = container.querySelector<HTMLInputElement>(
       'input[aria-label="Tag label for Unused"]',
     )!
-    const color = container.querySelector<HTMLInputElement>(
-      'input[aria-label="Change color for Unused"]',
-    )!
     const setter = Object.getOwnPropertyDescriptor(
       window.HTMLInputElement.prototype,
       'value',
@@ -228,14 +300,21 @@ describe('TagsPanel', () => {
     expect(container.querySelector('.tag-registry-preview')!.textContent).toBe('Blocked')
 
     act(() => {
-      setter.call(color, '#9333ea')
-      color.dispatchEvent(new Event('input', { bubbles: true }))
+      container
+        .querySelector<HTMLButtonElement>(
+          'button[aria-label="Change color for Unused"]',
+        )!
+        .click()
     })
+    const preset = document.body.querySelector<HTMLButtonElement>(
+      '.color-picker-presets button[aria-label="Purple"]',
+    )!
+    act(() => preset.click())
     expect(
       container
         .querySelector<HTMLElement>('.tag-registry-preview')!
         .style.getPropertyValue('--tag-color'),
-    ).toBe('#9333ea')
+    ).toBe('#a855f7')
   })
 
   it('cancels editing on Escape and saves on Enter', () => {
@@ -281,25 +360,43 @@ describe('tags panel styling contract', () => {
     resolve(process.cwd(), 'src/styles/workspace/tags-panel.css'),
     'utf8',
   )
+  const colorPickerCss = readFileSync(
+    resolve(process.cwd(), 'src/styles/primitives/color-picker.css'),
+    'utf8',
+  )
   const metadataCss = readFileSync(
     resolve(process.cwd(), 'src/styles/workspace/task-metadata.css'),
     'utf8',
   )
 
-  it('defines the tag color swatch as a circle', () => {
-    const match = tagsCss.match(/\.tag-registry-color\s*{[^}]*}/)
-    expect(match).not.toBeNull()
-    expect(match![0]).toContain('border-radius: 50%')
+  it('removes the obsolete native color-input swatch selector', () => {
+    expect(tagsCss).not.toContain('.tag-registry-color')
   })
 
-  it('gives the tag registry input a single focus ring, not a duplicate outline', () => {
+  it('defines the shared color swatch dot as a crisp, non-scaled circle', () => {
+    const match = colorPickerCss.match(/\.color-swatch-button-dot\s*{[^}]*}/)
+    expect(match).not.toBeNull()
+    expect(match![0]).toContain('border-radius: 50%')
+    expect(match![0]).toMatch(/width:\s*22px/)
+    expect(match![0]).toMatch(/height:\s*22px/)
+    expect(match![0]).not.toMatch(/transform/)
+  })
+
+  it('gives the tag registry input a single focus ring that reliably beats the global outline', () => {
     const baseMatch = tagsCss.match(/\.tag-registry-input\s*{[^}]*}/)
     expect(baseMatch).not.toBeNull()
     expect(baseMatch![0]).toContain('outline: none')
 
-    const focusMatch = tagsCss.match(/\.tag-registry-input:focus\s*{[^}]*}/)
+    // A plain `.tag-registry-input:focus` block never sets `outline`, so the
+    // trailing global `*:focus-visible { outline: 2px solid var(--ember) }`
+    // rule in globals.css ties on specificity and wins on source order,
+    // re-enabling the browser ring alongside the box-shadow ring below — the
+    // second orange line. Scoping with `:focus-visible` (specificity 0,2,0)
+    // reliably beats it regardless of import order.
+    const focusMatch = tagsCss.match(/\.tag-registry-input:focus-visible\s*{[^}]*}/)
     expect(focusMatch).not.toBeNull()
-    expect(focusMatch![0]).not.toMatch(/outline:\s*\d/)
+    expect(focusMatch![0]).toContain('outline: none')
+    expect(focusMatch![0]).toContain('box-shadow')
   })
 
   it('defines the canonical .tag-chip contract exactly once, separate from the editor chip', () => {

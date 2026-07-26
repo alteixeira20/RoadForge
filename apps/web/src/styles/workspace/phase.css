@@ -169,45 +169,14 @@
   flex-shrink: 0;
 }
 
-/* ─── Phase color picker ───────────────────────────────────────────────────── */
-.phase-color-presets button > span,
+/* ─── Phase color picker (Auto/Manual mode; preset grid + custom field are
+   the shared .color-picker-* primitives, see primitives/color-picker.css) ── */
 .phase-color-reason > span {
   width: 14px;
   height: 14px;
   border-radius: 50%;
   border: 1px solid rgba(255,255,255,0.35);
   box-shadow: 0 0 0 1px rgba(0,0,0,0.18);
-}
-.phase-color-popover {
-  width: 232px;
-  padding: 10px;
-  background: var(--bg-2);
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  box-shadow: var(--shadow-md);
-}
-.phase-color-popover > div {
-  display: grid;
-  gap: 10px;
-}
-.phase-color-presets {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
-}
-.phase-color-presets button {
-  width: 34px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-}
-.phase-color-presets button:hover,
-.phase-color-presets button.selected {
-  background: var(--bg-3);
-  border-color: var(--border);
 }
 .phase-color-modes {
   display: grid;
@@ -234,32 +203,6 @@
   color: var(--ink-2);
   font-size: 12.5px;
   line-height: 1.35;
-}
-.phase-custom-color {
-  display: flex;
-  gap: 6px;
-}
-.phase-custom-color input {
-  min-width: 0;
-  flex: 1;
-  height: 32px;
-  padding: 0 8px;
-  color: var(--ink);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  font-family: var(--font-mono);
-}
-.phase-custom-color button {
-  padding: 0 10px;
-  color: var(--ink);
-  background: var(--bg-3);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-}
-.phase-custom-color button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
 }
 
 /* ─── Phase body / foot ────────────────────────────────────────────────────── */

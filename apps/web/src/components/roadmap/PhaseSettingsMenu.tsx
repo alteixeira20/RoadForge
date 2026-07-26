@@ -1,22 +1,11 @@
 'use client'
 
-import React, { useEffect, useId, useRef, useState } from 'react'
+import React, { useId, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { AnchoredOverlay } from '@/components/ui/AnchoredOverlay'
+import { ColorPickerPopover } from '@/components/ui/ColorPickerPopover'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import type { Phase as PhaseType } from '@/types/roadmap'
-
-const PHASE_COLOR_PRESETS = [
-  { label: 'Orange', value: '#f97316' },
-  { label: 'Green', value: '#22c55e' },
-  { label: 'Blue', value: '#38bdf8' },
-  { label: 'Purple', value: '#a855f7' },
-  { label: 'Yellow', value: '#eab308' },
-  { label: 'Teal', value: '#14b8a6' },
-  { label: 'Slate', value: '#64748b' },
-  { label: 'Red', value: '#ef4444' },
-  { label: 'Cyan', value: '#0ea5e9' },
-]
 
 interface PhaseSettingsMenuProps {
   phase: PhaseType
@@ -51,19 +40,13 @@ export function PhaseSettingsMenu({
 }: PhaseSettingsMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [customColor, setCustomColor] = useState(phase.color)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const menuId = useId()
   const colorDialogId = useId()
-  const customColorValid = /^#[0-9a-f]{6}$/i.test(customColor)
 
   const closeMenu = () => {
     setMenuOpen(false)
   }
-
-  useEffect(() => {
-    setCustomColor(phase.color)
-  }, [phase.color, phase.id])
 
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -146,75 +129,45 @@ export function PhaseSettingsMenu({
         </div>
       </AnchoredOverlay>
 
-      <AnchoredOverlay
+      <ColorPickerPopover
         open={showColorPicker}
         anchorRef={triggerRef}
         id={colorDialogId}
-        role="dialog"
         ariaLabel={`Color settings for ${phase.name}`}
-        className="phase-color-popover"
+        value={phase.color}
+        onSelect={onColorSelect}
         onClose={onColorClose}
-      >
-        <div>
-          <div className="phase-color-modes">
-            <button
-              type="button"
-              className={phase.colorMode !== 'manual' ? 'selected' : ''}
-              aria-pressed={phase.colorMode !== 'manual'}
-              onClick={() => onColorModeSelect('auto')}
-            >
-              Auto
-            </button>
-            <button
-              type="button"
-              className={phase.colorMode === 'manual' ? 'selected' : ''}
-              aria-pressed={phase.colorMode === 'manual'}
-              onClick={() => onColorModeSelect('manual')}
-            >
-              Manual
-            </button>
-          </div>
-          {phase.colorMode !== 'manual' ? (
-            <p className="phase-color-reason">
-              <span style={{ backgroundColor: displayColor }} />
-              {colorReason}
-            </p>
-          ) : (
-            <>
-              <div className="phase-color-presets">
-                {PHASE_COLOR_PRESETS.map((preset) => (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    className={preset.value.toLowerCase() === phase.color.toLowerCase() ? 'selected' : ''}
-                    title={preset.label}
-                    aria-label={preset.label}
-                    aria-pressed={preset.value.toLowerCase() === phase.color.toLowerCase()}
-                    onClick={() => onColorSelect(preset.value)}
-                  >
-                    <span style={{ backgroundColor: preset.value }} />
-                  </button>
-                ))}
-              </div>
-              <div className="phase-custom-color">
-                <input
-                  value={customColor}
-                  aria-label="Custom phase hex color"
-                  onChange={(event) => setCustomColor(event.target.value)}
-                  placeholder="#a855f7"
-                />
-                <button
-                  type="button"
-                  disabled={!customColorValid}
-                  onClick={() => onColorSelect(customColor.toLowerCase())}
-                >
-                  Apply
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </AnchoredOverlay>
+        showPicker={phase.colorMode === 'manual'}
+        customLabel="Custom phase hex color"
+        header={
+          <>
+            <div className="phase-color-modes">
+              <button
+                type="button"
+                className={phase.colorMode !== 'manual' ? 'selected' : ''}
+                aria-pressed={phase.colorMode !== 'manual'}
+                onClick={() => onColorModeSelect('auto')}
+              >
+                Auto
+              </button>
+              <button
+                type="button"
+                className={phase.colorMode === 'manual' ? 'selected' : ''}
+                aria-pressed={phase.colorMode === 'manual'}
+                onClick={() => onColorModeSelect('manual')}
+              >
+                Manual
+              </button>
+            </div>
+            {phase.colorMode !== 'manual' && (
+              <p className="phase-color-reason">
+                <span style={{ backgroundColor: displayColor }} />
+                {colorReason}
+              </p>
+            )}
+          </>
+        }
+      />
 
       <ConfirmDialog
         open={showDeleteConfirm}

@@ -1,11 +1,12 @@
 import type { Phase, TagDefinition } from '@/types/roadmap'
 import type { ImportConflict } from '@/lib/import-merge/conflict-types'
+import { HEX_COLOR_PATTERN } from '@/lib/color'
 
 export const TAG_ID_MAX = 40
 export const TAG_LABEL_MAX = 80
 export const TAG_REGISTRY_MAX = 200
 export const TAG_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-export const TAG_COLOR_PATTERN = /^#[0-9a-f]{6}$/i
+export const TAG_COLOR_PATTERN = HEX_COLOR_PATTERN
 
 export function normalizeTagLabel(label: string): string {
   return label.trim().replace(/\s+/g, ' ').slice(0, TAG_LABEL_MAX)
