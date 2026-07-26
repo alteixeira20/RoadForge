@@ -1,6 +1,25 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  defaultDropAnimationSideEffects,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
@@ -13,7 +32,9 @@ import {
   uniqueTagId,
 } from '@/lib/tag-registry'
 import type { TagDefinition } from '@/types/roadmap'
+import { SortableTagRow } from './SortableTagRow'
 import { TagChip } from './TagChip'
+import { TagEditorFields } from './TagEditorFields'
 
 const DEFAULT_COLOR = '#d97706'
 
@@ -26,12 +47,6 @@ interface TagsPanelProps {
   readOnly?: boolean
 }
 
-function usageLabel(count: number): string {
-  if (count === 0) return 'Not used'
-  if (count === 1) return '1 task'
-  return `${count} tasks`
-}
-
 export function TagsPanel({ readOnly = false }: TagsPanelProps) {
   const { tagRegistry, setTagRegistry, setSaved, phases } = useRoadmap()
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -42,6 +57,7 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
   })
   const [formError, setFormError] = useState<string | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [activeTagId, setActiveTagId] = useState<string | null>(null)
 
   const tagUsage = useMemo<Record<string, number>>(() => {
     const counts: Record<string, number> = {}
@@ -151,16 +167,32 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
     setPendingDeleteId(null)
   }
 
-  const moveTag = (id: string, direction: -1 | 1) => {
-    const index = tagRegistry.findIndex((tag) => tag.id === id)
-    const nextIndex = index + direction
-    if (index < 0 || nextIndex < 0 || nextIndex >= tagRegistry.length) return
-    const reordered = [...tagRegistry]
-    const [tag] = reordered.splice(index, 1)
-    reordered.splice(nextIndex, 0, tag)
-    setTagRegistry(reordered)
+  const tagIds = tagRegistry.map((tag) => tag.id)
+  const activeTag = activeTagId
+    ? tagRegistry.find((tag) => tag.id === activeTagId) ?? null
+    : null
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveTagId(event.active.id as string)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveTagId(null)
+    if (!over || active.id === over.id) return
+    const oldIndex = tagIds.indexOf(active.id as string)
+    const newIndex = tagIds.indexOf(over.id as string)
+    if (oldIndex < 0 || newIndex < 0) return
+    setTagRegistry(arrayMove(tagRegistry, oldIndex, newIndex))
     setSaved(false)
   }
+
+  const handleDragCancel = () => setActiveTagId(null)
 
   return (
     <section className="tags-view" aria-labelledby="tags-view-title">
@@ -181,38 +213,17 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
       )}
 
       {addingNew && (
-        <div className="tag-registry-form tag-registry-form--new">
-          <input
-            className="tag-registry-input"
-            value={form.label}
-            onChange={(event) => setForm({ ...form, label: event.target.value })}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') handleSaveNew()
-              if (event.key === 'Escape') resetForm()
-            }}
-            autoFocus
-            aria-label="New tag label"
-            placeholder="Tag label"
-          />
-          <input
-            type="color"
-            className="tag-registry-color"
-            value={form.color}
-            onChange={(event) => setForm({ ...form, color: event.target.value })}
-            aria-label="New tag color"
-          />
-          <button
-            type="button"
-            className="btn sm primary"
-            onClick={handleSaveNew}
-            disabled={!form.label.trim()}
-          >
-            Add
-          </button>
-          <button type="button" className="btn sm ghost" onClick={resetForm}>
-            Cancel
-          </button>
-        </div>
+        <TagEditorFields
+          form={form}
+          previewLabel="New tag"
+          labelAriaLabel="New tag label"
+          colorAriaLabel="New tag color"
+          submitLabel="Add"
+          submitDisabled={!form.label.trim()}
+          onChange={setForm}
+          onSubmit={handleSaveNew}
+          onCancel={resetForm}
+        />
       )}
 
       {formError && (
@@ -231,110 +242,49 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
           </p>
         </div>
       ) : (
-        <ul className="tag-registry-list">
-          {tagRegistry.map((tag) => {
-            const count = tagUsage[tag.id] ?? 0
-            const isUsed = count > 0
-            return (
-              <li key={tag.id} className="tag-registry-row">
-                {editingId === tag.id ? (
-                  <div className="tag-registry-form">
-                    <input
-                      className="tag-registry-input"
-                      value={form.label}
-                      onChange={(event) =>
-                        setForm({ ...form, label: event.target.value })
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') handleSaveEdit()
-                        if (event.key === 'Escape') resetForm()
-                      }}
-                      autoFocus
-                      aria-label={`Tag label for ${tag.label}`}
-                    />
-                    <input
-                      type="color"
-                      className="tag-registry-color"
-                      value={form.color}
-                      onChange={(event) =>
-                        setForm({ ...form, color: event.target.value })
-                      }
-                      aria-label={`Tag color for ${tag.label}`}
-                    />
-                    <button
-                      type="button"
-                      className="btn sm primary"
-                      onClick={handleSaveEdit}
-                    >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      className="btn sm ghost"
-                      onClick={resetForm}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <TagChip tagId={tag.id} registry={tagRegistry} />
-                    <span className="tag-registry-id">{tag.id}</span>
-                    <span className="tag-registry-usage">{usageLabel(count)}</span>
-                    {!readOnly && (
-                      <div className="tag-registry-actions">
-                        <button
-                          type="button"
-                          className="iconbtn"
-                          onClick={() => moveTag(tag.id, -1)}
-                          disabled={tagRegistry[0]?.id === tag.id}
-                          aria-label={`Move tag ${tag.label} earlier`}
-                        >
-                          <Icon name="chevron-up" size={13} />
-                        </button>
-                        <button
-                          type="button"
-                          className="iconbtn"
-                          onClick={() => moveTag(tag.id, 1)}
-                          disabled={
-                            tagRegistry[tagRegistry.length - 1]?.id === tag.id
-                          }
-                          aria-label={`Move tag ${tag.label} later`}
-                        >
-                          <Icon name="chevron-down" size={13} />
-                        </button>
-                        <button
-                          type="button"
-                          className="iconbtn"
-                          onClick={() => handleStartEdit(tag)}
-                          aria-label={`Edit tag ${tag.label}`}
-                        >
-                          <Icon name="pencil" size={13} />
-                        </button>
-                        <button
-                          type="button"
-                          className="iconbtn"
-                          onClick={() => {
-                            if (!isUsed) setPendingDeleteId(tag.id)
-                          }}
-                          disabled={isUsed}
-                          aria-disabled={isUsed}
-                          aria-label={
-                            isUsed
-                              ? `Cannot delete tag ${tag.label}: ${usageLabel(count)}`
-                              : `Delete tag ${tag.label}`
-                          }
-                        >
-                          <Icon name="x" size={13} />
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+        <DndContext
+          id="roadmap-tags"
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+          modifiers={[restrictToVerticalAxis]}
+        >
+          <SortableContext items={tagIds} strategy={verticalListSortingStrategy}>
+            <ul className="tag-registry-list">
+              {tagRegistry.map((tag) => (
+                <SortableTagRow
+                  key={tag.id}
+                  tag={tag}
+                  registry={tagRegistry}
+                  count={tagUsage[tag.id] ?? 0}
+                  readOnly={readOnly}
+                  isEditing={editingId === tag.id}
+                  form={form}
+                  onFormChange={setForm}
+                  onSaveEdit={handleSaveEdit}
+                  onCancelEdit={resetForm}
+                  onStartEdit={() => handleStartEdit(tag)}
+                  onRequestDelete={() => setPendingDeleteId(tag.id)}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+          <DragOverlay
+            dropAnimation={{
+              duration: 110,
+              easing: 'cubic-bezier(0.2, 0, 0, 1)',
+              sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
+            }}
+          >
+            {activeTag ? (
+              <div className="tag-registry-row sortable-dragging-overlay">
+                <TagChip tagId={activeTag.id} registry={tagRegistry} />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       <ConfirmDialog

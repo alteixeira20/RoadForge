@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import { act } from 'react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TagsPanel } from '@/components/roadmap/TagsPanel'
@@ -127,7 +129,7 @@ describe('TagsPanel', () => {
       'input[aria-label="Tag label for Unused"]',
     )!
     const color = container.querySelector<HTMLInputElement>(
-      'input[aria-label="Tag color for Unused"]',
+      'input[aria-label="Change color for Unused"]',
     )!
     const setter = Object.getOwnPropertyDescriptor(
       window.HTMLInputElement.prototype,
@@ -177,5 +179,132 @@ describe('TagsPanel', () => {
 
     expect(setTagRegistry).toHaveBeenCalledWith(tagRegistry.slice(1))
     expect(setSaved).toHaveBeenCalledWith(false)
+  })
+
+  it('replaces move-earlier/later controls with a drag handle per editable tag', () => {
+    act(() => root.render(<TagsPanel />))
+
+    expect(container.querySelectorAll('button[aria-label*="Move tag" i]')).toHaveLength(0)
+
+    const handles = container.querySelectorAll('.tag-drag-handle')
+    expect(handles).toHaveLength(tagRegistry.length)
+    handles.forEach((handle) => {
+      expect(handle.getAttribute('role')).toBe('button')
+      expect(handle.getAttribute('aria-hidden')).not.toBe('true')
+    })
+  })
+
+  it('renders no interactive drag handle for viewers', () => {
+    act(() => root.render(<TagsPanel readOnly />))
+
+    expect(container.querySelectorAll('.tag-drag-handle')).toHaveLength(0)
+  })
+
+  it('updates the live tag chip preview as the label and color change', () => {
+    act(() => root.render(<TagsPanel />))
+    act(() => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Edit tag Unused"]')!
+        .click()
+    })
+
+    expect(container.querySelector('.tag-registry-preview')!.textContent).toBe('Unused')
+
+    const label = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Tag label for Unused"]',
+    )!
+    const color = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Change color for Unused"]',
+    )!
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value',
+    )!.set!
+
+    act(() => {
+      setter.call(label, 'Blocked')
+      label.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(container.querySelector('.tag-registry-preview')!.textContent).toBe('Blocked')
+
+    act(() => {
+      setter.call(color, '#9333ea')
+      color.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(
+      container
+        .querySelector<HTMLElement>('.tag-registry-preview')!
+        .style.getPropertyValue('--tag-color'),
+    ).toBe('#9333ea')
+  })
+
+  it('cancels editing on Escape and saves on Enter', () => {
+    act(() => root.render(<TagsPanel />))
+    act(() => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Edit tag Unused"]')!
+        .click()
+    })
+
+    const label = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Tag label for Unused"]',
+    )!
+    act(() => {
+      label.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(
+      container.querySelector('input[aria-label="Tag label for Unused"]'),
+    ).toBeNull()
+    expect(setTagRegistry).not.toHaveBeenCalled()
+
+    act(() => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Edit tag Unused"]')!
+        .click()
+    })
+    const reopenedLabel = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Tag label for Unused"]',
+    )!
+    act(() => {
+      reopenedLabel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+    expect(setTagRegistry).toHaveBeenCalledWith([
+      { ...tagRegistry[0], updatedAt: expect.any(String) },
+      tagRegistry[1],
+      tagRegistry[2],
+    ])
+  })
+})
+
+describe('tags panel styling contract', () => {
+  const tagsCss = readFileSync(
+    resolve(process.cwd(), 'src/styles/workspace/tags-panel.css'),
+    'utf8',
+  )
+  const metadataCss = readFileSync(
+    resolve(process.cwd(), 'src/styles/workspace/task-metadata.css'),
+    'utf8',
+  )
+
+  it('defines the tag color swatch as a circle', () => {
+    const match = tagsCss.match(/\.tag-registry-color\s*{[^}]*}/)
+    expect(match).not.toBeNull()
+    expect(match![0]).toContain('border-radius: 50%')
+  })
+
+  it('gives the tag registry input a single focus ring, not a duplicate outline', () => {
+    const baseMatch = tagsCss.match(/\.tag-registry-input\s*{[^}]*}/)
+    expect(baseMatch).not.toBeNull()
+    expect(baseMatch![0]).toContain('outline: none')
+
+    const focusMatch = tagsCss.match(/\.tag-registry-input:focus\s*{[^}]*}/)
+    expect(focusMatch).not.toBeNull()
+    expect(focusMatch![0]).not.toMatch(/outline:\s*\d/)
+  })
+
+  it('defines the canonical .tag-chip contract exactly once, separate from the editor chip', () => {
+    const occurrences = metadataCss.match(/(^|\n)\.tag-chip\s*{/g) ?? []
+    expect(occurrences).toHaveLength(1)
+    expect(metadataCss).toContain('.tag-editor-chip')
   })
 })

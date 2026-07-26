@@ -70,6 +70,26 @@
   flex: 0 1 auto;
 }
 
+.tag-drag-handle {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 32px;
+  flex-shrink: 0;
+  margin-left: -4px;
+  color: var(--ink-4);
+  cursor: grab;
+  opacity: 0.55;
+  transition: opacity 160ms, color 160ms;
+  touch-action: none;
+}
+.tag-registry-row:hover .tag-drag-handle,
+.tag-drag-handle:focus-visible { opacity: 1; }
+.tag-drag-handle:hover { color: var(--ember); }
+.tag-drag-handle:active { cursor: grabbing; color: var(--ember); }
+.tag-drag-handle.disabled { cursor: default; opacity: 0.25; }
+.tag-drag-handle.disabled:hover { color: var(--ink-4); }
+
 .tag-registry-id {
   flex: 1 1 auto;
   min-width: 48px;
@@ -119,6 +139,11 @@
   background: var(--bg-inset);
 }
 
+.tag-registry-preview {
+  flex-shrink: 0;
+  max-width: 140px;
+}
+
 .tag-registry-input {
   flex: 1;
   min-width: 0;
@@ -129,21 +154,34 @@
   background: var(--bg);
   color: var(--ink);
   font-size: 13px;
+  transition: border-color 160ms, box-shadow 160ms;
 }
 
 .tag-registry-input:focus {
   border-color: var(--ember);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ember) 18%, transparent);
 }
 
 .tag-registry-color {
-  width: 34px;
-  height: 34px;
+  appearance: none;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  outline: none;
+  overflow: hidden;
   background: var(--bg);
   cursor: pointer;
+  transition: border-color 160ms, box-shadow 160ms;
+}
+.tag-registry-color::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+.tag-registry-color::-webkit-color-swatch { border: none; border-radius: 50%; }
+.tag-registry-color::-moz-color-swatch { border: none; border-radius: 50%; }
+.tag-registry-color:focus-visible {
+  border-color: var(--ember);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ember) 18%, transparent);
 }
 
 .tag-registry-error {
@@ -173,7 +211,7 @@
   }
 
   .tag-registry-row > .tag-chip {
-    max-width: calc(100% - 84px);
+    max-width: calc(100% - 104px);
   }
 
   .tag-registry-id {
@@ -185,6 +223,7 @@
     justify-content: flex-end;
   }
 
+  .tag-drag-handle,
   .tag-registry-actions .iconbtn,
   .tag-registry-color {
     width: 44px;
@@ -194,6 +233,11 @@
   .tag-registry-form {
     align-items: stretch;
     flex-wrap: wrap;
+  }
+
+  .tag-registry-preview {
+    flex-basis: 100%;
+    max-width: 100%;
   }
 
   .tag-registry-form .tag-registry-input {

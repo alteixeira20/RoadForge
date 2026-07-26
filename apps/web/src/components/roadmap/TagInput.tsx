@@ -97,7 +97,7 @@ export function TagInput({
         <div className="tag-chip-list">
           {tags.map((tag) => {
             return (
-              <span key={tag} className="tag-chip">
+              <span key={tag} className="tag-editor-chip">
                 {resolveLabel(tag)}
                 <button
                   type="button"

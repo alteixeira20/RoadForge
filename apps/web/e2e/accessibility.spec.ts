@@ -254,6 +254,40 @@ test('reorders tasks and subtasks by drag only and persists local order', async 
   ])
 })
 
+test('reorders tags by drag and by keyboard, with no move actions', async ({ page }) => {
+  await createRoadmap(page, {
+    title: 'Tag drag roadmap',
+    startingPoint: 'blank',
+  })
+
+  await page.getByRole('tab', { name: 'Tags' }).click()
+
+  for (const label of ['Alpha', 'Beta', 'Gamma']) {
+    await page.getByRole('button', { name: 'New tag' }).click()
+    await page.getByRole('textbox', { name: 'New tag label' }).fill(label)
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
+  }
+
+  await expect(
+    page.getByRole('button', { name: /move tag.*(earlier|later)/i }),
+  ).toHaveCount(0)
+  await expect(page.locator('.tag-registry-id')).toHaveText(['alpha', 'beta', 'gamma'])
+
+  await dragHandleOnto(
+    page,
+    page.getByRole('button', { name: 'Reorder tag Alpha' }),
+    page.getByRole('button', { name: 'Reorder tag Gamma' }),
+  )
+  await expect(page.locator('.tag-registry-id')).toHaveText(['beta', 'gamma', 'alpha'])
+
+  await page.reload()
+  await page.getByRole('tab', { name: 'Tags' }).click()
+  await expect(page.locator('.tag-registry-id')).toHaveText(['beta', 'gamma', 'alpha'])
+
+  await keyboardMove(page.getByRole('button', { name: 'Reorder tag Gamma' }), 'ArrowUp')
+  await expect(page.locator('.tag-registry-id')).toHaveText(['gamma', 'beta', 'alpha'])
+})
+
 test('honors reduced motion and critical mobile touch targets', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.setViewportSize({ width: 390, height: 844 })

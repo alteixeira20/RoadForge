@@ -309,7 +309,7 @@ test('creates, edits, recolors, reloads, and deletes an unused tag', async ({ pa
 
   await page.getByRole('button', { name: 'Edit tag Release risk' }).click()
   await page.getByRole('textbox', { name: 'Tag label for Release risk' }).fill('Launch risk')
-  await page.locator('input[aria-label="Tag color for Release risk"]').evaluate((element) => {
+  await page.locator('input[aria-label="Change color for Release risk"]').evaluate((element) => {
     const input = element as HTMLInputElement
     input.value = '#9333ea'
     input.dispatchEvent(new Event('input', { bubbles: true }))
