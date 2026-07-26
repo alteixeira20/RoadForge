@@ -35,7 +35,7 @@ from api.schemas.roadmap import (
 )
 from api.services.auth_service import is_participant_revoked, require_participant
 from api.services.client_ip_service import extract_client_ip
-from api.services.event_bus import event_bus
+from api.services.event_bus import event_bus, forward_subscription
 from api.services.lock_service import lock_service
 from api.services.rate_limit_service import rate_limiter
 from api.services.roadmap_join_service import join_roadmap
@@ -479,10 +479,22 @@ async def get_events(
     if not event_ticket:
         raise HTTPException(status_code=401, detail="Invalid or expired event ticket")
 
-    # A ticket can be issued just before revocation lands; re-check the
-    # participant's current state before opening the stream so a stale
-    # ticket can never restore access after revocation.
+    # A ticket can be issued just before revocation lands; reject the
+    # obvious case cheaply before ever opening a subscription.
     if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
+        raise HTTPException(status_code=401, detail="Session revoked")
+
+    # Revocation can still land between the check above and the point the
+    # stream actually starts receiving events. Close that window by
+    # subscribing first — any `participant.revoked` publish from this point
+    # on is guaranteed to reach this subscription — and only then rechecking
+    # authorization. Because `revoke_participant` commits the revocation
+    # before publishing it, a revoke that races with this subscribe is
+    # necessarily visible to the recheck below even on the rare path where
+    # the queued event itself would otherwise be missed.
+    subscription = await event_bus.open_subscription(roadmap_id)
+    if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
+        await subscription.close()
         raise HTTPException(status_code=401, detail="Session revoked")
 
     async def _is_still_authorized() -> bool:
@@ -492,8 +504,8 @@ async def get_events(
             )
 
     return StreamingResponse(
-        event_bus.stream(
-            roadmap_id,
+        forward_subscription(
+            subscription,
             participant_id=event_ticket.participant_id,
             close_at=event_ticket.session_expires_at,
             is_still_authorized=_is_still_authorized,

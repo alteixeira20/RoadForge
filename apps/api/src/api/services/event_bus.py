@@ -41,8 +41,25 @@ def _is_own_revocation(event: Event, participant_id: str | None) -> bool:
     )
 
 
+class Subscription(Protocol):
+    """An already-open, backend-specific handle to a roadmap's event feed.
+
+    Opening a subscription must be the first thing that happens for a
+    stream: any application event published after `open_subscription()`
+    returns is guaranteed to be observed by this subscription, so callers
+    can safely recheck authorization *after* subscribing and still be sure
+    no revocation published during that check is missed.
+    """
+
+    async def get_event(self, timeout: float) -> Event | None: ...
+
+    async def close(self) -> None: ...
+
+
 class RealtimeEventBus(Protocol):
     async def publish(self, event: Event) -> None: ...
+
+    async def open_subscription(self, roadmap_id: str) -> Subscription: ...
 
     async def stream(
         self,
@@ -52,6 +69,80 @@ class RealtimeEventBus(Protocol):
         close_at: float | None = None,
         is_still_authorized: AuthorizationCheck | None = None,
     ) -> AsyncIterator[str]: ...
+
+
+async def forward_subscription(
+    subscription: Subscription,
+    *,
+    participant_id: str | None = None,
+    close_at: float | None = None,
+    is_still_authorized: AuthorizationCheck | None = None,
+) -> AsyncIterator[str]:
+    """
+    Forwards events from an already-open `subscription` as SSE chunks until
+    the subscription's own participant is revoked, `close_at` passes, or a
+    periodic `is_still_authorized` recheck fails.
+
+    Callers that care about the revocation race (see `Subscription`) must
+    open the subscription and perform their own post-subscription
+    authorization check *before* handing it to this function — this
+    function assumes the subscription is already authorized and only
+    re-validates periodically afterward as defense-in-depth.
+
+    The periodic recheck runs on a bounded wall-clock cadence
+    (`_HEARTBEAT_INTERVAL_SECONDS`) regardless of whether events keep
+    arriving, so continuous unrelated traffic cannot postpone it
+    indefinitely the way an idle-only timeout would.
+    """
+    next_reauth_at = (
+        time.time() + _HEARTBEAT_INTERVAL_SECONDS if is_still_authorized is not None else None
+    )
+    try:
+        while True:
+            if close_at is not None and time.time() >= close_at:
+                break
+
+            timeout = _HEARTBEAT_INTERVAL_SECONDS
+            if close_at is not None:
+                timeout = min(timeout, max(close_at - time.time(), 0.0))
+            if next_reauth_at is not None:
+                timeout = min(timeout, max(next_reauth_at - time.time(), 0.0))
+
+            event = await subscription.get_event(timeout)
+
+            if close_at is not None and time.time() >= close_at:
+                break
+
+            if next_reauth_at is not None and time.time() >= next_reauth_at:
+                next_reauth_at = time.time() + _HEARTBEAT_INTERVAL_SECONDS
+                if not await is_still_authorized():
+                    break
+
+            if event is None:
+                yield ": heartbeat\n\n"
+                continue
+
+            yield event.to_sse()
+            if _is_own_revocation(event, participant_id):
+                break
+    finally:
+        await subscription.close()
+
+
+class MemorySubscription:
+    def __init__(self, bus: "MemoryEventBus", roadmap_id: str, queue: asyncio.Queue):
+        self._bus = bus
+        self._roadmap_id = roadmap_id
+        self._queue = queue
+
+    async def get_event(self, timeout: float) -> Event | None:
+        try:
+            return await asyncio.wait_for(self._queue.get(), timeout=timeout)
+        except asyncio.TimeoutError:
+            return None
+
+    async def close(self) -> None:
+        await self._bus.unsubscribe(self._roadmap_id, self._queue)
 
 
 class MemoryEventBus:
@@ -85,6 +176,10 @@ class MemoryEventBus:
         for queue in queues:
             await queue.put(event)
 
+    async def open_subscription(self, roadmap_id: str) -> MemorySubscription:
+        queue = await self.subscribe(roadmap_id)
+        return MemorySubscription(self, roadmap_id, queue)
+
     async def stream(
         self,
         roadmap_id: str,
@@ -99,36 +194,23 @@ class MemoryEventBus:
         When `participant_id` is set, the stream closes itself the moment it
         forwards a `participant.revoked` event targeting that same
         participant — revocation must not depend on the client choosing to
-        disconnect. `is_still_authorized`, when provided, is polled once per
-        idle heartbeat as defense-in-depth against a missed/dropped event.
-        """
-        queue = await self.subscribe(roadmap_id)
-        try:
-            while True:
-                timeout = _HEARTBEAT_INTERVAL_SECONDS
-                if close_at is not None:
-                    seconds_remaining = close_at - time.time()
-                    if seconds_remaining <= 0:
-                        break
-                    timeout = min(timeout, seconds_remaining)
+        disconnect. `is_still_authorized`, when provided, is polled on a
+        bounded cadence as defense-in-depth against a missed/dropped event.
 
-                try:
-                    # Wait for an event from the bus or a heartbeat timeout.
-                    event = await asyncio.wait_for(queue.get(), timeout=timeout)
-                    if close_at is not None and time.time() >= close_at:
-                        break
-                    yield event.to_sse()
-                    if _is_own_revocation(event, participant_id):
-                        break
-                except asyncio.TimeoutError:
-                    if close_at is not None and time.time() >= close_at:
-                        break
-                    if is_still_authorized is not None and not await is_still_authorized():
-                        break
-                    # Send an SSE comment as a heartbeat to keep the connection alive.
-                    yield ": heartbeat\n\n"
-        finally:
-            await self.unsubscribe(roadmap_id, queue)
+        Callers that need to recheck authorization *after* subscribing but
+        *before* forwarding any events (closing the revocation race at
+        stream open) should call `open_subscription()` and
+        `forward_subscription()` directly instead of this convenience
+        method — see the `/events` route.
+        """
+        subscription = await self.open_subscription(roadmap_id)
+        async for chunk in forward_subscription(
+            subscription,
+            participant_id=participant_id,
+            close_at=close_at,
+            is_still_authorized=is_still_authorized,
+        ):
+            yield chunk
 
 
 EventBus = MemoryEventBus
@@ -169,6 +251,16 @@ class RedisPubSubEventBus:
             logger.exception("Failed to publish realtime event through Redis")
             raise
 
+    async def open_subscription(self, roadmap_id: str) -> "RedisSubscription":
+        channel = self._channel(roadmap_id)
+        pubsub = self._redis.pubsub()
+        try:
+            await pubsub.subscribe(channel)
+        except RedisError:
+            logger.exception("Failed to subscribe to realtime Redis channel")
+            raise
+        return RedisSubscription(self, roadmap_id, pubsub, channel)
+
     async def stream(
         self,
         roadmap_id: str,
@@ -184,46 +276,20 @@ class RedisPubSubEventBus:
         Revocation closure works the same way across every worker: whichever
         worker holds this participant's connection sees the published
         `participant.revoked` message on the shared channel and closes it.
+
+        Callers that need to recheck authorization *after* subscribing but
+        *before* forwarding any events should call `open_subscription()`
+        and `forward_subscription()` directly instead — see the
+        `/events` route.
         """
-        channel = self._channel(roadmap_id)
-        pubsub = self._redis.pubsub()
-        try:
-            await pubsub.subscribe(channel)
-        except RedisError:
-            logger.exception("Failed to subscribe to realtime Redis channel")
-            raise
-
-        try:
-            while True:
-                timeout = _HEARTBEAT_INTERVAL_SECONDS
-                if close_at is not None:
-                    seconds_remaining = close_at - time.time()
-                    if seconds_remaining <= 0:
-                        break
-                    timeout = min(timeout, seconds_remaining)
-
-                message = await self._get_message(pubsub, timeout)
-                if close_at is not None and time.time() >= close_at:
-                    break
-                if message is None:
-                    if is_still_authorized is not None and not await is_still_authorized():
-                        break
-                    yield ": heartbeat\n\n"
-                    continue
-                if message.get("type") != "message":
-                    continue
-
-                event = self._event_from_message(roadmap_id, message.get("data"))
-                if event is not None:
-                    yield event.to_sse()
-                    if _is_own_revocation(event, participant_id):
-                        break
-        finally:
-            try:
-                await pubsub.unsubscribe(channel)
-                await pubsub.close()
-            except RedisError:
-                logger.warning("Failed to clean up realtime Redis subscription")
+        subscription = await self.open_subscription(roadmap_id)
+        async for chunk in forward_subscription(
+            subscription,
+            participant_id=participant_id,
+            close_at=close_at,
+            is_still_authorized=is_still_authorized,
+        ):
+            yield chunk
 
     async def _get_message(self, pubsub: Any, timeout: float):
         try:
@@ -248,6 +314,33 @@ class RedisPubSubEventBus:
             logger.warning("Ignored malformed realtime Redis message")
             return None
         return Event(roadmap_id=roadmap_id, action=action, payload=payload)
+
+
+class RedisSubscription:
+    def __init__(
+        self,
+        bus: "RedisPubSubEventBus",
+        roadmap_id: str,
+        pubsub: Any,
+        channel: str,
+    ):
+        self._bus = bus
+        self._roadmap_id = roadmap_id
+        self._pubsub = pubsub
+        self._channel = channel
+
+    async def get_event(self, timeout: float) -> Event | None:
+        message = await self._bus._get_message(self._pubsub, timeout)
+        if message is None or message.get("type") != "message":
+            return None
+        return self._bus._event_from_message(self._roadmap_id, message.get("data"))
+
+    async def close(self) -> None:
+        try:
+            await self._pubsub.unsubscribe(self._channel)
+            await self._pubsub.close()
+        except RedisError:
+            logger.warning("Failed to clean up realtime Redis subscription")
 
 
 def _build_event_bus() -> RealtimeEventBus:
