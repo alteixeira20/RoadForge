@@ -1,9 +1,9 @@
 {
   "schema": "anvilary.roadmap.export",
   "version": 1,
-  "exportedAt": "2026-07-25T00:00:00.000Z",
+  "exportedAt": "2026-07-26T15:32:05.365227Z",
   "roadmap": {
-    "name": "RoadForge - Clean Beta Foundation",
+    "name": "RoadForge - Reliable Team Collaboration",
     "saved": false,
     "id": null,
     "updatedAt": null
@@ -13,8 +13,8 @@
     "ownerDisplayName": null
   },
   "meta": {
-    "phaseCount": 11,
-    "taskCount": 40
+    "phaseCount": 17,
+    "taskCount": 63
   },
   "tagRegistry": [
     {
@@ -64,6 +64,38 @@
     {
       "id": "post-beta",
       "label": "Post-Beta"
+    },
+    {
+      "id": "realtime",
+      "label": "Realtime"
+    },
+    {
+      "id": "presence",
+      "label": "Presence"
+    },
+    {
+      "id": "resilience",
+      "label": "Resilience"
+    },
+    {
+      "id": "notifications",
+      "label": "Notifications"
+    },
+    {
+      "id": "observability",
+      "label": "Observability"
+    },
+    {
+      "id": "drafts",
+      "label": "Draft safety"
+    },
+    {
+      "id": "privacy",
+      "label": "Privacy"
+    },
+    {
+      "id": "multi-worker",
+      "label": "Multi-worker"
     }
   ],
   "phases": [
@@ -344,7 +376,7 @@
       "name": "Immediate Beta blockers",
       "color": "#d97442",
       "colorMode": "auto",
-      "status": "active",
+      "status": "future",
       "progress": 25,
       "tasks": [
         {
@@ -723,7 +755,7 @@
           "id": "RF-034",
           "title": "Establish accessibility and responsive acceptance gates",
           "done": false,
-          "next": true,
+          "next": false,
           "tags": [
             "a11y",
             "quality",
@@ -774,17 +806,545 @@
             "RF-024",
             "RF-027",
             "RF-029",
-            "RF-033"
+            "RF-033",
+            "RF-044",
+            "RF-045",
+            "RF-046",
+            "RF-047",
+            "RF-051",
+            "RF-061",
+            "RF-062"
           ],
           "est": "3 days",
-          "desc": "**Why**\nCode and documentation cannot substitute for operational proof.\n\n**Finding**\nCI includes audits and migration checks and self-hosting docs prescribe backup/restore, but no evidence proved a deployed candidate, restore drill, rollback, or monitored smoke. The dependency gate had also gone stale: `make audit` and the CI `js-audit` job were failing with twelve advisories, six high, all reaching production through `next@15.5.18`.\n\n**Implemented**\nUpgraded `next` and `eslint-config-next` to 15.5.21 and added `pnpm.overrides` raising `postcss` to ^8.5.23 and `sharp` to ^0.35.3, which Next still pins at vulnerable versions. `make audit` and `pip-audit` now both report no known vulnerabilities. `docs/security/dependency-audit-policy.md` records each override with its removal condition. Added `docs/security/operational-proof-gate.md`, which classifies every RF-036 check as automated, local manual, deployed manual, or decision, and gives each remaining check exact prerequisites, command, expected output, pass/fail criterion, and evidence to retain.\n\n**Automated evidence**\n236 API tests pass against isolated PostgreSQL, covering minimal health response and security headers, credential-free access logs, docs disabled outside development, production secret-key and database-URL guards, memory-mode multi-worker rejection, Redis URL requirement and startup ping, trusted-proxy and forwarded-header handling, body-size limits, rate limits, and role/share-link/session enforcement. `make api-check` reports no migration drift. Secret, tracked-artifact, and `NEXT_PUBLIC_*` scans are clean: only `.env.example` files are tracked, no build output is tracked, and the single public variable is `NEXT_PUBLIC_API_URL`.\n\n**Local manual evidence**\nRehearsed the documented backup and disposable restore drill end to end against local disposable data: dump written and non-empty, catalog readable, checksum verified, drill database created, restore completed with `--exit-on-error`, verification counts matched, drill database dropped. Live checks against the local stack confirmed the minimal health response with all four security headers and CORS echoing an allowed origin while rejecting a disallowed one with no allow-origin header.\n\n**Deployed remainder**\nSection 3 of the proof gate remains open and cannot be settled locally: HTTPS/HSTS at the edge, trusted-proxy client IPs, credential-safe proxy and application log review, share-link and session revocation, rate limiting under the real proxy, pre-migration backup plus upgrade and drift check, projection backfill parity, worker/realtime mode confirmation, two-session collaboration, and rollback rehearsal.\n\n**Risk**\nOperational failures are high impact and cannot be inferred locally. The dependency overrides are a version floor, not a suppression, and must be rechecked on every Next upgrade.\n\n**Classification**\nconfirmed"
+          "desc": "**Why**\nCode and documentation cannot substitute for operational proof.\n\n**Finding**\nCI includes audits and migration checks and self-hosting docs prescribe backup/restore, but no evidence proved a deployed candidate, restore drill, rollback, or monitored smoke. The dependency gate had also gone stale: `make audit` and the CI `js-audit` job were failing with twelve advisories, six high, all reaching production through `next@15.5.18`.\n\n**Implemented**\nUpgraded `next` and `eslint-config-next` to 15.5.21 and added `pnpm.overrides` raising `postcss` to ^8.5.23 and `sharp` to ^0.35.3, which Next still pins at vulnerable versions. `make audit` and `pip-audit` now both report no known vulnerabilities. `docs/security/dependency-audit-policy.md` records each override with its removal condition. Added `docs/security/operational-proof-gate.md`, which classifies every RF-036 check as automated, local manual, deployed manual, or decision, and gives each remaining check exact prerequisites, command, expected output, pass/fail criterion, and evidence to retain.\n\n**Automated evidence**\n236 API tests pass against isolated PostgreSQL, covering minimal health response and security headers, credential-free access logs, docs disabled outside development, production secret-key and database-URL guards, memory-mode multi-worker rejection, Redis URL requirement and startup ping, trusted-proxy and forwarded-header handling, body-size limits, rate limits, and role/share-link/session enforcement. `make api-check` reports no migration drift. Secret, tracked-artifact, and `NEXT_PUBLIC_*` scans are clean: only `.env.example` files are tracked, no build output is tracked, and the single public variable is `NEXT_PUBLIC_API_URL`.\n\n**Local manual evidence**\nRehearsed the documented backup and disposable restore drill end to end against local disposable data: dump written and non-empty, catalog readable, checksum verified, drill database created, restore completed with `--exit-on-error`, verification counts matched, drill database dropped. Live checks against the local stack confirmed the minimal health response with all four security headers and CORS echoing an allowed origin while rejecting a disallowed one with no allow-origin header.\n\n**Deployed remainder**\nSection 3 of the proof gate remains open and cannot be settled locally: HTTPS/HSTS at the edge, trusted-proxy client IPs, credential-safe proxy and application log review, share-link and session revocation, rate limiting under the real proxy, pre-migration backup plus upgrade and drift check, projection backfill parity, worker/realtime mode confirmation, two-session collaboration, and rollback rehearsal.\n\n**Risk**\nOperational failures are high impact and cannot be inferred locally. The dependency overrides are a version floor, not a suppression, and must be rechecked on every Next upgrade.\n\n**Classification**\nconfirmed\n\n**Updated collaboration remainder**\nThe deployed proof must now also verify immediate realtime revocation, conflict-safe restore, privileged invite handling, automatic reconnect/replay, Redis outage recovery, presence accuracy, hidden-tab notification badges, multi-worker convergence, and privacy-safe collaboration metrics."
         }
       ]
     },
     {
       "id": "p10",
       "num": "10",
-      "name": "Beta candidate and release",
+      "name": "Delivered UI and compatibility stabilization",
+      "color": "#6b8e7b",
+      "colorMode": "auto",
+      "status": "done",
+      "progress": 100,
+      "tasks": [
+        {
+          "id": "RF-041",
+          "title": "Promote Tags to a first-class workspace tab with drag ordering",
+          "done": true,
+          "next": false,
+          "tags": [
+            "ui",
+            "a11y",
+            "data"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-004",
+            "RF-034"
+          ],
+          "est": "3 days",
+          "desc": "**Delivered capability**\nTags are a first-class Roadmap / Activity / Tags workspace tab. Registry rows use the canonical task tag chip, show usage counts, support owner/editor mutations, remain read-only for viewers, and reorder through deterministic dnd-kit drag-and-drop rather than move-arrow controls.\n\n**Evidence**\nShared tag-chip rendering, Tags panel/tab semantics, deterministic drag context IDs, pointer and keyboard drag coverage, persistence/reload coverage, hydration regression coverage, and responsive browser tests.\n\n**Boundary**\nThis records the delivered UI capability; collaboration presence and realtime durability are planned separately."
+        },
+        {
+          "id": "RF-042",
+          "title": "Unify tag and phase color controls and editor styling",
+          "done": true,
+          "next": false,
+          "tags": [
+            "ui",
+            "a11y",
+            "quality"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-017",
+            "RF-031",
+            "RF-041"
+          ],
+          "est": "2 days",
+          "desc": "**Delivered capability**\nTag editing uses the same normalized input, focus treatment, anchored palette, color validation, custom-color entry, and crisp circular swatch language as phase color editing. Duplicate focus rings and pixelated native color-well presentation were removed.\n\n**Evidence**\nShared color-picker and swatch ownership, shared palette/validation tests, focus and cancellation coverage, responsive popover checks, and persistence after reload.\n\n**Boundary**\nNo roadmap schema or backend API change was required."
+        },
+        {
+          "id": "RF-043",
+          "title": "Preserve safe legacy tag identifiers across save and restore",
+          "done": true,
+          "next": false,
+          "tags": [
+            "data",
+            "sync",
+            "quality"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-012",
+            "RF-022"
+          ],
+          "est": "2 days",
+          "desc": "**Delivered capability**\nRoadForge accepts safe historical tag identifiers such as `status:done` and `priority:P0` while continuing to generate strict lowercase-kebab IDs for new tags. Existing IDs and task references are preserved byte-for-byte across load, save, version, restore, export, and import.\n\n**Evidence**\nFrontend/backend contract tests, legacy roadmap fixtures, database-backed save/checkpoint/restore coverage, browser refresh regression, and no silent ID migration.\n\n**Boundary**\nThe compatibility grammar remains deliberately narrow and continues rejecting spaces, paths, control characters, markup, and malformed separators."
+        }
+      ]
+    },
+    {
+      "id": "p11",
+      "num": "11",
+      "name": "Collaboration security and overwrite prevention",
+      "color": "#d97442",
+      "colorMode": "auto",
+      "status": "active",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-044",
+          "title": "Cut off revoked participants from realtime immediately",
+          "done": false,
+          "next": true,
+          "tags": [
+            "collab",
+            "security",
+            "realtime",
+            "quality"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-007",
+            "RF-009",
+            "RF-023"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nRevocation must remove both mutation rights and passive live visibility.\n\n**Finding**\nREST authorization checks `revoked_at`, but an already-open SSE stream can continue receiving roadmap and lock events until disconnect or session expiry.\n\n**Scope**\nAdd server-side stream revocation enforcement, publish a revocation control event, close matching connections across memory and Redis backends, clear client credentials, and stop reconnect attempts for revoked sessions.\n\n**Acceptance criteria**\nRevocation closes every active tab for that participant promptly; no later realtime event is delivered; subsequent reads and writes fail; other participants remain connected; the behavior works in one-worker and Redis multi-worker modes.\n\n**Validation / gate**\nAPI/event-bus tests, an open-stream revocation integration test, two-browser browser coverage, and deployed multi-worker proof.\n\n**Risk**\nA revoked collaborator retaining live read access breaks the trust meaning of revocation.\n\n**Evidence**\nThe collaboration audit confirmed that `event_bus.stream()` does not re-check participant revocation after ticket redemption.\n\n**Classification**\nconfirmed P1; sole next task."
+        },
+        {
+          "id": "RF-045",
+          "title": "Make version restore conflict-safe",
+          "done": false,
+          "next": false,
+          "tags": [
+            "collab",
+            "sync",
+            "security",
+            "data"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-009",
+            "RF-021",
+            "RF-022"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nA restore must not silently replace work saved after the owner opened the Versions panel.\n\n**Finding**\nNormal PUT/PATCH writes use optimistic concurrency, but version restore writes the stored snapshot directly without checking the caller's base revision.\n\n**Scope**\nRequire `expected_updated_at`, route restore through the canonical compare-and-swap conflict contract, checkpoint the pre-restore state, expose 409 metadata to the existing conflict UI, and provide a separately confirmed owner force-restore path only after review.\n\n**Acceptance criteria**\nA stale restore returns 409 and changes nothing; a current restore succeeds; an explicit forced restore records actor, source version, overwritten revision, and safety checkpoint; unsaved local drafts receive a specific warning.\n\n**Validation / gate**\nBackend concurrency tests, owner UI tests, two-browser restore-versus-edit test, and version round-trip coverage.\n\n**Risk**\nThe current path can overwrite another collaborator's recently saved work without warning.\n\n**Classification**\nconfirmed P1."
+        },
+        {
+          "id": "RF-046",
+          "title": "Harden owner and editor invitation credentials",
+          "done": false,
+          "next": false,
+          "tags": [
+            "security",
+            "privacy",
+            "collab",
+            "ui"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-007",
+            "RF-029"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nPrivileged invitations are credentials and should not behave like ordinary public hyperlinks.\n\n**Finding**\nOwner/editor invitations are rendered as complete join URLs that can leak through history, link previews, Safe Links scanners, or accidental navigation.\n\n**Scope**\nUse copy-only/reveal-on-demand presentation for privileged invites, preserve a convenient viewer-link flow, display role/expiry/revocation state, prevent automatic anchor navigation, and evaluate one-time redemption without weakening accountless sharing.\n\n**Acceptance criteria**\nPrivileged credentials are never rendered as auto-navigable anchors; copying is explicit; rotation/revocation invalidates prior credentials; logs, analytics, referrers, and previews do not receive tokens; viewer sharing remains understandable.\n\n**Validation / gate**\nComponent/security tests, token-leak scans, join/rotation regression tests, and manual Slack/email preview review using disposable credentials.\n\n**Risk**\nA leaked editor or owner invitation grants durable elevated access.\n\n**Classification**\nconfirmed P1/security."
+        },
+        {
+          "id": "RF-047",
+          "title": "Enforce production collaboration security configuration",
+          "done": false,
+          "next": false,
+          "tags": [
+            "security",
+            "quality",
+            "privacy"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-010"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nProduction must fail safely when collaboration-facing security configuration is contradictory.\n\n**Finding**\nExisting startup guards cover secrets, database URLs, workers, and Redis, but no equivalent fail-fast rule prevents wildcard CORS with credentials.\n\n**Scope**\nReject unsafe production CORS combinations, document the bearer-token/no-cookie CSRF model, retain query-string redaction for SSE tickets, and test security headers, trusted proxies, body limits, and access-log sanitization together.\n\n**Acceptance criteria**\nUnsafe production configuration refuses startup with actionable diagnostics; valid explicit origins work; wildcard-plus-credentials cannot deploy; no token or ticket reaches logs.\n\n**Validation / gate**\nConfiguration unit tests, production-startup smoke, proxy/header tests, and deployed edge verification.\n\n**Risk**\nMisconfiguration can undermine otherwise correct route authorization.\n\n**Classification**\nconfirmed defense-in-depth."
+        }
+      ]
+    },
+    {
+      "id": "p12",
+      "num": "12",
+      "name": "Realtime transport reliability and recovery",
+      "color": "#4f7cac",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-048",
+          "title": "Add automatic SSE reconnect and visible connection states",
+          "done": false,
+          "next": false,
+          "tags": [
+            "realtime",
+            "resilience",
+            "sync",
+            "ui"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-009",
+            "RF-021",
+            "RF-044"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nA dropped live connection must heal without a tab visibility change or manual refresh.\n\n**Finding**\nThe client sets `reconnecting` after an SSE error but does not run a normal retry loop.\n\n**Scope**\nImplement exponential backoff with jitter, bounded retry intervals, fresh single-use ticket acquisition per attempt, cancellation on unmount/revocation, online/visibility acceleration, and persistent Live / Reconnecting / Offline / Resyncing UI states.\n\n**Acceptance criteria**\nTransient disconnects reconnect automatically; long outages remain truthful; only one connection attempt runs at a time; revocation and session expiry stop retry; successful reconnect triggers authoritative synchronization.\n\n**Validation / gate**\nFake-timer hook tests, browser network interruption tests, server restart test, and accessible status announcements.\n\n**Classification**\nconfirmed P1."
+        },
+        {
+          "id": "RF-049",
+          "title": "Add realtime event IDs, sequencing, deduplication, and gap detection",
+          "done": false,
+          "next": false,
+          "tags": [
+            "realtime",
+            "resilience",
+            "sync",
+            "observability"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-048"
+          ],
+          "est": "4 days",
+          "desc": "**Why**\nClients need to know whether an event is new, duplicated, delayed, or missing.\n\n**Finding**\nCurrent events carry no unique ID or per-roadmap sequence, so delivery gaps and duplicate/out-of-order events cannot be detected.\n\n**Scope**\nDefine a versioned event envelope with event ID, roadmap ID, monotonic sequence, type, actor/session metadata, emitted timestamp, and minimal payload; emit SSE `id:` fields; persist the last applied sequence client-side per active roadmap; ignore duplicates and detect gaps.\n\n**Acceptance criteria**\nEvents apply once and in order; duplicates are harmless; stale events are ignored; a sequence gap enters Resyncing and fetches the authoritative snapshot; own writes do not produce misleading remote-update notifications.\n\n**Validation / gate**\nEnvelope contract tests, duplicate/delay/reorder tests, browser reload tests, and compatibility handling for pre-sequence events during deployment.\n\n**Risk**\nBad sequencing can create false freshness or repeated UI updates.\n\n**Classification**\nconfirmed architecture gap."
+        },
+        {
+          "id": "RF-050",
+          "title": "Provide a short realtime replay window and authoritative resync",
+          "done": false,
+          "next": false,
+          "tags": [
+            "realtime",
+            "resilience",
+            "multi-worker",
+            "sync"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-049"
+          ],
+          "est": "4 days",
+          "desc": "**Why**\nA brief network drop or rolling restart should not silently discard every event.\n\n**Finding**\nThe current pub/sub stream has no replay buffer; missed events are recoverable only through an implicit full refetch.\n\n**Scope**\nAdd a bounded per-roadmap event buffer using a Redis Stream or equivalent durable short-TTL structure, with an in-memory ring buffer for one-worker development. Support reconnect from `Last-Event-ID` when available and fall back to snapshot resync when history has expired.\n\n**Acceptance criteria**\nShort disconnects replay missed events in order; expired or invalid cursors trigger one safe snapshot refresh; replay is bounded by count/TTL; revoked sessions cannot replay; deployment remains compatible across rolling versions.\n\n**Validation / gate**\nMemory/Redis contract suite, reconnect/replay integration tests, rolling-restart simulation, and payload/retention budgets.\n\n**Risk**\nAn unbounded event log creates privacy and storage liabilities.\n\n**Classification**\nrecommended reliability foundation."
+        },
+        {
+          "id": "RF-051",
+          "title": "Recover safely from Redis runtime outages",
+          "done": false,
+          "next": false,
+          "tags": [
+            "realtime",
+            "resilience",
+            "multi-worker",
+            "observability"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-048",
+            "RF-050"
+          ],
+          "est": "4 days",
+          "desc": "**Why**\nA runtime Redis interruption must not leave workers permanently divergent after Redis returns.\n\n**Finding**\nStartup fail-fast behavior is strong, but runtime publish/subscription failures have no proven reconnect and cross-worker reconciliation path.\n\n**Scope**\nAdd Redis connection retry/backoff, subscription re-establishment, explicit degraded state, health/readiness signals, sequence-gap resync after recovery, and clear fail-closed behavior for multi-worker realtime operations.\n\n**Acceptance criteria**\nRedis loss is detected and surfaced; subscriptions recover automatically; clients resync after recovery; no worker silently reports Live while cross-worker delivery is unavailable; one-worker memory mode remains unaffected.\n\n**Validation / gate**\nDisposable Redis outage/restart tests, two-worker integration, readiness checks, and structured failure logs.\n\n**Classification**\nlikely P1 in multi-worker deployments."
+        }
+      ]
+    },
+    {
+      "id": "p13",
+      "num": "13",
+      "name": "Presence, activity awareness, and update notifications",
+      "color": "#7b61a8",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-052",
+          "title": "Create an ephemeral multi-worker presence model",
+          "done": false,
+          "next": false,
+          "tags": [
+            "presence",
+            "realtime",
+            "multi-worker",
+            "privacy"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-044",
+            "RF-048",
+            "RF-051"
+          ],
+          "est": "4 days",
+          "desc": "**Why**\nTeams need to know who currently has the roadmap open without turning presence into durable audit data.\n\n**Finding**\nThe Team panel exposes `lastSeenAt`, but there is no realtime online/viewing model and each worker only knows its own SSE subscribers.\n\n**Scope**\nDefine ephemeral presence keyed by roadmap, participant, and per-tab client instance. Heartbeats report visible/hidden state, active/idle interaction, current workspace section, and optional editing target; Redis TTL storage supports multi-worker deployments and memory storage supports one worker.\n\n**Acceptance criteria**\nPresence expires automatically after missed heartbeats; multiple tabs do not create misleading duplicate people; revocation removes presence immediately; presence is excluded from snapshots, versions, exports, activity history, and backups beyond operational TTL data.\n\n**Validation / gate**\nPresence service contract tests, TTL tests, privacy review, two-worker propagation test, and browser lifecycle coverage.\n\n**Risk**\nPresence can become inaccurate or invasive if persisted or over-detailed.\n\n**Classification**\nconfirmed requested feature."
+        },
+        {
+          "id": "RF-053",
+          "title": "Show who is viewing, active, idle, or in a background tab",
+          "done": false,
+          "next": false,
+          "tags": [
+            "presence",
+            "ui",
+            "a11y",
+            "privacy"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-052"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nA count alone is insufficient; users need an understandable distinction between someone actively working and someone who merely left a tab open.\n\n**Scope**\nAdd a compact presence cluster and Team-panel detail showing Active now, Viewing, Idle, and Background tab states, plus connection freshness. Aggregate multiple tabs per participant while optionally exposing `2 tabs` as secondary detail.\n\n**Acceptance criteria**\nStates use text and accessible labels rather than color alone; current user is identified; stale presence disappears; viewer/editor/owner visibility follows one documented privacy policy; layout works on mobile and at 200% zoom.\n\n**Validation / gate**\nComponent/a11y tests, two-profile browser tests, hidden-tab/idle timers, and manual screen-reader review.\n\n**Risk**\nAmbiguous presence can be mistaken for surveillance or guaranteed attention.\n\n**Classification**\nconfirmed requested feature."
+        },
+        {
+          "id": "RF-054",
+          "title": "Distinguish active editing from passive viewing",
+          "done": false,
+          "next": false,
+          "tags": [
+            "presence",
+            "collab",
+            "ui",
+            "realtime"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-052",
+            "RF-058"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nTeams should see the difference between a roadmap being open and a collaborator actively changing a task.\n\n**Scope**\nCombine presence interaction state with lock ownership to show `Alexandre is editing this task`, current section, and recent interaction without exposing typed content or cursor positions. Keep durable claim/assignment separate from ephemeral editing state.\n\n**Acceptance criteria**\nEditing indicators appear before another user attempts a conflicting edit; they clear on release, expiry, revocation, disconnect, or task close; claim labels remain semantically distinct; background tabs never appear as actively editing unless they still hold a valid lock and the UI explains that state.\n\n**Validation / gate**\nTwo-editor browser tests, lock/presence reconciliation tests, accessibility review, and privacy checks.\n\n**Classification**\nconfirmed requested distinction."
+        },
+        {
+          "id": "RF-055",
+          "title": "Notify hidden tabs of unseen remote roadmap updates",
+          "done": false,
+          "next": false,
+          "tags": [
+            "notifications",
+            "realtime",
+            "presence",
+            "ui"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-049",
+            "RF-053"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nA user with RoadForge open in another tab should notice that teammates changed the roadmap.\n\n**Scope**\nTrack unseen remote update events per tab. When the document is hidden or unfocused, add a red notification dot/count to the favicon and prefix the document title. Clear the badge when the tab becomes visible and the latest authoritative state is rendered or when the user explicitly acknowledges it.\n\n**Acceptance criteria**\nOnly remote, successfully applied updates increment the badge; own writes, presence heartbeats, lock refreshes, duplicates, and stale events do not; favicon generation preserves the original icon, works without canvas support via fallback, and restores cleanly; title and icon updates are accessible and tested.\n\n**Validation / gate**\nVisibility/focus unit tests, Playwright multi-tab tests, favicon pixel/DOM contract tests, reload behavior, and no memory/object-URL leaks.\n\n**Risk**\nNoisy or false notifications will train users to ignore collaboration updates.\n\n**Classification**\nconfirmed requested feature."
+        },
+        {
+          "id": "RF-056",
+          "title": "Coordinate same-user tabs with BroadcastChannel",
+          "done": false,
+          "next": false,
+          "tags": [
+            "presence",
+            "notifications",
+            "drafts",
+            "resilience"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-052",
+            "RF-055"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nTwo tabs using the same participant session currently behave as unrelated editors and can produce duplicate presence, drafts, locks, or notifications.\n\n**Scope**\nAssign a stable per-tab client ID in session storage and use `BroadcastChannel` with a storage-event fallback to coordinate active-tab leadership, draft ownership, notification clearing, logout/revocation, and duplicate connection avoidance where safe.\n\n**Acceptance criteria**\nTabs remain independently usable but warn before conflicting same-user edits; presence aggregates correctly; revocation/logout propagates; only one tab clears another tab's unseen state through an explicit acknowledged event; unsupported browsers degrade safely.\n\n**Validation / gate**\nMulti-tab browser tests, fallback tests, crash/close recovery, and privacy review.\n\n**Classification**\nconfirmed architecture gap and requested behavior."
+        }
+      ]
+    },
+    {
+      "id": "p14",
+      "num": "14",
+      "name": "Draft, lock, and claim safety",
+      "color": "#c97553",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-057",
+          "title": "Persist unsynced server-backed drafts locally",
+          "done": false,
+          "next": false,
+          "tags": [
+            "drafts",
+            "sync",
+            "resilience",
+            "data"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-021",
+            "RF-048"
+          ],
+          "est": "4 days",
+          "desc": "**Why**\nA refresh, crash, or offline session must not destroy unsynced team work held only in React memory.\n\n**Finding**\nCurrent local storage tracks identity and roadmap IDs, not the active server-backed draft snapshot.\n\n**Scope**\nStore encrypted-at-rest-where-practical or origin-scoped IndexedDB drafts keyed by roadmap and participant, with base revision, pending activity, changed fields, timestamp, and schema version. Restore through an explicit recovery flow and purge after confirmed synchronization, revocation, logout, or retention expiry.\n\n**Acceptance criteria**\nOffline edits survive refresh and browser restart; stale drafts are compared with server state rather than auto-overwritten; exports never include session tokens; storage quotas/failures are surfaced; local-only roadmap behavior is unchanged.\n\n**Validation / gate**\nIndexedDB tests, crash/offline/reload browser tests, conflict recovery tests, quota simulation, and security review.\n\n**Risk**\nPersisted drafts can leak sensitive roadmap content on shared devices if retention and logout behavior are weak.\n\n**Classification**\nlikely P1 data-loss prevention."
+        },
+        {
+          "id": "RF-058",
+          "title": "Make lock loss, release, and recovery explicit",
+          "done": false,
+          "next": false,
+          "tags": [
+            "collab",
+            "realtime",
+            "resilience",
+            "ui"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-008",
+            "RF-048",
+            "RF-052"
+          ],
+          "est": "4 days",
+          "desc": "**Why**\nA user should never continue editing under the false belief that they still own a lock.\n\n**Finding**\nLock expiry is passive; the previous holder is not proactively told, and browser close relies on TTL.\n\n**Scope**\nAdd explicit release on editor exit where reliable, server events for lost/replaced/expired locks, refresh-failure handling, a clear draft-safe blocked state, and an owner force-release action with confirmation and attribution. Keep TTL as the crash safety net.\n\n**Acceptance criteria**\nA lost lock immediately stops autosync for that target while preserving the draft; the holder sees who owns the lock and recovery choices; normal close releases promptly; force release is owner-only and audited; no stale holder can silently overwrite.\n\n**Validation / gate**\nLock state-machine tests, timer tests, two-editor browser tests, browser-close approximation, Redis/memory parity, and accessibility review.\n\n**Classification**\nlikely P1."
+        },
+        {
+          "id": "RF-059",
+          "title": "Clarify and reconcile claim versus edit-lock behavior",
+          "done": false,
+          "next": false,
+          "tags": [
+            "collab",
+            "presence",
+            "ui",
+            "docs"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-008",
+            "RF-058"
+          ],
+          "est": "2 days",
+          "desc": "**Why**\nAssignment responsibility and current editing exclusivity are valid separate concepts, but users must not confuse them.\n\n**Scope**\nDocument and encode the policy: claim means responsible for the task; lock means editing now. Update labels, tooltips, Team panel, task metadata, override messaging, and remote notifications. Define allowed owner claim override while another user edits without coupling claim APIs to locks.\n\n**Acceptance criteria**\nEvery relevant UI names the concept explicitly; overriding a claim never implies lock takeover; the prior claimant receives a clear remote update; tests cover claim/lock combinations and role boundaries.\n\n**Validation / gate**\nState matrix, component tests, two-user browser flow, documentation review, and screen-reader labels.\n\n**Classification**\nconfirmed product decision."
+        }
+      ]
+    },
+    {
+      "id": "p15",
+      "num": "15",
+      "name": "Collaboration integration, observability, and proof",
+      "color": "#557f72",
+      "colorMode": "auto",
+      "status": "future",
+      "progress": 0,
+      "tasks": [
+        {
+          "id": "RF-060",
+          "title": "Add real multi-browser collaboration end-to-end tests",
+          "done": false,
+          "next": false,
+          "tags": [
+            "collab",
+            "quality",
+            "realtime",
+            "a11y"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-044",
+            "RF-045",
+            "RF-048",
+            "RF-049",
+            "RF-053",
+            "RF-054",
+            "RF-055",
+            "RF-057",
+            "RF-058",
+            "RF-059"
+          ],
+          "est": "5 days",
+          "desc": "**Why**\nMocked services cannot prove that real owner/editor/viewer browsers remain coherent.\n\n**Scope**\nCreate deterministic Playwright projects using a disposable API/database for save/share/join, live update, role restrictions, revocation, presence, lock contention/loss, conflict choices, restore conflict, offline draft recovery, hidden-tab notification, and same-user multi-tab behavior.\n\n**Acceptance criteria**\nTests run in CI without production secrets; failures retain traces/screenshots/logs; no fixed sleeps hide races; owner/editor/viewer and accessibility behavior are asserted through user-visible outcomes.\n\n**Validation / gate**\nRepeated CI runs, flake budget, clean disposable teardown, and a documented local command.\n\n**Classification**\nconfirmed evidence gap."
+        },
+        {
+          "id": "RF-061",
+          "title": "Prove multi-worker Redis delivery, replay, and outage recovery",
+          "done": false,
+          "next": false,
+          "tags": [
+            "multi-worker",
+            "realtime",
+            "resilience",
+            "quality"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-050",
+            "RF-051",
+            "RF-052",
+            "RF-060"
+          ],
+          "est": "5 days",
+          "desc": "**Why**\nProduction team collaboration cannot rely solely on mocked Redis adapters.\n\n**Scope**\nBuild a disposable two-or-more-worker integration environment with Redis and PostgreSQL. Verify cross-worker update/presence/revocation/lock delivery, reconnect replay, rolling worker restart, Redis restart, sequence-gap resync, and readiness transitions.\n\n**Acceptance criteria**\nClients connected to different workers converge; revocation is immediate; Redis loss never reports false Live; recovery requires no browser refresh; replay ordering and retention are verified; test evidence is repeatable.\n\n**Validation / gate**\nContainerized integration suite, CI or scheduled workflow, fault-injection logs, and deployment-shape documentation.\n\n**Classification**\nconfirmed manual-only gap."
+        },
+        {
+          "id": "RF-062",
+          "title": "Add collaboration metrics and structured diagnostics",
+          "done": false,
+          "next": false,
+          "tags": [
+            "observability",
+            "realtime",
+            "security",
+            "resilience"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-048",
+            "RF-049",
+            "RF-051",
+            "RF-052",
+            "RF-058"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nReliability cannot be managed if reconnects, gaps, conflicts, and lock contention are visible only in ad-hoc logs.\n\n**Scope**\nAdd privacy-safe counters/histograms and structured logs for active SSE streams, presence entries, reconnect attempts, replay/gap resync, 409 conflicts, lock acquire/deny/loss, Redis failures, revocations, and restore conflicts. Add health/readiness detail without exposing participant names or tokens.\n\n**Acceptance criteria**\nMetrics have bounded labels; no roadmap content or credentials are logged; operators can distinguish REST health from realtime degradation; runbooks define thresholds and evidence collection.\n\n**Validation / gate**\nMetric contract tests, log-redaction tests, local scrape/check, fault-injection verification, and deployed dashboard/alert decision.\n\n**Classification**\nconfirmed observability gap."
+        },
+        {
+          "id": "RF-063",
+          "title": "Publish the collaboration contract, threat model, and QA runbook",
+          "done": false,
+          "next": false,
+          "tags": [
+            "docs",
+            "collab",
+            "security",
+            "contributors"
+          ],
+          "assignees": [],
+          "deps": [
+            "RF-046",
+            "RF-053",
+            "RF-055",
+            "RF-057",
+            "RF-058",
+            "RF-059",
+            "RF-060",
+            "RF-061",
+            "RF-062"
+          ],
+          "est": "3 days",
+          "desc": "**Why**\nUsers, contributors, and operators need one accurate description of what live collaboration guarantees and what it does not.\n\n**Scope**\nDocument roles, invites, presence states, claims versus locks, draft retention, conflict/restore choices, reconnect/replay behavior, notification badge semantics, revocation guarantees, deployment topology, privacy boundaries, failure recovery, and manual QA.\n\n**Acceptance criteria**\nDocumentation matches shipped labels and tests; no Google-Docs-style claim is made; every manual/deployed gate has commands, expected results, and retained evidence; stale manual-only claims are removed or dated.\n\n**Validation / gate**\nDocs/link/copy checks, contributor walkthrough, security review, and final two-session/multi-worker manual rehearsal.\n\n**Classification**\nconfirmed release requirement."
+        }
+      ]
+    },
+    {
+      "id": "p16",
+      "num": "16",
+      "name": "Collaboration-ready Beta candidate and release",
       "color": "#4f7cac",
       "colorMode": "auto",
       "status": "future",
@@ -792,7 +1352,7 @@
       "tasks": [
         {
           "id": "RF-037",
-          "title": "Freeze a Beta candidate and execute regression-only stabilization",
+          "title": "Freeze a collaboration-ready Beta candidate and execute stabilization",
           "done": false,
           "next": false,
           "tags": [
@@ -821,14 +1381,37 @@
             "RF-033",
             "RF-034",
             "RF-035",
-            "RF-036"
+            "RF-036",
+            "RF-041",
+            "RF-042",
+            "RF-043",
+            "RF-044",
+            "RF-045",
+            "RF-046",
+            "RF-047",
+            "RF-048",
+            "RF-049",
+            "RF-050",
+            "RF-051",
+            "RF-052",
+            "RF-053",
+            "RF-054",
+            "RF-055",
+            "RF-056",
+            "RF-057",
+            "RF-058",
+            "RF-059",
+            "RF-060",
+            "RF-061",
+            "RF-062",
+            "RF-063"
           ],
           "est": "2 days",
-          "desc": "**Why**\nA Beta claim needs a reproducible, bounded release decision.\n\n**Finding**\nThe repository has a release checklist and CI gates, but no current candidate SHA or complete manual evidence was supplied to this audit.\n\n**Scope**\nFeature-freeze at a candidate SHA; resolve only release-blocking regressions; record gate results and known limitations.\n\n**Acceptance criteria**\nAll required automated/manual gates pass or an explicit release decision records the exception; candidate SHA is immutable.\n\n**Validation / gate**\nFull release checklist and CI status verification.\n\n**Risk**\nLate feature work invalidates prior evidence.\n\n**Evidence**\n`.github/RELEASE_CHECKLIST.md`; classification needs verification.\n\n**Classification**\nneeds verification"
+          "desc": "**Why**\nA team-collaboration Beta claim requires reproducible security, realtime, presence, draft, accessibility, and deployment evidence.\n\n**Scope**\nFreeze an immutable candidate SHA after all implementation dependencies complete; run the complete automated, multi-browser, Redis multi-worker, accessibility, security, backup/restore, and manual collaboration matrices; fix only release-blocking regressions.\n\n**Acceptance criteria**\nNo open P0/P1 collaboration defect remains; all required gates pass or a written owner decision records a bounded exception; known limitations and rollback criteria are published; the candidate SHA does not change during the evidence window.\n\n**Validation / gate**\nRelease check, browser/API/integration suites, NVDA/VoiceOver, real 200% zoom/touch, two-session and multi-worker smoke, operational proof gate, and signed candidate record.\n\n**Risk**\nLate feature work invalidates collaboration evidence and can reintroduce silent divergence.\n\n**Classification**\nrelease-only; needs verification."
         },
         {
           "id": "RF-038",
-          "title": "Publish Beta release and monitor the first self-hosted deployment",
+          "title": "Publish and monitor the collaboration-ready Beta release",
           "done": false,
           "next": false,
           "tags": [
@@ -841,13 +1424,13 @@
             "RF-037"
           ],
           "est": "2 days",
-          "desc": "**Why**\nRelease requires verified rollout and recovery, not just a tag.\n\n**Finding**\nDeployment and monitoring evidence is unavailable in this repository audit.\n\n**Scope**\nPublish release notes and limitations, take backup, deploy candidate, smoke-test, monitor, and retain rollback instructions.\n\n**Acceptance criteria**\nRelease artifacts, backup, deployment smoke, and rollback owner are recorded; no platform expansion is bundled.\n\n**Validation / gate**\nDeployed smoke and post-release monitoring window.\n\n**Risk**\nA clean local build does not prove a safe release.\n\n**Evidence**\nRelease checklist and self-hosting documentation; classification needs verification.\n\n**Classification**\nneeds verification"
+          "desc": "**Why**\nA collaboration release is complete only after production rollout proves security, convergence, recovery, and rollback.\n\n**Scope**\nPublish release notes and limitations, take and verify a pre-deploy backup, deploy the immutable candidate, confirm HTTPS/security headers/proxy identity, verify two-session and Redis multi-worker collaboration, test presence and hidden-tab update badges, monitor collaboration metrics, and retain an executable rollback.\n\n**Acceptance criteria**\nDeployed SHA/tag/migrations/docs agree; revocation and restore-conflict guarantees work; reconnect/replay and presence converge across workers; no credentials appear in logs; alerts and rollback ownership are recorded; the monitoring window closes without an unresolved P0/P1 defect.\n\n**Validation / gate**\nProduction smoke, backup/restore and rollback rehearsal, collaboration metric review, incident threshold check, and post-release report.\n\n**Risk**\nA locally green build cannot prove reliable actual-team collaboration.\n\n**Classification**\nrelease/deployment-only; needs verification."
         }
       ]
     },
     {
-      "id": "p11",
-      "num": "11",
+      "id": "p17",
+      "num": "17",
       "name": "Parked post-Beta platform expansion",
       "color": "#76746e",
       "colorMode": "auto",
