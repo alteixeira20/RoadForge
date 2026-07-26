@@ -115,6 +115,19 @@ async function flushSubscription() {
   })
 }
 
+// Lets a test control exactly when an async dependency (here, getRoadmap)
+// resolves, so races between it and a revocation/error/unmount can be
+// reproduced deterministically instead of guessed at with timing.
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 describe('useRoadmapRealtime', () => {
   let container: HTMLDivElement
   let root: Root
@@ -407,5 +420,172 @@ describe('useRoadmapRealtime', () => {
     expect(params.sessionState.setSessionTokenState).toHaveBeenCalledWith(null)
     expect(params.roadmapState.setSavedState).toHaveBeenCalledWith(false)
     expect(result.accessRevokedEvent).toBe('revoked')
+  })
+
+  it('does not let a resync outlived by revocation restore access', async () => {
+    const { params } = createParams()
+    render(params)
+    await flushSubscription()
+
+    const deferred = createDeferred<Roadmap>()
+    mockedGetRoadmap.mockReset().mockImplementationOnce(() => deferred.promise)
+
+    act(() => handlers.onOpen?.())
+    expect(result.realtimeStatus).toBe('updating')
+
+    act(() => handlers.onParticipantRevoked?.({
+      roadmap_id: 'rm_1',
+      participant_id: 'pt_self',
+      revoked_at: '2026-07-25T18:05:00Z',
+    }))
+    expect(result.realtimeStatus).toBe('access-lost')
+
+    deferred.resolve(loadedRoadmap)
+    await flushSubscription()
+
+    expect(result.realtimeStatus).toBe('access-lost')
+    expect(params.roadmapState.setPhasesState).not.toHaveBeenCalled()
+    expect(params.sessionState.setSessionTokenState).toHaveBeenCalledWith(null)
+  })
+
+  it('does not restart a retry loop when a stale resync resolves after revocation', async () => {
+    vi.useFakeTimers()
+    try {
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      const deferred = createDeferred<Roadmap>()
+      mockedGetRoadmap.mockReset().mockImplementationOnce(() => deferred.promise)
+
+      act(() => handlers.onOpen?.())
+      act(() => handlers.onParticipantRevoked?.({
+        roadmap_id: 'rm_1',
+        participant_id: 'pt_self',
+        revoked_at: '2026-07-25T18:05:00Z',
+      }))
+
+      const ticketCallsAfterRevoke = mockedGetEventTicket.mock.calls.length
+      await act(async () => {
+        deferred.resolve(loadedRoadmap)
+        await Promise.resolve()
+        await Promise.resolve()
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(ticketCallsAfterRevoke)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not let a resync outlived by an EventSource error restore live', async () => {
+    const { params } = createParams()
+    render(params)
+    await flushSubscription()
+
+    const deferred = createDeferred<Roadmap>()
+    mockedGetRoadmap.mockReset().mockImplementationOnce(() => deferred.promise)
+
+    act(() => handlers.onOpen?.())
+    expect(result.realtimeStatus).toBe('updating')
+
+    act(() => handlers.onError?.(new Event('error')))
+    expect(result.realtimeStatus).toBe('reconnecting')
+
+    deferred.resolve(loadedRoadmap)
+    await flushSubscription()
+
+    expect(result.realtimeStatus).toBe('reconnecting')
+    expect(params.roadmapState.setPhasesState).not.toHaveBeenCalled()
+  })
+
+  it('applies no state after unmounting during an in-flight resync', async () => {
+    const { params } = createParams()
+    render(params)
+    await flushSubscription()
+
+    const deferred = createDeferred<Roadmap>()
+    mockedGetRoadmap.mockReset().mockImplementationOnce(() => deferred.promise)
+
+    act(() => handlers.onOpen?.())
+    act(() => root.unmount())
+
+    deferred.resolve(loadedRoadmap)
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(params.roadmapState.setPhasesState).not.toHaveBeenCalled()
+  })
+
+  it('coalesces overlapping update refreshes instead of racing two in-flight requests', async () => {
+    const { params } = createParams()
+    render(params)
+    await flushSubscription()
+
+    const firstDeferred = createDeferred<Roadmap>()
+    const secondRoadmap: Roadmap = {
+      ...loadedRoadmap,
+      roadmap: { ...loadedRoadmap.roadmap, name: 'Second revision' },
+    }
+    mockedGetRoadmap.mockReset()
+      .mockImplementationOnce(() => firstDeferred.promise)
+      .mockResolvedValueOnce(secondRoadmap)
+
+    act(() => handlers.onUpdated?.({
+      roadmap_id: 'rm_1', updated_at: 'a', participant_id: 'pt_other',
+    }))
+    // A second update event arrives while the first authoritative GET for
+    // this roadmap is still in flight — it must not fire its own
+    // overlapping request.
+    act(() => handlers.onUpdated?.({
+      roadmap_id: 'rm_1', updated_at: 'b', participant_id: 'pt_other',
+    }))
+    expect(mockedGetRoadmap).toHaveBeenCalledTimes(1)
+
+    firstDeferred.resolve(loadedRoadmap)
+    await flushSubscription()
+
+    // The coalesced follow-up request fires automatically once the first
+    // completes, and its result — the newer one — is what's applied.
+    expect(mockedGetRoadmap).toHaveBeenCalledTimes(2)
+    expect(params.roadmapState.setRoadmapNameState).toHaveBeenLastCalledWith('Second revision')
+  })
+
+  it('does not affect the new roadmap when the active roadmap changes mid-fetch', async () => {
+    const { params } = createParams()
+    render(params)
+    await flushSubscription()
+
+    const deferred = createDeferred<Awaited<ReturnType<typeof getLocks>>>()
+    mockedGetLocks.mockReset().mockImplementationOnce(() => deferred.promise)
+    vi.mocked(params.lockState.setLocks).mockClear()
+
+    const nextParams = {
+      ...params,
+      connection: { ...params.connection, serverRoadmapId: 'rm_2', activeRoadmapId: 'local_2' },
+    } satisfies UseRoadmapRealtimeParams
+
+    act(() => {
+      root.render(
+        <Harness params={nextParams} onResult={() => {}} />,
+      )
+    })
+
+    deferred.resolve([{
+      roadmap_id: 'rm_1',
+      target: 'task:tk_1',
+      participant_id: 'pt_other',
+      display_name: 'Sam',
+      expires_at: '2026-07-25T18:00:00Z',
+    }])
+    await flushSubscription()
+
+    // The old roadmap's stale lock fetch must not populate state for the
+    // new roadmap the effect has since moved on to.
+    expect(params.lockState.setLocks).toHaveBeenCalledTimes(1)
+    expect(mockedGetEventTicket).toHaveBeenCalledWith('rm_2', 'session-token')
   })
 })
