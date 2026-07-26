@@ -33,6 +33,12 @@ When the immediate peer is trusted, RoadForge accepts the first `X-Forwarded-For
 Wildcard networks such as `0.0.0.0/0` and `::/0` are rejected. Use only the
 specific proxy address or narrow private network range required by the deployment.
 
+## Cross-origin configuration (CORS)
+
+Set `ROADFORGE_CORS_ORIGINS` to an explicit, comma-separated list of `scheme://host[:port]` origins outside development. Startup fails with an actionable error when, in production, the list is empty, contains an empty/malformed entry, or contains the wildcard `*` — the API always allows credentialed requests, and a wildcard origin combined with credentials is unsafe (browsers already reject it, but the API should not silently rely on that).
+
+RoadForge authenticates every roadmap API request with a bearer session token (`Authorization: Bearer <token>`) or a single-use SSE ticket passed as a query parameter — never a cookie. Because no ambient credential is ever attached automatically by the browser, the API does not implement cookie-based CSRF protection (double-submit token, `SameSite`, etc.); a cross-site page cannot forge an authenticated request without first exfiltrating the bearer token, which is a token-handling concern, not a CSRF one.
+
 ## Security headers
 
 The API sets `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, and a conservative `Permissions-Policy`. Sensitive roadmap API responses keep `Cache-Control: no-store`. `Strict-Transport-Security` is sent only when `ROADFORGE_ENVIRONMENT=production`.
@@ -133,4 +139,4 @@ multi-worker realtime still requires the RF-886 staging checklist.
 
 ## Local development differences
 
-Development mode keeps `/api/docs`, `/api/redoc`, and `/api/openapi.json` enabled, does not require `ROADFORGE_SECRET_KEY`, permits the default local database URL, does not require trusted proxy configuration, and omits HSTS.
+Development mode keeps `/api/docs`, `/api/redoc`, and `/api/openapi.json` enabled, does not require `ROADFORGE_SECRET_KEY`, permits the default local database URL, does not require trusted proxy configuration, omits HSTS, and does not enforce the CORS wildcard-plus-credentials guard (the default `ROADFORGE_CORS_ORIGINS` list is explicit localhost origins, not a wildcard, so this rarely matters in practice).

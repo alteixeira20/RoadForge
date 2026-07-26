@@ -108,6 +108,7 @@ class Settings(BaseSettings):
             self.database_url,
             allow_local=self.allow_local_database_in_production,
         )
+        _validate_production_cors_origins(self.cors_origins)
 
     def validate_startup_realtime(self) -> None:
         if self.realtime_backend == "memory" and self.api_workers != 1:
@@ -134,6 +135,40 @@ def _validate_production_secret(secret_key: str | None) -> None:
             "ROADFORGE_SECRET_KEY must be set to a non-default value of at least 32 characters "
             "outside development."
         )
+
+
+def _validate_production_cors_origins(cors_origins: list[str]) -> None:
+    """Reject unsafe production CORS configuration.
+
+    The API always sets `allow_credentials=True` (session tokens and SSE
+    tickets are bearer credentials, never cookies), so a wildcard origin
+    combined with credentials must never reach a production deployment —
+    fail fast at startup with a diagnosable error rather than depend on the
+    browser to refuse the combination.
+    """
+    if not cors_origins:
+        raise RuntimeError(
+            "ROADFORGE_CORS_ORIGINS must list at least one explicit origin in production."
+        )
+
+    for raw_origin in cors_origins:
+        origin = raw_origin.strip()
+        if not origin:
+            raise RuntimeError(
+                "ROADFORGE_CORS_ORIGINS cannot contain an empty origin value."
+            )
+        if origin == "*":
+            raise RuntimeError(
+                "ROADFORGE_CORS_ORIGINS cannot include a wildcard '*' in production: "
+                "the API always allows credentialed requests, so list explicit "
+                "scheme://host[:port] origins instead."
+            )
+        parsed = urlparse(origin)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.path:
+            raise RuntimeError(
+                f"ROADFORGE_CORS_ORIGINS entry {origin!r} is not a valid "
+                "scheme://host[:port] origin."
+            )
 
 
 def _validate_production_database_url(database_url: str, *, allow_local: bool) -> None:

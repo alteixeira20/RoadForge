@@ -14,7 +14,10 @@ import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import { getEventTicket, subscribeToRoadmapEvents } from '@/services/roadmap-realtime.service'
 import { getLocks } from '@/services/roadmap-locks.service'
-import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
+import { isApiConnectionError, isAuthError, isSessionExpiredError } from '@/services/roadmap-http'
+import { computeReconnectDelayMs } from '@/lib/reconnect-backoff'
+
+type LoadedRoadmap = Awaited<ReturnType<typeof getRoadmap>>
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -125,6 +128,12 @@ export function useRoadmapRealtime({
   ])
 
   // ─── Realtime subscription ───────────────────────────────────────────────────
+  // Connection state machine: connecting/reconnecting -> live, with an
+  // `updating` (resync) step gating every transition into `live` on a fresh
+  // authoritative GET. Reconnect attempts use exponential backoff with
+  // jitter (see lib/reconnect-backoff), always fetch a brand-new single-use
+  // ticket, never overlap, and stop permanently on revocation/deletion/
+  // session-expiry/definitive auth failure or on unmount/roadmap change.
 
   useEffect(() => {
     if (!serverRoadmapId || !sessionToken) return
@@ -132,48 +141,164 @@ export function useRoadmapRealtime({
     if (isHydratingServer) return
     if (backendUnavailableRoadmapId === serverRoadmapId) return
 
+    const subscribedActiveId = activeRoadmapId
+
     let unsubscribe: (() => void) | null = null
     let hiddenAt: number | null = null
     // Guards against a startSync() call resuming after this effect has
     // already been cleaned up (e.g. the active roadmap changed mid-await).
     let cancelled = false
+    // Set once access is permanently lost (or on cleanup) so no further
+    // connection attempt or scheduled retry can fire afterward.
+    let stopped = false
+    // Prevents two connection attempts from ever running concurrently
+    // (e.g. a visibility/online wake racing a scheduled retry).
+    let connecting = false
+    let reconnectAttempt = 0
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+
+    const clearRetryTimer = () => {
+      if (retryTimer !== null) {
+        clearTimeout(retryTimer)
+        retryTimer = null
+      }
+    }
+
+    // Shared teardown for participant-revoked, roadmap-deleted, and expired/invalid-session
+    // outcomes. Closes the EventSource first (auth is no longer valid), stops all future
+    // reconnect attempts, then clears auth cache while preserving the local roadmap cache.
+    const handleAccessLoss = (kind: 'revoked' | 'deleted' | 'expired') => {
+      stopped = true
+      clearRetryTimer()
+      if (unsubscribe) { unsubscribe(); unsubscribe = null }
+      if (subscribedActiveId) {
+        storage.setAuthCache(subscribedActiveId, null)
+        const rc = storage.getRoadmapCache(subscribedActiveId)
+        if (rc) storage.setRoadmapCache(subscribedActiveId, { ...rc, saved: false })
+      }
+      setServerRoadmapIdState(null)
+      setSessionTokenState(null)
+      setParticipantIdState(null)
+      setRoleState(null)
+      setSavedState(false)
+      setRealtimeStatus('access-lost')
+      setAccessRevokedEvent(kind)
+    }
+
+    // Applies an authoritative snapshot fetched from the server (used by both
+    // the post-event refetch and the post-reconnect resync). Local unsaved
+    // drafts are preserved by callers checking `savedRef` before invoking this.
+    const applyLoadedRoadmap = (loaded: LoadedRoadmap) => {
+      let nextRoadmapName = loaded.roadmap.name
+      let normalizedSsePhases = normalizePhasesProgress(loaded.phases)
+      let nextSaved = true
+      try {
+        const upgraded = upgradeRoadmapSnapshot({
+          roadmapName: loaded.roadmap.name,
+          phases: loaded.phases,
+        })
+        nextRoadmapName = upgraded.roadmapName || loaded.roadmap.name
+        normalizedSsePhases = normalizePhasesProgress(upgraded.phases)
+        const canPersistUpgrade = role === 'owner' || role === 'editor'
+        nextSaved = !(upgraded.changed && canPersistUpgrade)
+        if (activeRoadmapId) {
+          showUpgradeNoticeOnce(activeRoadmapId, loaded.updatedAt, upgraded)
+        }
+      } catch (err) {
+        console.warn('Could not upgrade realtime roadmap snapshot:', err)
+      }
+
+      setRoadmapNameState(nextRoadmapName)
+      setPhasesState(normalizedSsePhases)
+      const nextRegistry = loaded.tagRegistry?.length
+        ? loaded.tagRegistry
+        : buildRegistryFromPhases(normalizedSsePhases)
+      setTagRegistryState(nextRegistry)
+      setOwnerDisplayNameState(loaded.ownerDisplayName)
+      setUpdatedAtState(loaded.updatedAt)
+      setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
+      setSavedState(nextSaved)
+
+      const activeId = storage.getActiveRoadmapId()
+      if (activeId) {
+        const rc = storage.getRoadmapCache(activeId)
+        if (rc) {
+          storage.setRoadmapCache(activeId, {
+            ...rc,
+            roadmapName: nextRoadmapName,
+            phases: normalizedSsePhases,
+            tagRegistry: nextRegistry,
+            saved: nextSaved,
+            ownerDisplayName: loaded.ownerDisplayName,
+            updatedAt: loaded.updatedAt,
+            isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
+          })
+        }
+      }
+    }
+
+    const scheduleReconnect = () => {
+      if (stopped || cancelled) return
+      clearRetryTimer()
+      const attempt = reconnectAttempt
+      reconnectAttempt += 1
+      const delay = computeReconnectDelayMs(attempt)
+      retryTimer = setTimeout(() => {
+        retryTimer = null
+        void startSync(true)
+      }, delay)
+    }
+
+    // Gates the transition into `live` on one authoritative refetch, so a
+    // reconnect can never be falsely reported as live off the SSE handshake
+    // alone. A failed refetch schedules another retry instead of going live.
+    const resyncThenGoLive = async () => {
+      if (cancelled || stopped) return
+      setRealtimeStatus('updating')
+      try {
+        const loaded = await getRoadmap(serverRoadmapId, sessionToken)
+        if (cancelled) return
+        // Preserve local unsaved work: don't clobber it with the server
+        // snapshot, but the connection itself is genuinely live.
+        if (savedRef.current !== false) {
+          applyLoadedRoadmap(loaded)
+        }
+        setRealtimeStatus('live')
+        reconnectAttempt = 0
+      } catch (err) {
+        if (cancelled) return
+        if (isSessionExpiredError(err) || isAuthError(err)) {
+          handleAccessLoss(isSessionExpiredError(err) ? 'expired' : 'revoked')
+          return
+        }
+        if (unsubscribe) { unsubscribe(); unsubscribe = null }
+        setRealtimeStatus(isApiConnectionError(err) ? 'offline' : 'reconnecting')
+        scheduleReconnect()
+      }
+    }
 
     const startSync = async (isReconnect = false) => {
-      const subscribedActiveId = activeRoadmapId
+      if (stopped || cancelled || connecting) return
+      connecting = true
+      clearRetryTimer()
       setRealtimeStatus(isReconnect ? 'reconnecting' : 'connecting')
-
-      // Shared teardown for participant-revoked, roadmap-deleted, and expired-session events.
-      // Closes the EventSource first (auth is no longer valid), then clears
-      // auth cache while preserving the local roadmap cache.
-      const handleAccessLoss = (kind: 'revoked' | 'deleted' | 'expired') => {
-        if (unsubscribe) { unsubscribe(); unsubscribe = null }
-        if (subscribedActiveId) {
-          storage.setAuthCache(subscribedActiveId, null)
-          const rc = storage.getRoadmapCache(subscribedActiveId)
-          if (rc) storage.setRoadmapCache(subscribedActiveId, { ...rc, saved: false })
-        }
-        setServerRoadmapIdState(null)
-        setSessionTokenState(null)
-        setParticipantIdState(null)
-        setRoleState(null)
-        setSavedState(false)
-        setAccessRevokedEvent(kind)
-      }
 
       try {
         const activeLocks = await getLocks(serverRoadmapId, sessionToken)
-        if (cancelled) return
+        if (cancelled) { connecting = false; return }
         const lockMap: LockMap = {}
         for (const l of activeLocks) {
           lockMap[l.target] = { participantId: l.participant_id, displayName: l.display_name }
         }
         setLocks(lockMap)
 
+        // Every attempt — first connect or retry — gets a fresh single-use ticket.
         const { ticket } = await getEventTicket(serverRoadmapId, sessionToken)
-        if (cancelled) return
+        if (cancelled) { connecting = false; return }
         unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, ticket, {
           onOpen: () => {
-            setRealtimeStatus('live')
+            connecting = false
+            void resyncThenGoLive()
           },
           onUpdated: (payload) => {
             if (payload.participant_id === participantId) return
@@ -188,56 +313,11 @@ export function useRoadmapRealtime({
 
             setRealtimeStatus('updating')
             getRoadmap(serverRoadmapId, sessionToken).then((loaded) => {
-              let nextRoadmapName = loaded.roadmap.name
-              let normalizedSsePhases = normalizePhasesProgress(loaded.phases)
-              let nextSaved = true
-              try {
-                const upgraded = upgradeRoadmapSnapshot({
-                  roadmapName: loaded.roadmap.name,
-                  phases: loaded.phases,
-                })
-                nextRoadmapName = upgraded.roadmapName || loaded.roadmap.name
-                normalizedSsePhases = normalizePhasesProgress(upgraded.phases)
-                const canPersistUpgrade = role === 'owner' || role === 'editor'
-                nextSaved = !(upgraded.changed && canPersistUpgrade)
-                if (activeRoadmapId) {
-                  showUpgradeNoticeOnce(activeRoadmapId, loaded.updatedAt, upgraded)
-                }
-              } catch (err) {
-                console.warn('Could not upgrade realtime roadmap snapshot:', err)
-              }
-
-              setRoadmapNameState(nextRoadmapName)
-              setPhasesState(normalizedSsePhases)
-              const nextRegistry = loaded.tagRegistry?.length
-                ? loaded.tagRegistry
-                : buildRegistryFromPhases(normalizedSsePhases)
-              setTagRegistryState(nextRegistry)
-              setOwnerDisplayNameState(loaded.ownerDisplayName)
-              setUpdatedAtState(loaded.updatedAt)
-              setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
-              setSavedState(nextSaved)
+              applyLoadedRoadmap(loaded)
               setRealtimeStatus('live')
-
-              const activeId = storage.getActiveRoadmapId()
-              if (activeId) {
-                const rc = storage.getRoadmapCache(activeId)
-                if (rc) {
-                  storage.setRoadmapCache(activeId, {
-                    ...rc,
-                    roadmapName: nextRoadmapName,
-                    phases: normalizedSsePhases,
-                    tagRegistry: nextRegistry,
-                    saved: nextSaved,
-                    ownerDisplayName: loaded.ownerDisplayName,
-                    updatedAt: loaded.updatedAt,
-                    isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
-                  })
-                }
-              }
             }).catch((err: unknown) => {
-              if (isSessionExpiredError(err)) {
-                handleAccessLoss('expired')
+              if (isSessionExpiredError(err) || isAuthError(err)) {
+                handleAccessLoss(isSessionExpiredError(err) ? 'expired' : 'revoked')
               } else if (isApiConnectionError(err)) {
                 setRealtimeStatus('offline')
               } else {
@@ -268,45 +348,74 @@ export function useRoadmapRealtime({
             handleAccessLoss('deleted')
           },
           onError: () => {
+            connecting = false
+            if (unsubscribe) { unsubscribe(); unsubscribe = null }
+            if (stopped || cancelled) return
             setRealtimeStatus('reconnecting')
+            scheduleReconnect()
           },
         })
       } catch (err) {
+        connecting = false
+        if (cancelled) return
+        if (isSessionExpiredError(err) || isAuthError(err)) {
+          handleAccessLoss(isSessionExpiredError(err) ? 'expired' : 'revoked')
+          return
+        }
         if (isApiConnectionError(err)) {
           setRealtimeStatus('offline')
           setBackendUnavailableRoadmapId(serverRoadmapId)
           console.warn('Realtime sync paused; RoadForge API is unavailable.')
           return
         }
-        if (isSessionExpiredError(err)) {
-          handleAccessLoss('expired')
-          return
-        }
         setRealtimeStatus('reconnecting')
         console.error('Realtime sync failed', err)
+        scheduleReconnect()
       }
+    }
+
+    // A pending retry is accelerated (fired immediately) rather than waiting
+    // out its backoff once the tab is visible again or the network reports
+    // "online" — but a scheduled retry is required; this never starts a
+    // connection on its own.
+    const wakeIfPending = () => {
+      if (stopped || cancelled || retryTimer === null) return
+      clearRetryTimer()
+      void startSync(true)
     }
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         const now = Date.now()
-        if (hiddenAt && now - hiddenAt > 60_000) {
-          if (unsubscribe) unsubscribe()
-          startSync(true)
-        }
+        const wasHiddenLong = hiddenAt !== null && now - hiddenAt > 60_000
         hiddenAt = null
+        if (wasHiddenLong) {
+          if (unsubscribe) { unsubscribe(); unsubscribe = null }
+          clearRetryTimer()
+          void startSync(true)
+        } else {
+          wakeIfPending()
+        }
       } else {
         hiddenAt = Date.now()
       }
     }
 
-    startSync()
+    const handleOnline = () => {
+      wakeIfPending()
+    }
+
+    void startSync()
     document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('online', handleOnline)
 
     return () => {
       cancelled = true
+      stopped = true
+      clearRetryTimer()
       if (unsubscribe) unsubscribe()
       document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('online', handleOnline)
     }
   }, [serverRoadmapId, sessionToken, participantId, role, activeRoadmapId, isHydratingServer, backendUnavailableRoadmapId, showUpgradeNoticeOnce, setBackendUnavailableRoadmapId, savedRef, setLocks, setRoadmapNameState, setPhasesState, setTagRegistryState, setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState, setSavedState, setServerRoadmapIdState, setSessionTokenState, setParticipantIdState, setRoleState])
 

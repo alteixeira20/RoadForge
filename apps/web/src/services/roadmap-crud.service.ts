@@ -216,10 +216,15 @@ export async function restoreRoadmapVersion(
   roadmapId: string,
   versionId: string,
   sessionToken: string,
+  lastUpdatedAt: string,
+  force = false,
 ): Promise<Roadmap> {
   const data = await requestJson<ApiRoadmapResponse>(
     `/api/roadmaps/${roadmapId}/versions/${versionId}/restore`,
-    { method: 'POST' },
+    {
+      method: 'POST',
+      body: JSON.stringify({ last_updated_at: lastUpdatedAt, force }),
+    },
     sessionToken,
   )
   return toRoadmap(data)

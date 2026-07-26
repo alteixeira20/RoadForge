@@ -3,7 +3,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Dict, Protocol, Set
+from typing import Any, AsyncIterator, Awaitable, Callable, Dict, Protocol, Set
 
 import redis.asyncio as redis
 from redis.exceptions import RedisError
@@ -12,6 +12,8 @@ from api.config import get_settings
 
 logger = logging.getLogger(__name__)
 _HEARTBEAT_INTERVAL_SECONDS = 25.0
+
+AuthorizationCheck = Callable[[], Awaitable[bool]]
 
 
 @dataclass
@@ -25,11 +27,30 @@ class Event:
         return f"event: {self.action}\ndata: {data}\n\n"
 
 
+def _is_own_revocation(event: Event, participant_id: str | None) -> bool:
+    """True when `event` is the revocation of the stream's own participant.
+
+    Revocation must close the specific connection it targets immediately,
+    while other participants' streams keep receiving the same broadcast
+    event (e.g. so an owner's participant list updates live).
+    """
+    return (
+        participant_id is not None
+        and event.action == "participant.revoked"
+        and event.payload.get("participant_id") == participant_id
+    )
+
+
 class RealtimeEventBus(Protocol):
     async def publish(self, event: Event) -> None: ...
 
     async def stream(
-        self, roadmap_id: str, close_at: float | None = None
+        self,
+        roadmap_id: str,
+        *,
+        participant_id: str | None = None,
+        close_at: float | None = None,
+        is_still_authorized: AuthorizationCheck | None = None,
     ) -> AsyncIterator[str]: ...
 
 
@@ -61,13 +82,25 @@ class MemoryEventBus:
         if not queues:
             return
 
-        sse_data = event.to_sse()
         for queue in queues:
-            await queue.put(sse_data)
+            await queue.put(event)
 
-    async def stream(self, roadmap_id: str, close_at: float | None = None):
+    async def stream(
+        self,
+        roadmap_id: str,
+        *,
+        participant_id: str | None = None,
+        close_at: float | None = None,
+        is_still_authorized: AuthorizationCheck | None = None,
+    ):
         """
         SSE event generator for a roadmap. Handles subscribe/unsubscribe and heartbeats.
+
+        When `participant_id` is set, the stream closes itself the moment it
+        forwards a `participant.revoked` event targeting that same
+        participant — revocation must not depend on the client choosing to
+        disconnect. `is_still_authorized`, when provided, is polled once per
+        idle heartbeat as defense-in-depth against a missed/dropped event.
         """
         queue = await self.subscribe(roadmap_id)
         try:
@@ -81,12 +114,16 @@ class MemoryEventBus:
 
                 try:
                     # Wait for an event from the bus or a heartbeat timeout.
-                    event_data = await asyncio.wait_for(queue.get(), timeout=timeout)
+                    event = await asyncio.wait_for(queue.get(), timeout=timeout)
                     if close_at is not None and time.time() >= close_at:
                         break
-                    yield event_data
+                    yield event.to_sse()
+                    if _is_own_revocation(event, participant_id):
+                        break
                 except asyncio.TimeoutError:
                     if close_at is not None and time.time() >= close_at:
+                        break
+                    if is_still_authorized is not None and not await is_still_authorized():
                         break
                     # Send an SSE comment as a heartbeat to keep the connection alive.
                     yield ": heartbeat\n\n"
@@ -133,11 +170,20 @@ class RedisPubSubEventBus:
             raise
 
     async def stream(
-        self, roadmap_id: str, close_at: float | None = None
+        self,
+        roadmap_id: str,
+        *,
+        participant_id: str | None = None,
+        close_at: float | None = None,
+        is_still_authorized: AuthorizationCheck | None = None,
     ) -> AsyncIterator[str]:
         """
         SSE event generator for a roadmap. Redis owns fan-out; this generator
         keeps the existing heartbeat cadence and session expiry behavior.
+
+        Revocation closure works the same way across every worker: whichever
+        worker holds this participant's connection sees the published
+        `participant.revoked` message on the shared channel and closes it.
         """
         channel = self._channel(roadmap_id)
         pubsub = self._redis.pubsub()
@@ -160,6 +206,8 @@ class RedisPubSubEventBus:
                 if close_at is not None and time.time() >= close_at:
                     break
                 if message is None:
+                    if is_still_authorized is not None and not await is_still_authorized():
+                        break
                     yield ": heartbeat\n\n"
                     continue
                 if message.get("type") != "message":
@@ -168,6 +216,8 @@ class RedisPubSubEventBus:
                 event = self._event_from_message(roadmap_id, message.get("data"))
                 if event is not None:
                     yield event.to_sse()
+                    if _is_own_revocation(event, participant_id):
+                        break
         finally:
             try:
                 await pubsub.unsubscribe(channel)

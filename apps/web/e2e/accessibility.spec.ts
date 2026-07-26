@@ -16,6 +16,43 @@ async function dragHandleOnto(page: Page, handle: Locator, target: Locator) {
   await page.mouse.up()
 }
 
+/**
+ * `useSortable({ disabled })` in this app is passed a plain boolean
+ * (`readOnly || expanded || dragDisabled`), and dnd-kit's `normalizeDisabled`
+ * treats a boolean as `{ draggable: disabled, droppable: disabled }` — so a
+ * task/phase is *not a valid drop target* at all while it reports
+ * `disabled: true`. Collapsing a sibling immediately before a keyboard drag
+ * flips it from disabled to enabled, but dnd-kit's droppable registration
+ * for that sibling (its `useDroppable` effect, plus the ResizeObserver that
+ * feeds its rect into dnd-kit's measurement cache) can still be catching up
+ * at the exact instant Space starts the drag — which measures every
+ * droppable exactly once, at drag-start. Waiting for the sibling's own
+ * rect to stop moving/resizing across real wall-clock samples (not
+ * animation frames, which resolve far faster than ResizeObserver's actual
+ * callback latency under load) is what actually needs to settle first.
+ */
+async function waitForRectStable(locator: Locator, requiredStableSamples = 3) {
+  await locator.evaluate((el, required) => new Promise<void>((resolve) => {
+    let last = el.getBoundingClientRect()
+    let stableCount = 0
+    const poll = () => {
+      setTimeout(() => {
+        const next = el.getBoundingClientRect()
+        const stable = next.top === last.top && next.left === last.left
+          && next.width === last.width && next.height === last.height
+        stableCount = stable ? stableCount + 1 : 0
+        last = next
+        if (stableCount >= required) {
+          resolve()
+        } else {
+          poll()
+        }
+      }, 50)
+    }
+    poll()
+  }), requiredStableSamples)
+}
+
 async function keyboardMove(
   handle: Locator,
   arrow: 'ArrowDown' | 'ArrowUp' = 'ArrowDown',
@@ -131,6 +168,11 @@ test('reorders phases, tasks, and subtasks with Space, Arrow, Space', async ({ p
   await page.getByRole('textbox', { name: 'Subtask title' }).fill('Second subtask')
   await page.getByRole('textbox', { name: 'Subtask title' }).press('Enter')
 
+  // The just-added "Second subtask" row must be visible before it can be a
+  // valid drop target.
+  await expect(
+    secondTask.locator('.subtask-row').filter({ hasText: 'Second subtask' }),
+  ).toBeVisible()
   await keyboardMove(
     secondTask
       .locator('.subtask-row')
@@ -143,6 +185,13 @@ test('reorders phases, tasks, and subtasks with Space, Arrow, Space', async ({ p
   ])
 
   await secondTask.getByRole('button', { name: 'Collapse task' }).click()
+  // Confirm the collapse actually committed (not just that the click
+  // dispatched): the ArrowDown swap target depends on "Second task" having
+  // finished collapsing, not on "First task"'s own (unchanged) row. Wait
+  // for its own rect to settle — a real proxy for its droppable
+  // registration/ResizeObserver callback having actually caught up.
+  await expect(secondTask.getByRole('button', { name: 'Expand task' })).toBeVisible()
+  await waitForRectStable(secondTask)
   await keyboardMove(firstTask.locator('.drag-handle[role="button"]'))
   await expect(page.locator('.task-row .title')).toHaveText(['Second task', 'First task'])
 
@@ -151,8 +200,13 @@ test('reorders phases, tasks, and subtasks with Space, Arrow, Space', async ({ p
   await phaseName.fill('Delivery')
   await phaseName.press('Enter')
   await page.getByRole('button', { name: 'Collapse phase Planning' }).click()
+  await expect(page.getByRole('button', { name: 'Expand phase Planning' })).toBeVisible()
   await page.getByRole('button', { name: 'Collapse phase Delivery' }).click()
-
+  await expect(page.getByRole('button', { name: 'Expand phase Delivery' })).toBeVisible()
+  // "Reorder phase Delivery"'s own position is what shifts as Planning's
+  // collapse (above it) finishes shrinking that card — wait for it to stop
+  // moving before treating it as a stable drag handle/drop target.
+  await waitForRectStable(page.getByRole('button', { name: 'Reorder phase Delivery' }))
   await keyboardMove(
     page.getByRole('button', { name: 'Reorder phase Delivery' }),
     'ArrowUp',

@@ -28,6 +28,26 @@ def _should_touch_participant(participant: Participant, now: datetime) -> bool:
     return last_seen_at <= now - _PARTICIPANT_TOUCH_INTERVAL
 
 
+async def is_participant_revoked(
+    db: AsyncSession,
+    roadmap_id: str,
+    participant_id: str,
+) -> bool:
+    """Fail closed: a missing participant is treated as revoked.
+
+    Used by the SSE stream, which authenticates via a single-use ticket
+    (no Authorization header) rather than `require_participant`.
+    """
+    result = await db.execute(
+        select(Participant).where(
+            Participant.roadmap_id == roadmap_id,
+            Participant.id == participant_id,
+        )
+    )
+    participant = result.scalar_one_or_none()
+    return participant is None or participant.revoked_at is not None
+
+
 async def require_participant(
     db: AsyncSession,
     roadmap_id: str,

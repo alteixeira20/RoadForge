@@ -5,15 +5,28 @@ import { Icon } from '@/components/ui/Icon'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { SidePanel } from '@/components/ui/SidePanel'
 import { createRoadmapCheckpoint, getRoadmapVersions, restoreRoadmapVersion } from '@/services/roadmap-crud.service'
+import { getConflictMetadata, isAuthError } from '@/services/roadmap-http'
 import type { Roadmap, RoadmapVersionSummary } from '@/types/roadmap'
 
 interface VersionsPanelProps {
   roadmapId: string
   sessionToken: string
+  // The base revision this restore is checked against (RF-045
+  // compare-and-swap contract, same as PUT/PATCH writes).
+  currentUpdatedAt: string
+  // True when this client has local edits that haven't reached the server
+  // yet — restoring would discard them, so the confirmation must say so.
+  hasUnsavedChanges: boolean
   onClose: () => void
   onRestored: (roadmap: Roadmap) => void
   onToast: (message: string) => void
   canManageVersions: boolean
+}
+
+interface RestoreConflictState {
+  version: RoadmapVersionSummary
+  serverName: string
+  serverUpdatedAt: string
 }
 
 function actionLabel(action: string | null): string {
@@ -52,6 +65,8 @@ function formatTime(value: string): string {
 export function VersionsPanel({
   roadmapId,
   sessionToken,
+  currentUpdatedAt,
+  hasUnsavedChanges,
   onClose,
   onRestored,
   onToast,
@@ -61,6 +76,7 @@ export function VersionsPanel({
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [pendingRestoreVersion, setPendingRestoreVersion] = useState<RoadmapVersionSummary | null>(null)
+  const [conflict, setConflict] = useState<RestoreConflictState | null>(null)
   const [checkpointLoading, setCheckpointLoading] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -104,20 +120,37 @@ export function VersionsPanel({
     setPendingRestoreVersion(version)
   }
 
-  const handleRestoreConfirm = async () => {
-    if (!pendingRestoreVersion) return
-    const version = pendingRestoreVersion
+  // Shared restore attempt for both the normal confirm path and the
+  // owner-only force path. A 409 never surfaces as a generic failure toast —
+  // it opens the conflict confirmation instead, carrying the fresh server
+  // revision the caller must use to force through it.
+  const attemptRestore = async (
+    version: RoadmapVersionSummary,
+    baseUpdatedAt: string,
+    force: boolean,
+  ) => {
     setRestoringId(version.id)
     try {
-      const restored = await restoreRoadmapVersion(roadmapId, version.id, sessionToken)
+      const restored = await restoreRoadmapVersion(roadmapId, version.id, sessionToken, baseUpdatedAt, force)
       onRestored(restored)
-      onToast('Restored roadmap')
+      onToast(force ? 'Restored roadmap, overwriting the newer revision.' : 'Restored roadmap')
       setPendingRestoreVersion(null)
+      setConflict(null)
       onClose()
     } catch (err) {
-      const msg = err instanceof Error && (err.message.includes('401') || err.message.includes('403'))
+      const conflictMetadata = getConflictMetadata(err)
+      if (conflictMetadata) {
+        setPendingRestoreVersion(null)
+        setConflict({
+          version,
+          serverName: conflictMetadata.server.name,
+          serverUpdatedAt: conflictMetadata.server_updated_at,
+        })
+        return
+      }
+      const msg = isAuthError(err)
         ? 'Only the owner can restore versions.'
-        : 'Could not restore version'
+        : `Could not restore this version: ${err instanceof Error ? err.message : 'unknown error'}.`
       onToast(msg)
       setPendingRestoreVersion(null)
     } finally {
@@ -125,21 +158,54 @@ export function VersionsPanel({
     }
   }
 
+  const handleRestoreConfirm = () => {
+    if (!pendingRestoreVersion) return
+    void attemptRestore(pendingRestoreVersion, currentUpdatedAt, false)
+  }
+
   const handleRestoreCancel = () => {
     setPendingRestoreVersion(null)
   }
+
+  const handleForceRestore = () => {
+    if (!conflict) return
+    void attemptRestore(conflict.version, conflict.serverUpdatedAt, true)
+  }
+
+  const handleDismissConflict = () => {
+    setConflict(null)
+  }
+
+  const restoreMessage = hasUnsavedChanges
+    ? 'Restore this version? You have unsaved local changes that will be lost, and the current roadmap will be replaced for all collaborators.'
+    : 'Restore this version? The current roadmap will be replaced for all collaborators.'
 
   return (
     <>
     <ConfirmDialog
       open={canManageVersions && pendingRestoreVersion !== null}
       title="Restore version"
-      message="Restore this version? The current roadmap will be replaced for all collaborators."
+      message={restoreMessage}
       confirmLabel="Restore version"
       tone="danger"
       loading={restoringId !== null}
       onConfirm={handleRestoreConfirm}
       onClose={handleRestoreCancel}
+    />
+    <ConfirmDialog
+      open={canManageVersions && conflict !== null}
+      title="Someone else changed this roadmap"
+      message={
+        conflict
+          ? `The roadmap was updated to "${conflict.serverName}" after you opened Versions. Force restoring will replace that newer state — it will be saved as a recovery checkpoint first, so it can be brought back.`
+          : ''
+      }
+      confirmLabel="Force restore anyway"
+      cancelLabel="Keep reviewing"
+      tone="danger"
+      loading={restoringId !== null}
+      onConfirm={handleForceRestore}
+      onClose={handleDismissConflict}
     />
     <SidePanel
       title="Versions"

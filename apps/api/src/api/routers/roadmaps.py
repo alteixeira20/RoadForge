@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
-from api.database import get_db
+from api.database import async_session_factory, get_db
 from api.schemas.roadmap import (
     ActivityLogListResponse,
     CheckpointResponse,
@@ -22,6 +22,7 @@ from api.schemas.roadmap import (
     ParticipantSummaryResponse,
     PatchTaskDoneRequest,
     PatchTaskRequest,
+    RestoreRoadmapVersionRequest,
     RoadmapConflictResponse,
     RoadmapResponse,
     RoadmapVersionDetailResponse,
@@ -32,7 +33,7 @@ from api.schemas.roadmap import (
     UpdateRoadmapRequest,
     UpdateTagRequest,
 )
-from api.services.auth_service import require_participant
+from api.services.auth_service import is_participant_revoked, require_participant
 from api.services.client_ip_service import extract_client_ip
 from api.services.event_bus import event_bus
 from api.services.lock_service import lock_service
@@ -365,13 +366,18 @@ async def fetch_roadmap_version(
     return await get_roadmap_version(db, roadmap_id, version_id)
 
 
-@router.post("/{roadmap_id}/versions/{version_id}/restore", response_model=RoadmapResponse)
+@router.post(
+    "/{roadmap_id}/versions/{version_id}/restore",
+    response_model=RoadmapResponse,
+    responses={409: {"model": RoadmapConflictResponse}},
+)
 async def post_restore_roadmap_version(
     roadmap_id: str,
     version_id: str,
+    payload: RestoreRoadmapVersionRequest,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
-) -> RoadmapResponse:
+) -> RoadmapResponse | JSONResponse:
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
     await rate_limiter.enforce(
         "versions.restore",
@@ -379,7 +385,17 @@ async def post_restore_roadmap_version(
         limit=10,
         window_seconds=60,
     )
-    return await restore_roadmap_version(db, roadmap_id, version_id, participant)
+    try:
+        return await restore_roadmap_version(
+            db,
+            roadmap_id,
+            version_id,
+            participant,
+            payload.last_updated_at,
+            force=payload.force,
+        )
+    except RoadmapConflictError as exc:
+        return JSONResponse(status_code=409, content=exc.response.model_dump(mode="json"))
 
 
 @router.get("/{roadmap_id}/participants")
@@ -457,13 +473,31 @@ async def post_event_ticket(
 async def get_events(
     roadmap_id: str,
     ticket: str = Query(...),
+    db: AsyncSession = Depends(get_db),
 ):
     event_ticket = await ticket_service.consume_ticket(ticket, roadmap_id)
     if not event_ticket:
         raise HTTPException(status_code=401, detail="Invalid or expired event ticket")
 
+    # A ticket can be issued just before revocation lands; re-check the
+    # participant's current state before opening the stream so a stale
+    # ticket can never restore access after revocation.
+    if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
+        raise HTTPException(status_code=401, detail="Session revoked")
+
+    async def _is_still_authorized() -> bool:
+        async with async_session_factory() as session:
+            return not await is_participant_revoked(
+                session, roadmap_id, event_ticket.participant_id
+            )
+
     return StreamingResponse(
-        event_bus.stream(roadmap_id, close_at=event_ticket.session_expires_at),
+        event_bus.stream(
+            roadmap_id,
+            participant_id=event_ticket.participant_id,
+            close_at=event_ticket.session_expires_at,
+            is_still_authorized=_is_still_authorized,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

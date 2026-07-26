@@ -90,6 +90,29 @@ async def _post_checkpoint(client: AsyncClient, roadmap_id: str, owner_token: st
     return resp.json()
 
 
+async def _restore(
+    client: AsyncClient,
+    roadmap_id: str,
+    version_id: str,
+    token: str,
+    *,
+    last_updated_at: str,
+    force: bool = False,
+):
+    """POST the restore endpoint with the RF-045 compare-and-swap contract."""
+    return await client.post(
+        f"/api/roadmaps/{roadmap_id}/versions/{version_id}/restore",
+        headers=_auth(token),
+        json={"last_updated_at": last_updated_at, "force": force},
+    )
+
+
+async def _current_updated_at(client: AsyncClient, roadmap_id: str, token: str) -> str:
+    resp = await client.get(f"/api/roadmaps/{roadmap_id}", headers=_auth(token))
+    assert resp.status_code == 200, resp.text
+    return resp.json()["updated_at"]
+
+
 async def _create_roadmap_with_tags(
     client: AsyncClient,
     tag_registry: list[dict],
@@ -418,9 +441,8 @@ async def test_viewer_cannot_restore(client: AsyncClient):
 
     viewer_token = await _join_as_viewer(client, body)
 
-    resp = await client.post(
-        f"/api/roadmaps/{roadmap_id}/versions/{v1_id}/restore",
-        headers=_auth(viewer_token),
+    resp = await _restore(
+        client, roadmap_id, v1_id, viewer_token, last_updated_at=body["updated_at"]
     )
     assert resp.status_code == 403
 
@@ -431,9 +453,12 @@ async def test_editor_cannot_restore(client: AsyncClient):
     versions = await _list_versions(client, body["id"], owner_token)
     editor_token = await _join_as_editor(client, body)
 
-    resp = await client.post(
-        f"/api/roadmaps/{body['id']}/versions/{versions[0]['id']}/restore",
-        headers=_auth(editor_token),
+    resp = await _restore(
+        client,
+        body["id"],
+        versions[0]["id"],
+        editor_token,
+        last_updated_at=body["updated_at"],
     )
 
     assert resp.status_code == 403
@@ -505,12 +530,13 @@ async def test_owner_can_restore_older_version(client: AsyncClient):
     v1_id = versions[0]["id"]
 
     # Update name (no new version created — roadmap.updated is not version-worthy)
-    await _update_name(client, roadmap_id, owner_token, "Modified Name", body["updated_at"])
+    modified = await _update_name(
+        client, roadmap_id, owner_token, "Modified Name", body["updated_at"]
+    )
 
-    # Restore to v1
-    resp = await client.post(
-        f"/api/roadmaps/{roadmap_id}/versions/{v1_id}/restore",
-        headers=_auth(owner_token),
+    # Restore to v1, based on the current (post-update) revision.
+    resp = await _restore(
+        client, roadmap_id, v1_id, owner_token, last_updated_at=modified["updated_at"]
     )
     assert resp.status_code == 200
     restored = resp.json()
@@ -525,14 +551,14 @@ async def test_restore_persists_state_on_subsequent_get(client: AsyncClient):
     versions = await _list_versions(client, roadmap_id, owner_token)
     v1_id = versions[0]["id"]
 
-    await _update_name(
+    before_restore = await _update_name(
         client, roadmap_id, owner_token, "Before Restore", body["updated_at"]
     )
 
-    await client.post(
-        f"/api/roadmaps/{roadmap_id}/versions/{v1_id}/restore",
-        headers=_auth(owner_token),
+    restore_resp = await _restore(
+        client, roadmap_id, v1_id, owner_token, last_updated_at=before_restore["updated_at"]
     )
+    assert restore_resp.status_code == 200, restore_resp.text
 
     get_resp = await client.get(
         f"/api/roadmaps/{roadmap_id}",
@@ -562,9 +588,12 @@ async def test_restore_persists_historical_tag_registry(client: AsyncClient):
     )
     assert update_resp.status_code == 200, update_resp.text
 
-    restore_resp = await client.post(
-        f"/api/roadmaps/{body['id']}/versions/{version_id}/restore",
-        headers=_auth(body["owner_session_token"]),
+    restore_resp = await _restore(
+        client,
+        body["id"],
+        version_id,
+        body["owner_session_token"],
+        last_updated_at=update_resp.json()["updated_at"],
     )
     assert restore_resp.status_code == 200, restore_resp.text
     assert restore_resp.json()["tag_registry"] == _echoed(original_registry)
@@ -622,9 +651,12 @@ async def test_legacy_tag_ids_survive_save_checkpoint_and_restore(client: AsyncC
     versions = await _list_versions(client, roadmap_id, owner_token)
     version_id = versions[0]["id"]
 
-    restore_resp = await client.post(
-        f"/api/roadmaps/{roadmap_id}/versions/{version_id}/restore",
-        headers=_auth(owner_token),
+    restore_resp = await _restore(
+        client,
+        roadmap_id,
+        version_id,
+        owner_token,
+        last_updated_at=resave_resp.json()["updated_at"],
     )
     assert restore_resp.status_code == 200, restore_resp.text
     restored_ids = {tag["id"] for tag in restore_resp.json()["tag_registry"]}
@@ -648,9 +680,12 @@ async def test_restore_legacy_version_preserves_current_tag_registry(
     db_session.add(legacy_version)
     await db_session.commit()
 
-    restore_resp = await client.post(
-        f"/api/roadmaps/{body['id']}/versions/{legacy_version.id}/restore",
-        headers=_auth(body["owner_session_token"]),
+    restore_resp = await _restore(
+        client,
+        body["id"],
+        legacy_version.id,
+        body["owner_session_token"],
+        last_updated_at=body["updated_at"],
     )
 
     assert restore_resp.status_code == 200, restore_resp.text
@@ -689,12 +724,14 @@ async def test_restore_creates_version_entry_with_restored_action(client: AsyncC
     versions_before = await _list_versions(client, roadmap_id, owner_token)
     v1_id = versions_before[0]["id"]
 
-    await _update_name(client, roadmap_id, owner_token, "Before Restore", body["updated_at"])
-
-    await client.post(
-        f"/api/roadmaps/{roadmap_id}/versions/{v1_id}/restore",
-        headers=_auth(owner_token),
+    before_restore = await _update_name(
+        client, roadmap_id, owner_token, "Before Restore", body["updated_at"]
     )
+
+    restore_resp = await _restore(
+        client, roadmap_id, v1_id, owner_token, last_updated_at=before_restore["updated_at"]
+    )
+    assert restore_resp.status_code == 200, restore_resp.text
 
     versions_after = await _list_versions(client, roadmap_id, owner_token)
     assert len(versions_after) > len(versions_before)
@@ -707,9 +744,12 @@ async def test_restore_nonexistent_version_returns_404(client: AsyncClient):
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
 
-    resp = await client.post(
-        f"/api/roadmaps/{roadmap_id}/versions/rv_nonexistent/restore",
-        headers=_auth(owner_token),
+    resp = await _restore(
+        client,
+        roadmap_id,
+        "rv_nonexistent",
+        owner_token,
+        last_updated_at=body["updated_at"],
     )
     assert resp.status_code == 404
 
@@ -796,17 +836,37 @@ async def test_version_trim_removes_oldest_beyond_cap(db_session: AsyncSession):
     assert max_result.scalar_one() == over_cap
 
 
-# ─── Group G — Restore design contract — no stale check (PS-010) ─────────────
+# ─── Group G — Conflict-safe restore (RF-045) ────────────────────────────────
 
 
-async def test_restore_does_not_require_last_updated_at(client: AsyncClient):
-    """Restore is owner-authoritative and intentionally has no stale-check.
+async def test_stale_restore_returns_409_and_changes_nothing(client: AsyncClient):
+    body = await create_roadmap(client, name="Restore Contract Test")
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+    stale_base = body["updated_at"]
 
-    The restore endpoint accepts no request body — there is no last_updated_at
-    field.  This is by design: restore is a destructive owner action, not a
-    concurrent save.  It must succeed even when the roadmap has been updated
-    since the version was created.
-    """
+    versions = await _list_versions(client, roadmap_id, owner_token)
+    v1_id = versions[0]["id"]
+
+    # Someone else's save advances the roadmap after the owner opened Versions.
+    await _update_name(client, roadmap_id, owner_token, "Updated Name", stale_base)
+
+    resp = await _restore(client, roadmap_id, v1_id, owner_token, last_updated_at=stale_base)
+    assert resp.status_code == 409
+    data = resp.json()
+    assert data["code"] == "roadmap_conflict"
+    assert data["conflict"]["roadmap_id"] == roadmap_id
+
+    get_resp = await client.get(f"/api/roadmaps/{roadmap_id}", headers=_auth(owner_token))
+    assert get_resp.json()["name"] == "Updated Name"
+
+    # No misleading version/activity entries from the rejected restore.
+    versions_after = await _list_versions(client, roadmap_id, owner_token)
+    actions = [v["action"] for v in versions_after]
+    assert "roadmap.restored" not in actions
+
+
+async def test_current_base_restore_succeeds(client: AsyncClient):
     body = await create_roadmap(client, name="Restore Contract Test")
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
@@ -814,13 +874,100 @@ async def test_restore_does_not_require_last_updated_at(client: AsyncClient):
     versions = await _list_versions(client, roadmap_id, owner_token)
     v1_id = versions[0]["id"]
 
-    # Advance roadmap state so v1 is now "stale" relative to the current snapshot.
-    await _update_name(client, roadmap_id, owner_token, "Updated Name", body["updated_at"])
+    updated = await _update_name(
+        client, roadmap_id, owner_token, "Updated Name", body["updated_at"]
+    )
 
-    # Restore to v1 — no body, no last_updated_at.  Must return 200.
-    resp = await client.post(
-        f"/api/roadmaps/{roadmap_id}/versions/{v1_id}/restore",
-        headers=_auth(owner_token),
+    resp = await _restore(
+        client, roadmap_id, v1_id, owner_token, last_updated_at=updated["updated_at"]
     )
     assert resp.status_code == 200
     assert resp.json()["name"] == "Restore Contract Test"
+
+
+async def test_force_restore_overwrites_newer_revision_and_records_it(
+    client: AsyncClient,
+):
+    body = await create_roadmap(client, name="Restore Contract Test")
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+    stale_base = body["updated_at"]
+
+    versions = await _list_versions(client, roadmap_id, owner_token)
+    v1_id = versions[0]["id"]
+
+    await _update_name(client, roadmap_id, owner_token, "Updated Name", stale_base)
+
+    conflict = await _restore(
+        client, roadmap_id, v1_id, owner_token, last_updated_at=stale_base
+    )
+    assert conflict.status_code == 409
+
+    # Owner reviews the conflict and explicitly forces the restore anyway,
+    # intentionally overwriting the newer "Updated Name" revision.
+    forced = await _restore(
+        client,
+        roadmap_id,
+        v1_id,
+        owner_token,
+        last_updated_at=stale_base,
+        force=True,
+    )
+    assert forced.status_code == 200, forced.text
+    assert forced.json()["name"] == "Restore Contract Test"
+
+    detail_resp = await client.get(
+        f"/api/roadmaps/{roadmap_id}/activity", headers=_auth(owner_token)
+    )
+    restored_log = next(
+        log for log in detail_resp.json()["logs"] if log["action"] == "roadmap.restored"
+    )
+    assert restored_log["metadata_json"]["force"] is True
+    assert restored_log["metadata_json"]["overwritten_updated_at"]
+
+
+async def test_editor_cannot_force_restore(client: AsyncClient):
+    body = await create_roadmap(client)
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+    editor_token = await _join_as_editor(client, body)
+
+    versions = await _list_versions(client, roadmap_id, owner_token)
+    v1_id = versions[0]["id"]
+
+    resp = await _restore(
+        client, roadmap_id, v1_id, editor_token, last_updated_at=body["updated_at"], force=True
+    )
+    assert resp.status_code == 403
+
+
+async def test_restore_creates_pre_restore_safety_checkpoint(client: AsyncClient):
+    body = await create_roadmap(client, name="Checkpoint Contract Test")
+    roadmap_id = body["id"]
+    owner_token = body["owner_session_token"]
+
+    versions_before = await _list_versions(client, roadmap_id, owner_token)
+    v1_id = versions_before[0]["id"]
+
+    updated = await _update_name(
+        client, roadmap_id, owner_token, "Pre-Restore State", body["updated_at"]
+    )
+
+    resp = await _restore(
+        client, roadmap_id, v1_id, owner_token, last_updated_at=updated["updated_at"]
+    )
+    assert resp.status_code == 200, resp.text
+
+    versions_after = await _list_versions(client, roadmap_id, owner_token)
+    # One checkpoint of "Pre-Restore State" plus one "roadmap.restored" entry.
+    checkpoint_names = {
+        v["id"]: v for v in versions_after if v["action"] == "roadmap.checkpoint"
+    }
+    assert checkpoint_names, "expected a pre-restore safety checkpoint version"
+
+    recoverable = await client.get(
+        f"/api/roadmaps/{roadmap_id}/versions/{next(iter(checkpoint_names))}",
+        headers=_auth(owner_token),
+    )
+    assert recoverable.status_code == 200
+    assert recoverable.json()["roadmap_name"] == "Pre-Restore State"

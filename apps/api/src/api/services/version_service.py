@@ -18,6 +18,7 @@ from api.schemas.roadmap import (
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
+from api.services.session_policy import ensure_aware_utc
 
 logger = logging.getLogger(__name__)
 
@@ -211,8 +212,15 @@ async def restore_roadmap_version(
     roadmap_id: str,
     version_id: str,
     participant: Participant,
+    last_updated_at: datetime,
+    *,
+    force: bool = False,
 ) -> RoadmapResponse:
-    from api.services.roadmap_helpers import _fetch_active_roadmap_for_update
+    from api.services.roadmap_helpers import (
+        RoadmapConflictError,
+        _fetch_active_roadmap_for_update,
+        _roadmap_conflict_response,
+    )
 
     roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
     result = await db.execute(
@@ -224,6 +232,25 @@ async def restore_roadmap_version(
     version = result.scalar_one_or_none()
     if version is None:
         raise HTTPException(status_code=404, detail="Version not found")
+
+    # ── Conflict check ───────────────────────────────────────────────────────
+    # Same compare-and-swap contract as PUT/PATCH writes (see roadmap_service
+    # .update_roadmap): a stale base means someone else's work would be
+    # silently discarded. `force` is a separate, explicitly confirmed owner
+    # action, not something a plain retry can trigger.
+    client_ts = ensure_aware_utc(last_updated_at)
+    overwritten_updated_at: datetime | None = None
+    if roadmap.updated_at > client_ts:
+        if not force:
+            raise RoadmapConflictError(_roadmap_conflict_response(roadmap, client_ts, None))
+        overwritten_updated_at = roadmap.updated_at
+
+    # Safety checkpoint of the current (pre-restore) state, so a restore —
+    # forced or not — is always recoverable.
+    await _create_roadmap_version(
+        db, roadmap, participant, "roadmap.checkpoint",
+        {"label": "Pre-restore safety checkpoint"}, force=True,
+    )
 
     before_json = {
         "name": roadmap.name,
@@ -237,12 +264,15 @@ async def restore_roadmap_version(
         roadmap.tag_registry_json = restored_registry
     roadmap.updated_at = datetime.now(timezone.utc)
 
-    metadata_json = {
+    metadata_json: dict = {
         "version_id": version.id,
         "version_number": version.version_number,
         "phase_count": phase_count,
         "task_count": task_count,
     }
+    if overwritten_updated_at is not None:
+        metadata_json["force"] = True
+        metadata_json["overwritten_updated_at"] = overwritten_updated_at.isoformat()
 
     db.add(ActivityLog(
         id=generate_id("al_"),

@@ -68,6 +68,73 @@ def test_production_requires_strong_secret_key():
         settings.validate_startup_security()
 
 
+def test_production_rejects_wildcard_cors_with_credentials():
+    settings = Settings(
+        environment="production",
+        database_url="postgresql+asyncpg://user:pass@db.example.com/roadforge",
+        secret_key="x" * 32,
+        cors_origins=["*"],
+    )
+
+    with pytest.raises(RuntimeError, match="wildcard"):
+        settings.validate_startup_security()
+
+
+def test_production_rejects_empty_cors_origins():
+    settings = Settings(
+        environment="production",
+        database_url="postgresql+asyncpg://user:pass@db.example.com/roadforge",
+        secret_key="x" * 32,
+        cors_origins=[],
+    )
+
+    with pytest.raises(RuntimeError, match="ROADFORGE_CORS_ORIGINS must list"):
+        settings.validate_startup_security()
+
+
+@pytest.mark.parametrize("malformed", ["", "  ", "not-a-url", "https://example.com/path"])
+def test_production_rejects_malformed_cors_origin(malformed):
+    settings = Settings(
+        environment="production",
+        database_url="postgresql+asyncpg://user:pass@db.example.com/roadforge",
+        secret_key="x" * 32,
+        cors_origins=["https://app.example.com", malformed],
+    )
+
+    with pytest.raises(RuntimeError):
+        settings.validate_startup_security()
+
+
+def test_production_accepts_explicit_cors_origins():
+    settings = Settings(
+        environment="production",
+        database_url="postgresql+asyncpg://user:pass@db.example.com/roadforge",
+        secret_key="x" * 32,
+        cors_origins=["https://app.example.com", "https://admin.example.com:8443"],
+    )
+
+    settings.validate_startup_security()
+
+
+async def test_allowed_origin_receives_cors_headers(client):
+    response = await client.get(
+        "/api/health", headers={"Origin": "http://localhost:3020"}
+    )
+
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3020"
+    assert response.headers.get("access-control-allow-credentials") == "true"
+
+
+async def test_disallowed_origin_receives_no_cors_headers(client):
+    response = await client.get(
+        "/api/health", headers={"Origin": "https://evil.example.com"}
+    )
+
+    assert response.status_code == 200
+    assert "access-control-allow-origin" not in response.headers
+
+
 def test_production_rejects_default_database_url():
     settings = Settings(
         environment="production",

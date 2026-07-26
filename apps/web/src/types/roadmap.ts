@@ -24,6 +24,7 @@ export type RealtimeConnectionStatus =
   | 'updating'
   | 'reconnecting'
   | 'offline'
+  | 'access-lost'
 export type TaskStatusFilter = 'all' | 'open' | 'done'
 export type TaskClaimFilter = 'all' | 'mine' | 'claimed' | 'unclaimed'
 export type TaskExternalLinkProvider = 'github' | 'url'

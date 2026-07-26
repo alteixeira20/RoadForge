@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from api.schemas.tags import TagDefinitionDTO
 from api.schemas.tasks import PhaseDTO
@@ -38,3 +38,15 @@ class RoadmapVersionDetailResponse(BaseModel):
 class CheckpointResponse(BaseModel):
     created: bool
     version: RoadmapVersionSummaryResponse
+
+
+class RestoreRoadmapVersionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # The base revision the caller last saw. Restore uses the same
+    # compare-and-swap contract as PUT/PATCH writes: a mismatch means the
+    # roadmap changed since the caller opened the Versions panel.
+    last_updated_at: datetime
+    # Owner-only, separately confirmed override: proceed even if the base
+    # revision is stale, recording that a newer revision was overwritten.
+    force: bool = False

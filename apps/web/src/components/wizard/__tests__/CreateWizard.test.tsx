@@ -1,9 +1,25 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CreateWizard } from '@/components/wizard/CreateWizard'
+
+// Cross-checked against the canonical file's own declared counts, rather
+// than a hand-maintained number that goes stale every time
+// docs/roadforge-roadmap.json is updated.
+function readCanonicalRoadmapMeta() {
+  // `new URL(..., import.meta.url)` is unreliable under the jsdom test
+  // environment this file opts into (jsdom shims module-URL resolution), so
+  // resolve from the working directory (apps/web) instead.
+  const raw = JSON.parse(readFileSync(
+    join(process.cwd(), '../../docs/roadforge-roadmap.json'),
+    'utf8',
+  )) as { meta: { phaseCount: number; taskCount: number } }
+  return raw.meta
+}
 
 const { mockedUseRoadmap } = vi.hoisted(() => ({
   mockedUseRoadmap: vi.fn(),
@@ -66,9 +82,11 @@ describe('CreateWizard starting point', () => {
 
     expect(createLocalRoadmap).toHaveBeenCalledTimes(1)
     const [name, phases, registry] = createLocalRoadmap.mock.calls[0]
+    const canonicalRoadmapMeta = readCanonicalRoadmapMeta()
     expect(name).toBe('My roadmap')
-    expect(phases).toHaveLength(11)
-    expect(phases.flatMap((phase: { tasks: unknown[] }) => phase.tasks)).toHaveLength(40)
+    expect(phases).toHaveLength(canonicalRoadmapMeta.phaseCount)
+    expect(phases.flatMap((phase: { tasks: unknown[] }) => phase.tasks))
+      .toHaveLength(canonicalRoadmapMeta.taskCount)
     expect(registry.length).toBeGreaterThan(0)
     expect(onComplete).toHaveBeenCalledWith('local_1')
   })

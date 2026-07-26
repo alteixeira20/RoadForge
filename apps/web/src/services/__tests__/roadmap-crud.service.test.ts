@@ -243,7 +243,7 @@ describe('roadmap versions', () => {
       }),
     }))
 
-    const restored = await restoreRoadmapVersion('rm_1', 'rv_1', 'owner-token')
+    const restored = await restoreRoadmapVersion('rm_1', 'rv_1', 'owner-token', '2026-01-05T08:00:00.000Z')
 
     expect(restored.tagRegistry).toEqual([
       { id: 'frontend', label: 'Frontend', color: '#a78bfa' },

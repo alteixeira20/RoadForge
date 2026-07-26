@@ -7,6 +7,7 @@ export type WorkspaceSyncStatus =
   | 'updating'
   | 'reconnecting'
   | 'offline'
+  | 'access-lost'
   | 'conflict'
   | 'error'
 
@@ -14,6 +15,7 @@ export function resolveWorkspaceSyncStatus(
   saveStatus: SyncStatus,
   realtimeStatus: RealtimeConnectionStatus,
 ): WorkspaceSyncStatus {
+  if (realtimeStatus === 'access-lost') return 'access-lost'
   if (saveStatus === 'conflict') return 'conflict'
   if (saveStatus === 'offline' || realtimeStatus === 'offline') return 'offline'
   if (saveStatus === 'error') return 'error'

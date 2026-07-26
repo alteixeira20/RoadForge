@@ -49,6 +49,7 @@ from api.schemas.tasks import (
 )
 from api.schemas.versions import (
     CheckpointResponse,
+    RestoreRoadmapVersionRequest,
     RoadmapVersionDetailResponse,
     RoadmapVersionSummaryResponse,
 )
@@ -100,6 +101,7 @@ __all__ = [
     "TaskDTO",
     # Versions
     "CheckpointResponse",
+    "RestoreRoadmapVersionRequest",
     "RoadmapVersionDetailResponse",
     "RoadmapVersionSummaryResponse",
 ]

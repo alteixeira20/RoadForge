@@ -671,6 +671,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         <VersionsPanel
           roadmapId={serverRoadmapId}
           sessionToken={sessionToken}
+          currentUpdatedAt={updatedAt ?? ''}
+          hasUnsavedChanges={!saved}
           onClose={() => setShowVersions(false)}
           onRestored={handleRoadmapRestored}
           onToast={showToast}

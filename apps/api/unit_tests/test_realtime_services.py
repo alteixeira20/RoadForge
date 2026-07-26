@@ -87,8 +87,11 @@ async def test_memory_event_bus_isolates_roadmap_channels() -> None:
 
     await bus.publish(Event("rm_1", "roadmap.updated", {"roadmap_id": "rm_1"}))
 
-    assert await asyncio.wait_for(rm_1_queue.get(), timeout=0.1) == (
-        'event: roadmap.updated\ndata: {"roadmap_id": "rm_1"}\n\n'
+    # publish() queues the Event itself (not pre-serialized text) so
+    # stream() can inspect actions/payloads for revocation filtering before
+    # serializing to SSE at yield time.
+    assert await asyncio.wait_for(rm_1_queue.get(), timeout=0.1) == Event(
+        roadmap_id="rm_1", action="roadmap.updated", payload={"roadmap_id": "rm_1"}
     )
     assert rm_2_queue.empty()
     await bus.unsubscribe("rm_1", rm_1_queue)

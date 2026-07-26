@@ -155,7 +155,7 @@ async def test_parity_ok_after_restore(client, db_session: AsyncSession):
     v1_id = versions_resp.json()[0]["id"]
 
     # Replace with a single empty phase
-    await _put_phases(
+    replaced = await _put_phases(
         client,
         roadmap_id,
         owner_token,
@@ -177,6 +177,7 @@ async def test_parity_ok_after_restore(client, db_session: AsyncSession):
     restore_resp = await client.post(
         f"/api/roadmaps/{roadmap_id}/versions/{v1_id}/restore",
         headers=auth(owner_token),
+        json={"last_updated_at": replaced["updated_at"]},
     )
     assert restore_resp.status_code == 200
 

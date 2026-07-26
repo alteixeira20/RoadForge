@@ -166,7 +166,7 @@ describe('useRoadmapRealtime', () => {
     })
   }
 
-  it('hydrates locks and moves from connecting to live', async () => {
+  it('hydrates locks, resyncs, and only then reports live', async () => {
     const { params } = createParams()
     render(params)
     await flushSubscription()
@@ -179,8 +179,133 @@ describe('useRoadmapRealtime', () => {
       'event-ticket',
       expect.any(Object),
     )
+
     act(() => handlers.onOpen?.())
+    // Authoritative refetch gates the transition — not live yet.
+    expect(result.realtimeStatus).toBe('updating')
+    expect(mockedGetRoadmap).toHaveBeenCalledWith('rm_1', 'session-token')
+
+    await flushSubscription()
     expect(result.realtimeStatus).toBe('live')
+  })
+
+  it('does not run two connection attempts concurrently and retries with backoff using a fresh ticket', async () => {
+    vi.useFakeTimers()
+    try {
+      mockedGetEventTicket
+        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
+        .mockResolvedValueOnce({ ticket: 'ticket-2', expires_in: 30 })
+
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(1)
+
+      act(() => handlers.onError?.(new Event('error')))
+      expect(result.realtimeStatus).toBe('reconnecting')
+      // A retry is scheduled, not fired immediately, and no second attempt
+      // starts while it is pending.
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(2)
+      expect(mockedSubscribe).toHaveBeenLastCalledWith('rm_1', 'ticket-2', expect.any(Object))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('accelerates a pending retry when the browser reports back online', async () => {
+    vi.useFakeTimers()
+    try {
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      act(() => handlers.onError?.(new Event('error')))
+      expect(result.realtimeStatus).toBe('reconnecting')
+      const ticketCallsBeforeOnline = mockedGetEventTicket.mock.calls.length
+
+      await act(async () => {
+        window.dispatchEvent(new Event('online'))
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // The retry fired immediately rather than waiting out its backoff.
+      expect(mockedGetEventTicket.mock.calls.length).toBeGreaterThan(ticketCallsBeforeOnline)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('stops retrying once access is revoked, even as time advances', async () => {
+    vi.useFakeTimers()
+    try {
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      act(() => handlers.onParticipantRevoked?.({
+        roadmap_id: 'rm_1',
+        participant_id: 'pt_self',
+        revoked_at: '2026-07-25T18:05:00Z',
+      }))
+      expect(result.realtimeStatus).toBe('access-lost')
+
+      const ticketCallsAfterRevoke = mockedGetEventTicket.mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(ticketCallsAfterRevoke)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps a failed post-reconnect resync truthful and preserves the local draft', async () => {
+    const { params, savedRef } = createParams()
+    savedRef.current = false
+    render(params)
+    await flushSubscription()
+
+    mockedGetRoadmap.mockRejectedValueOnce(new Error('network blip'))
+    act(() => handlers.onOpen?.())
+    expect(result.realtimeStatus).toBe('updating')
+
+    await flushSubscription()
+
+    // Failed refetch must not be falsely reported as live.
+    expect(result.realtimeStatus).toBe('reconnecting')
+    expect(params.roadmapState.setPhasesState).not.toHaveBeenCalled()
+  })
+
+  it('cancels any pending retry timer and the subscription on unmount', async () => {
+    vi.useFakeTimers()
+    try {
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      act(() => handlers.onError?.(new Event('error')))
+      expect(result.realtimeStatus).toBe('reconnecting')
+
+      act(() => root.unmount())
+      expect(unsubscribe).toHaveBeenCalled()
+
+      const ticketCallsAfterUnmount = mockedGetEventTicket.mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+      // No reconnect fires after unmount even though a retry was pending.
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(ticketCallsAfterUnmount)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('ignores own updates and preserves an unsaved local draft', async () => {
