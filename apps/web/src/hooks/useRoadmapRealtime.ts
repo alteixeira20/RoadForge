@@ -139,7 +139,11 @@ export function useRoadmapRealtime({
     if (!serverRoadmapId || !sessionToken) return
     if (typeof document === 'undefined') return
     if (isHydratingServer) return
-    if (backendUnavailableRoadmapId === serverRoadmapId) return
+    // `backendUnavailableRoadmapId` is a UX signal (also set by initial
+    // hydration failures), not a reconnect gate: a transient REST failure
+    // here sets it and still schedules its own retry below, so bailing out
+    // whenever it happens to be set would permanently disable realtime
+    // recovery until something unrelated clears it.
 
     const subscribedActiveId = activeRoadmapId
 
@@ -301,6 +305,11 @@ export function useRoadmapRealtime({
           }
           setRealtimeStatus('live')
           reconnectAttempt = 0
+          // A prior transient REST failure (here or during initial
+          // hydration) may have flagged the backend as unavailable; a
+          // successful resync means it's back, so the UX signal should
+          // reflect that instead of being left stale.
+          setBackendUnavailableRoadmapId((current) => (current === serverRoadmapId ? null : current))
         }
       } catch (err) {
         if (isCurrentGeneration(generation)) {
@@ -427,6 +436,7 @@ export function useRoadmapRealtime({
           setRealtimeStatus('offline')
           setBackendUnavailableRoadmapId(serverRoadmapId)
           console.warn('Realtime sync paused; RoadForge API is unavailable.')
+          scheduleReconnect()
           return
         }
         setRealtimeStatus('reconnecting')
@@ -478,7 +488,7 @@ export function useRoadmapRealtime({
       document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('online', handleOnline)
     }
-  }, [serverRoadmapId, sessionToken, participantId, role, activeRoadmapId, isHydratingServer, backendUnavailableRoadmapId, showUpgradeNoticeOnce, setBackendUnavailableRoadmapId, savedRef, setLocks, setRoadmapNameState, setPhasesState, setTagRegistryState, setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState, setSavedState, setServerRoadmapIdState, setSessionTokenState, setParticipantIdState, setRoleState])
+  }, [serverRoadmapId, sessionToken, participantId, role, activeRoadmapId, isHydratingServer, showUpgradeNoticeOnce, setBackendUnavailableRoadmapId, savedRef, setLocks, setRoadmapNameState, setPhasesState, setTagRegistryState, setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState, setSavedState, setServerRoadmapIdState, setSessionTokenState, setParticipantIdState, setRoleState])
 
   const clearAccessRevokedEvent = useCallback(() => {
     setAccessRevokedEvent(null)

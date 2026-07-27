@@ -17,6 +17,7 @@ import {
   subscribeToRoadmapEvents,
   type RealtimeHandlers,
 } from '@/services/roadmap-realtime.service'
+import { ApiConnectionError, ApiError } from '@/services/roadmap-http'
 import type { Phase, Roadmap } from '@/types/roadmap'
 
 vi.mock('@/services/roadmap-crud.service', () => ({
@@ -275,6 +276,160 @@ describe('useRoadmapRealtime', () => {
       })
 
       expect(mockedGetEventTicket).toHaveBeenCalledTimes(ticketCallsAfterRevoke)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('recovers automatically from a transient getLocks() connection failure', async () => {
+    vi.useFakeTimers()
+    try {
+      mockedGetLocks.mockReset().mockRejectedValueOnce(new ApiConnectionError())
+      mockedGetLocks.mockResolvedValue([])
+      mockedGetEventTicket.mockReset()
+        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
+
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      expect(result.realtimeStatus).toBe('offline')
+      expect(params.lifecycle.setBackendUnavailableRoadmapId).toHaveBeenCalledWith('rm_1')
+      // A transient REST failure must not stop at "offline" — it must
+      // still enter the ordinary bounded-backoff reconnect loop rather
+      // than requiring something unrelated to clear
+      // backendUnavailableRoadmapId before it will ever try again.
+      expect(mockedGetEventTicket).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(1)
+      act(() => handlers.onOpen?.())
+      await flushSubscription()
+
+      expect(result.realtimeStatus).toBe('live')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('recovers automatically from a transient getEventTicket() connection failure', async () => {
+    vi.useFakeTimers()
+    try {
+      mockedGetEventTicket.mockReset()
+        .mockRejectedValueOnce(new ApiConnectionError())
+        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
+
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      expect(result.realtimeStatus).toBe('offline')
+      expect(params.lifecycle.setBackendUnavailableRoadmapId).toHaveBeenCalledWith('rm_1')
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(2)
+      act(() => handlers.onOpen?.())
+      await flushSubscription()
+
+      expect(result.realtimeStatus).toBe('live')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('caps backoff and never runs two retry timers for repeated connection failures', async () => {
+    vi.useFakeTimers()
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      mockedGetEventTicket.mockReset().mockRejectedValue(new ApiConnectionError())
+
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+      expect(result.realtimeStatus).toBe('offline')
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(1)
+
+      // Math.random mocked to 0 makes each backoff delay exactly its floor
+      // (ceiling/2): attempt 0 -> 500ms, attempt 1 -> 1000ms, doubling up to
+      // the 30s ceiling (attempt 5+), where it caps at a 15s floor. Checking
+      // the instant *before* and *at* each boundary proves both that the
+      // delay actually grows and caps as expected, and that exactly one
+      // retry timer is ever alive — if a second one were running
+      // concurrently, some boundary would fire an extra (or an early) call.
+      const floors = [500, 1000, 2000, 4000, 8000, 15000, 15000, 15000]
+      for (const [index, floor] of floors.entries()) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(floor - 1)
+        })
+        expect(mockedGetEventTicket).toHaveBeenCalledTimes(index + 1)
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1)
+        })
+        expect(mockedGetEventTicket).toHaveBeenCalledTimes(index + 2)
+      }
+    } finally {
+      randomSpy.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
+  it('accelerates a pending retry after a connection failure when back online', async () => {
+    vi.useFakeTimers()
+    try {
+      mockedGetEventTicket.mockReset()
+        .mockRejectedValueOnce(new ApiConnectionError())
+        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
+
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+      expect(result.realtimeStatus).toBe('offline')
+
+      const ticketCallsBeforeOnline = mockedGetEventTicket.mock.calls.length
+      await act(async () => {
+        window.dispatchEvent(new Event('online'))
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(mockedGetEventTicket.mock.calls.length).toBe(ticketCallsBeforeOnline + 1)
+      // No duplicate concurrent attempt: advancing the full backoff window
+      // afterward must not add yet another call on top of the accelerated one.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      expect(mockedGetEventTicket.mock.calls.length).toBe(ticketCallsBeforeOnline + 1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('stops retrying and clears credentials on a permanent auth error from getLocks()', async () => {
+    vi.useFakeTimers()
+    try {
+      mockedGetLocks.mockReset().mockRejectedValueOnce(new ApiError(403, 'Insufficient permissions'))
+
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      expect(result.realtimeStatus).toBe('access-lost')
+      expect(result.accessRevokedEvent).toBe('revoked')
+      expect(params.sessionState.setSessionTokenState).toHaveBeenCalledWith(null)
+      expect(params.sessionState.setParticipantIdState).toHaveBeenCalledWith(null)
+
+      const ticketCallsAfter = mockedGetEventTicket.mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(ticketCallsAfter)
     } finally {
       vi.useRealTimers()
     }
