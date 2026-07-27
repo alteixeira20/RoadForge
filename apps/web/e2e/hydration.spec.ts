@@ -58,7 +58,7 @@ test('keeps drag descriptions deterministic across navigation and reload', async
   await ensurePhaseExpanded(page, 'Delivered collaboration and server persistence')
 
   const phaseHandles = page.getByRole('button', { name: /Reorder phase/ })
-  await expect(phaseHandles).toHaveCount(11)
+  await expect(phaseHandles).toHaveCount(17)
   await expect(phaseHandles.first()).toHaveAttribute(
     'aria-describedby',
     'roadmap-phases',
