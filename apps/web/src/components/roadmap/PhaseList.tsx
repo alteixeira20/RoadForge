@@ -1,11 +1,10 @@
 'use client'
 
-import { memo, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import {
   DndContext,
   closestCenter,
   PointerSensor,
-  KeyboardSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -17,10 +16,11 @@ import {
 import {
   arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import { useKeyboardReorder } from '@/hooks/useKeyboardReorder'
+import { KeyboardReorderAnnouncer } from './KeyboardReorderAnnouncer'
 
 // Collapsing a phase changes its (and its siblings') rects with no drag in
 // progress yet. The default `WhileDragging` strategy only remeasures once a
@@ -110,13 +110,20 @@ function PhaseListComponent({
 
   const phaseDragDisabled = readOnly || isFiltering
   const phaseIds = phases.map((p) => p.id)
+  const phaseIdsRef = useRef(phaseIds)
+  phaseIdsRef.current = phaseIds
+
+  const keyboardReorder = useKeyboardReorder(() => phaseIdsRef.current, {
+    disabled: phaseDragDisabled,
+    itemLabel: (id) => `phase ${phases.find((p) => p.id === id)?.name ?? ''}`,
+    onReorder: (fromIndex, toIndex) => {
+      onReorderPhases(arrayMove(phaseIdsRef.current, fromIndex, toIndex))
+    },
+  })
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
     }),
   )
 
@@ -194,6 +201,8 @@ function PhaseListComponent({
                 phase={p}
                 isOnlyPhase={totalPhaseCount === 1}
                 dragDisabled={phaseDragDisabled}
+                isKeyboardActive={keyboardReorder.activeId === p.id}
+                onKeyboardKeyDown={(event) => keyboardReorder.handleKeyDown(event, p.id)}
                 isOpen={openPhases.includes(p.id)}
                 onToggle={onTogglePhase}
                 expandedTaskId={expandedTaskId}
@@ -247,6 +256,7 @@ function PhaseListComponent({
           ) : null}
         </DragOverlay>
       </DndContext>
+      <KeyboardReorderAnnouncer message={keyboardReorder.announcement} />
     </>
   )
 }

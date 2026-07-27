@@ -15,6 +15,8 @@ interface SortableTaskItemProps {
   expandedTaskId: string | null
   readOnly: boolean
   dragDisabled: boolean
+  isKeyboardActive: boolean
+  onKeyboardKeyDown: (event: { code: string; preventDefault: () => void }) => void
   onToggle: (id: string) => void
   onCheck: (id: string) => void
   pendingTaskDoneIds: ReadonlySet<string>
@@ -33,7 +35,11 @@ interface SortableTaskItemProps {
   displayNumber?: string
 }
 
-export function SortableTaskItem(props: SortableTaskItemProps) {
+export function SortableTaskItem({
+  isKeyboardActive,
+  onKeyboardKeyDown,
+  ...props
+}: SortableTaskItemProps) {
   const { task, expanded, readOnly, dragDisabled } = props
 
   // Expanding a task only suppresses *initiating* a drag from it — it must
@@ -83,7 +89,12 @@ export function SortableTaskItem(props: SortableTaskItemProps) {
     <div ref={setNodeRef} style={style} className={isDragging ? 'sortable-dragging' : ''}>
       <TaskRow
         {...props}
-        dragHandleProps={isDragInitiationDisabled ? undefined : { ...attributes, ...listeners }}
+        dragHandleProps={isDragInitiationDisabled ? undefined : {
+          ...attributes,
+          ...listeners,
+          'aria-pressed': isDragging || isKeyboardActive,
+          onKeyDown: onKeyboardKeyDown,
+        }}
       />
     </div>
   )

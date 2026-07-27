@@ -17,41 +17,90 @@ async function dragHandleOnto(page: Page, handle: Locator, target: Locator) {
 }
 
 /**
- * Drives a dnd-kit keyboard drag handle through Space (pick up) -> Arrow
- * (move) -> Space (drop), with a bounded pause before the drop.
+ * Drives a keyboard drag handle through Space (pick up) -> Arrow (move) ->
+ * Space (drop), with no artificial delay between them, and asserts pickup
+ * state, live announcements, and post-drop focus along the way.
  *
- * That pause masks a real, unresolved upstream issue rather than a fixed
- * one — it is not evidence the application is correct. Direct instrumentation
- * of dnd-kit's KeyboardSensor (@dnd-kit/sortable 10.0.0 on @dnd-kit/core
- * 6.3.1, both current) showed the collision result used at drop (`over`)
- * intermittently resolving to the dragged item itself instead of its
- * neighbor when Arrow and Space fire back to back, at every level tested
- * (phases and tasks, not just the phase-collapse scenario originally
- * suspected). Reproducible regardless of `collisionDetection` algorithm
- * (closestCenter/closestCorners), `measuring` strategy, `animateLayoutChanges`,
- * or forcing a synchronous `flushSync` after every keydown dnd-kit handles.
- * The failure rate drops with a longer pause (33% at 500ms, 13% at 1.5s) but
- * never reliably reaches zero, which rules out a simple one-render-cycle lag
- * as the sole cause; root cause is not fully isolated. Real keyboard/
- * screen-reader users are very unlikely to hit this — natural inter-keystroke
- * timing is well past where this stops reproducing in testing — but it
- * remains a genuine, open gap. Do not remove this wait without first
- * replacing it with an actual fix confirmed via many repeat-each runs — see
- * the boolean-`disabled`-collapsing-droppable-with-draggable bug fixed in
- * SortableTaskItem.tsx for the kind of real, deterministic fix this needs.
+ * dnd-kit's own KeyboardSensor turned out to have two confirmed timing
+ * defects: its drop-target (`over`) resolution depends on an async
+ * (ResizeObserver-driven) remeasurement that can still be in flight when
+ * Space (drop) is processed right after Arrow, and its own keydown listener
+ * is registered via `setTimeout(0)` (not synchronously with the Space that
+ * constructs it), so a following keydown dispatched before that timer fires
+ * is missed entirely — confirmed via direct instrumentation to affect not
+ * just Arrow but the drop-ending Space itself under load. Both are
+ * reproducible regardless of collision algorithm, measuring strategy, or
+ * forcing a synchronous React flush.
+ *
+ * `hooks/useKeyboardReorder.ts` sidesteps both by not routing the pickup/
+ * move/drop cycle through dnd-kit's KeyboardSensor at all: a plain React
+ * `onKeyDown` on the drag handle (reliable, non-deferred delegation) drives
+ * the whole cycle, and the committed order comes from the stable pre-drag
+ * id order plus plain arithmetic. dnd-kit's KeyboardSensor is no longer
+ * registered — only PointerSensor remains, for pointer/touch drags.
  */
+// Every list on the page (phases, each phase's tasks, each task's
+// subtasks, tags) renders its own live-announcer, and a list's last
+// announcement stays put (doesn't clear) after its drag completes — so at
+// any point there can be several stale, unrelated announcer texts on the
+// page at once. Diffing the full set before/after each key press isolates
+// exactly the one that just changed, regardless of how many stale ones
+// exist elsewhere, without needing to know which list is "current".
+async function announcementTexts(page: Page): Promise<string[]> {
+  return page.locator('[aria-live="assertive"]').allTextContents()
+}
+
+// Waits (retrying against the real DOM, not a fixed delay) for a live-region
+// text that is both new relative to `before` and matches `pattern` — targets
+// exactly the announcement this step caused, immune to an unrelated stale
+// announcer elsewhere settling into the DOM around the same moment.
+async function waitForAnnouncementMatching(
+  page: Page,
+  before: string[],
+  pattern: RegExp,
+): Promise<string> {
+  let matched: string | undefined
+  await expect
+    .poll(
+      async () => {
+        const after = await announcementTexts(page)
+        matched = after.find((text) => !before.includes(text) && pattern.test(text))
+        return matched !== undefined
+      },
+      { message: `waiting for a new announcement matching ${pattern}` },
+    )
+    .toBe(true)
+  return matched!
+}
+
 async function keyboardMove(
   handle: Locator,
   arrow: 'ArrowDown' | 'ArrowUp' = 'ArrowDown',
 ) {
+  const page = handle.page()
+
   await handle.scrollIntoViewIfNeeded()
   await handle.focus()
+
+  const beforePickup = await announcementTexts(page)
   await handle.press('Space')
   await expect(handle).toHaveAttribute('aria-pressed', 'true')
+  await waitForAnnouncementMatching(page, beforePickup, /^Picked up/)
+
+  const beforeMove = await announcementTexts(page)
   await handle.press(arrow)
-  await handle.page().waitForTimeout(1500)
+  await waitForAnnouncementMatching(page, beforeMove, /moved to position \d+ of \d+\.$/)
+
+  const beforeDrop = await announcementTexts(page)
   await handle.press('Space')
   await expect(handle).not.toHaveAttribute('aria-pressed', 'true')
+  await waitForAnnouncementMatching(page, beforeDrop, /^Dropped/)
+
+  // Meaningful focus after drop: the same handle (same DOM node — React
+  // preserves it across reordering since the list item's `key` is stable)
+  // stays focused, so keyboard/screen-reader users aren't dropped
+  // somewhere unexpected.
+  await expect(handle).toBeFocused()
 }
 
 async function expectNoAccessibilityViolations(page: Page) {
@@ -156,20 +205,25 @@ test('reorders phases, tasks, and subtasks with Space, Arrow, Space', async ({ p
   await page.getByRole('textbox', { name: 'Subtask title' }).fill('Second subtask')
   await page.getByRole('textbox', { name: 'Subtask title' }).press('Enter')
 
-  // The just-added "Second subtask" row must be visible before it can be a
-  // valid drop target.
-  await expect(
-    secondTask.locator('.subtask-row').filter({ hasText: 'Second subtask' }),
-  ).toBeVisible()
+  // New subtasks are inserted immediately after their parent task, so
+  // "First subtask" (added before "Second subtask") ends up *below* it —
+  // confirm that starting position before moving, so ArrowUp below is a
+  // genuine move (index 1 -> 0), not a boundary no-op that would
+  // coincidentally already match a same-order final assertion.
+  await expect(secondTask.locator('.subtask-title')).toHaveText([
+    'Second subtask',
+    'First subtask',
+  ])
   await keyboardMove(
     secondTask
       .locator('.subtask-row')
       .filter({ hasText: 'First subtask' })
       .locator('.subtask-drag-handle[role="button"]'),
+    'ArrowUp',
   )
   await expect(secondTask.locator('.subtask-title')).toHaveText([
-    'Second subtask',
     'First subtask',
+    'Second subtask',
   ])
 
   await secondTask.getByRole('button', { name: 'Collapse task' }).click()

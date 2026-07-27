@@ -10,12 +10,20 @@ interface SortableSubtaskItemProps {
   readOnly: boolean
   pendingTaskDoneIds: ReadonlySet<string>
   dragDisabled: boolean
+  isKeyboardActive: boolean
+  onKeyboardKeyDown: (event: { code: string; preventDefault: () => void }) => void
   onCheck: (id: string) => void
   onDelete: (id: string) => void
   displayNumber?: string
 }
 
-export function SortableSubtaskItem({ task, dragDisabled, ...rowProps }: SortableSubtaskItemProps) {
+export function SortableSubtaskItem({
+  task,
+  dragDisabled,
+  isKeyboardActive,
+  onKeyboardKeyDown,
+  ...rowProps
+}: SortableSubtaskItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     disabled: dragDisabled,
@@ -29,7 +37,12 @@ export function SortableSubtaskItem({ task, dragDisabled, ...rowProps }: Sortabl
       <SubtaskRow
         {...rowProps}
         task={task}
-        dragHandleProps={dragDisabled ? undefined : { ...attributes, ...listeners }}
+        dragHandleProps={dragDisabled ? undefined : {
+          ...attributes,
+          ...listeners,
+          'aria-pressed': isDragging || isKeyboardActive,
+          onKeyDown: onKeyboardKeyDown,
+        }}
       />
     </div>
   )

@@ -17,6 +17,8 @@ interface SortableTagRowProps {
   registry: TagDefinition[]
   count: number
   readOnly: boolean
+  isKeyboardActive: boolean
+  onKeyboardKeyDown: (event: { code: string; preventDefault: () => void }) => void
   isEditing: boolean
   form: TagFormState
   onFormChange: (form: TagFormState) => void
@@ -37,6 +39,8 @@ export function SortableTagRow({
   registry,
   count,
   readOnly,
+  isKeyboardActive,
+  onKeyboardKeyDown,
   isEditing,
   form,
   onFormChange,
@@ -66,7 +70,12 @@ export function SortableTagRow({
           className={`tag-drag-handle${canDrag ? '' : ' disabled'}`}
           aria-hidden={!canDrag}
           aria-label={canDrag ? `Reorder tag ${tag.label}` : undefined}
-          {...(canDrag ? { ...attributes, ...listeners } : {})}
+          {...(canDrag ? {
+            ...attributes,
+            ...listeners,
+            'aria-pressed': isDragging || isKeyboardActive,
+            onKeyDown: onKeyboardKeyDown,
+          } : {})}
         >
           <Icon name="grip" size={13} />
         </span>

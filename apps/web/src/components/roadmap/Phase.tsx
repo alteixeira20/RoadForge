@@ -5,7 +5,6 @@ import { useEditLock } from '@/hooks/useEditLock'
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -19,10 +18,10 @@ import {
 import {
   arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
+import { useKeyboardReorder } from '@/hooks/useKeyboardReorder'
 
 import React from 'react'
 
@@ -35,6 +34,7 @@ import React from 'react'
 const taskMeasuring = { droppable: { strategy: MeasuringStrategy.Always } }
 import { Icon } from '@/components/ui/Icon'
 import { PhaseHeader } from './PhaseHeader'
+import { KeyboardReorderAnnouncer } from './KeyboardReorderAnnouncer'
 import { SortableTaskItem } from './SortableTaskItem'
 import { TaskRow } from './TaskRow'
 import { DraftTaskRow } from './DraftTaskRow'
@@ -302,15 +302,23 @@ export function Phase({
   const [activeId, setActiveId] = useState<string | null>(null)
   const activeTaskDisplayNumber = activeId ? displayNumbers.get(activeId) : undefined
 
+  const taskIdsRef = useRef(taskIds)
+  taskIdsRef.current = taskIds
+
+  const keyboardReorder = useKeyboardReorder(() => taskIdsRef.current, {
+    disabled: readOnly || isAnyTaskInPhaseExpanded,
+    itemLabel: (id) => `task ${topLevelTasks.find((t) => t.id === id)?.title ?? ''}`,
+    onReorder: (fromIndex, toIndex) => {
+      onReorderTasks(phase.id, arrayMove(taskIdsRef.current, fromIndex, toIndex))
+    },
+  })
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 5,
       },
     }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
   )
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -406,6 +414,8 @@ export function Phase({
                       expandedTaskId={expandedTaskId}
                       readOnly={readOnly}
                       dragDisabled={isAnyTaskInPhaseExpanded}
+                      isKeyboardActive={keyboardReorder.activeId === t.id}
+                      onKeyboardKeyDown={(event) => keyboardReorder.handleKeyDown(event, t.id)}
                       onToggle={handleToggleTask}
                       onCheck={onCheckTask}
                       pendingTaskDoneIds={pendingTaskDoneIds}
@@ -469,6 +479,7 @@ export function Phase({
               </DragOverlay>
             </DndContext>
           )}
+          <KeyboardReorderAnnouncer message={keyboardReorder.announcement} />
 
           {!readOnly && topLevelTasks.length > 0 && !hasDraft && (
             <div className="phase-foot">

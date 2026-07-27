@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   DndContext,
   closestCenter,
   PointerSensor,
-  KeyboardSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -14,10 +13,11 @@ import {
 import {
   arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import { useKeyboardReorder } from '@/hooks/useKeyboardReorder'
+import { KeyboardReorderAnnouncer } from './KeyboardReorderAnnouncer'
 import { SubtaskRow } from './SubtaskRow'
 import { SortableSubtaskItem } from './SortableSubtaskItem'
 import type { Task } from '@/types/roadmap'
@@ -46,10 +46,19 @@ export function TaskSubtaskList({
   const [activeSubtaskId, setActiveSubtaskId] = useState<string | null>(null)
   const activeSubtask = activeSubtaskId ? subtasks.find((t) => t.id === activeSubtaskId) ?? null : null
   const subtaskIds = subtasks.map((t) => t.id)
+  const subtaskIdsRef = useRef(subtaskIds)
+  subtaskIdsRef.current = subtaskIds
+
+  const keyboardReorder = useKeyboardReorder(() => subtaskIdsRef.current, {
+    disabled: readOnly,
+    itemLabel: (id) => `subtask ${subtasks.find((t) => t.id === id)?.title ?? ''}`,
+    onReorder: (fromIndex, toIndex) => {
+      onReorder(parentId, arrayMove(subtaskIdsRef.current, fromIndex, toIndex))
+    },
+  })
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   return (
@@ -78,6 +87,8 @@ export function TaskSubtaskList({
             readOnly={readOnly}
             pendingTaskDoneIds={pendingTaskDoneIds}
             dragDisabled={readOnly}
+            isKeyboardActive={keyboardReorder.activeId === st.id}
+            onKeyboardKeyDown={(event) => keyboardReorder.handleKeyDown(event, st.id)}
             onCheck={onCheck}
             onDelete={onDelete}
             displayNumber={parentDisplayNumber ? `${parentDisplayNumber}.${idx + 1}` : undefined}
@@ -103,6 +114,7 @@ export function TaskSubtaskList({
           </div>
         ) : null}
       </DragOverlay>
+      <KeyboardReorderAnnouncer message={keyboardReorder.announcement} />
     </DndContext>
   )
 }

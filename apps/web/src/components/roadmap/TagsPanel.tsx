@@ -1,11 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   closestCenter,
   PointerSensor,
-  KeyboardSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -16,13 +15,14 @@ import {
 import {
   arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
+import { useKeyboardReorder } from '@/hooks/useKeyboardReorder'
+import { KeyboardReorderAnnouncer } from './KeyboardReorderAnnouncer'
 import {
   buildTagId,
   normalizeTagColor,
@@ -172,9 +172,22 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
     ? tagRegistry.find((tag) => tag.id === activeTagId) ?? null
     : null
 
+  const tagIdsRef = useRef(tagIds)
+  tagIdsRef.current = tagIds
+  const tagRegistryRef = useRef(tagRegistry)
+  tagRegistryRef.current = tagRegistry
+
+  const keyboardReorder = useKeyboardReorder(() => tagIdsRef.current, {
+    disabled: readOnly,
+    itemLabel: (id) => `tag ${tagRegistry.find((tag) => tag.id === id)?.label ?? ''}`,
+    onReorder: (fromIndex, toIndex) => {
+      setTagRegistry(arrayMove(tagRegistryRef.current, fromIndex, toIndex))
+      setSaved(false)
+    },
+  })
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -192,7 +205,9 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
     setSaved(false)
   }
 
-  const handleDragCancel = () => setActiveTagId(null)
+  const handleDragCancel = () => {
+    setActiveTagId(null)
+  }
 
   return (
     <section className="tags-view" aria-labelledby="tags-view-title">
@@ -260,6 +275,8 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
                   registry={tagRegistry}
                   count={tagUsage[tag.id] ?? 0}
                   readOnly={readOnly}
+                  isKeyboardActive={keyboardReorder.activeId === tag.id}
+                  onKeyboardKeyDown={(event) => keyboardReorder.handleKeyDown(event, tag.id)}
                   isEditing={editingId === tag.id}
                   form={form}
                   onFormChange={setForm}
@@ -286,6 +303,7 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
           </DragOverlay>
         </DndContext>
       )}
+      <KeyboardReorderAnnouncer message={keyboardReorder.announcement} />
 
       <ConfirmDialog
         open={pendingDeleteTag !== null}
