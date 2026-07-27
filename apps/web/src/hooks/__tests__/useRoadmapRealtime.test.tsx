@@ -129,6 +129,22 @@ function createDeferred<T>() {
   return { promise, resolve, reject }
 }
 
+// For stale-callback isolation tests: captures each subscribeToRoadmapEvents
+// call's own handler set and its own unsubscribe mock, instead of the
+// single shared `handlers`/`unsubscribe` the rest of this suite uses (which
+// the subscribe mock overwrites on every call) — a stale callback must
+// never be able to observe or mutate a replacement connection's separate
+// EventSource/handler set, so distinguishing them is the whole point.
+function captureSubscriptions() {
+  const calls: { handlers: RealtimeHandlers; unsubscribe: ReturnType<typeof vi.fn> }[] = []
+  mockedSubscribe.mockReset().mockImplementation((_id, _ticket, nextHandlers) => {
+    const unsub = vi.fn()
+    calls.push({ handlers: nextHandlers, unsubscribe: unsub })
+    return unsub
+  })
+  return calls
+}
+
 describe('useRoadmapRealtime', () => {
   let container: HTMLDivElement
   let root: Root
@@ -796,5 +812,159 @@ describe('useRoadmapRealtime', () => {
     // new roadmap the effect has since moved on to.
     expect(params.lockState.setLocks).toHaveBeenCalledTimes(1)
     expect(mockedGetEventTicket).toHaveBeenCalledWith('rm_2', 'session-token')
+  })
+
+  describe('stale callback isolation across connection attempts', () => {
+    // Establishes two connection generations with separate handler sets and
+    // separate unsubscribe mocks: generation 1 opens, then errors and is
+    // replaced by generation 2 (which also opens and completes its
+    // mandatory resync, reaching `live`) — mirroring what an old EventSource
+    // callback firing after a reconnect would see in production.
+    async function setUpTwoLiveGenerations() {
+      const calls = captureSubscriptions()
+      mockedGetEventTicket.mockReset()
+        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
+        .mockResolvedValueOnce({ ticket: 'ticket-2', expires_in: 30 })
+
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      act(() => calls[0].handlers.onError?.(new Event('error')))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      act(() => calls[1].handlers.onOpen?.())
+      await flushSubscription()
+
+      expect(result.realtimeStatus).toBe('live')
+      expect(calls).toHaveLength(2)
+      return { calls, params }
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('does not let a stale onLockAcquired mutate the replacement connection\'s locks', async () => {
+      const { calls, params } = await setUpTwoLiveGenerations()
+      vi.mocked(params.lockState.setLocks).mockClear()
+
+      act(() => calls[0].handlers.onLockAcquired?.({
+        roadmap_id: 'rm_1', target: 'task:tk_stale', participant_id: 'pt_x', display_name: 'Stale',
+      }))
+      expect(params.lockState.setLocks).not.toHaveBeenCalled()
+
+      act(() => calls[1].handlers.onLockAcquired?.({
+        roadmap_id: 'rm_1', target: 'task:tk_fresh', participant_id: 'pt_y', display_name: 'Fresh',
+      }))
+      expect(params.lockState.setLocks).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not let a stale onLockReleased remove a current lock', async () => {
+      const { calls, params } = await setUpTwoLiveGenerations()
+      vi.mocked(params.lockState.setLocks).mockClear()
+
+      act(() => calls[0].handlers.onLockReleased?.({
+        roadmap_id: 'rm_1', target: 'task:tk_1', participant_id: 'pt_other',
+      }))
+      expect(params.lockState.setLocks).not.toHaveBeenCalled()
+    })
+
+    it('does not let a stale onParticipantRevoked clear the replacement session', async () => {
+      const { calls, params } = await setUpTwoLiveGenerations()
+
+      act(() => calls[0].handlers.onParticipantRevoked?.({
+        roadmap_id: 'rm_1', participant_id: 'pt_self', revoked_at: '2026-07-25T18:05:00Z',
+      }))
+
+      expect(result.realtimeStatus).toBe('live')
+      expect(params.sessionState.setSessionTokenState).not.toHaveBeenCalledWith(null)
+    })
+
+    it('does not let a stale onRoadmapDeleted remove current access', async () => {
+      const { calls, params } = await setUpTwoLiveGenerations()
+
+      act(() => calls[0].handlers.onRoadmapDeleted?.({
+        roadmap_id: 'rm_1', updated_at: '2026-07-25T18:05:00Z', participant_id: 'pt_other',
+      }))
+
+      expect(result.realtimeStatus).toBe('live')
+      expect(params.sessionState.setServerRoadmapIdState).not.toHaveBeenCalledWith(null)
+    })
+
+    it('does not let a stale onError close the replacement EventSource or schedule another retry', async () => {
+      const { calls } = await setUpTwoLiveGenerations()
+      const ticketCallsBefore = mockedGetEventTicket.mock.calls.length
+
+      act(() => calls[0].handlers.onError?.(new Event('error')))
+
+      expect(calls[1].unsubscribe).not.toHaveBeenCalled()
+      expect(result.realtimeStatus).toBe('live')
+
+      // No duplicate retry was scheduled on the replacement's behalf either.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      expect(mockedGetEventTicket.mock.calls.length).toBe(ticketCallsBefore)
+    })
+
+    it('does not let a stale onOpen start a resync that could restore live', async () => {
+      const calls = captureSubscriptions()
+      mockedGetEventTicket.mockReset()
+        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
+        .mockResolvedValueOnce({ ticket: 'ticket-2', expires_in: 30 })
+
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      // Generation 1 never got to open (no onOpen fired for it yet), then
+      // errors and generation 2 takes over and reaches `live`.
+      act(() => calls[0].handlers.onError?.(new Event('error')))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      act(() => calls[1].handlers.onOpen?.())
+      await flushSubscription()
+      expect(result.realtimeStatus).toBe('live')
+
+      vi.mocked(params.roadmapState.setPhasesState).mockClear()
+      const getRoadmapCallsBefore = mockedGetRoadmap.mock.calls.length
+
+      // Generation 1's onOpen fires late (a stale callback) — must not
+      // start a new resync or otherwise disturb the already-live replacement.
+      act(() => calls[0].handlers.onOpen?.())
+
+      expect(mockedGetRoadmap.mock.calls.length).toBe(getRoadmapCallsBefore)
+      expect(result.realtimeStatus).toBe('live')
+    })
+
+    it('does nothing for any callback firing after unmount', async () => {
+      const { calls, params } = await setUpTwoLiveGenerations()
+      act(() => root.unmount())
+      // Cleanup itself closes the live (generation 2) EventSource exactly
+      // once — that's expected. What must not happen is anything further.
+      expect(calls[1].unsubscribe).toHaveBeenCalledTimes(1)
+
+      vi.mocked(params.lockState.setLocks).mockClear()
+      vi.mocked(params.sessionState.setSessionTokenState).mockClear()
+
+      calls[1].handlers.onLockAcquired?.({
+        roadmap_id: 'rm_1', target: 'task:tk_x', participant_id: 'pt_x', display_name: 'X',
+      })
+      calls[1].handlers.onParticipantRevoked?.({
+        roadmap_id: 'rm_1', participant_id: 'pt_self', revoked_at: '2026-07-25T18:05:00Z',
+      })
+      calls[1].handlers.onError?.(new Event('error'))
+
+      expect(params.lockState.setLocks).not.toHaveBeenCalled()
+      expect(params.sessionState.setSessionTokenState).not.toHaveBeenCalled()
+      expect(calls[1].unsubscribe).toHaveBeenCalledTimes(1)
+    })
   })
 })

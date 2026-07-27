@@ -147,7 +147,25 @@ export function useRoadmapRealtime({
 
     const subscribedActiveId = activeRoadmapId
 
-    let unsubscribe: (() => void) | null = null
+    // Each connection attempt owns an immutable identity and its own
+    // EventSource handle. Every callback registered on that EventSource
+    // captures this exact object and checks `isCurrentAttempt` before
+    // mutating any state, so a callback firing from an EventSource that has
+    // since errored, been superseded by a newer attempt, or outlived access
+    // loss can never mutate the replacement connection's locks, close the
+    // replacement's EventSource, schedule a duplicate retry, or restore a
+    // status the replacement didn't itself earn. `isCurrentAttempt` checks
+    // both `attempt.aborted` (set the instant *this* attempt is torn down,
+    // e.g. by its own onError, even before any replacement has started) and
+    // identity against `currentAttempt` (set the instant a *replacement*
+    // starts) — either alone would leave a window where a just-invalidated
+    // attempt still reads as current.
+    interface ConnectionAttempt {
+      unsubscribe: (() => void) | null
+      aborted: boolean
+    }
+
+    let currentAttempt: ConnectionAttempt | null = null
     let hiddenAt: number | null = null
     // Guards against a startSync() call resuming after this effect has
     // already been cleaned up (e.g. the active roadmap changed mid-await).
@@ -161,16 +179,18 @@ export function useRoadmapRealtime({
     let reconnectAttempt = 0
     let retryTimer: ReturnType<typeof setTimeout> | null = null
 
-    // Bumped every time a connection attempt starts or its EventSource is
-    // torn down (error, access loss, replacement). Every async continuation
-    // below captures the generation active when it started and checks it's
-    // still current before mutating state, so a stale lock/ticket fetch, a
-    // post-open resync superseded by a new attempt, or a resync that
-    // outlives an EventSource error can never apply results or flip status
-    // back to `live`.
-    let connectionGeneration = 0
-    const isCurrentGeneration = (generation: number) =>
-      !cancelled && !stopped && generation === connectionGeneration
+    const isCurrentAttempt = (attempt: ConnectionAttempt) =>
+      !cancelled && !stopped && !attempt.aborted && currentAttempt === attempt
+
+    // Idempotent: marks an attempt as done and closes its own EventSource,
+    // never touching whatever `currentAttempt` may have moved on to.
+    const closeAttempt = (attempt: ConnectionAttempt) => {
+      attempt.aborted = true
+      if (attempt.unsubscribe) {
+        attempt.unsubscribe()
+        attempt.unsubscribe = null
+      }
+    }
 
     // Authoritative-refresh single-flight state, shared by the post-open
     // resync and every `roadmap.updated` refetch: at most one GET is ever
@@ -179,15 +199,15 @@ export function useRoadmapRealtime({
     // overlapping request — so an older response can never apply after a
     // newer one already has.
     //
-    // `pendingRefresh` carries its own generation rather than inheriting
-    // the generation of whichever request happens to be in flight when it
-    // is queued: a later generation's mandatory post-open resync can be
-    // queued behind an older (superseded) generation's still-in-flight
+    // `pendingRefresh` carries its own attempt rather than inheriting the
+    // attempt of whichever request happens to be in flight when it is
+    // queued: a replacement attempt's mandatory post-open resync can be
+    // queued behind an older (superseded) attempt's still-in-flight
     // request, and that older request's `finally` must launch the queued
-    // follow-up under *its* generation, not bail out just because the
-    // generation has since moved on.
+    // follow-up under *its* attempt, not bail out just because that attempt
+    // has since been superseded.
     let refreshInFlight = false
-    let pendingRefresh: { generation: number; onLive: boolean } | null = null
+    let pendingRefresh: { attempt: ConnectionAttempt; onLive: boolean } | null = null
 
     const clearRetryTimer = () => {
       if (retryTimer !== null) {
@@ -201,9 +221,8 @@ export function useRoadmapRealtime({
     // reconnect attempts, then clears auth cache while preserving the local roadmap cache.
     const handleAccessLoss = (kind: 'revoked' | 'deleted' | 'expired') => {
       stopped = true
-      connectionGeneration += 1
       clearRetryTimer()
-      if (unsubscribe) { unsubscribe(); unsubscribe = null }
+      if (currentAttempt) closeAttempt(currentAttempt)
       if (subscribedActiveId) {
         storage.setAuthCache(subscribedActiveId, null)
         const rc = storage.getRoadmapCache(subscribedActiveId)
@@ -283,21 +302,24 @@ export function useRoadmapRealtime({
     }
 
     // Fetches a fresh authoritative snapshot and applies it only if
-    // `generation` is still current when the response arrives — this is
-    // what gates the transition into `live`, so a reconnect (or a stale
-    // resync outlived by an EventSource error, revocation, or a newer
-    // connection attempt) can never be falsely reported as live or apply an
-    // outdated snapshot. `onLive` distinguishes the post-open resync (a
-    // failure means the handshake never completed, so the EventSource is
-    // dropped and a reconnect is scheduled) from an update-triggered
-    // refetch (the connection is already live; a failure just reports
-    // status without tearing anything down).
-    const runAuthoritativeRefresh = async (generation: number, opts: { onLive: boolean }) => {
+    // `attempt` is still current when the response arrives — this is what
+    // gates the transition into `live`, so a reconnect (or a stale resync
+    // outlived by an EventSource error, revocation, or a newer connection
+    // attempt) can never be falsely reported as live or apply an outdated
+    // snapshot. `onLive` distinguishes the post-open resync (a failure
+    // means the handshake never completed, so the EventSource is dropped
+    // and a reconnect is scheduled) from an update-triggered refetch (the
+    // connection is already live; a failure just reports status without
+    // tearing anything down).
+    const runAuthoritativeRefresh = async (
+      attempt: ConnectionAttempt,
+      opts: { onLive: boolean },
+    ) => {
       refreshInFlight = true
       setRealtimeStatus('updating')
       try {
         const loaded = await getRoadmap(serverRoadmapId, sessionToken)
-        if (isCurrentGeneration(generation)) {
+        if (isCurrentAttempt(attempt)) {
           // Preserve local unsaved work: don't clobber it with the server
           // snapshot, but the connection itself is genuinely live.
           if (savedRef.current !== false) {
@@ -312,11 +334,11 @@ export function useRoadmapRealtime({
           setBackendUnavailableRoadmapId((current) => (current === serverRoadmapId ? null : current))
         }
       } catch (err) {
-        if (isCurrentGeneration(generation)) {
+        if (isCurrentAttempt(attempt)) {
           if (isSessionExpiredError(err) || isAuthError(err)) {
             handleAccessLoss(isSessionExpiredError(err) ? 'expired' : 'revoked')
           } else if (opts.onLive) {
-            if (unsubscribe) { unsubscribe(); unsubscribe = null }
+            closeAttempt(attempt)
             setRealtimeStatus(isApiConnectionError(err) ? 'offline' : 'reconnecting')
             scheduleReconnect()
           } else {
@@ -327,14 +349,14 @@ export function useRoadmapRealtime({
         refreshInFlight = false
         const next = pendingRefresh
         pendingRefresh = null
-        // Launch the queued follow-up under *its own* generation — it may
+        // Launch the queued follow-up under *its own* attempt — it may
         // belong to a newer connection attempt than the request that just
-        // finished, so checking `generation` (the finishing request's) here
-        // would wrongly drop a still-current, newer generation's mandatory
+        // finished, so checking `attempt` (the finishing request's) here
+        // would wrongly drop a still-current, newer attempt's mandatory
         // resync just because an older one happened to be in flight when it
         // was requested.
-        if (next && isCurrentGeneration(next.generation)) {
-          void runAuthoritativeRefresh(next.generation, { onLive: next.onLive })
+        if (next && isCurrentAttempt(next.attempt)) {
+          void runAuthoritativeRefresh(next.attempt, { onLive: next.onLive })
         }
       }
     }
@@ -343,25 +365,30 @@ export function useRoadmapRealtime({
     // `roadmap.updated` events) into at most one in-flight request plus one
     // queued follow-up, instead of racing multiple GETs whose responses
     // could otherwise be applied out of order.
-    const requestAuthoritativeRefresh = (generation: number, opts: { onLive: boolean }) => {
+    const requestAuthoritativeRefresh = (attempt: ConnectionAttempt, opts: { onLive: boolean }) => {
       if (refreshInFlight) {
-        pendingRefresh = { generation, ...opts }
+        pendingRefresh = { attempt, ...opts }
         return
       }
-      void runAuthoritativeRefresh(generation, opts)
+      void runAuthoritativeRefresh(attempt, opts)
     }
 
     const startSync = async (isReconnect = false) => {
       if (stopped || cancelled || connecting) return
       connecting = true
-      connectionGeneration += 1
-      const myGeneration = connectionGeneration
+      // Starting a new attempt always supersedes whatever came before it.
+      // Closing it here (idempotent if it already closed itself, e.g. via
+      // its own onError) centralizes attempt teardown in one place instead
+      // of every caller of startSync() having to remember to do it first.
+      if (currentAttempt) closeAttempt(currentAttempt)
+      const attempt: ConnectionAttempt = { unsubscribe: null, aborted: false }
+      currentAttempt = attempt
       clearRetryTimer()
       setRealtimeStatus(isReconnect ? 'reconnecting' : 'connecting')
 
       try {
         const activeLocks = await getLocks(serverRoadmapId, sessionToken)
-        if (!isCurrentGeneration(myGeneration)) { connecting = false; return }
+        if (!isCurrentAttempt(attempt)) { connecting = false; return }
         const lockMap: LockMap = {}
         for (const l of activeLocks) {
           lockMap[l.target] = { participantId: l.participant_id, displayName: l.display_name }
@@ -370,16 +397,16 @@ export function useRoadmapRealtime({
 
         // Every attempt — first connect or retry — gets a fresh single-use ticket.
         const { ticket } = await getEventTicket(serverRoadmapId, sessionToken)
-        if (!isCurrentGeneration(myGeneration)) { connecting = false; return }
-        unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, ticket, {
+        if (!isCurrentAttempt(attempt)) { connecting = false; return }
+        attempt.unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, ticket, {
           onOpen: () => {
+            if (!isCurrentAttempt(attempt)) return
             connecting = false
-            if (!isCurrentGeneration(myGeneration)) return
-            requestAuthoritativeRefresh(myGeneration, { onLive: true })
+            requestAuthoritativeRefresh(attempt, { onLive: true })
           },
           onUpdated: (payload) => {
             if (payload.participant_id === participantId) return
-            if (!isCurrentGeneration(myGeneration)) return
+            if (!isCurrentAttempt(attempt)) return
 
             // If this client has pending unsynced changes, do NOT overwrite local
             // phases, roadmap name, or updatedAt — preserve the user's work and
@@ -389,15 +416,17 @@ export function useRoadmapRealtime({
               return
             }
 
-            requestAuthoritativeRefresh(myGeneration, { onLive: false })
+            requestAuthoritativeRefresh(attempt, { onLive: false })
           },
           onLockAcquired: (payload) => {
+            if (!isCurrentAttempt(attempt)) return
             setLocks((prev) => ({
               ...prev,
               [payload.target]: { participantId: payload.participant_id, displayName: payload.display_name },
             }))
           },
           onLockReleased: (payload) => {
+            if (!isCurrentAttempt(attempt)) return
             setLocks((prev) => {
               const next = { ...prev }
               delete next[payload.target]
@@ -405,21 +434,24 @@ export function useRoadmapRealtime({
             })
           },
           onParticipantRevoked: (payload) => {
+            if (!isCurrentAttempt(attempt)) return
             if (payload.roadmap_id !== serverRoadmapId) return
             if (payload.participant_id !== participantId) return
             handleAccessLoss('revoked')
           },
           onRoadmapDeleted: (payload) => {
+            if (!isCurrentAttempt(attempt)) return
             if (payload.roadmap_id !== serverRoadmapId) return
             handleAccessLoss('deleted')
           },
           onError: () => {
+            // An old EventSource's error must only ever close its own
+            // handle and must never touch `connecting` or schedule a
+            // retry on behalf of a replacement attempt already in
+            // progress or already live.
+            if (!isCurrentAttempt(attempt)) return
             connecting = false
-            if (unsubscribe) { unsubscribe(); unsubscribe = null }
-            // Invalidate this attempt's generation even when not (yet)
-            // permanently stopped, so a post-open resync in flight when the
-            // EventSource drops can no longer restore `live`.
-            connectionGeneration += 1
+            closeAttempt(attempt)
             if (stopped || cancelled) return
             setRealtimeStatus('reconnecting')
             scheduleReconnect()
@@ -427,7 +459,7 @@ export function useRoadmapRealtime({
         })
       } catch (err) {
         connecting = false
-        if (!isCurrentGeneration(myGeneration)) return
+        if (!isCurrentAttempt(attempt)) return
         if (isSessionExpiredError(err) || isAuthError(err)) {
           handleAccessLoss(isSessionExpiredError(err) ? 'expired' : 'revoked')
           return
@@ -461,7 +493,8 @@ export function useRoadmapRealtime({
         const wasHiddenLong = hiddenAt !== null && now - hiddenAt > 60_000
         hiddenAt = null
         if (wasHiddenLong) {
-          if (unsubscribe) { unsubscribe(); unsubscribe = null }
+          // startSync() itself closes whatever attempt is current before
+          // starting the replacement, so no manual close is needed here.
           clearRetryTimer()
           void startSync(true)
         } else {
@@ -484,7 +517,7 @@ export function useRoadmapRealtime({
       cancelled = true
       stopped = true
       clearRetryTimer()
-      if (unsubscribe) unsubscribe()
+      if (currentAttempt) closeAttempt(currentAttempt)
       document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('online', handleOnline)
     }
