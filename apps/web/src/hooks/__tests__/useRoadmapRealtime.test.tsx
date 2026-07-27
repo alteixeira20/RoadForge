@@ -500,6 +500,60 @@ describe('useRoadmapRealtime', () => {
     expect(params.roadmapState.setPhasesState).not.toHaveBeenCalled()
   })
 
+  it('does not drop a replacement connection\'s mandatory resync behind an older one still in flight', async () => {
+    vi.useFakeTimers()
+    try {
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      // Generation 1 opens; its mandatory post-open resync starts and never
+      // resolves yet.
+      const gen1Deferred = createDeferred<Roadmap>()
+      mockedGetRoadmap.mockReset().mockImplementationOnce(() => gen1Deferred.promise)
+      act(() => handlers.onOpen?.())
+      expect(result.realtimeStatus).toBe('updating')
+
+      // Generation 1's EventSource errors; a reconnect is scheduled.
+      act(() => handlers.onError?.(new Event('error')))
+      expect(result.realtimeStatus).toBe('reconnecting')
+
+      // Generation 2 connects: a fresh ticket, a new EventSource, and a new
+      // handler set (`handlers` is reassigned by the subscribe mock).
+      const gen2Roadmap: Roadmap = {
+        ...loadedRoadmap,
+        roadmap: { ...loadedRoadmap.roadmap, name: 'Gen 2 roadmap' },
+      }
+      mockedGetRoadmap.mockResolvedValueOnce(gen2Roadmap)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+
+      // Generation 2 requests its own mandatory resync. Generation 1's
+      // request is still in flight, so this is coalesced into a queued
+      // follow-up rather than firing its own overlapping GET.
+      act(() => handlers.onOpen?.())
+      expect(mockedGetRoadmap).toHaveBeenCalledTimes(1)
+      expect(result.realtimeStatus).toBe('reconnecting')
+
+      // Generation 1's stale resync resolves now — it must be ignored —
+      // and generation 2's own queued resync must still fire immediately
+      // afterward instead of being dropped just because generation 1 (the
+      // request that just finished) is no longer current.
+      await act(async () => {
+        gen1Deferred.resolve(loadedRoadmap)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(mockedGetRoadmap).toHaveBeenCalledTimes(2)
+      expect(params.roadmapState.setRoadmapNameState).toHaveBeenLastCalledWith('Gen 2 roadmap')
+      expect(result.realtimeStatus).toBe('live')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('applies no state after unmounting during an in-flight resync', async () => {
     const { params } = createParams()
     render(params)

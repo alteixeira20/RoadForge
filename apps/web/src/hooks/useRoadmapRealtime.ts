@@ -174,8 +174,16 @@ export function useRoadmapRealtime({
     // coalesced into a single follow-up instead of firing its own
     // overlapping request — so an older response can never apply after a
     // newer one already has.
+    //
+    // `pendingRefresh` carries its own generation rather than inheriting
+    // the generation of whichever request happens to be in flight when it
+    // is queued: a later generation's mandatory post-open resync can be
+    // queued behind an older (superseded) generation's still-in-flight
+    // request, and that older request's `finally` must launch the queued
+    // follow-up under *its* generation, not bail out just because the
+    // generation has since moved on.
     let refreshInFlight = false
-    let pendingRefresh: { onLive: boolean } | null = null
+    let pendingRefresh: { generation: number; onLive: boolean } | null = null
 
     const clearRetryTimer = () => {
       if (retryTimer !== null) {
@@ -310,8 +318,14 @@ export function useRoadmapRealtime({
         refreshInFlight = false
         const next = pendingRefresh
         pendingRefresh = null
-        if (next && isCurrentGeneration(generation)) {
-          void runAuthoritativeRefresh(generation, next)
+        // Launch the queued follow-up under *its own* generation — it may
+        // belong to a newer connection attempt than the request that just
+        // finished, so checking `generation` (the finishing request's) here
+        // would wrongly drop a still-current, newer generation's mandatory
+        // resync just because an older one happened to be in flight when it
+        // was requested.
+        if (next && isCurrentGeneration(next.generation)) {
+          void runAuthoritativeRefresh(next.generation, { onLive: next.onLive })
         }
       }
     }
@@ -322,7 +336,7 @@ export function useRoadmapRealtime({
     // could otherwise be applied out of order.
     const requestAuthoritativeRefresh = (generation: number, opts: { onLive: boolean }) => {
       if (refreshInFlight) {
-        pendingRefresh = opts
+        pendingRefresh = { generation, ...opts }
         return
       }
       void runAuthoritativeRefresh(generation, opts)
