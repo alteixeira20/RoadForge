@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react'
 
 /**
- * Application-owned keyboard reordering (RF-048). dnd-kit's own
+ * Application-owned keyboard reordering (RF-034). dnd-kit's own
  * KeyboardSensor is not used for the actual pickup/move/drop logic here —
  * only for pointer/touch, which is unaffected by any of this.
  *
