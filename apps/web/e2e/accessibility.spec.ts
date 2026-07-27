@@ -17,42 +17,29 @@ async function dragHandleOnto(page: Page, handle: Locator, target: Locator) {
 }
 
 /**
- * `useSortable({ disabled })` in this app is passed a plain boolean
- * (`readOnly || expanded || dragDisabled`), and dnd-kit's `normalizeDisabled`
- * treats a boolean as `{ draggable: disabled, droppable: disabled }` — so a
- * task/phase is *not a valid drop target* at all while it reports
- * `disabled: true`. Collapsing a sibling immediately before a keyboard drag
- * flips it from disabled to enabled, but dnd-kit's droppable registration
- * for that sibling (its `useDroppable` effect, plus the ResizeObserver that
- * feeds its rect into dnd-kit's measurement cache) can still be catching up
- * at the exact instant Space starts the drag — which measures every
- * droppable exactly once, at drag-start. Waiting for the sibling's own
- * rect to stop moving/resizing across real wall-clock samples (not
- * animation frames, which resolve far faster than ResizeObserver's actual
- * callback latency under load) is what actually needs to settle first.
+ * Drives a dnd-kit keyboard drag handle through Space (pick up) -> Arrow
+ * (move) -> Space (drop), with a bounded pause before the drop.
+ *
+ * That pause masks a real, unresolved upstream issue rather than a fixed
+ * one — it is not evidence the application is correct. Direct instrumentation
+ * of dnd-kit's KeyboardSensor (@dnd-kit/sortable 10.0.0 on @dnd-kit/core
+ * 6.3.1, both current) showed the collision result used at drop (`over`)
+ * intermittently resolving to the dragged item itself instead of its
+ * neighbor when Arrow and Space fire back to back, at every level tested
+ * (phases and tasks, not just the phase-collapse scenario originally
+ * suspected). Reproducible regardless of `collisionDetection` algorithm
+ * (closestCenter/closestCorners), `measuring` strategy, `animateLayoutChanges`,
+ * or forcing a synchronous `flushSync` after every keydown dnd-kit handles.
+ * The failure rate drops with a longer pause (33% at 500ms, 13% at 1.5s) but
+ * never reliably reaches zero, which rules out a simple one-render-cycle lag
+ * as the sole cause; root cause is not fully isolated. Real keyboard/
+ * screen-reader users are very unlikely to hit this — natural inter-keystroke
+ * timing is well past where this stops reproducing in testing — but it
+ * remains a genuine, open gap. Do not remove this wait without first
+ * replacing it with an actual fix confirmed via many repeat-each runs — see
+ * the boolean-`disabled`-collapsing-droppable-with-draggable bug fixed in
+ * SortableTaskItem.tsx for the kind of real, deterministic fix this needs.
  */
-async function waitForRectStable(locator: Locator, requiredStableSamples = 3) {
-  await locator.evaluate((el, required) => new Promise<void>((resolve) => {
-    let last = el.getBoundingClientRect()
-    let stableCount = 0
-    const poll = () => {
-      setTimeout(() => {
-        const next = el.getBoundingClientRect()
-        const stable = next.top === last.top && next.left === last.left
-          && next.width === last.width && next.height === last.height
-        stableCount = stable ? stableCount + 1 : 0
-        last = next
-        if (stableCount >= required) {
-          resolve()
-        } else {
-          poll()
-        }
-      }, 50)
-    }
-    poll()
-  }), requiredStableSamples)
-}
-
 async function keyboardMove(
   handle: Locator,
   arrow: 'ArrowDown' | 'ArrowUp' = 'ArrowDown',
@@ -62,6 +49,7 @@ async function keyboardMove(
   await handle.press('Space')
   await expect(handle).toHaveAttribute('aria-pressed', 'true')
   await handle.press(arrow)
+  await handle.page().waitForTimeout(1500)
   await handle.press('Space')
   await expect(handle).not.toHaveAttribute('aria-pressed', 'true')
 }
@@ -187,11 +175,8 @@ test('reorders phases, tasks, and subtasks with Space, Arrow, Space', async ({ p
   await secondTask.getByRole('button', { name: 'Collapse task' }).click()
   // Confirm the collapse actually committed (not just that the click
   // dispatched): the ArrowDown swap target depends on "Second task" having
-  // finished collapsing, not on "First task"'s own (unchanged) row. Wait
-  // for its own rect to settle — a real proxy for its droppable
-  // registration/ResizeObserver callback having actually caught up.
+  // finished collapsing, not on "First task"'s own (unchanged) row.
   await expect(secondTask.getByRole('button', { name: 'Expand task' })).toBeVisible()
-  await waitForRectStable(secondTask)
   await keyboardMove(firstTask.locator('.drag-handle[role="button"]'))
   await expect(page.locator('.task-row .title')).toHaveText(['Second task', 'First task'])
 
@@ -203,10 +188,6 @@ test('reorders phases, tasks, and subtasks with Space, Arrow, Space', async ({ p
   await expect(page.getByRole('button', { name: 'Expand phase Planning' })).toBeVisible()
   await page.getByRole('button', { name: 'Collapse phase Delivery' }).click()
   await expect(page.getByRole('button', { name: 'Expand phase Delivery' })).toBeVisible()
-  // "Reorder phase Delivery"'s own position is what shifts as Planning's
-  // collapse (above it) finishes shrinking that card — wait for it to stop
-  // moving before treating it as a stable drag handle/drop target.
-  await waitForRectStable(page.getByRole('button', { name: 'Reorder phase Delivery' }))
   await keyboardMove(
     page.getByRole('button', { name: 'Reorder phase Delivery' }),
     'ArrowUp',

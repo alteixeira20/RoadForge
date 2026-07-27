@@ -12,6 +12,7 @@ import {
   defaultDropAnimationSideEffects,
   DragStartEvent,
   DragEndEvent,
+  MeasuringStrategy,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -20,6 +21,14 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+
+// Collapsing a phase changes its (and its siblings') rects with no drag in
+// progress yet. The default `WhileDragging` strategy only remeasures once a
+// drag has already started, so a keyboard drag initiated immediately after
+// a collapse can briefly compute positions against stale rects. `Always`
+// keeps droppable rects continuously current instead. Defined once at
+// module scope so the object identity stays stable across renders.
+const measuring = { droppable: { strategy: MeasuringStrategy.Always } }
 import { Icon } from '@/components/ui/Icon'
 import { SortablePhaseItem } from './SortablePhaseItem'
 import type { ToastTone } from '@/hooks/useToastState'
@@ -171,6 +180,7 @@ function PhaseListComponent({
         id="roadmap-phases"
         sensors={sensors}
         collisionDetection={closestCenter}
+        measuring={measuring}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}

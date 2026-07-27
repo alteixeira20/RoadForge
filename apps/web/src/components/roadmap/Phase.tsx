@@ -9,10 +9,12 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDndContext,
   DragOverlay,
   defaultDropAnimationSideEffects,
   DragStartEvent,
   DragEndEvent,
+  MeasuringStrategy,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -23,6 +25,14 @@ import {
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 
 import React from 'react'
+
+// Collapsing a task changes its (and its siblings') rects with no drag in
+// progress yet. The default `WhileDragging` strategy only remeasures once a
+// drag has already started, so a keyboard drag initiated immediately after
+// a collapse can briefly compute positions against stale rects. `Always`
+// keeps droppable rects continuously current instead. Defined once at
+// module scope so the object identity stays stable across renders.
+const taskMeasuring = { droppable: { strategy: MeasuringStrategy.Always } }
 import { Icon } from '@/components/ui/Icon'
 import { PhaseHeader } from './PhaseHeader'
 import { SortableTaskItem } from './SortableTaskItem'
@@ -216,6 +226,19 @@ export function Phase({
     }
   }, [isOpen, hasDraft])
 
+  // dnd-kit only auto-remeasures a droppable's rect via ResizeObserver while
+  // a drag is active — collapsing a phase changes layout (this phase's and
+  // its siblings') with no drag in progress, so nothing would normally pick
+  // that up before the *next* drag starts. Ask the phase-level DndContext
+  // (the nearest ancestor — SortablePhaseItem/PhaseList) to remeasure every
+  // droppable as soon as this phase's open state actually changes, well
+  // before a keyboard drag can begin.
+  const { measureDroppableContainers } = useDndContext()
+  useEffect(() => {
+    measureDroppableContainers([])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
   const handleTaskDirtyChange = useCallback((taskId: string, dirty: boolean) => {
     setDirtyTaskId(dirty ? taskId : null)
   }, [])
@@ -366,6 +389,7 @@ export function Phase({
               id={`phase-tasks-${phase.id}`}
               sensors={sensors}
               collisionDetection={closestCenter}
+              measuring={taskMeasuring}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}
