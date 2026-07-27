@@ -503,12 +503,18 @@ async def get_events(
                 session, roadmap_id, event_ticket.participant_id
             )
 
+    async def _is_revoked_fast() -> bool:
+        return await event_bus.revocations.is_revoked(
+            roadmap_id, event_ticket.participant_id
+        )
+
     return StreamingResponse(
         forward_subscription(
             subscription,
             participant_id=event_ticket.participant_id,
             close_at=event_ticket.session_expires_at,
             is_still_authorized=_is_still_authorized,
+            is_participant_revoked_now=_is_revoked_fast,
         ),
         media_type="text/event-stream",
         headers={

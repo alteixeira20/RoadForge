@@ -3,6 +3,7 @@
 Extracted from roadmap_service.py (Slice 2).
 """
 
+import logging
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
@@ -20,6 +21,8 @@ from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants (moved from roadmap_service.py)
@@ -328,14 +331,63 @@ async def revoke_participant(
         )
     )
 
-    await db.commit()
+    await _commit_revocation(db, roadmap_id, target.id, now)
 
-    await event_bus.publish(Event(
-        roadmap_id=roadmap_id,
-        action="participant.revoked",
-        payload={
-            "roadmap_id": roadmap_id,
-            "participant_id": target.id,
-            "revoked_at": now.isoformat(),
-        }
-    ))
+
+async def _log_failure(coro, message: str) -> None:
+    """Await `coro`, logging (not raising) on failure — for steps that must
+    never abort an already-authoritative revocation."""
+    try:
+        await coro
+    except Exception:
+        logger.exception(message)
+
+
+async def _commit_revocation(
+    db: AsyncSession, roadmap_id: str, participant_id: str, revoked_at: datetime
+) -> None:
+    """
+    Marks the fast-path revocation registry, commits the database
+    revocation, and publishes the `participant.revoked` control event, in
+    that order.
+
+    The registry mark happens *before* `db.commit()`: once it returns,
+    every worker's per-event stream check (`is_participant_revoked_now` in
+    `forward_subscription`) rejects further events for this participant, so
+    by the time the commit below becomes authoritative the registry is
+    already set. A registry failure is logged and swallowed rather than
+    aborting the revocation — the commit (source of truth for REST) still
+    proceeds, degrading back to the pre-existing bounded-cadence
+    `is_still_authorized` recheck as defense-in-depth. If the commit itself
+    fails, the optimistic mark is rolled back so it doesn't outlive the
+    (rolled back) database state. The final control-event publish is also
+    best-effort: the registry mark and commit above already guarantee a
+    revoked participant stops receiving normal events even if this publish
+    never arrives — it just won't get the immediate in-band close signal.
+    """
+    await _log_failure(
+        event_bus.revocations.mark_revoked(roadmap_id, participant_id),
+        "Failed to mark fast-path revocation registry",
+    )
+
+    try:
+        await db.commit()
+    except Exception:
+        await _log_failure(
+            event_bus.revocations.clear(roadmap_id, participant_id),
+            "Failed to roll back fast-path revocation registry after commit failure",
+        )
+        raise
+
+    await _log_failure(
+        event_bus.publish(Event(
+            roadmap_id=roadmap_id,
+            action="participant.revoked",
+            payload={
+                "roadmap_id": roadmap_id,
+                "participant_id": participant_id,
+                "revoked_at": revoked_at.isoformat(),
+            }
+        )),
+        "Failed to publish participant.revoked control event",
+    )
