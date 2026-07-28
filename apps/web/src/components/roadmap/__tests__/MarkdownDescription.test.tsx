@@ -25,6 +25,13 @@ afterEach(() => {
 })
 
 describe('MarkdownDescription', () => {
+  it('labels the expanded task description', () => {
+    render('Task details')
+
+    expect(container.querySelector('.task-description-label')?.textContent).toBe('Description:')
+    expect(container.querySelector('.markdown-description')?.textContent).toBe('Task details')
+  })
+
   it('renders the roadmap fixture headings, lists, and bold labels', () => {
     render(`### Objective
 
