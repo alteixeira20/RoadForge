@@ -423,6 +423,10 @@ test('reorders tasks and subtasks by drag only and persists local order', async 
   const secondSubtask = reorderedTask.locator('.subtask-row').filter({
     hasText: 'Second subtask',
   })
+  await expect(reorderedTask.locator('.subtask-title')).toHaveText([
+    'Second subtask',
+    'First subtask',
+  ])
   await dragHandleOnto(
     page,
     secondSubtask.locator('.subtask-drag-handle'),
@@ -430,8 +434,8 @@ test('reorders tasks and subtasks by drag only and persists local order', async 
   )
 
   await expect(reorderedTask.locator('.subtask-title')).toHaveText([
-    'Second subtask',
     'First subtask',
+    'Second subtask',
   ])
   await expect(reorderedTask.locator('.subtask-row .task-num')).toHaveText([
     '1.1.1',
@@ -444,8 +448,8 @@ test('reorders tasks and subtasks by drag only and persists local order', async 
     await persistedTask.getByRole('button', { name: 'Expand task' }).click()
   }
   await expect(persistedTask.locator('.subtask-title')).toHaveText([
-    'Second subtask',
     'First subtask',
+    'Second subtask',
   ])
   await expect(persistedTask.locator('.subtask-row .task-num')).toHaveText([
     '1.1.1',

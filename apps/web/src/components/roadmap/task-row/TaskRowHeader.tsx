@@ -2,6 +2,7 @@
 
 import { Icon } from '@/components/ui/Icon'
 import { TagChip } from '@/components/roadmap/TagChip'
+import { useTaskTagDisplayPreferences } from '@/hooks/useTaskTagDisplayPreferences'
 import {
   TASK_STATUS_LABELS,
   type DerivedTaskStatus,
@@ -47,6 +48,16 @@ export function TaskRowHeader({
   onCheck,
   onToggle,
 }: TaskRowHeaderProps) {
+  const {
+    userTags,
+    favoriteTagId,
+    showAutomaticStatus,
+  } = useTaskTagDisplayPreferences(task.id, visibleTags)
+  const remainingTagCount = Math.max(
+    0,
+    userTags.length - (favoriteTagId ? 1 : 0),
+  )
+
   return (
     <div className="task-row">
       <div
@@ -78,19 +89,23 @@ export function TaskRowHeader({
         }}
       />
       <span className="title">{task.title}</span>
-      <span className={`task-status-badge is-${status}`} title={statusTitle}>
-        {TASK_STATUS_LABELS[status]}
-      </span>
-      {visibleTags.slice(0, 2).map((tagId) => (
+      {showAutomaticStatus && (
+        <span
+          className={`task-status-badge is-${status} is-automatic-tag`}
+          title={`Automatic status: ${statusTitle}`}
+        >
+          {TASK_STATUS_LABELS[status]}
+        </span>
+      )}
+      {favoriteTagId && (
         <TagChip
-          key={tagId}
-          tagId={tagId}
+          tagId={favoriteTagId}
           registry={registry}
-          className="task-row-tag"
+          className="task-row-tag is-favorite"
         />
-      ))}
-      {visibleTags.length > 2 && (
-        <span className="meta-pill">+{visibleTags.length - 2}</span>
+      )}
+      {remainingTagCount > 0 && (
+        <span className="meta-pill">+{remainingTagCount}</span>
       )}
       {lockedByOther && (
         <span className="meta-pill meta-pill-lock">

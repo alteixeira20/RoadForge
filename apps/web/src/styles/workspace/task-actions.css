@@ -18,11 +18,12 @@
   max-width: min(100%, 720px);
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   flex-wrap: wrap;
 }
 .task-action-area.has-form {
   width: min(100%, 720px);
+  justify-self: start;
 }
 
 .task-detail .actions {
@@ -30,7 +31,7 @@
   gap: 6px;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 .task-detail .actions .btn {
   height: 30px;
@@ -40,6 +41,10 @@
   gap: 6px;
 }
 .task-detail .actions .task-details-action {
+  position: absolute;
+  top: 2px;
+  right: 22px;
+  z-index: 1;
   color: var(--ink-2);
   border-color: var(--border-faint);
   background: var(--bg-2);
@@ -105,11 +110,16 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
+/* ── 760px — keep the edit action aligned with compact detail padding ─── */
+@media (max-width: 760px) {
+  .task-detail .actions .task-details-action { right: 16px; }
+}
+
 /* ── 600px — mobile: full-width task actions ───────────────────────────── */
 @media (max-width: 600px) {
   .task-action-area,
   .task-detail .actions { width: 100%; }
-  .task-detail .actions .btn {
+  .task-detail .actions .btn:not(.task-details-action) {
     flex: 1 1 140px;
     justify-content: center;
   }
