@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRoadmapLifecycle } from '@/context/RoadmapContext'
+import { storage } from '@/lib/storage'
 
 interface TaskTagDisplayPreferences {
   favoriteTagId: string | null
@@ -47,8 +47,20 @@ function readPreferences(storageKey: string): TaskTagDisplayPreferences {
   }
 }
 
+function writePreferences(
+  storageKey: string,
+  preferences: TaskTagDisplayPreferences,
+): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(preferences))
+  } catch {
+    // The preference remains active for this session when browser storage is blocked.
+  }
+}
+
 export function useTaskTagDisplayPreferences(taskId: string, tagIds: string[]) {
-  const { activeRoadmapId } = useRoadmapLifecycle()
+  const activeRoadmapId = storage.getActiveRoadmapId()
   const userTags = useMemo(() => getUserDisplayTags(tagIds), [tagIds])
   const storageKey = `${STORAGE_PREFIX}:${activeRoadmapId ?? 'local'}:${taskId}`
   const [preferences, setPreferences] = useState<TaskTagDisplayPreferences>(
@@ -83,10 +95,12 @@ export function useTaskTagDisplayPreferences(taskId: string, tagIds: string[]) {
   ) => {
     setPreferences((current) => {
       const next = updater(current)
-      window.localStorage.setItem(storageKey, JSON.stringify(next))
-      window.dispatchEvent(new CustomEvent<TaskTagPreferenceEventDetail>(PREFERENCE_EVENT, {
-        detail: { storageKey, preferences: next },
-      }))
+      writePreferences(storageKey, next)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent<TaskTagPreferenceEventDetail>(PREFERENCE_EVENT, {
+          detail: { storageKey, preferences: next },
+        }))
+      }
       return next
     })
   }, [storageKey])
