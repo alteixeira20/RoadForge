@@ -19,29 +19,32 @@ function safeMarkdownUrl(url: string): string | undefined {
 
 export function MarkdownDescription({ value }: MarkdownDescriptionProps) {
   return (
-    <div className="desc markdown-description">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
-        urlTransform={safeMarkdownUrl}
-        components={{
-          a: ({ href, children, ...props }) => {
-            if (!href) return <>{children}</>
+    <section className="task-description-block">
+      <h4 className="section-label task-description-label">Description:</h4>
+      <div className="desc markdown-description">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkBreaks]}
+          urlTransform={safeMarkdownUrl}
+          components={{
+            a: ({ href, children, ...props }) => {
+              if (!href) return <>{children}</>
 
-            const external = /^https?:/i.test(href)
-            return (
-              <a
-                href={href}
-                {...props}
-                {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-              >
-                {children}
-              </a>
-            )
-          },
-        }}
-      >
-        {value}
-      </ReactMarkdown>
-    </div>
+              const external = /^https?:/i.test(href)
+              return (
+                <a
+                  href={href}
+                  {...props}
+                  {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                >
+                  {children}
+                </a>
+              )
+            },
+          }}
+        >
+          {value}
+        </ReactMarkdown>
+      </div>
+    </section>
   )
 }
