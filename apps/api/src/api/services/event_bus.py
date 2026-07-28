@@ -3,6 +3,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, AsyncIterator, Awaitable, Callable, Dict, Protocol, Set
 
 import redis.asyncio as redis
@@ -14,6 +15,12 @@ logger = logging.getLogger(__name__)
 _HEARTBEAT_INTERVAL_SECONDS = 25.0
 
 AuthorizationCheck = Callable[[], Awaitable[bool]]
+
+# Return contract for `is_participant_revoked_now`: True suppresses the
+# event, False forwards it, and None means neither the fast-path registry
+# nor PostgreSQL could establish an answer - the stream must fail closed
+# rather than treat that uncertainty as "not revoked".
+RevocationCheck = Callable[[], Awaitable["bool | None"]]
 
 
 @dataclass
@@ -68,7 +75,7 @@ class RealtimeEventBus(Protocol):
         participant_id: str | None = None,
         close_at: float | None = None,
         is_still_authorized: AuthorizationCheck | None = None,
-        is_participant_revoked_now: AuthorizationCheck | None = None,
+        is_participant_revoked_now: RevocationCheck | None = None,
     ) -> AsyncIterator[str]: ...
 
 
@@ -78,7 +85,7 @@ async def forward_subscription(
     participant_id: str | None = None,
     close_at: float | None = None,
     is_still_authorized: AuthorizationCheck | None = None,
-    is_participant_revoked_now: AuthorizationCheck | None = None,
+    is_participant_revoked_now: RevocationCheck | None = None,
 ) -> AsyncIterator[str]:
     """
     Forwards events from an already-open `subscription` as SSE chunks until
@@ -96,24 +103,26 @@ async def forward_subscription(
     arriving, so continuous unrelated traffic cannot postpone it
     indefinitely the way an idle-only timeout would.
 
-    `is_participant_revoked_now`, when provided, is a cheap (no-database)
-    check backed by `RevocationRegistry` — it is consulted on every event
-    pulled off the subscription, before that event is ever yielded, and
-    suppresses (silently drops, without closing the stream) any event that
-    is not the participant's own terminating `participant.revoked`
-    notification. That notification is always recognized and delivered
-    first (see `_is_own_revocation`), even if it is queued behind other
-    traffic that arrived around the same time, so the client always learns
-    why its connection ended; if it never arrives at all (e.g. the control
-    event's publish failed), the stream still closes no later than the
-    next `is_still_authorized`/`close_at` bound below. This closes the gap
-    the periodic recheck leaves open on its own: `revoke_participant()`
-    marks the registry before it commits the revocation to the database,
-    so once the database commit is authoritative the registry is already
-    set, and any other event still sitting in (or arriving on) this
-    subscription's queue is suppressed instead of forwarded, regardless of
-    whether the separate `participant.revoked` control event has been
-    published yet.
+    `is_participant_revoked_now`, when provided, is consulted on every
+    event pulled off the subscription, before that event is ever yielded.
+    It returns `True` to suppress the event (participant is revoked),
+    `False` to forward it, or `None` when authorization could not be
+    established at all (both the fast-path registry and its PostgreSQL
+    fallback failed) - that case ends the stream immediately rather than
+    treating the uncertainty as "not revoked". The participant's own
+    terminating `participant.revoked` notification is always recognized
+    and delivered first (see `_is_own_revocation`), even if it is queued
+    behind other traffic that arrived around the same time, so the client
+    always learns why its connection ended; if it never arrives at all
+    (e.g. the control event's publish failed), the stream still closes no
+    later than the next `is_still_authorized`/`close_at` bound below. This
+    closes the gap the periodic recheck leaves open on its own:
+    `revoke_participant()` marks the registry before it commits the
+    revocation to the database, so once the database commit is
+    authoritative the registry already reflects it, and any other event
+    still sitting in (or arriving on) this subscription's queue is
+    suppressed instead of forwarded, regardless of whether the separate
+    `participant.revoked` control event has been published yet.
     """
     next_reauth_at = (
         time.time() + _HEARTBEAT_INTERVAL_SECONDS if is_still_authorized is not None else None
@@ -147,18 +156,24 @@ async def forward_subscription(
                 yield event.to_sse()
                 break
 
-            if is_participant_revoked_now is not None and await is_participant_revoked_now():
-                # Suppress this one event and keep waiting rather than
-                # closing here: the participant's own terminating
-                # `participant.revoked` notification may be queued behind
-                # it (e.g. concurrent unrelated traffic reached this
-                # subscription's queue first) and must still be delivered
-                # when it arrives. Nothing is leaked either way — this
-                # branch never yields — and the stream still closes
-                # promptly once that notification shows up or the
-                # bounded `is_still_authorized`/`close_at` checks above
-                # fire.
-                continue
+            if is_participant_revoked_now is not None:
+                revoked = await is_participant_revoked_now()
+                if revoked is None:
+                    # Authorization could not be established at all; fail
+                    # closed for this stream rather than guess.
+                    break
+                if revoked:
+                    # Suppress this one event and keep waiting rather than
+                    # closing here: the participant's own terminating
+                    # `participant.revoked` notification may be queued
+                    # behind it (e.g. concurrent unrelated traffic reached
+                    # this subscription's queue first) and must still be
+                    # delivered when it arrives. Nothing is leaked either
+                    # way - this branch never yields - and the stream
+                    # still closes promptly once that notification shows
+                    # up or the bounded `is_still_authorized`/`close_at`
+                    # checks above fire.
+                    continue
 
             yield event.to_sse()
     finally:
@@ -181,43 +196,76 @@ class MemorySubscription:
         await self._bus.unsubscribe(self._roadmap_id, self._queue)
 
 
+class RevocationRegistryUnavailableError(RuntimeError):
+    """Raised when the fast-path revocation registry cannot be written to.
+
+    Callers (see `sharing_service.revoke_participant`) must treat this as
+    fatal to the whole revocation: proceeding without the registry mark
+    would let a revoked participant's already-open stream keep receiving
+    events until the next bounded `is_still_authorized` recheck, which
+    defeats the "immediate" cutoff guarantee.
+    """
+
+
+class RevocationMark(Enum):
+    """State of a participant's fast-path revocation mark.
+
+    `PENDING` covers two situations a reader cannot tell apart on its own:
+    an in-flight revocation whose database commit has not landed yet, and
+    an abandoned one whose owning process crashed before promoting or
+    clearing the mark. Both require a PostgreSQL lookup to resolve - see
+    `sharing_service.resolve_realtime_revocation`.
+    """
+
+    ACTIVE = "active"
+    PENDING = "pending"
+    COMMITTED = "committed"
+    UNKNOWN = "unknown"
+
+
 class RevocationRegistry(Protocol):
     """
     A cheap, no-database record of which participants are revoked, shared
     between `sharing_service.revoke_participant()` and every stream's
     per-event authorization check in `forward_subscription`.
 
-    `revoke_participant()` marks a participant here *before* committing the
-    database revocation, so by the time the commit is authoritative, every
-    worker's fast per-event check already rejects further events for that
-    participant — independent of whether the separate `participant.revoked`
-    control event is ever successfully published.
+    `revoke_participant()` marks a participant `PENDING` here *before*
+    committing the database revocation, then promotes the mark to
+    `COMMITTED` once that commit succeeds. A `COMMITTED` mark alone is
+    trusted; `PENDING` and `UNKNOWN` (a failed read) are not - see
+    `resolve_realtime_revocation` for how those are reconciled against
+    PostgreSQL.
     """
 
-    async def mark_revoked(self, roadmap_id: str, participant_id: str) -> None: ...
+    async def mark_pending(self, roadmap_id: str, participant_id: str) -> None: ...
+
+    async def promote_committed(self, roadmap_id: str, participant_id: str) -> None: ...
 
     async def clear(self, roadmap_id: str, participant_id: str) -> None: ...
 
-    async def is_revoked(self, roadmap_id: str, participant_id: str) -> bool: ...
+    async def get_mark(self, roadmap_id: str, participant_id: str) -> RevocationMark: ...
 
 
 class MemoryRevocationRegistry:
     def __init__(self):
-        self._revoked: Dict[str, Set[str]] = {}
+        self._marks: Dict[str, Dict[str, RevocationMark]] = {}
 
-    async def mark_revoked(self, roadmap_id: str, participant_id: str) -> None:
-        self._revoked.setdefault(roadmap_id, set()).add(participant_id)
+    async def mark_pending(self, roadmap_id: str, participant_id: str) -> None:
+        self._marks.setdefault(roadmap_id, {})[participant_id] = RevocationMark.PENDING
+
+    async def promote_committed(self, roadmap_id: str, participant_id: str) -> None:
+        self._marks.setdefault(roadmap_id, {})[participant_id] = RevocationMark.COMMITTED
 
     async def clear(self, roadmap_id: str, participant_id: str) -> None:
-        participants = self._revoked.get(roadmap_id)
+        participants = self._marks.get(roadmap_id)
         if participants is None:
             return
-        participants.discard(participant_id)
+        participants.pop(participant_id, None)
         if not participants:
-            del self._revoked[roadmap_id]
+            del self._marks[roadmap_id]
 
-    async def is_revoked(self, roadmap_id: str, participant_id: str) -> bool:
-        return participant_id in self._revoked.get(roadmap_id, ())
+    async def get_mark(self, roadmap_id: str, participant_id: str) -> RevocationMark:
+        return self._marks.get(roadmap_id, {}).get(participant_id, RevocationMark.ACTIVE)
 
 
 class MemoryEventBus:
@@ -314,25 +362,54 @@ class RedisRevocationRegistry:
     def _key(self, roadmap_id: str, participant_id: str) -> str:
         return f"{self._key_prefix}:revoked:{roadmap_id}:{participant_id}"
 
-    async def mark_revoked(self, roadmap_id: str, participant_id: str) -> None:
-        await self._redis.set(
-            self._key(roadmap_id, participant_id), "1", ex=_REVOCATION_MARK_TTL_SECONDS
-        )
+    async def mark_pending(self, roadmap_id: str, participant_id: str) -> None:
+        try:
+            await self._redis.set(
+                self._key(roadmap_id, participant_id),
+                RevocationMark.PENDING.value,
+                ex=_REVOCATION_MARK_TTL_SECONDS,
+            )
+        except RedisError as exc:
+            raise RevocationRegistryUnavailableError(
+                "Failed to write fast-path revocation registry mark"
+            ) from exc
+
+    async def promote_committed(self, roadmap_id: str, participant_id: str) -> None:
+        try:
+            await self._redis.set(
+                self._key(roadmap_id, participant_id),
+                RevocationMark.COMMITTED.value,
+                ex=_REVOCATION_MARK_TTL_SECONDS,
+            )
+        except RedisError:
+            # Best-effort: a stream that later reads a stale `PENDING` mark
+            # still resolves it correctly against PostgreSQL - see
+            # `resolve_realtime_revocation`.
+            logger.exception("Failed to promote fast-path revocation registry mark")
 
     async def clear(self, roadmap_id: str, participant_id: str) -> None:
-        await self._redis.delete(self._key(roadmap_id, participant_id))
-
-    async def is_revoked(self, roadmap_id: str, participant_id: str) -> bool:
         try:
-            return bool(await self._redis.exists(self._key(roadmap_id, participant_id)))
+            await self._redis.delete(self._key(roadmap_id, participant_id))
         except RedisError:
-            # Fail open on this fast-path check only: the periodic
-            # `is_still_authorized` recheck against the database remains as
-            # defense-in-depth, so a transient Redis outage degrades event
-            # forwarding back to that bounded cadence instead of taking
-            # every realtime stream down.
-            logger.exception("Failed to check fast-path revocation registry")
-            return False
+            # Best-effort cleanup of an abandoned `PENDING` mark; the TTL
+            # above bounds how long a mark that fails to clear can persist.
+            logger.exception("Failed to clear fast-path revocation registry mark")
+
+    async def get_mark(self, roadmap_id: str, participant_id: str) -> RevocationMark:
+        try:
+            value = await self._redis.get(self._key(roadmap_id, participant_id))
+        except RedisError:
+            # Represent the read failure explicitly rather than reporting
+            # `ACTIVE`: the caller (`resolve_realtime_revocation`) must
+            # fall back to PostgreSQL instead of treating this as "not
+            # revoked".
+            logger.exception("Failed to read fast-path revocation registry")
+            return RevocationMark.UNKNOWN
+        if value == RevocationMark.COMMITTED.value:
+            return RevocationMark.COMMITTED
+        if value == RevocationMark.PENDING.value:
+            return RevocationMark.PENDING
+        return RevocationMark.ACTIVE
 
 
 class RedisPubSubEventBus:
@@ -462,7 +539,7 @@ class RedisSubscription:
     async def close(self) -> None:
         try:
             await self._pubsub.unsubscribe(self._channel)
-            await self._pubsub.close()
+            await self._pubsub.aclose()
         except RedisError:
             logger.warning("Failed to clean up realtime Redis subscription")
 

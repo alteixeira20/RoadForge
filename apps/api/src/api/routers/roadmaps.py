@@ -35,7 +35,11 @@ from api.schemas.roadmap import (
 )
 from api.services.auth_service import is_participant_revoked, require_participant
 from api.services.client_ip_service import extract_client_ip
-from api.services.event_bus import event_bus, forward_subscription
+from api.services.event_bus import (
+    RevocationRegistryUnavailableError,
+    event_bus,
+    forward_subscription,
+)
 from api.services.lock_service import lock_service
 from api.services.rate_limit_service import rate_limiter
 from api.services.roadmap_join_service import join_roadmap
@@ -63,6 +67,7 @@ from api.services.sharing_service import (
     get_participants,
     get_participants_summary,
     get_share_links,
+    resolve_realtime_revocation,
     revoke_participant,
     revoke_share_link,
     rotate_share_link,
@@ -436,7 +441,13 @@ async def post_revoke_participant(
         limit=10,
         window_seconds=60,
     )
-    await revoke_participant(db, roadmap_id, participant_id, participant)
+    try:
+        await revoke_participant(db, roadmap_id, participant_id, participant)
+    except RevocationRegistryUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Revocation registry temporarily unavailable; please retry",
+        ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -503,9 +514,9 @@ async def get_events(
                 session, roadmap_id, event_ticket.participant_id
             )
 
-    async def _is_revoked_fast() -> bool:
-        return await event_bus.revocations.is_revoked(
-            roadmap_id, event_ticket.participant_id
+    async def _is_revoked_fast() -> bool | None:
+        return await resolve_realtime_revocation(
+            async_session_factory, roadmap_id, event_ticket.participant_id
         )
 
     return StreamingResponse(

@@ -5,6 +5,7 @@ Extracted from roadmap_service.py (Slice 2).
 
 import logging
 from datetime import datetime, timezone
+from typing import AsyncContextManager, Callable
 
 from fastapi import HTTPException
 from sqlalchemy import or_, select
@@ -17,7 +18,13 @@ from api.schemas.roadmap import (
     ShareLinkResponse,
     ShareRole,
 )
-from api.services.event_bus import Event, event_bus
+from api.services.auth_service import is_participant_revoked
+from api.services.event_bus import (
+    Event,
+    RevocationMark,
+    RevocationRegistryUnavailableError,
+    event_bus,
+)
 from api.services.id_service import generate_id
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
@@ -347,37 +354,60 @@ async def _commit_revocation(
     db: AsyncSession, roadmap_id: str, participant_id: str, revoked_at: datetime
 ) -> None:
     """
-    Marks the fast-path revocation registry, commits the database
-    revocation, and publishes the `participant.revoked` control event, in
-    that order.
+    Marks the fast-path revocation registry `PENDING`, commits the database
+    revocation, promotes the mark to `COMMITTED`, and publishes the
+    `participant.revoked` control event, in that order.
 
-    The registry mark happens *before* `db.commit()`: once it returns,
-    every worker's per-event stream check (`is_participant_revoked_now` in
-    `forward_subscription`) rejects further events for this participant, so
-    by the time the commit below becomes authoritative the registry is
-    already set. A registry failure is logged and swallowed rather than
-    aborting the revocation — the commit (source of truth for REST) still
-    proceeds, degrading back to the pre-existing bounded-cadence
-    `is_still_authorized` recheck as defense-in-depth. If the commit itself
-    fails, the optimistic mark is rolled back so it doesn't outlive the
-    (rolled back) database state. The final control-event publish is also
-    best-effort: the registry mark and commit above already guarantee a
-    revoked participant stops receiving normal events even if this publish
-    never arrives — it just won't get the immediate in-band close signal.
+    The `PENDING` mark happens *before* `db.commit()`. A stream reading a
+    `PENDING` mark cannot tell an in-flight revocation from one abandoned by
+    a crash before this function reached the promote step below, so it
+    always falls back to a PostgreSQL check - see
+    `resolve_realtime_revocation`. That fallback is what actually closes
+    the gap: once the commit below is authoritative, a `PENDING` reader
+    resolves to "revoked" from PostgreSQL even if this process crashes
+    before promoting the mark to `COMMITTED`.
+
+    If the `PENDING` mark itself fails to write, the whole revocation
+    aborts - proceeding without it would report a false success while
+    leaving an already-open stream free to keep delivering events until the
+    next bounded `is_still_authorized` recheck, which defeats the
+    "immediate" cutoff guarantee. The pending database changes are rolled
+    back so no partial write survives, and `RevocationRegistryUnavailableError`
+    propagates so the caller can report a retryable failure. If the commit
+    itself fails, the mark is cleared so it doesn't outlive the (rolled
+    back) database state - reconciliation would otherwise treat the
+    abandoned `PENDING` mark correctly anyway, but clearing it eagerly
+    avoids depending on that fallback for an operation known to have failed.
+    Promotion to `COMMITTED` and the final control-event publish are both
+    best-effort: the `PENDING` mark plus the PostgreSQL fallback already
+    guarantee a revoked participant stops receiving normal events even if
+    either one never arrives - they just won't get the fast, no-database
+    suppression path or the immediate in-band close signal, respectively.
     """
-    await _log_failure(
-        event_bus.revocations.mark_revoked(roadmap_id, participant_id),
-        "Failed to mark fast-path revocation registry",
-    )
+    try:
+        await event_bus.revocations.mark_pending(roadmap_id, participant_id)
+    except Exception as exc:
+        logger.exception("Failed to mark fast-path revocation registry; aborting revocation")
+        await db.rollback()
+        if isinstance(exc, RevocationRegistryUnavailableError):
+            raise
+        raise RevocationRegistryUnavailableError(
+            "Failed to mark fast-path revocation registry"
+        ) from exc
 
     try:
         await db.commit()
     except Exception:
         await _log_failure(
             event_bus.revocations.clear(roadmap_id, participant_id),
-            "Failed to roll back fast-path revocation registry after commit failure",
+            "Failed to clear fast-path revocation registry mark after commit failure",
         )
         raise
+
+    await _log_failure(
+        event_bus.revocations.promote_committed(roadmap_id, participant_id),
+        "Failed to promote fast-path revocation registry mark to committed",
+    )
 
     await _log_failure(
         event_bus.publish(Event(
@@ -391,3 +421,59 @@ async def _commit_revocation(
         )),
         "Failed to publish participant.revoked control event",
     )
+
+
+async def resolve_realtime_revocation(
+    db_session_factory: Callable[[], AsyncContextManager[AsyncSession]],
+    roadmap_id: str,
+    participant_id: str,
+) -> bool | None:
+    """
+    Per-event authorization check for `forward_subscription`
+    (`is_participant_revoked_now`).
+
+    Only a `COMMITTED` fast-path mark is trusted directly - it is written
+    by `_commit_revocation` only after the PostgreSQL commit lands, so it
+    can never be stale in the direction that matters (a participant it
+    calls revoked really is). Every other mark, including `ACTIVE` (no
+    mark at all), falls back to the authoritative PostgreSQL check:
+    `ACTIVE` is ambiguous between "never revoked" and "revoked, but the
+    registry lost the mark" (e.g. a Redis restart with no persistence), so
+    trusting it directly would let a lost mark silently restore visibility
+    to a revoked participant. `PENDING` (in-flight or abandoned) and
+    `UNKNOWN` (a failed registry read) are equally untrusted on their own.
+    A `PENDING` mark is opportunistically reconciled once the PostgreSQL
+    fallback resolves it, clearing an abandoned mark or promoting one
+    whose commit had already landed.
+
+    Returns `True` (suppress the event), `False` (forward it), or `None`
+    when neither the registry nor PostgreSQL can answer - callers must
+    treat `None` as fail-closed, never as "not revoked".
+    """
+    mark = await event_bus.revocations.get_mark(roadmap_id, participant_id)
+    if mark is RevocationMark.COMMITTED:
+        return True
+
+    try:
+        async with db_session_factory() as db:
+            revoked = await is_participant_revoked(db, roadmap_id, participant_id)
+    except Exception:
+        logger.exception(
+            "Failed to resolve participant revocation state against PostgreSQL"
+        )
+        return None
+
+    if revoked:
+        if mark is RevocationMark.PENDING:
+            await _log_failure(
+                event_bus.revocations.promote_committed(roadmap_id, participant_id),
+                "Failed to promote fast-path revocation registry mark to committed",
+            )
+        return True
+
+    if mark is RevocationMark.PENDING:
+        await _log_failure(
+            event_bus.revocations.clear(roadmap_id, participant_id),
+            "Failed to clear abandoned fast-path revocation registry mark",
+        )
+    return False

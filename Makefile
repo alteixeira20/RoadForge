@@ -1,4 +1,4 @@
-.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-check-fast api-check-prepare api-lint api-test api-test-prepare api-test-fast api-audit api-backfill-projection web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check release-check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-check-fast api-check-prepare api-lint api-test api-test-prepare api-test-fast api-test-real-redis api-audit api-backfill-projection web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check release-check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -61,6 +61,7 @@ help:
 	@echo "  make api-test           Run backend pytest suite (starts/prepares Postgres automatically)"
 	@echo "  make api-test-fast      Run backend pytest suite (skips Docker preparation; DB must be ready)"
 	@echo "  make api-test-prepare   Start Postgres and ensure roadforge_test DB exists"
+	@echo "  make api-test-real-redis  Run RF-044 revocation suite against a real, disposable Redis"
 	@echo "  make api-backfill-projection  Backfill relational projection tables for all active roadmaps"
 	@echo ""
 	@echo "  make web-start     Start frontend in the background"
@@ -306,6 +307,22 @@ api-test: api-test-prepare
 api-test-fast:
 	cd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
 		uv run --no-sync python3 -m pytest -q
+
+# Runs the RF-044 revocation suite (tests/test_realtime_revocation.py) against
+# a real, disposable Redis instance in addition to the fake-pubsub doubles -
+# proves the fast-path revocation registry mark/read/clear behavior holds
+# across two independent RedisPubSubEventBus instances sharing one Redis
+# (standing in for two API workers), not just against the in-process fakes.
+# Uses its own container on a non-default port so it never touches the
+# repository's own docker-compose `redis` service or REDIS_URL.
+api-test-real-redis: api-test-prepare
+	@echo "Starting disposable Redis container for the real-Redis revocation suite..."
+	docker rm -f roadforge-test-redis >/dev/null 2>&1 || true
+	docker run -d --name roadforge-test-redis -p 6390:6379 redis:7-alpine >/dev/null
+	@trap 'docker rm -f roadforge-test-redis >/dev/null 2>&1 || true' EXIT; \
+	cd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
+		REAL_REDIS_TEST_URL=redis://localhost:6390/0 \
+		uv run --no-sync python3 -m pytest -q tests/test_realtime_revocation.py
 
 api-reset: api-down
 	docker compose down -v
