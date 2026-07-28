@@ -1,10 +1,28 @@
 /* ─── Task detail panel ────────────────────────────────────────────────────── */
 .task-detail {
   padding: 2px 22px 18px 56px;
-  display: flex; flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 16px;
   animation: detailIn 240ms cubic-bezier(.2,.8,.2,1);
   position: relative;
+}
+.task-detail > * {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.task-detail > .task-links {
+  grid-column: 1;
+  align-self: start;
+}
+.task-detail > .task-action-area:not(.has-form) {
+  grid-column: 2;
+  align-self: start;
+  justify-self: end;
+  margin-top: 4px;
+}
+.task-detail > .task-action-area.has-form {
+  grid-column: 1 / -1;
 }
 
 /* ─── Task detail sections ─────────────────────────────────────────────────── */
@@ -119,7 +137,15 @@
 
 /* ── 600px — mobile: compact task detail density ────────────────────────── */
 @media (max-width: 600px) {
-  .task-detail { gap: 8px; }
+  .task-detail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .task-detail > .task-links,
+  .task-detail > .task-action-area:not(.has-form) {
+    grid-column: 1;
+    justify-self: stretch;
+  }
   .task-link-form { grid-template-columns: 1fr; }
   .task-link-form-actions { justify-content: flex-end; }
 }
