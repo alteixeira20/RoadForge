@@ -1,4 +1,18 @@
 /* ─── Task description display ─────────────────────────────────────────────── */
+.task-description-block {
+  min-width: 0;
+}
+.task-description-label {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  margin: 0 0 4px;
+  padding-right: 118px;
+  color: var(--ink-1);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+}
 .task-detail .desc {
   font-size: 14.5px;
   color: var(--ink-2);
