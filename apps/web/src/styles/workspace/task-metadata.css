@@ -71,6 +71,58 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.task-row-tag.is-favorite {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tag-color, var(--ink-4)), transparent 72%);
+}
+.task-tag-preferences {
+  gap: 6px;
+}
+.automatic-tag-toggle,
+.favorite-tag-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.automatic-tag-toggle {
+  padding: 2px 7px;
+  border: 1px dashed var(--border);
+  background: var(--bg-inset);
+  color: var(--ink-4);
+  font-size: 11px;
+  font-weight: 600;
+}
+.automatic-tag-toggle.selected {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--sage), transparent 55%);
+  background: color-mix(in srgb, var(--sage), transparent 88%);
+  color: var(--sage);
+}
+.favorite-tag-option {
+  padding: 1px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-4);
+}
+.favorite-tag-option.selected {
+  border-color: color-mix(in srgb, var(--ember), transparent 55%);
+  background: var(--lava-glow);
+  color: var(--ember);
+}
+.favorite-tag-option .tag-chip {
+  pointer-events: none;
+}
+.automatic-tag-toggle:focus-visible,
+.favorite-tag-option:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+.automatic-tag-toggle:hover,
+.favorite-tag-option:hover {
+  border-color: var(--border);
+}
 .estimate-chip {
   display: inline-flex;
   align-items: center;
