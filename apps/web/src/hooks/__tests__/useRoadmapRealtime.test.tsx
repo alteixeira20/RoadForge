@@ -132,7 +132,7 @@ function createDeferred<T>() {
 // For stale-callback isolation tests: captures each subscribeToRoadmapEvents
 // call's own handler set and its own unsubscribe mock, instead of the
 // single shared `handlers`/`unsubscribe` the rest of this suite uses (which
-// the subscribe mock overwrites on every call) — a stale callback must
+// the subscribe mock overwrites on every call) - a stale callback must
 // never be able to observe or mutate a replacement connection's separate
 // EventSource/handler set, so distinguishing them is the whole point.
 function captureSubscriptions() {
@@ -211,9 +211,9 @@ describe('useRoadmapRealtime', () => {
     )
 
     act(() => handlers.onOpen?.())
-    // Authoritative refetch gates the transition — not live yet.
+    // Authoritative refetch gates the transition - not live yet.
     expect(result.realtimeStatus).toBe('updating')
-    expect(mockedGetRoadmap).toHaveBeenCalledWith('rm_1', 'session-token')
+    expect(mockedGetRoadmap).toHaveBeenCalledWith('rm_1', 'session-token', { signal: expect.any(AbortSignal) })
 
     await flushSubscription()
     expect(result.realtimeStatus).toBe('live')
@@ -311,7 +311,7 @@ describe('useRoadmapRealtime', () => {
 
       expect(result.realtimeStatus).toBe('offline')
       expect(params.lifecycle.setBackendUnavailableRoadmapId).toHaveBeenCalledWith('rm_1')
-      // A transient REST failure must not stop at "offline" — it must
+      // A transient REST failure must not stop at "offline" - it must
       // still enter the ordinary bounded-backoff reconnect loop rather
       // than requiring something unrelated to clear
       // backendUnavailableRoadmapId before it will ever try again.
@@ -376,7 +376,7 @@ describe('useRoadmapRealtime', () => {
       // the 30s ceiling (attempt 5+), where it caps at a 15s floor. Checking
       // the instant *before* and *at* each boundary proves both that the
       // delay actually grows and caps as expected, and that exactly one
-      // retry timer is ever alive — if a second one were running
+      // retry timer is ever alive - if a second one were running
       // concurrently, some boundary would fire an extra (or an early) call.
       const floors = [500, 1000, 2000, 4000, 8000, 15000, 15000, 15000]
       for (const [index, floor] of floors.entries()) {
@@ -528,7 +528,7 @@ describe('useRoadmapRealtime', () => {
       await Promise.resolve()
     })
 
-    expect(mockedGetRoadmap).toHaveBeenCalledWith('rm_1', 'session-token')
+    expect(mockedGetRoadmap).toHaveBeenCalledWith('rm_1', 'session-token', { signal: expect.any(AbortSignal) })
     expect(params.roadmapState.setRoadmapNameState).toHaveBeenCalledWith('Server roadmap')
     expect(params.roadmapState.setPhasesState).toHaveBeenCalledWith([phase])
     expect(params.roadmapState.setTagRegistryState).toHaveBeenCalledWith([
@@ -556,6 +556,165 @@ describe('useRoadmapRealtime', () => {
     expect((releaseUpdater as (locks: LockMap) => LockMap)({
       'phase:phase-1': { participantId: 'pt_other', displayName: 'Sam' },
     })).toEqual({})
+  })
+
+  it('reconnects automatically after an update-triggered authoritative refresh fails, with no further event needed', async () => {
+    vi.useFakeTimers()
+    try {
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+      // Reach `live` first - the post-open resync clears the `connecting`
+      // guard, which a reconnect triggered below depends on.
+      act(() => handlers.onOpen?.())
+      await flushSubscription()
+      expect(result.realtimeStatus).toBe('live')
+
+      mockedGetRoadmap.mockReset().mockRejectedValueOnce(new ApiConnectionError())
+      act(() => handlers.onUpdated?.({
+        roadmap_id: 'rm_1',
+        updated_at: loadedRoadmap.updatedAt!,
+        participant_id: 'pt_other',
+      }))
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // A plain update-triggered refetch failure now recovers the same way
+      // a post-open resync failure does: close this attempt and schedule a
+      // reconnect, instead of merely reporting status and waiting for
+      // another server event or user interaction that may never come.
+      expect(result.realtimeStatus).toBe('offline')
+      expect(unsubscribe).toHaveBeenCalled()
+
+      mockedGetEventTicket.mockClear()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('aborts a superseded attempt\'s in-flight authoritative GET instead of leaving it to resolve later', async () => {
+    vi.useFakeTimers()
+    try {
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      let capturedSignal: AbortSignal | undefined
+      mockedGetRoadmap.mockReset().mockImplementationOnce((_id, _token, options) => {
+        capturedSignal = (options as { signal?: AbortSignal } | undefined)?.signal
+        return new Promise<Roadmap>((_resolve, reject) => {
+          capturedSignal?.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'))
+          })
+        })
+      })
+      act(() => handlers.onOpen?.())
+      expect(result.realtimeStatus).toBe('updating')
+      expect(capturedSignal?.aborted).toBe(false)
+
+      // Generation 1's EventSource errors; closing generation 1's attempt
+      // must abort its still-pending authoritative GET immediately rather
+      // than leaving it to hang until it eventually settles on its own.
+      act(() => handlers.onError?.(new Event('error')))
+      expect(capturedSignal?.aborted).toBe(true)
+      expect(result.realtimeStatus).toBe('reconnecting')
+
+      // Letting the now-aborted request's rejection actually propagate must
+      // not change status again, apply any data, or schedule a second
+      // retry - the attempt was already closed and is no longer current.
+      const statusAfterClose = result.realtimeStatus
+      mockedGetEventTicket.mockClear()
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(result.realtimeStatus).toBe(statusAfterClose)
+      expect(params.roadmapState.setPhasesState).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('recovers when the current attempt\'s authoritative GET exceeds its bounded timeout', async () => {
+    vi.useFakeTimers()
+    try {
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      mockedGetRoadmap.mockReset().mockImplementationOnce((_id, _token, options) => {
+        const signal = (options as { signal?: AbortSignal } | undefined)?.signal
+        return new Promise<Roadmap>((_resolve, reject) => {
+          signal?.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'))
+          })
+        })
+      })
+      act(() => handlers.onOpen?.())
+      expect(result.realtimeStatus).toBe('updating')
+
+      // A network black hole or hung server must not block recovery
+      // forever - the bounded 15s authoritative-refresh timeout aborts the
+      // request itself (distinct from a definitive 401/expired rejection)
+      // and this, like any other transient failure, closes the attempt and
+      // schedules a reconnect.
+      mockedGetEventTicket.mockClear()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000)
+      })
+      expect(result.realtimeStatus).toBe('reconnecting')
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      expect(mockedGetEventTicket).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('cancels the authoritative-refresh timeout and any pending retry on unmount', async () => {
+    vi.useFakeTimers()
+    try {
+      const { params } = createParams()
+      render(params)
+      await flushSubscription()
+
+      let capturedSignal: AbortSignal | undefined
+      mockedGetRoadmap.mockReset().mockImplementationOnce((_id, _token, options) => {
+        capturedSignal = (options as { signal?: AbortSignal } | undefined)?.signal
+        return new Promise<Roadmap>(() => {})
+      })
+      act(() => handlers.onOpen?.())
+      expect(result.realtimeStatus).toBe('updating')
+
+      act(() => root.unmount())
+      expect(capturedSignal?.aborted).toBe(true)
+
+      const setPhases = vi.mocked(params.roadmapState.setPhasesState)
+      setPhases.mockClear()
+      mockedGetEventTicket.mockClear()
+      // Advances well past both the 15s authoritative-refresh timeout and
+      // the reconnect backoff cap - neither may fire anything post-unmount.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+      expect(setPhases).not.toHaveBeenCalled()
+      expect(mockedGetEventTicket).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('clears revoked authority while retaining a dirty local cache', async () => {
@@ -671,7 +830,7 @@ describe('useRoadmapRealtime', () => {
     expect(params.roadmapState.setPhasesState).not.toHaveBeenCalled()
   })
 
-  it('does not drop a replacement connection\'s mandatory resync behind an older one still in flight', async () => {
+  it('does not let a stale generation\'s still in-flight resync block a replacement\'s own mandatory resync', async () => {
     vi.useFakeTimers()
     try {
       const { params } = createParams()
@@ -685,7 +844,11 @@ describe('useRoadmapRealtime', () => {
       act(() => handlers.onOpen?.())
       expect(result.realtimeStatus).toBe('updating')
 
-      // Generation 1's EventSource errors; a reconnect is scheduled.
+      // Generation 1's EventSource errors; a reconnect is scheduled. This
+      // closes generation 1's attempt (aborting its refresh controller) but
+      // the mocked getRoadmap ignores the abort signal, so gen1Deferred is
+      // still the pending resolution generation 1's own (now-stale) request
+      // is waiting on.
       act(() => handlers.onError?.(new Event('error')))
       expect(result.realtimeStatus).toBe('reconnecting')
 
@@ -695,29 +858,37 @@ describe('useRoadmapRealtime', () => {
         ...loadedRoadmap,
         roadmap: { ...loadedRoadmap.roadmap, name: 'Gen 2 roadmap' },
       }
-      mockedGetRoadmap.mockResolvedValueOnce(gen2Roadmap)
+      const gen2Deferred = createDeferred<Roadmap>()
+      mockedGetRoadmap.mockImplementationOnce(() => gen2Deferred.promise)
       await act(async () => {
         await vi.advanceTimersByTimeAsync(30_000)
       })
 
-      // Generation 2 requests its own mandatory resync. Generation 1's
-      // request is still in flight, so this is coalesced into a queued
-      // follow-up rather than firing its own overlapping GET.
+      // Generation 2 requests its own mandatory resync. Refresh state now
+      // lives per-attempt, so generation 1's still-in-flight (stale) request
+      // must never block or coalesce generation 2's own - it fires its own
+      // GET immediately instead of waiting for generation 1's to settle.
       act(() => handlers.onOpen?.())
-      expect(mockedGetRoadmap).toHaveBeenCalledTimes(1)
-      expect(result.realtimeStatus).toBe('reconnecting')
+      expect(mockedGetRoadmap).toHaveBeenCalledTimes(2)
+      expect(result.realtimeStatus).toBe('updating')
 
-      // Generation 1's stale resync resolves now — it must be ignored —
-      // and generation 2's own queued resync must still fire immediately
-      // afterward instead of being dropped just because generation 1 (the
-      // request that just finished) is no longer current.
+      // Generation 1's stale resync resolves now - it must be ignored,
+      // since generation 2 is current.
       await act(async () => {
         gen1Deferred.resolve(loadedRoadmap)
         await Promise.resolve()
         await Promise.resolve()
       })
+      expect(params.roadmapState.setRoadmapNameState).not.toHaveBeenCalled()
+      expect(result.realtimeStatus).toBe('updating')
 
-      expect(mockedGetRoadmap).toHaveBeenCalledTimes(2)
+      // Generation 2's own resync resolving is what actually applies state
+      // and reports live.
+      await act(async () => {
+        gen2Deferred.resolve(gen2Roadmap)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
       expect(params.roadmapState.setRoadmapNameState).toHaveBeenLastCalledWith('Gen 2 roadmap')
       expect(result.realtimeStatus).toBe('live')
     } finally {
@@ -763,7 +934,7 @@ describe('useRoadmapRealtime', () => {
       roadmap_id: 'rm_1', updated_at: 'a', participant_id: 'pt_other',
     }))
     // A second update event arrives while the first authoritative GET for
-    // this roadmap is still in flight — it must not fire its own
+    // this roadmap is still in flight - it must not fire its own
     // overlapping request.
     act(() => handlers.onUpdated?.({
       roadmap_id: 'rm_1', updated_at: 'b', participant_id: 'pt_other',
@@ -774,7 +945,7 @@ describe('useRoadmapRealtime', () => {
     await flushSubscription()
 
     // The coalesced follow-up request fires automatically once the first
-    // completes, and its result — the newer one — is what's applied.
+    // completes, and its result - the newer one - is what's applied.
     expect(mockedGetRoadmap).toHaveBeenCalledTimes(2)
     expect(params.roadmapState.setRoadmapNameState).toHaveBeenLastCalledWith('Second revision')
   })
@@ -818,7 +989,7 @@ describe('useRoadmapRealtime', () => {
     // Establishes two connection generations with separate handler sets and
     // separate unsubscribe mocks: generation 1 opens, then errors and is
     // replaced by generation 2 (which also opens and completes its
-    // mandatory resync, reaching `live`) — mirroring what an old EventSource
+    // mandatory resync, reaching `live`) - mirroring what an old EventSource
     // callback firing after a reconnect would see in production.
     async function setUpTwoLiveGenerations() {
       const calls = captureSubscriptions()
@@ -936,7 +1107,7 @@ describe('useRoadmapRealtime', () => {
       vi.mocked(params.roadmapState.setPhasesState).mockClear()
       const getRoadmapCallsBefore = mockedGetRoadmap.mock.calls.length
 
-      // Generation 1's onOpen fires late (a stale callback) — must not
+      // Generation 1's onOpen fires late (a stale callback) - must not
       // start a new resync or otherwise disturb the already-live replacement.
       act(() => calls[0].handlers.onOpen?.())
 
@@ -948,7 +1119,7 @@ describe('useRoadmapRealtime', () => {
       const { calls, params } = await setUpTwoLiveGenerations()
       act(() => root.unmount())
       // Cleanup itself closes the live (generation 2) EventSource exactly
-      // once — that's expected. What must not happen is anything further.
+      // once - that's expected. What must not happen is anything further.
       expect(calls[1].unsubscribe).toHaveBeenCalledTimes(1)
 
       vi.mocked(params.lockState.setLocks).mockClear()

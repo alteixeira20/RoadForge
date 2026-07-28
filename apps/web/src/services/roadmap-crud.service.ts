@@ -117,8 +117,16 @@ export async function createRoadmap(
 /**
  * Load a roadmap by ID.
  */
-export async function getRoadmap(id: string, sessionToken?: string): Promise<Roadmap> {
-  const data = await requestJson<ApiRoadmapResponse>(`/api/roadmaps/${id}`, {}, sessionToken)
+export async function getRoadmap(
+  id: string,
+  sessionToken?: string,
+  options?: { signal?: AbortSignal },
+): Promise<Roadmap> {
+  const data = await requestJson<ApiRoadmapResponse>(
+    `/api/roadmaps/${id}`,
+    { signal: options?.signal },
+    sessionToken,
+  )
   return toRoadmap(data)
 }
 
