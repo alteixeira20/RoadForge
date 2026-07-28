@@ -4,6 +4,7 @@ import { act, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PhaseList } from '@/components/roadmap/PhaseList'
+import { KeyboardReorderCoordinatorProvider } from '@/hooks/useKeyboardReorderCoordinator'
 import { PhaseNameEditor } from '@/components/roadmap/PhaseNameEditor'
 import { PhaseEmptyState } from '@/components/roadmap/Phase'
 import { WorkspaceToolbar } from '@/components/roadmap/WorkspaceToolbar'
@@ -119,7 +120,7 @@ describe('phase creation controls', () => {
   it('offers first-phase recovery to editors', () => {
     const onAddPhase = vi.fn()
     act(() => {
-      root.render(<PhaseList {...createPhaseListProps({ onAddPhase })} />)
+      root.render(<KeyboardReorderCoordinatorProvider><PhaseList {...createPhaseListProps({ onAddPhase })} /></KeyboardReorderCoordinatorProvider>)
     })
 
     const button = Array.from(container.querySelectorAll('button'))
@@ -133,7 +134,7 @@ describe('phase creation controls', () => {
   it('explains zero-phase restrictions to viewers without an enabled action', () => {
     act(() => {
       root.render(
-        <PhaseList {...createPhaseListProps({ readOnly: true })} />,
+        <KeyboardReorderCoordinatorProvider><PhaseList {...createPhaseListProps({ readOnly: true })} /></KeyboardReorderCoordinatorProvider>,
       )
     })
 
@@ -145,13 +146,13 @@ describe('phase creation controls', () => {
     const onClearFilters = vi.fn()
     act(() => {
       root.render(
-        <PhaseList
+        <KeyboardReorderCoordinatorProvider><PhaseList
           {...createPhaseListProps({
             hasRoadmapPhases: true,
             isFiltering: true,
             onClearFilters,
           })}
-        />,
+        /></KeyboardReorderCoordinatorProvider>,
       )
     })
 
@@ -186,14 +187,14 @@ describe('phase creation controls', () => {
     const onAddPhase = vi.fn()
     act(() => {
       root.render(
-        <PhaseList
+        <KeyboardReorderCoordinatorProvider><PhaseList
           {...createPhaseListProps({
             phases: [phase],
             hasRoadmapPhases: true,
             totalPhaseCount: 1,
             onAddPhase,
           })}
-        />,
+        /></KeyboardReorderCoordinatorProvider>,
       )
     })
 
@@ -205,14 +206,14 @@ describe('phase creation controls', () => {
 
     act(() => {
       root.render(
-        <PhaseList
+        <KeyboardReorderCoordinatorProvider><PhaseList
           {...createPhaseListProps({
             phases: [phase],
             hasRoadmapPhases: true,
             totalPhaseCount: 1,
             readOnly: true,
           })}
-        />,
+        /></KeyboardReorderCoordinatorProvider>,
       )
     })
     expect(container.textContent).not.toContain('Add another phase')

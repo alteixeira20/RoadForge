@@ -17,6 +17,7 @@ interface SortableTaskItemProps {
   dragDisabled: boolean
   isKeyboardActive: boolean
   onKeyboardKeyDown: (event: { code: string; preventDefault: () => void }) => void
+  onKeyboardBlur: () => void
   onToggle: (id: string) => void
   onCheck: (id: string) => void
   pendingTaskDoneIds: ReadonlySet<string>
@@ -38,6 +39,7 @@ interface SortableTaskItemProps {
 export function SortableTaskItem({
   isKeyboardActive,
   onKeyboardKeyDown,
+  onKeyboardBlur,
   ...props
 }: SortableTaskItemProps) {
   const { task, expanded, readOnly, dragDisabled } = props
@@ -94,6 +96,7 @@ export function SortableTaskItem({
           ...listeners,
           'aria-pressed': isDragging || isKeyboardActive,
           onKeyDown: onKeyboardKeyDown,
+          onBlur: onKeyboardBlur,
         }}
       />
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useRef, useState } from 'react'
+import { memo, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -19,8 +19,10 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
-import { useKeyboardReorder } from '@/hooks/useKeyboardReorder'
-import { KeyboardReorderAnnouncer } from './KeyboardReorderAnnouncer'
+import {
+  useCoordinatedKeyboardReorder,
+  useKeyboardReorderCoordinator,
+} from '@/hooks/useKeyboardReorderCoordinator'
 
 // Collapsing a phase changes its (and its siblings') rects with no drag in
 // progress yet. The default `WhileDragging` strategy only remeasures once a
@@ -107,19 +109,25 @@ function PhaseListComponent({
   onToast,
 }: PhaseListProps) {
   const [activePhaseId, setActivePhaseId] = useState<string | null>(null)
+  const coordinator = useKeyboardReorderCoordinator()
 
   const phaseDragDisabled = readOnly || isFiltering
   const phaseIds = phases.map((p) => p.id)
-  const phaseIdsRef = useRef(phaseIds)
-  phaseIdsRef.current = phaseIds
 
-  const keyboardReorder = useKeyboardReorder(() => phaseIdsRef.current, {
+  const keyboardReorder = useCoordinatedKeyboardReorder('roadmap-phases', phaseIds, {
     disabled: phaseDragDisabled,
     itemLabel: (id) => `phase ${phases.find((p) => p.id === id)?.name ?? ''}`,
-    onReorder: (fromIndex, toIndex) => {
-      onReorderPhases(arrayMove(phaseIdsRef.current, fromIndex, toIndex))
-    },
+    onCommit: onReorderPhases,
   })
+
+  // Preview-then-commit (RF-034): render in preview order while a keyboard
+  // reorder session targets this list, without mutating `phases` itself.
+  const displayPhaseIds = keyboardReorder.previewIds ?? phaseIds
+  const displayPhases = keyboardReorder.previewIds
+    ? displayPhaseIds
+        .map((id) => phases.find((p) => p.id === id))
+        .filter((p): p is PhaseType => p !== undefined)
+    : phases
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -129,6 +137,9 @@ function PhaseListComponent({
 
   const handleDragStart = (event: DragStartEvent) => {
     setActivePhaseId(event.active.id as string)
+    // A pointer drag starting anywhere must pre-empt an in-progress
+    // keyboard reorder session, even one targeting a different list.
+    coordinator.cancelActive()
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -193,9 +204,9 @@ function PhaseListComponent({
         onDragCancel={handleDragCancel}
         modifiers={[restrictToVerticalAxis]}
       >
-        <SortableContext items={phaseIds} strategy={verticalListSortingStrategy}>
+        <SortableContext items={displayPhaseIds} strategy={verticalListSortingStrategy}>
           <div className="phases">
-            {phases.map((p) => (
+            {displayPhases.map((p) => (
               <SortablePhaseItem
                 key={p.id}
                 phase={p}
@@ -203,6 +214,7 @@ function PhaseListComponent({
                 dragDisabled={phaseDragDisabled}
                 isKeyboardActive={keyboardReorder.activeId === p.id}
                 onKeyboardKeyDown={(event) => keyboardReorder.handleKeyDown(event, p.id)}
+                onKeyboardBlur={keyboardReorder.cancel}
                 isOpen={openPhases.includes(p.id)}
                 onToggle={onTogglePhase}
                 expandedTaskId={expandedTaskId}
@@ -256,7 +268,6 @@ function PhaseListComponent({
           ) : null}
         </DragOverlay>
       </DndContext>
-      <KeyboardReorderAnnouncer message={keyboardReorder.announcement} />
     </>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -21,8 +21,7 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Icon } from '@/components/ui/Icon'
 import { useRoadmap } from '@/context/RoadmapContext'
-import { useKeyboardReorder } from '@/hooks/useKeyboardReorder'
-import { KeyboardReorderAnnouncer } from './KeyboardReorderAnnouncer'
+import { useCoordinatedKeyboardReorder, useKeyboardReorderCoordinator } from '@/hooks/useKeyboardReorderCoordinator'
 import {
   buildTagId,
   normalizeTagColor,
@@ -172,19 +171,27 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
     ? tagRegistry.find((tag) => tag.id === activeTagId) ?? null
     : null
 
-  const tagIdsRef = useRef(tagIds)
-  tagIdsRef.current = tagIds
-  const tagRegistryRef = useRef(tagRegistry)
-  tagRegistryRef.current = tagRegistry
-
-  const keyboardReorder = useKeyboardReorder(() => tagIdsRef.current, {
+  const coordinator = useKeyboardReorderCoordinator()
+  const keyboardReorder = useCoordinatedKeyboardReorder('roadmap-tags', tagIds, {
     disabled: readOnly,
     itemLabel: (id) => `tag ${tagRegistry.find((tag) => tag.id === id)?.label ?? ''}`,
-    onReorder: (fromIndex, toIndex) => {
-      setTagRegistry(arrayMove(tagRegistryRef.current, fromIndex, toIndex))
+    onCommit: (orderedIds) => {
+      const reordered = orderedIds
+        .map((id) => tagRegistry.find((tag) => tag.id === id))
+        .filter((tag): tag is TagDefinition => tag !== undefined)
+      setTagRegistry(reordered)
       setSaved(false)
     },
   })
+
+  // Preview-then-commit (RF-034): render in preview order while a keyboard
+  // reorder session targets this list, without mutating `tagRegistry` itself.
+  const displayTagIds = keyboardReorder.previewIds ?? tagIds
+  const displayTagRegistry = keyboardReorder.previewIds
+    ? displayTagIds
+        .map((id) => tagRegistry.find((tag) => tag.id === id))
+        .filter((tag): tag is TagDefinition => tag !== undefined)
+    : tagRegistry
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -192,6 +199,9 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveTagId(event.active.id as string)
+    // A pointer drag starting anywhere must pre-empt an in-progress
+    // keyboard reorder session, even one targeting a different list.
+    coordinator.cancelActive()
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -266,9 +276,9 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
           onDragCancel={handleDragCancel}
           modifiers={[restrictToVerticalAxis]}
         >
-          <SortableContext items={tagIds} strategy={verticalListSortingStrategy}>
+          <SortableContext items={displayTagIds} strategy={verticalListSortingStrategy}>
             <ul className="tag-registry-list">
-              {tagRegistry.map((tag) => (
+              {displayTagRegistry.map((tag) => (
                 <SortableTagRow
                   key={tag.id}
                   tag={tag}
@@ -277,6 +287,7 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
                   readOnly={readOnly}
                   isKeyboardActive={keyboardReorder.activeId === tag.id}
                   onKeyboardKeyDown={(event) => keyboardReorder.handleKeyDown(event, tag.id)}
+                  onKeyboardBlur={keyboardReorder.cancel}
                   isEditing={editingId === tag.id}
                   form={form}
                   onFormChange={setForm}
@@ -303,7 +314,6 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
           </DragOverlay>
         </DndContext>
       )}
-      <KeyboardReorderAnnouncer message={keyboardReorder.announcement} />
 
       <ConfirmDialog
         open={pendingDeleteTag !== null}

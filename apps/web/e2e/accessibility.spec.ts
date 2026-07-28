@@ -27,7 +27,7 @@ async function dragHandleOnto(page: Page, handle: Locator, target: Locator) {
  * Space (drop) is processed right after Arrow, and its own keydown listener
  * is registered via `setTimeout(0)` (not synchronously with the Space that
  * constructs it), so a following keydown dispatched before that timer fires
- * is missed entirely — confirmed via direct instrumentation to affect not
+ * is missed entirely - confirmed via direct instrumentation to affect not
  * just Arrow but the drop-ending Space itself under load. Both are
  * reproducible regardless of collision algorithm, measuring strategy, or
  * forcing a synchronous React flush.
@@ -37,21 +37,35 @@ async function dragHandleOnto(page: Page, handle: Locator, target: Locator) {
  * `onKeyDown` on the drag handle (reliable, non-deferred delegation) drives
  * the whole cycle, and the committed order comes from the stable pre-drag
  * id order plus plain arithmetic. dnd-kit's KeyboardSensor is no longer
- * registered — only PointerSensor remains, for pointer/touch drags.
+ * registered - only PointerSensor remains, for pointer/touch drags.
  */
-// Every list on the page (phases, each phase's tasks, each task's
-// subtasks, tags) renders its own live-announcer, and a list's last
-// announcement stays put (doesn't clear) after its drag completes — so at
-// any point there can be several stale, unrelated announcer texts on the
-// page at once. Diffing the full set before/after each key press isolates
-// exactly the one that just changed, regardless of how many stale ones
-// exist elsewhere, without needing to know which list is "current".
+// `[aria-live="assertive"]` alone isn't unique to our own announcer: each
+// dnd-kit `DndContext` mounts its own `#DndLiveRegion-N` (one per phase,
+// task list, subtask list, and the tags list) for its default pointer/touch
+// drag announcements, and Next.js mounts `#__next-route-announcer__` for
+// route changes - neither has anything to do with useKeyboardReorder.
+// Scoping out both isolates exactly our own single global live region (see
+// GlobalKeyboardReorderAnnouncer).
+function keyboardReorderLiveRegion(page: Page): Locator {
+  return page.locator(
+    '[aria-live="assertive"]:not([id^="DndLiveRegion"]):not(#__next-route-announcer__)',
+  )
+}
+
+// A single workspace-wide live region (mounted once, fed by
+// useKeyboardReorderCoordinator - see GlobalKeyboardReorderAnnouncer) backs
+// every list's announcements; its text doesn't clear after a drag
+// completes, so the "current" text can be stale relative to a step that
+// hasn't announced anything new yet. Diffing before/after each key press
+// isolates exactly the announcement that step caused. `allTextContents()`
+// (rather than `textContent()` on a single locator) keeps this robust even
+// if that invariant regresses back to one-per-list.
 async function announcementTexts(page: Page): Promise<string[]> {
-  return page.locator('[aria-live="assertive"]').allTextContents()
+  return keyboardReorderLiveRegion(page).allTextContents()
 }
 
 // Waits (retrying against the real DOM, not a fixed delay) for a live-region
-// text that is both new relative to `before` and matches `pattern` — targets
+// text that is both new relative to `before` and matches `pattern` - targets
 // exactly the announcement this step caused, immune to an unrelated stale
 // announcer elsewhere settling into the DOM around the same moment.
 async function waitForAnnouncementMatching(
@@ -96,7 +110,7 @@ async function keyboardMove(
   await expect(handle).not.toHaveAttribute('aria-pressed', 'true')
   await waitForAnnouncementMatching(page, beforeDrop, /^Dropped/)
 
-  // Meaningful focus after drop: the same handle (same DOM node — React
+  // Meaningful focus after drop: the same handle (same DOM node - React
   // preserves it across reordering since the list item's `key` is stable)
   // stays focused, so keyboard/screen-reader users aren't dropped
   // somewhere unexpected.
@@ -206,7 +220,7 @@ test('reorders phases, tasks, and subtasks with Space, Arrow, Space', async ({ p
   await page.getByRole('textbox', { name: 'Subtask title' }).press('Enter')
 
   // New subtasks are inserted immediately after their parent task, so
-  // "First subtask" (added before "Second subtask") ends up *below* it —
+  // "First subtask" (added before "Second subtask") ends up *below* it -
   // confirm that starting position before moving, so ArrowUp below is a
   // genuine move (index 1 -> 0), not a boundary no-op that would
   // coincidentally already match a same-order final assertion.
@@ -248,6 +262,102 @@ test('reorders phases, tasks, and subtasks with Space, Arrow, Space', async ({ p
   )
   await expect(page.locator('.phase-head .name')).toHaveText(['Delivery', 'Planning'])
   await expect(page.locator('.phase-head .num')).toHaveText(['01', '02'])
+})
+
+test('keyboard reorder previews without persisting until Drop, and Escape discards it', async ({ page }) => {
+  await createRoadmap(page, {
+    title: 'Preview then commit roadmap',
+    startingPoint: 'blank',
+  })
+
+  await page.getByRole('button', { name: 'Add another phase', exact: true }).click()
+  const phaseName = page.getByRole('textbox', { name: 'Phase name for New phase' })
+  await phaseName.fill('Delivery')
+  await phaseName.press('Enter')
+  await expect(page.locator('.phase-head .name')).toHaveText(['Planning', 'Delivery'])
+
+  const handle = page.getByRole('button', { name: 'Reorder phase Planning' })
+  await handle.focus()
+  const beforePickup = await announcementTexts(page)
+  await handle.press('Space')
+  await waitForAnnouncementMatching(page, beforePickup, /^Picked up/)
+
+  const beforeMove = await announcementTexts(page)
+  await handle.press('ArrowDown')
+  await waitForAnnouncementMatching(page, beforeMove, /moved to position/)
+  // Arrow updates the visible preview order immediately...
+  await expect(page.locator('.phase-head .name')).toHaveText(['Delivery', 'Planning'])
+
+  // ...but reloading before Drop must show the committed order untouched -
+  // zero durable writes happened during the preview.
+  await page.reload()
+  await expect(page.locator('.phase-head .name')).toHaveText(['Planning', 'Delivery'])
+
+  // Escape during an active preview must also leave zero durable writes.
+  const handleAgain = page.getByRole('button', { name: 'Reorder phase Planning' })
+  await handleAgain.focus()
+  await handleAgain.press('Space')
+  await handleAgain.press('ArrowDown')
+  await expect(page.locator('.phase-head .name')).toHaveText(['Delivery', 'Planning'])
+
+  const beforeCancel = await announcementTexts(page)
+  await handleAgain.press('Escape')
+  await waitForAnnouncementMatching(page, beforeCancel, /cancelled/)
+  await expect(handleAgain).not.toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.phase-head .name')).toHaveText(['Planning', 'Delivery'])
+
+  await page.reload()
+  await expect(page.locator('.phase-head .name')).toHaveText(['Planning', 'Delivery'])
+})
+
+test('enforces one workspace-wide keyboard reorder session, cancelled by a pointer drag elsewhere', async ({ page }) => {
+  await createRoadmap(page, {
+    title: 'Single session roadmap',
+    startingPoint: 'blank',
+  })
+
+  await page.getByRole('button', { name: 'Add first task' }).click()
+  await page.getByRole('textbox', { name: 'New task title' }).fill('First task')
+  await page.getByRole('textbox', { name: 'New task title' }).press('Enter')
+  // A newly created task starts expanded, and its drag handle is disabled
+  // while expanded - collapse it first, same as the drag-only tests above.
+  const firstTask = page.locator('.task').filter({ hasText: 'First task' }).first()
+  await firstTask.getByRole('button', { name: 'Collapse task' }).click()
+  await expect(firstTask.getByRole('button', { name: 'Expand task' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Add another phase', exact: true }).click()
+  const phaseName = page.getByRole('textbox', { name: 'Phase name for New phase' })
+  await phaseName.fill('Delivery')
+  await phaseName.press('Enter')
+
+  // Exactly one live region for the whole workspace, not one per list.
+  await expect(keyboardReorderLiveRegion(page)).toHaveCount(1)
+
+  const phaseHandle = page.getByRole('button', { name: 'Reorder phase Planning' })
+  await phaseHandle.focus()
+  await phaseHandle.press('Space')
+  await expect(phaseHandle).toHaveAttribute('aria-pressed', 'true')
+
+  // Starting a *different* list's session must cancel the phase session -
+  // only one handle is ever pressed at a time workspace-wide.
+  const taskHandle = firstTask.locator('.drag-handle[role="button"]')
+  await taskHandle.focus()
+  const beforeTakeover = await announcementTexts(page)
+  await taskHandle.press('Space')
+  await waitForAnnouncementMatching(page, beforeTakeover, /^Picked up/)
+  await expect(phaseHandle).not.toHaveAttribute('aria-pressed', 'true')
+  await expect(taskHandle).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('[aria-pressed="true"]')).toHaveCount(1)
+
+  // A pointer drag starting elsewhere must cancel the still-active
+  // keyboard session too.
+  await dragHandleOnto(
+    page,
+    page.getByRole('button', { name: 'Reorder phase Delivery' }),
+    page.getByRole('button', { name: 'Reorder phase Planning' }),
+  )
+  await expect(taskHandle).not.toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('[aria-pressed="true"]')).toHaveCount(0)
 })
 
 test('reorders tasks and subtasks by drag only and persists local order', async ({ page }) => {

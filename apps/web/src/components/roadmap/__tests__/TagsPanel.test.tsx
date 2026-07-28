@@ -6,6 +6,7 @@ import { resolve } from 'node:path'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TagsPanel } from '@/components/roadmap/TagsPanel'
+import { KeyboardReorderCoordinatorProvider } from '@/hooks/useKeyboardReorderCoordinator'
 import type { Phase, TagDefinition } from '@/types/roadmap'
 
 const roadmapContext = vi.hoisted(() => ({
@@ -64,7 +65,7 @@ describe('TagsPanel', () => {
   })
 
   it('shows canonical previews and exact usage wording', () => {
-    act(() => root.render(<TagsPanel />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
 
     expect(container.querySelectorAll('.tag-chip')).toHaveLength(3)
     expect(
@@ -75,14 +76,14 @@ describe('TagsPanel', () => {
   })
 
   it('keeps viewer tag state read-only', () => {
-    act(() => root.render(<TagsPanel readOnly />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel readOnly /></KeyboardReorderCoordinatorProvider>))
 
     expect(container.textContent).toContain('Tag management is read-only')
     expect(container.querySelector('button')).toBeNull()
   })
 
   it('creates tags through the existing registry setter path', () => {
-    act(() => root.render(<TagsPanel />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
     const newTag = Array.from(container.querySelectorAll('button')).find(
       (button) => button.textContent?.includes('New tag'),
     )!
@@ -116,7 +117,7 @@ describe('TagsPanel', () => {
   })
 
   it('edits and recolors through the existing registry setter path', () => {
-    act(() => root.render(<TagsPanel />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
     act(() => {
       container
         .querySelector<HTMLButtonElement>(
@@ -180,7 +181,7 @@ describe('TagsPanel', () => {
   })
 
   it('discards label and color edits when Cancel is clicked', () => {
-    act(() => root.render(<TagsPanel />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
     act(() => {
       container
         .querySelector<HTMLButtonElement>('button[aria-label="Edit tag Unused"]')!
@@ -235,7 +236,7 @@ describe('TagsPanel', () => {
   })
 
   it('deletes an unused tag through the existing registry setter path', () => {
-    act(() => root.render(<TagsPanel />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
     act(() => {
       container
         .querySelector<HTMLButtonElement>(
@@ -257,7 +258,7 @@ describe('TagsPanel', () => {
   })
 
   it('replaces move-earlier/later controls with a drag handle per editable tag', () => {
-    act(() => root.render(<TagsPanel />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
 
     expect(container.querySelectorAll('button[aria-label*="Move tag" i]')).toHaveLength(0)
 
@@ -270,13 +271,13 @@ describe('TagsPanel', () => {
   })
 
   it('renders no interactive drag handle for viewers', () => {
-    act(() => root.render(<TagsPanel readOnly />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel readOnly /></KeyboardReorderCoordinatorProvider>))
 
     expect(container.querySelectorAll('.tag-drag-handle')).toHaveLength(0)
   })
 
   it('updates the live tag chip preview as the label and color change', () => {
-    act(() => root.render(<TagsPanel />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
     act(() => {
       container
         .querySelector<HTMLButtonElement>('button[aria-label="Edit tag Unused"]')!
@@ -318,7 +319,7 @@ describe('TagsPanel', () => {
   })
 
   it('cancels editing on Escape and saves on Enter', () => {
-    act(() => root.render(<TagsPanel />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
     act(() => {
       container
         .querySelector<HTMLButtonElement>('button[aria-label="Edit tag Unused"]')!

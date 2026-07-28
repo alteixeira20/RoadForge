@@ -12,6 +12,7 @@ interface SortableSubtaskItemProps {
   dragDisabled: boolean
   isKeyboardActive: boolean
   onKeyboardKeyDown: (event: { code: string; preventDefault: () => void }) => void
+  onKeyboardBlur: () => void
   onCheck: (id: string) => void
   onDelete: (id: string) => void
   displayNumber?: string
@@ -22,6 +23,7 @@ export function SortableSubtaskItem({
   dragDisabled,
   isKeyboardActive,
   onKeyboardKeyDown,
+  onKeyboardBlur,
   ...rowProps
 }: SortableSubtaskItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -42,6 +44,7 @@ export function SortableSubtaskItem({
           ...listeners,
           'aria-pressed': isDragging || isKeyboardActive,
           onKeyDown: onKeyboardKeyDown,
+          onBlur: onKeyboardBlur,
         }}
       />
     </div>

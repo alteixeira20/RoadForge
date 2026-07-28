@@ -13,6 +13,8 @@ import {
   WorkspaceToolbar,
 } from './WorkspaceToolbar'
 import { PhaseList } from './PhaseList'
+import { GlobalKeyboardReorderAnnouncer } from './KeyboardReorderAnnouncer'
+import { KeyboardReorderCoordinatorProvider } from '@/hooks/useKeyboardReorderCoordinator'
 import { WorkspaceBanners, WorkspaceUpgradeNotice, WorkspaceWelcomeBanner } from './WorkspaceBanners'
 import { WorkspaceModals } from './WorkspaceModals'
 import { SyncConflictReviewPanel } from './SyncConflictReviewPanel'
@@ -467,8 +469,10 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   }
 
   return (
+    <KeyboardReorderCoordinatorProvider>
     <div className="app-shell">
       <EmberBackground subdued />
+      <GlobalKeyboardReorderAnnouncer />
       <AppHeader
         roadmapName={roadmapName}
         syncStatus={syncStatus}
@@ -680,5 +684,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
         />
       )}
     </div>
+    </KeyboardReorderCoordinatorProvider>
   )
 }

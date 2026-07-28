@@ -4,6 +4,7 @@ import { act, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PhaseList } from '@/components/roadmap/PhaseList'
+import { KeyboardReorderCoordinatorProvider } from '@/hooks/useKeyboardReorderCoordinator'
 import { SubtaskRow } from '@/components/roadmap/SubtaskRow'
 import { TaskRowHeader } from '@/components/roadmap/task-row/TaskRowHeader'
 import type { Phase, Task } from '@/types/roadmap'
@@ -129,7 +130,7 @@ describe('drag-only roadmap ordering controls', () => {
   })
 
   it('renders no phase move-up or move-down control, in the header or its menu', () => {
-    act(() => root.render(<PhaseList {...createProps()} />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><PhaseList {...createProps()} /></KeyboardReorderCoordinatorProvider>))
     expect(controlLabels().some((label) => MOVE_CONTROL_PATTERN.test(label))).toBe(false)
 
     for (const phase of phases) {
@@ -145,7 +146,7 @@ describe('drag-only roadmap ordering controls', () => {
   })
 
   it('keeps a drag handle on every phase for editable roles', () => {
-    act(() => root.render(<PhaseList {...createProps()} />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><PhaseList {...createProps()} /></KeyboardReorderCoordinatorProvider>))
 
     const handles = Array.from(
       container.querySelectorAll('.phase-drag-handle'),
@@ -154,7 +155,7 @@ describe('drag-only roadmap ordering controls', () => {
   })
 
   it('gives viewers no drag handle and no phase settings menu', () => {
-    act(() => root.render(<PhaseList {...createProps({ readOnly: true })} />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><PhaseList {...createProps({ readOnly: true })} /></KeyboardReorderCoordinatorProvider>))
 
     expect(container.querySelectorAll('.phase-drag-handle')).toHaveLength(0)
     expect(
@@ -165,7 +166,7 @@ describe('drag-only roadmap ordering controls', () => {
 
   it('still expands and collapses a phase through the disclosure control', () => {
     const onTogglePhase = vi.fn()
-    act(() => root.render(<PhaseList {...createProps({ onTogglePhase })} />))
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><PhaseList {...createProps({ onTogglePhase })} /></KeyboardReorderCoordinatorProvider>))
 
     const expand = container.querySelector<HTMLButtonElement>(
       'button[aria-label="Expand phase Planning"]',
@@ -176,7 +177,7 @@ describe('drag-only roadmap ordering controls', () => {
     expect(onTogglePhase).toHaveBeenCalledWith('rf-p-1')
 
     act(() => {
-      root.render(<PhaseList {...createProps({ onTogglePhase, openPhases: ['rf-p-1'] })} />)
+      root.render(<KeyboardReorderCoordinatorProvider><PhaseList {...createProps({ onTogglePhase, openPhases: ['rf-p-1'] })} /></KeyboardReorderCoordinatorProvider>)
     })
     const collapse = container.querySelector<HTMLButtonElement>(
       'button[aria-label="Collapse phase Planning"]',

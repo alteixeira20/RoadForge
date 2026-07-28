@@ -4,6 +4,7 @@ import { act, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PhaseList } from '@/components/roadmap/PhaseList'
+import { KeyboardReorderCoordinatorProvider } from '@/hooks/useKeyboardReorderCoordinator'
 import type { Phase } from '@/types/roadmap'
 
 const { sortablePhaseRender } = vi.hoisted(() => ({
@@ -86,12 +87,12 @@ describe('PhaseList render isolation', () => {
     const props = createProps()
 
     act(() => {
-      root.render(<PhaseList {...props} />)
+      root.render(<KeyboardReorderCoordinatorProvider><PhaseList {...props} /></KeyboardReorderCoordinatorProvider>)
     })
     expect(sortablePhaseRender).toHaveBeenCalledTimes(1)
 
     act(() => {
-      root.render(<PhaseList {...props} />)
+      root.render(<KeyboardReorderCoordinatorProvider><PhaseList {...props} /></KeyboardReorderCoordinatorProvider>)
     })
     expect(sortablePhaseRender).toHaveBeenCalledTimes(1)
   })

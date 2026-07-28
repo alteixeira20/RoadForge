@@ -21,7 +21,10 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
-import { useKeyboardReorder } from '@/hooks/useKeyboardReorder'
+import {
+  useCoordinatedKeyboardReorder,
+  useKeyboardReorderCoordinator,
+} from '@/hooks/useKeyboardReorderCoordinator'
 
 import React from 'react'
 
@@ -34,7 +37,6 @@ import React from 'react'
 const taskMeasuring = { droppable: { strategy: MeasuringStrategy.Always } }
 import { Icon } from '@/components/ui/Icon'
 import { PhaseHeader } from './PhaseHeader'
-import { KeyboardReorderAnnouncer } from './KeyboardReorderAnnouncer'
 import { SortableTaskItem } from './SortableTaskItem'
 import { TaskRow } from './TaskRow'
 import { DraftTaskRow } from './DraftTaskRow'
@@ -302,16 +304,21 @@ export function Phase({
   const [activeId, setActiveId] = useState<string | null>(null)
   const activeTaskDisplayNumber = activeId ? displayNumbers.get(activeId) : undefined
 
-  const taskIdsRef = useRef(taskIds)
-  taskIdsRef.current = taskIds
-
-  const keyboardReorder = useKeyboardReorder(() => taskIdsRef.current, {
+  const coordinator = useKeyboardReorderCoordinator()
+  const keyboardReorder = useCoordinatedKeyboardReorder(`phase-tasks-${phase.id}`, taskIds, {
     disabled: readOnly || isAnyTaskInPhaseExpanded,
     itemLabel: (id) => `task ${topLevelTasks.find((t) => t.id === id)?.title ?? ''}`,
-    onReorder: (fromIndex, toIndex) => {
-      onReorderTasks(phase.id, arrayMove(taskIdsRef.current, fromIndex, toIndex))
-    },
+    onCommit: (orderedIds) => onReorderTasks(phase.id, orderedIds),
   })
+
+  // Preview-then-commit (RF-034): render in preview order while a keyboard
+  // reorder session targets this list, without mutating `phase.tasks` itself.
+  const displayTaskIds = keyboardReorder.previewIds ?? taskIds
+  const displayTasks = keyboardReorder.previewIds
+    ? displayTaskIds
+        .map((id) => topLevelTasks.find((t) => t.id === id))
+        .filter((t): t is Task => t !== undefined)
+    : topLevelTasks
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -323,6 +330,9 @@ export function Phase({
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
+    // A pointer drag starting anywhere must pre-empt an in-progress
+    // keyboard reorder session, even one targeting a different list.
+    coordinator.cancelActive()
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -403,9 +413,9 @@ export function Phase({
               onDragCancel={handleDragCancel}
               modifiers={[restrictToVerticalAxis, restrictToParentElement]}
             >
-              <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+              <SortableContext items={displayTaskIds} strategy={verticalListSortingStrategy}>
                 <div className="sortable-list">
-                  {topLevelTasks.map((t) => (
+                  {displayTasks.map((t) => (
                     <SortableTaskItem
                       key={t.id}
                       task={t}
@@ -416,6 +426,7 @@ export function Phase({
                       dragDisabled={isAnyTaskInPhaseExpanded}
                       isKeyboardActive={keyboardReorder.activeId === t.id}
                       onKeyboardKeyDown={(event) => keyboardReorder.handleKeyDown(event, t.id)}
+                      onKeyboardBlur={keyboardReorder.cancel}
                       onToggle={handleToggleTask}
                       onCheck={onCheckTask}
                       pendingTaskDoneIds={pendingTaskDoneIds}
@@ -479,7 +490,6 @@ export function Phase({
               </DragOverlay>
             </DndContext>
           )}
-          <KeyboardReorderAnnouncer message={keyboardReorder.announcement} />
 
           {!readOnly && topLevelTasks.length > 0 && !hasDraft && (
             <div className="phase-foot">

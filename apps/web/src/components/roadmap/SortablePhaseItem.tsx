@@ -12,6 +12,7 @@ interface SortablePhaseItemProps {
   dragDisabled: boolean
   isKeyboardActive: boolean
   onKeyboardKeyDown: (event: { code: string; preventDefault: () => void }) => void
+  onKeyboardBlur: () => void
   isOpen: boolean
   onToggle: (id: string) => void
   expandedTaskId: string | null
@@ -44,6 +45,7 @@ export function SortablePhaseItem({
   dragDisabled,
   isKeyboardActive,
   onKeyboardKeyDown,
+  onKeyboardBlur,
   ...phaseProps
 }: SortablePhaseItemProps) {
   const {
@@ -81,6 +83,7 @@ export function SortablePhaseItem({
           ...listeners,
           'aria-pressed': isDragging || isKeyboardActive,
           onKeyDown: onKeyboardKeyDown,
+          onBlur: onKeyboardBlur,
         }}
       />
     </div>

@@ -19,6 +19,7 @@ interface SortableTagRowProps {
   readOnly: boolean
   isKeyboardActive: boolean
   onKeyboardKeyDown: (event: { code: string; preventDefault: () => void }) => void
+  onKeyboardBlur: () => void
   isEditing: boolean
   form: TagFormState
   onFormChange: (form: TagFormState) => void
@@ -41,6 +42,7 @@ export function SortableTagRow({
   readOnly,
   isKeyboardActive,
   onKeyboardKeyDown,
+  onKeyboardBlur,
   isEditing,
   form,
   onFormChange,
@@ -75,6 +77,7 @@ export function SortableTagRow({
             ...listeners,
             'aria-pressed': isDragging || isKeyboardActive,
             onKeyDown: onKeyboardKeyDown,
+            onBlur: onKeyboardBlur,
           } : {})}
         >
           <Icon name="grip" size={13} />

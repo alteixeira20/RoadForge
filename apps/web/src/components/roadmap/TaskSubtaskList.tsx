@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -16,8 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
-import { useKeyboardReorder } from '@/hooks/useKeyboardReorder'
-import { KeyboardReorderAnnouncer } from './KeyboardReorderAnnouncer'
+import { useCoordinatedKeyboardReorder, useKeyboardReorderCoordinator } from '@/hooks/useKeyboardReorderCoordinator'
 import { SubtaskRow } from './SubtaskRow'
 import { SortableSubtaskItem } from './SortableSubtaskItem'
 import type { Task } from '@/types/roadmap'
@@ -46,16 +45,23 @@ export function TaskSubtaskList({
   const [activeSubtaskId, setActiveSubtaskId] = useState<string | null>(null)
   const activeSubtask = activeSubtaskId ? subtasks.find((t) => t.id === activeSubtaskId) ?? null : null
   const subtaskIds = subtasks.map((t) => t.id)
-  const subtaskIdsRef = useRef(subtaskIds)
-  subtaskIdsRef.current = subtaskIds
+  const listId = `task-subtasks-${parentId}`
 
-  const keyboardReorder = useKeyboardReorder(() => subtaskIdsRef.current, {
+  const coordinator = useKeyboardReorderCoordinator()
+  const keyboardReorder = useCoordinatedKeyboardReorder(listId, subtaskIds, {
     disabled: readOnly,
     itemLabel: (id) => `subtask ${subtasks.find((t) => t.id === id)?.title ?? ''}`,
-    onReorder: (fromIndex, toIndex) => {
-      onReorder(parentId, arrayMove(subtaskIdsRef.current, fromIndex, toIndex))
-    },
+    onCommit: (orderedIds) => onReorder(parentId, orderedIds),
   })
+
+  // Preview-then-commit (RF-034): render in preview order while a keyboard
+  // reorder session targets this list, without mutating `subtasks` itself.
+  const displaySubtaskIds = keyboardReorder.previewIds ?? subtaskIds
+  const displaySubtasks = keyboardReorder.previewIds
+    ? displaySubtaskIds
+        .map((id) => subtasks.find((t) => t.id === id))
+        .filter((t): t is Task => t !== undefined)
+    : subtasks
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -63,10 +69,15 @@ export function TaskSubtaskList({
 
   return (
     <DndContext
-      id={`task-subtasks-${parentId}`}
+      id={listId}
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragStart={(e) => setActiveSubtaskId(e.active.id as string)}
+      onDragStart={(e) => {
+        setActiveSubtaskId(e.active.id as string)
+        // A pointer drag starting anywhere must pre-empt an in-progress
+        // keyboard reorder session, even one targeting a different list.
+        coordinator.cancelActive()
+      }}
       onDragEnd={(e) => {
         const { active, over } = e
         setActiveSubtaskId(null)
@@ -79,8 +90,8 @@ export function TaskSubtaskList({
       onDragCancel={() => setActiveSubtaskId(null)}
       modifiers={[restrictToVerticalAxis]}
     >
-      <SortableContext items={subtaskIds} strategy={verticalListSortingStrategy}>
-        {subtasks.map((st, idx) => (
+      <SortableContext items={displaySubtaskIds} strategy={verticalListSortingStrategy}>
+        {displaySubtasks.map((st, idx) => (
           <SortableSubtaskItem
             key={st.id}
             task={st}
@@ -89,6 +100,7 @@ export function TaskSubtaskList({
             dragDisabled={readOnly}
             isKeyboardActive={keyboardReorder.activeId === st.id}
             onKeyboardKeyDown={(event) => keyboardReorder.handleKeyDown(event, st.id)}
+            onKeyboardBlur={keyboardReorder.cancel}
             onCheck={onCheck}
             onDelete={onDelete}
             displayNumber={parentDisplayNumber ? `${parentDisplayNumber}.${idx + 1}` : undefined}
@@ -114,7 +126,6 @@ export function TaskSubtaskList({
           </div>
         ) : null}
       </DragOverlay>
-      <KeyboardReorderAnnouncer message={keyboardReorder.announcement} />
     </DndContext>
   )
 }
