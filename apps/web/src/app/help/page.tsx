@@ -7,7 +7,7 @@ import './help.css'
 
 export const metadata: Metadata = {
   title: 'Help · RoadForge',
-  description: 'Task-based help for local roadmaps, collaboration, recovery, and portable backups.',
+  description: 'A practical guide to local roadmaps, sharing, backups, and recovery.',
 }
 
 export default function HelpPage() {
@@ -23,11 +23,11 @@ export default function HelpPage() {
 
       <main className="help-main">
         <div className="help-hero">
-          <p className="help-eyebrow">RoadForge user guide</p>
-          <h1>Plan locally. Collaborate only when you choose.</h1>
+          <p className="help-eyebrow">RoadForge guide</p>
+          <h1>Plan locally. Share only when you choose.</h1>
           <p>
-            Start with a roadmap stored in this browser, keep portable backups,
-            and save to a server only when you need sharing and realtime work.
+            Start in this browser, export portable backups, and enable server
+            sync only when you need collaboration.
           </p>
         </div>
 
@@ -46,31 +46,30 @@ export default function HelpPage() {
           <section id="start">
             <h2>Start a roadmap</h2>
             <p>
-              Choose <strong>Start blank</strong> for one fresh Planning phase,
-              or <strong>Use RoadForge template</strong> for an independent copy
-              of the bundled Clean Beta roadmap. Your edits never change the
-              source template.
+              Choose <strong>Blank roadmap</strong> for one empty Planning phase,
+              or <strong>Starter example</strong> for three phases and nine tasks
+              that demonstrate progress, focus, and dependencies. Everything is
+              editable.
             </p>
             <p>
-              Local roadmaps are stored in browser local storage. They work
-              offline, but clearing site data or changing browsers can remove
-              them, so export JSON backups regularly.
+              Local roadmaps are stored in browser local storage and work
+              offline. Clearing site data or changing browsers can remove them,
+              so keep a JSON backup of anything important.
             </p>
           </section>
 
           <section id="plan">
             <h2>Create phases and tasks</h2>
             <p>
-              Use <strong>Add phase</strong> in the roadmap toolbar, then name
-              the phase. Inside an empty phase, choose <strong>Add first task</strong>.
-              Phase menus contain rename, color, and delete actions.
+              Add phases from the roadmap toolbar. Add tasks inside each phase,
+              then use task details for descriptions, estimates, assignees, tags,
+              dependencies, and links.
             </p>
             <p>
-              RoadForge highlights exactly one recommended <strong>Next</strong>
-              task when the roadmap defines one. Dependencies can leave other
-              tasks blocked; completing prerequisites makes the sequence easier
-              to follow. Search and filters change what is visible, not the saved
-              roadmap.
+              RoadForge can highlight one recommended <strong>Next</strong> task.
+              Dependencies mark work as blocked until its prerequisites are done.
+              Search and filters only change the current view; they never remove
+              roadmap data.
             </p>
           </section>
 
@@ -78,15 +77,14 @@ export default function HelpPage() {
             <h2>Import and export</h2>
             <p>
               Open <strong>Import / Export</strong> from the workspace header.
-              JSON is the portable, re-importable backup format. Markdown is a
-              readable snapshot and cannot be imported.
+              JSON is the portable backup format and can be imported again.
+              Markdown is a readable snapshot for people and agents.
             </p>
             <p>
-              Import validates and repairs supported historical formats before
-              showing a preview. You can create a new local roadmap, add safe
-              unmatched items, or replace the current roadmap after a checkpoint.
-              Session tokens, invite credentials, passwords, and edit locks are
-              never part of exports.
+              RoadForge validates an import and shows a preview before changing
+              anything. You can create a separate local roadmap, add safe new
+              items, or replace the current roadmap. Session tokens, invite
+              credentials, passwords, and edit locks are never exported.
             </p>
           </section>
 
@@ -94,54 +92,54 @@ export default function HelpPage() {
             <h2>Save and share</h2>
             <p>
               <strong>Save</strong> creates a server-backed copy and enables
-              optional collaboration. Owner and editor links are credentials:
-              share them privately. Viewer access is read-only.
+              sharing. Owner and editor links are credentials, so send them
+              privately. Viewer links are read-only.
             </p>
             <ul>
-              <li><strong>Owner:</strong> edit, restore versions, manage links, participants, and claim overrides.</li>
-              <li><strong>Editor:</strong> edit roadmap content and use ordinary claims, without owner-only controls.</li>
-              <li><strong>Viewer:</strong> read roadmap, activity, and visible lock state without mutation controls.</li>
+              <li><strong>Owner:</strong> edit, restore versions, manage links and participants, and override claims.</li>
+              <li><strong>Editor:</strong> edit roadmap content and claim tasks.</li>
+              <li><strong>Viewer:</strong> read the roadmap and activity without changing anything.</li>
             </ul>
             <p>
-              Opening an editor or phase color control acquires a short edit
-              lock. A task claim says who is working on it; owners can explicitly
-              override another participant after confirmation.
+              An edit lock prevents two people from changing the same control at
+              once. A task claim communicates who is working on a task; it does
+              not assign permanent ownership.
             </p>
           </section>
 
           <section id="recover">
             <h2>Resolve save and conflict states</h2>
             <p>
-              <strong>Saving</strong> means a request is in flight,
+              <strong>Saving</strong> means a request is in progress,
               <strong>Synced</strong> means the server accepted it, and
-              <strong>Offline</strong> means RoadForge could not reach the API.
-              Your local draft remains available.
+              <strong>Offline</strong> means RoadForge could not reach the server.
+              Your browser copy remains available.
             </p>
             <p>
-              When another participant saved first, review the conflict before
-              choosing to keep editing locally, retry your local version against
-              the latest server timestamp, or confirm a server reload. A reload
-              is the only option that discards the local draft.
+              A conflict means somebody saved a newer version first. Review the
+              differences, then choose whether to keep your local version or load
+              the server version. Loading the server version discards the local
+              draft only after confirmation.
             </p>
           </section>
 
           <section id="history">
             <h2>Use activity and versions</h2>
             <p>
-              Activity records meaningful attributed actions for a saved
-              roadmap. Versions are restore points available to owners and
-              editors for inspection; only owners can restore. Restoring creates
-              another version and notifies collaborators.
+              Activity shows meaningful actions on a shared roadmap. Versions are
+              explicit restore points. Owners and editors can inspect them; only
+              owners can restore one. A restore creates a new restore point rather
+              than deleting later history.
             </p>
           </section>
 
           <section id="troubleshoot">
             <h2>Troubleshoot safely</h2>
             <ul>
-              <li>If a local roadmap is missing, use the roadmap switcher and check whether browser site data was cleared.</li>
-              <li>If sync is offline, keep the local draft, verify the API is reachable, then use Retry.</li>
-              <li>If a session expired or was revoked, keep the local cache and rejoin through a current invite link.</li>
-              <li>If an import fails, keep the original file unchanged and review the validation message before repairing it.</li>
+              <li>If a local roadmap is missing, open the roadmap switcher and check whether browser site data was cleared.</li>
+              <li>If sync is offline, keep working locally and retry after the server is reachable.</li>
+              <li>If a session expired or was revoked, keep the local copy and rejoin through a current invite link.</li>
+              <li>If an import fails, leave the original file unchanged and use the validation message to repair a copy.</li>
             </ul>
             <p>
               Need help?{' '}
@@ -154,11 +152,10 @@ export default function HelpPage() {
           <section id="limits">
             <h2>Known limitations</h2>
             <ul>
-              <li>Local browser storage is not a substitute for an exported backup.</li>
-              <li>Markdown export is presentation-only; PDF export is not available.</li>
-              <li>Conflict recovery does not provide automatic three-way merging.</li>
-              <li>Memory-mode realtime supports one API worker; multiple workers require Redis.</li>
-              <li>RoadForge has no accounts, OAuth, external REST API v1, webhooks, billing, or telemetry.</li>
+              <li>Browser storage is not a substitute for an exported backup.</li>
+              <li>Markdown is presentation-only and PDF export is not available.</li>
+              <li>Conflicts require a deliberate choice; RoadForge does not silently merge competing edits.</li>
+              <li>Accountless sharing identifies access credentials and display names, not verified personal identities.</li>
             </ul>
           </section>
         </div>
