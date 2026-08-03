@@ -25,7 +25,7 @@ describe('CreateWizard starting point', () => {
     mockedUseRoadmap.mockReturnValue({
       displayName: 'Alex',
       setDisplayName: vi.fn(),
-      roadmapName: 'My roadmap',
+      roadmapName: 'Hidden sample title',
       createLocalRoadmap,
     })
     container = document.createElement('div')
@@ -48,13 +48,37 @@ describe('CreateWizard starting point', () => {
     act(() => button.click())
   }
 
+  const fillRoadmapTitle = (title = 'My roadmap') => {
+    const input = container.querySelector<HTMLInputElement>('#rn')
+    if (!input) throw new Error('Missing roadmap title input')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )?.set
+    if (!valueSetter) throw new Error('Missing HTMLInputElement value setter')
+    act(() => {
+      valueSetter.call(input, title)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  }
+
   const advanceToStartingPoint = () => {
+    fillRoadmapTitle()
     clickButton('Continue')
   }
 
   const finishWizard = () => {
     clickButton('Create roadmap')
   }
+
+  it('does not inherit the hidden sample or currently open roadmap title', () => {
+    const input = container.querySelector<HTMLInputElement>('#rn')
+    const continueButton = [...container.querySelectorAll('button')]
+      .find((candidate) => candidate.textContent?.includes('Continue'))
+
+    expect(input?.value).toBe('')
+    expect(continueButton?.hasAttribute('disabled')).toBe(true)
+  })
 
   it('creates an independent compact starter with its tag registry', () => {
     advanceToStartingPoint()
@@ -74,7 +98,8 @@ describe('CreateWizard starting point', () => {
     advanceToStartingPoint()
     finishWizard()
 
-    const [, phases, registry] = createLocalRoadmap.mock.calls[0]
+    const [name, phases, registry] = createLocalRoadmap.mock.calls[0]
+    expect(name).toBe('My roadmap')
     expect(phases).toHaveLength(1)
     expect(phases[0]).toMatchObject({
       num: '01',
