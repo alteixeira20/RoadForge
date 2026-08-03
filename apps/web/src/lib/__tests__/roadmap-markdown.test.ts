@@ -135,7 +135,7 @@ describe('formatRoadmapMarkdown', () => {
   it('uses substantially fewer structural lines than the old per-field format', () => {
     const output = formatRoadmapMarkdown({ roadmapName: 'Public Alpha', phases, tagRegistry })
 
-    expect(output.split('\n')).toHaveLength(18)
+    expect(output.split('\n')).toHaveLength(16)
     expect(output).not.toContain('**Estimate:**')
     expect(output).not.toContain('**Dependencies:**')
   })
