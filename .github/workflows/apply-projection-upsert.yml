@@ -32,8 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           cat .github/projection-upsert.a* | base64 --decode > /tmp/projection-upsert.patch
-          git apply --check /tmp/projection-upsert.patch
-          git apply /tmp/projection-upsert.patch
+          git apply --3way /tmp/projection-upsert.patch
           rm -f .github/projection-upsert.a* .github/workflows/apply-projection-upsert.yml
           git config user.name "RoadForge CI"
           git config user.email "roadforge-ci@users.noreply.github.com"
