@@ -63,11 +63,11 @@ export function AppHeader({
               <button
                 className="btn sm header-save-btn"
                 onClick={onReloadServerVersion}
-                title="Resolve save conflict"
-                aria-label="Resolve save conflict"
+                title="Load the server version"
+                aria-label="Load the server version"
               >
                 <Icon name="cloud" size={14} />
-                <span className="header-save-label">Resolve</span>
+                <span className="header-save-label">Reload</span>
               </button>
             ) : syncStatus === 'offline' || syncStatus === 'error' ? (
               <button
