@@ -207,6 +207,11 @@ export function findTask(roadmap, taskId) {
   return null
 }
 
+function normalizedIdSet(values) {
+  if (!Array.isArray(values) || !values.length) return null
+  return new Set(values.filter((value) => typeof value === 'string' && value.length))
+}
+
 function taskFlags(task) {
   const flags = []
   if (task.next) flags.push('next')
@@ -218,30 +223,74 @@ function taskFlags(task) {
   return flags.length ? ` | ${flags.join(' | ')}` : ''
 }
 
-export function compactRoadmap(roadmap) {
-  const phases = roadmap.phases || []
-  const tasks = phases.flatMap((phase) => phase.tasks || [])
-  const done = tasks.filter((task) => task.done).length
-  const lines = [
-    `# ${roadmap.name}`,
-    `roadmap:${roadmap.id} updated:${roadmap.updated_at} progress:${done}/${tasks.length}`,
-  ]
-  for (const phase of phases) {
-    const phaseTasks = phase.tasks || []
-    const phaseDone = phaseTasks.filter((task) => task.done).length
-    lines.push(`## ${phase.num} ${phase.name} [${phaseDone}/${phaseTasks.length}]`)
-    for (const task of phaseTasks) {
-      lines.push(`- [${task.done ? 'x' : ' '}] ${task.id} | ${task.title}${taskFlags(task)}`)
-      if (task.desc) lines.push(`  ${task.desc.replace(/\s+/g, ' ').trim()}`)
+function compactDescription(value, limit = 240) {
+  const normalized = value.replace(/\s+/g, ' ').trim()
+  if (normalized.length <= limit) return normalized
+  return `${normalized.slice(0, Math.max(1, limit - 1)).trimEnd()}…`
+}
+
+export function selectRoadmapTasks(roadmap, options = {}) {
+  const phaseIds = normalizedIdSet(options.phaseIds)
+  const taskIds = normalizedIdSet(options.taskIds)
+  const maxTasks = Number.isInteger(options.maxTasks) ? options.maxTasks : 200
+  const matches = []
+
+  for (const phase of roadmap.phases || []) {
+    if (phaseIds && !phaseIds.has(phase.id)) continue
+    for (const task of phase.tasks || []) {
+      if (taskIds && !taskIds.has(task.id)) continue
+      if (options.openOnly && task.done) continue
+      if (options.nextOnly && (!task.next || task.done)) continue
+      matches.push({ phase, task })
     }
   }
-  return lines.join('\n')
+
+  return {
+    matches: matches.slice(0, maxTasks),
+    matchingTaskCount: matches.length,
+    returnedTaskCount: Math.min(matches.length, maxTasks),
+    omittedTaskCount: Math.max(0, matches.length - maxTasks),
+    truncated: matches.length > maxTasks,
+  }
+}
+
+export function compactRoadmap(roadmap, options = {}) {
+  const phases = roadmap.phases || []
+  const allTasks = phases.flatMap((phase) => phase.tasks || [])
+  const done = allTasks.filter((task) => task.done).length
+  const selection = selectRoadmapTasks(roadmap, options)
+  const lines = [
+    `# ${roadmap.name}`,
+    `roadmap:${roadmap.id} updated:${roadmap.updated_at} progress:${done}/${allTasks.length} matching:${selection.matchingTaskCount} returned:${selection.returnedTaskCount} omitted:${selection.omittedTaskCount}`,
+  ]
+
+  let activePhaseId = null
+  for (const { phase, task } of selection.matches) {
+    if (phase.id !== activePhaseId) {
+      activePhaseId = phase.id
+      const phaseTasks = phase.tasks || []
+      const phaseDone = phaseTasks.filter((item) => item.done).length
+      lines.push(`## ${phase.num} ${phase.name} [${phaseDone}/${phaseTasks.length}] id:${phase.id}`)
+    }
+    lines.push(`- [${task.done ? 'x' : ' '}] ${task.id} | ${task.title}${taskFlags(task)}`)
+    if (options.includeDescriptions && task.desc) {
+      lines.push(`  ${compactDescription(task.desc)}`)
+    }
+  }
+  if (selection.truncated) {
+    lines.push(`… ${selection.omittedTaskCount} matching task(s) omitted; narrow filters or increase maxTasks.`)
+  }
+
+  return { text: lines.join('\n'), selection }
 }
 
 export function roadmapSummary(roadmap) {
   const phases = roadmap.phases || []
   const tasks = phases.flatMap((phase) => phase.tasks || [])
   const done = tasks.filter((task) => task.done).length
+  const nextTasks = tasks
+    .filter((task) => task.next && !task.done)
+    .map((task) => ({ id: task.id, title: task.title }))
   return {
     roadmapId: roadmap.id,
     name: roadmap.name,
@@ -249,10 +298,91 @@ export function roadmapSummary(roadmap) {
     phaseCount: phases.length,
     taskCount: tasks.length,
     completedTaskCount: done,
+    openTaskCount: tasks.length - done,
     completionPercent: tasks.length ? Math.round((done / tasks.length) * 100) : 0,
-    nextTasks: tasks
-      .filter((task) => task.next && !task.done)
-      .map((task) => ({ id: task.id, title: task.title })),
+    phases: phases.map((phase) => {
+      const phaseTasks = phase.tasks || []
+      const completedTaskCount = phaseTasks.filter((task) => task.done).length
+      return {
+        id: phase.id,
+        num: phase.num,
+        name: phase.name,
+        status: phase.status,
+        taskCount: phaseTasks.length,
+        completedTaskCount,
+        openTaskCount: phaseTasks.length - completedTaskCount,
+        progress: phase.progress,
+      }
+    }),
+    nextTaskCount: nextTasks.length,
+    nextTasks: nextTasks.slice(0, 50),
+    nextTasksTruncated: nextTasks.length > 50,
+  }
+}
+
+export function taskDetails(roadmap, taskId) {
+  const match = findTask(roadmap, taskId)
+  if (!match) return null
+  return {
+    roadmapId: roadmap.id,
+    updatedAt: roadmap.updated_at,
+    phase: {
+      id: match.phase.id,
+      num: match.phase.num,
+      name: match.phase.name,
+      status: match.phase.status,
+      progress: match.phase.progress,
+    },
+    task: match.task,
+  }
+}
+
+function searchableTaskText(phase, task) {
+  return [
+    task.id,
+    task.title,
+    task.desc,
+    phase.id,
+    phase.name,
+    ...(task.tags || []),
+    ...(task.assignees || []),
+  ]
+    .filter((value) => typeof value === 'string')
+    .join('\n')
+    .toLocaleLowerCase('en')
+}
+
+export function searchRoadmapTasks(roadmap, query, options = {}) {
+  const needle = query.trim().toLocaleLowerCase('en')
+  const maxResults = Number.isInteger(options.maxResults) ? options.maxResults : 20
+  const matches = []
+  for (const phase of roadmap.phases || []) {
+    for (const task of phase.tasks || []) {
+      if (!options.includeCompleted && task.done) continue
+      if (!searchableTaskText(phase, task).includes(needle)) continue
+      matches.push({
+        phase: { id: phase.id, num: phase.num, name: phase.name },
+        task: {
+          id: task.id,
+          title: task.title,
+          done: task.done,
+          next: Boolean(task.next),
+          tags: task.tags || [],
+          assignees: task.assignees || [],
+          claimedBy: task.claimedBy || null,
+        },
+      })
+    }
+  }
+  return {
+    roadmapId: roadmap.id,
+    updatedAt: roadmap.updated_at,
+    query,
+    matchingTaskCount: matches.length,
+    returnedTaskCount: Math.min(matches.length, maxResults),
+    omittedTaskCount: Math.max(0, matches.length - maxResults),
+    truncated: matches.length > maxResults,
+    results: matches.slice(0, maxResults),
   }
 }
 
