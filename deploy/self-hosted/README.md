@@ -1,127 +1,116 @@
 # Self-hosting RoadForge
 
-Deployment target:
+This deployment targets `roadforge.anvilary.tools` with Docker Compose,
+PostgreSQL, optional Redis-backed realtime, a central nginx proxy, and a
+Cloudflare Tunnel.
 
-- Public domain: `roadforge.anvilary.tools`
-- Repo path: `/opt/stacks/roadforge/src`
-- Persistent data: `/opt/data/apps/roadforge`
-- Nginx config path: `/opt/data/proxy/nginx/conf.d`
-- Public ingress: Cloudflare Tunnel -> central nginx -> Docker `edge` network
+Expected paths:
 
-RoadForge is public by default. Do not put it behind Cloudflare Access unless the
-product decision changes.
+- repository: `/opt/stacks/roadforge/src`
+- private environment file: `/opt/stacks/roadforge/.env`
+- persistent PostgreSQL data: `/opt/data/apps/roadforge/postgres`
+- central nginx configuration: `/opt/data/proxy/nginx/conf.d`
 
-## First Deploy
+RoadForge is public by default. Invite links provide access; Cloudflare Access is
+not part of the standard product flow.
 
-Clone the repo:
+## First deployment
 
 ```bash
 mkdir -p /opt/stacks/roadforge
 git clone <repo-url> /opt/stacks/roadforge/src
 cd /opt/stacks/roadforge/src
-```
 
-Create the deployment env file outside the repo:
-
-```bash
 cp deploy/self-hosted/.env.example /opt/stacks/roadforge/.env
 chmod 600 /opt/stacks/roadforge/.env
 ```
 
-Edit `/opt/stacks/roadforge/.env` and replace every placeholder. In particular:
+Edit `/opt/stacks/roadforge/.env`:
 
-- generate long random values for `POSTGRES_PASSWORD` and `ROADFORGE_SECRET_KEY`;
+- generate a long random `POSTGRES_PASSWORD`;
+- set the public web/API origins;
 - set `ROADFORGE_TRUSTED_PROXY_IPS` to the central nginx container IP or the
   narrowest Docker `edge` network CIDR that can reach the API;
 - never trust `0.0.0.0/0` or `::/0`.
 
-The trusted-proxy value is required so rate limits use the client address
-forwarded by nginx instead of grouping all visitors under the proxy address.
-Do not commit the environment file.
-
-Install nginx config:
+Install the nginx vhost and add the supplied Cloudflare ingress rule before the
+final catch-all rule:
 
 ```bash
-cp deploy/self-hosted/nginx/roadforge.conf /opt/data/proxy/nginx/conf.d/roadforge.conf
+cp deploy/self-hosted/nginx/roadforge.conf \
+  /opt/data/proxy/nginx/conf.d/roadforge.conf
 ```
 
-The vhost uses a dedicated `roadforge_safe` access format. It logs method, path,
-status, and user agent, but omits query strings and `Referer`; both can contain
-invite or short-lived SSE credentials. The format declaration must remain in an
-nginx `http` context (the normal `conf.d` include location). Validate the central
-proxy before reloading it.
-
-Add `deploy/self-hosted/cloudflared-ingress-snippet.yml` to the Cloudflare
-Tunnel ingress config before the final `http_status:404` rule.
-
-Deploy:
+Validate the proxy configuration, then deploy:
 
 ```bash
 make deploy
 ```
 
+The API container runs as a non-root user. The nginx template accepts roadmap
+payloads up to 5 MiB, matches the browser/API limit, and omits query strings and
+`Referer` from RoadForge access logs because join tokens and SSE tickets can
+appear in URLs.
+
 ## Updates
 
-From the repository root on the server:
+Use the supported update path from the repository root:
 
 ```bash
 cd /opt/stacks/roadforge/src
 make update
 ```
 
-`make update` runs `git pull --ff-only`, rebuilds images, updates containers,
-runs Alembic migrations, and prints container status plus log hints.
+`make update` performs a fast-forward-only pull, rebuilds and recreates the
+containers, applies `alembic upgrade head`, and prints status and log commands.
+Do not interrupt it between container startup and migration completion.
 
-**Schema-sensitive releases:** If the release you are pulling includes new files
-under `apps/api/alembic/versions/`, the migration step is critical. The sequence
-is already enforced by `make update` (rebuild → up → migrate), but do not
-interrupt it between the `up` and `migrate` steps.
+Never maintain a release-specific migration instruction in this guide. Every
+update must migrate to the current Alembic head.
 
-Current required migration note:
+## Realtime mode
 
-- `0005_add_public_viewer_tokens.py` adds storage for active public viewer/demo
-  tokens. Run `make migrate` before validating Share modal behavior, otherwise
-  active viewer links may not remain copyable after reopening the modal.
+The safe default is one API worker with memory-backed realtime:
 
-**API worker mode:** The RoadForge API is single-worker by default through
-`ROADFORGE_API_WORKERS=1`. Multi-worker mode is configurable only when
-`ROADFORGE_REALTIME_BACKEND=redis`; the Dockerfile startup command refuses to
-start with `ROADFORGE_API_WORKERS` greater than `1` unless the Redis realtime
-backend is active. Application startup enforces the same combination. Keep
-`memory` plus one worker and one API instance for ordinary local/deploy
-maintenance.
+```env
+ROADFORGE_REALTIME_BACKEND=memory
+ROADFORGE_API_WORKERS=1
+```
 
-**Redis backend status:** The compose stack provisions private Redis at
-`redis://roadforge-redis:6379/0`. Set `ROADFORGE_REALTIME_BACKEND=redis` and a
-worker count greater than `1` only for RF-886 staging validation or an approved
-multi-worker deployment. Redis mode requires a successful startup ping and does
-not fall back to memory. Do not use multiple workers or API instances with the
-memory backend.
+Multiple API workers require Redis:
+
+```env
+REDIS_URL=redis://roadforge-redis:6379/0
+ROADFORGE_REALTIME_BACKEND=redis
+ROADFORGE_API_WORKERS=2
+```
+
+Application and container startup reject multiple workers with the memory
+backend. Redis mode must connect successfully and does not silently fall back to
+memory.
 
 ## Validation
 
 ```bash
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge ps
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge exec roadforge-postgres pg_isready -U roadforge -d roadforge
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge exec roadforge-redis redis-cli ping
+make ps
+make doctor
 curl -fsSI https://roadforge.anvilary.tools
 curl -fsS https://roadforge.anvilary.tools/api/health
 ```
 
-`/api/health` is a non-sensitive API liveness check. It returns only application
-status and version; it does not prove PostgreSQL, Redis, cross-worker realtime, or
-the browser application is healthy. The explicit checks above and the browser
-checks below remain required. In memory mode, Redis may be healthy but unused.
+`/api/health` proves only API liveness. It does not prove PostgreSQL, Redis,
+migrations, realtime propagation, or the frontend are healthy.
 
-Browser checks:
+Complete this browser check after every deployment:
 
-1. Open `https://roadforge.anvilary.tools`.
-2. Create a roadmap and save it.
-3. Generate an editor invite link.
-4. Confirm the link starts with `https://roadforge.anvilary.tools/join?token=`.
-5. Join from a private window and confirm realtime sync works.
+1. Open the public RoadForge URL.
+2. Create a small roadmap and save it.
+3. Generate an editor invite.
+4. Join from a private browser window.
+5. Edit one task in each window and confirm sync and conflict handling.
+6. Export JSON and re-import it as a separate local roadmap.
 
-## Logs And Operations
+## Operations
 
 ```bash
 make ps
@@ -131,50 +120,40 @@ make restart
 make doctor
 ```
 
-All stack services use `restart: unless-stopped`, so Docker restarts them after a
-daemon/host restart unless an operator explicitly stopped them. `make restart`
-restarts PostgreSQL, API, and Web without rebuilding or migrating. `make update`
-pulls, rebuilds, recreates services, applies migrations, and is the release update
-path. Neither command replaces a pre-update backup and restore drill; use
-[the backup procedure](../../docs/self-hosting.md#backups-and-updates).
+Use `make update` for releases. `make restart` only restarts existing containers;
+it does not pull code, rebuild images, or run migrations.
 
-### First failure checks
-
-Run these in order when RoadForge is down:
+First failure checks:
 
 ```bash
 cd /opt/stacks/roadforge/src
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge ps
+make ps
 curl -fsS https://roadforge.anvilary.tools/api/health
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge logs --since 30m --tail=200 roadforge-web roadforge-api
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge logs --since 30m --tail=200 roadforge-postgres roadforge-redis
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge exec roadforge-postgres pg_isready -U roadforge -d roadforge
-docker compose --env-file /opt/stacks/roadforge/.env -f deploy/self-hosted/compose.yaml --project-name roadforge exec roadforge-redis redis-cli ping
+
+docker compose \
+  --env-file /opt/stacks/roadforge/.env \
+  -f deploy/self-hosted/compose.yaml \
+  --project-name roadforge \
+  logs --since 30m --tail=200 roadforge-web roadforge-api roadforge-postgres roadforge-redis
 ```
 
-- A failed public request with healthy containers points first to Cloudflare
-  Tunnel, the central nginx config/network, DNS, or TLS.
-- A failed API health check with a healthy Web container points first to API
-  startup/configuration and PostgreSQL logs.
-- In Redis realtime mode, a failed Redis ping or Redis errors in API logs make
-  tickets, locks, Pub/Sub, and shared rate limits unavailable; the API does not
-  fall back to memory. Complete the
-  [RF-886 checks](../../docs/manual-qa.md#30b--rf-886-multi-worker-realtime-regression-checklist)
-  after recovery.
-- In memory mode, confirm exactly one worker and one API instance. Health alone
-  cannot detect an accidentally duplicated one-worker API deployment.
+Interpretation:
 
-### Credential-safe log review
+- public request fails but containers are healthy: inspect DNS, Cloudflare
+  Tunnel, TLS, central nginx, and Docker network routing;
+- API health fails: inspect API startup, environment validation, migrations, and
+  PostgreSQL;
+- Redis mode fails: inspect Redis connectivity before testing collaboration;
+- memory mode behaves inconsistently: confirm exactly one worker and one API
+  container exist.
 
-The application emits method/path/status access records and never intentionally
-logs request headers, bodies, query strings, or full request URLs. Browser error
-messages do not echo invite/session values. This is a local code/config audit,
-not evidence about existing production logs or upstream Cloudflare logging.
+## Credential-safe log review
 
-Review stack logs for credential-shaped values without printing matches:
+The application does not intentionally log request headers, bodies, query
+strings, or complete request URLs. To count credential-shaped values without
+printing them:
 
 ```bash
-cd /opt/stacks/roadforge/src
 docker compose \
   --env-file /opt/stacks/roadforge/.env \
   -f deploy/self-hosted/compose.yaml \
@@ -184,87 +163,39 @@ docker compose \
   || true
 ```
 
-Expected after this release: `0`. To inspect any historical matches, redact them
-before display:
+Investigate any non-zero result. Restrict log access and rotate or revoke affected
+credentials. Review central nginx, Cloudflare, and other upstream logs
+separately; those systems are outside this repository.
+
+## Rollback
+
+Before a schema-sensitive update, create and verify a PostgreSQL backup. To run a
+known-good application revision:
 
 ```bash
-docker compose \
-  --env-file /opt/stacks/roadforge/.env \
-  -f deploy/self-hosted/compose.yaml \
-  --project-name roadforge \
-  logs --since 168h roadforge-api roadforge-web 2>&1 \
-  | sed -E \
-    -e 's/((token|ticket)=)[^ &"]+/\1[REDACTED]/g' \
-    -e 's/(Bearer[[:space:]%]+)[A-Za-z0-9._~-]+/\1[REDACTED]/g' \
-    -e 's/(sess_|ow_|ed_|vi_)[A-Za-z0-9_-]+/\1[REDACTED]/g'
-```
-
-Find the central nginx container that has the installed RoadForge vhost, then
-count credential-shaped values in current access and error logs:
-
-```bash
-PROXY_CONTAINER=$(
-  docker ps --format '{{.Names}}' |
-  while read -r container; do
-    docker exec "$container" test -f /etc/nginx/conf.d/roadforge.conf 2>/dev/null &&
-      { echo "$container"; break; }
-  done
-)
-test -n "$PROXY_CONTAINER"
-docker exec "$PROXY_CONTAINER" nginx -T 2>&1 \
-  | grep -F 'access_log /var/log/nginx/roadforge.access.log roadforge_safe;'
-docker exec "$PROXY_CONTAINER" sh -c \
-  'cat /var/log/nginx/roadforge.access.log /var/log/nginx/error.log 2>/dev/null' \
-  | grep -Eoc '([?&](token|ticket)=|Bearer[[:space:]%]+|(sess_|ow_|ed_|vi_)[A-Za-z0-9_-]{8,})' \
-  || true
-```
-
-The count must be investigated, not assumed to be caused by current code. Nginx
-error messages and retained logs from the old format may still contain full
-request targets. If a real credential is found, restrict log access, rotate the
-affected invite or revoke the affected participant session, and apply the normal
-retention/deletion policy. Also review Cloudflare Tunnel/provider logs separately;
-their configuration is outside this repository.
-
-## Rollback Notes
-
-If an update fails after `git pull`, inspect recent commits and redeploy a known
-good revision:
-
-```bash
-git log --oneline -5
+git log --oneline -10
 git checkout <known-good-sha>
 make deploy
 ```
 
-Database state is persistent under `/opt/data/apps/roadforge/postgres`.
-Application rollback does not roll back database migrations. Take a Postgres
-backup before risky schema changes.
+Application rollback does not reverse database migrations. Restore the database
+only through a tested backup procedure.
 
-## Persistent Data
+## Persistent data
 
-Postgres data is mounted at:
+PostgreSQL data is stored under:
 
 ```text
 /opt/data/apps/roadforge/postgres
 ```
 
-No user uploads or filesystem assets are stored by the app.
+RoadForge stores no user-uploaded filesystem assets. Redis contains transient
+realtime coordination state when enabled.
 
-Redis backs realtime coordination only when `ROADFORGE_REALTIME_BACKEND=redis`.
-With `ROADFORGE_REALTIME_BACKEND=memory`, runtime collaboration state remains
-single-worker and process-local.
-
-## API Docs
-
-FastAPI docs and OpenAPI are disabled by the production application. The nginx
-configuration also returns 404 for `/api/docs`, `/api/redoc`, and
-`/api/openapi.json`.
-
-## Do Not Commit
+## Do not commit
 
 - `/opt/stacks/roadforge/.env`
-- real database passwords
+- database passwords
 - Cloudflare Tunnel credentials
 - generated backups
 - files under `/opt/data/apps/roadforge`
