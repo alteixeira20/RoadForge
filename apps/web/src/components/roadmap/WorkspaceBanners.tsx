@@ -122,6 +122,12 @@ export function WorkspaceWelcomeBanner({
   onDismiss,
   onCreateOwn,
 }: WorkspaceWelcomeBannerProps) {
+  const dismissFromKeyboard = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== ' ' && event.key !== 'Enter') return
+    event.preventDefault()
+    onDismiss()
+  }
+
   return (
     <div className="upgrade-notice" role="status" aria-label="Welcome to RoadForge Onboarding">
       <div className="upgrade-notice-icon">
@@ -144,6 +150,7 @@ export function WorkspaceWelcomeBanner({
           className="iconbtn"
           aria-label="Dismiss welcome onboarding banner"
           onClick={onDismiss}
+          onKeyDown={dismissFromKeyboard}
         >
           <Icon name="x" size={15} />
         </button>
