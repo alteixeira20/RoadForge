@@ -45,6 +45,23 @@ jobs:
       - name: Run validation gate
         run: make check
 
+  mcp:
+    name: MCP Package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Validate stdio package
+        working-directory: packages/roadforge-mcp
+        run: npm run check
+
   api-lint:
     name: API Lint (ruff)
     runs-on: ubuntu-latest
