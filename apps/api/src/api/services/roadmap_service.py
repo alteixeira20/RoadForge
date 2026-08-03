@@ -169,6 +169,7 @@ async def create_roadmap(
         created_at=roadmap.created_at,
         updated_at=roadmap.updated_at,
         share_links=share_links_out,
+        owner_participant_id=participant.id,
         owner_session_token=owner_session_token,
     )
 
