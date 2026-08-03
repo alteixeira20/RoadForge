@@ -1,5 +1,6 @@
 name: Apply projection upsert
 
+# One-shot workflow: self-deletes after applying the staged patch.
 on:
   push:
     branches:
