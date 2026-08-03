@@ -74,7 +74,13 @@ def validate_roadmap_domain(
     phases: list[PhaseDTO],
     tag_registry: list[TagDefinitionDTO] | None = None,
 ) -> None:
-    """Validate cross-object invariants that individual DTOs cannot enforce."""
+    """Validate cross-object invariants that individual DTOs cannot enforce.
+
+    Phase progress is intentionally excluded: it is a derived presentation value
+    recalculated from task completion by RoadForge clients and mutation helpers.
+    Rejecting a snapshot because that cache is stale would make otherwise valid
+    imported and legacy roadmaps impossible to repair.
+    """
     errors: list[str] = []
 
     duplicate_phase_ids = _duplicates(phase.id for phase in phases)
@@ -117,16 +123,6 @@ def validate_roadmap_domain(
     dependency_graph: dict[str, list[str]] = {task.id: [] for task in all_tasks}
 
     for phase in phases:
-        expected_progress = (
-            round(sum(1 for task in phase.tasks if task.done) / len(phase.tasks) * 100)
-            if phase.tasks
-            else 0
-        )
-        if phase.progress != expected_progress:
-            errors.append(
-                f"phase {phase.id!r} progress is {phase.progress}, expected {expected_progress}"
-            )
-
         for task in phase.tasks:
             for field_name, values in (
                 ("assignees", task.assignees or []),
