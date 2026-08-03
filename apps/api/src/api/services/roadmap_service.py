@@ -22,6 +22,7 @@ from api.services.id_service import generate_id
 from api.services.password_service import hash_password
 from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
+    RoadmapConflictError,
     _change_summary_fields,
     _fetch_active_roadmap,
     _fetch_active_roadmap_for_update,
