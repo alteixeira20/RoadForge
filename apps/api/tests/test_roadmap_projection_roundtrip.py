@@ -100,12 +100,13 @@ async def test_round_trip_preserves_task_scalars_and_relationships(client, db_se
     tk_a2 = tasks_a[1]
     assert tk_a2["id"] == "tk_a2"
     assert tk_a2["done"] is True
+    assert tk_a2["parentId"] == "tk_a1"
     assert tk_a2["assignees"] == ["Alice"]
     assert set(tk_a2.get("deps", [])) == {"tk_a1"}
 
     tk_b1 = tasks_b[0]
     assert tk_b1["id"] == "tk_b1"
-    assert tk_b1["parentId"] == "tk_a1"
+    assert "parentId" not in tk_b1
     assert tk_b1["tags"] == ["tag-c"]
 
 
