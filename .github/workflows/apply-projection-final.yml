@@ -1,5 +1,6 @@
 name: Apply final projection update
 
+# One-shot PR workflow. It deletes itself after a successful application.
 on:
   pull_request:
     branches:
