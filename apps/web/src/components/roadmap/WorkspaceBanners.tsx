@@ -50,17 +50,18 @@ export function WorkspaceBanners({
             <Icon name="shield" size={11} /> Conflict
           </span>
           <span className="msg">
-            The roadmap changed elsewhere. Your edits are preserved locally.
+            Another edit reached the server first. Your local version is preserved.
           </span>
           <span className="spacer" />
-          {onReviewConflict && (
+          {onReviewConflict ? (
             <button className="btn sm primary" onClick={onReviewConflict}>
-              <Icon name="eye" size={13} /> Review conflict
+              <Icon name="eye" size={13} /> Compare versions
+            </button>
+          ) : (
+            <button className="btn sm" onClick={onReloadServerVersion}>
+              <Icon name="cloud" size={13} /> Load server version
             </button>
           )}
-          <button className="btn sm" onClick={onReloadServerVersion}>
-            <Icon name="cloud" size={13} /> Reload server version
-          </button>
           <ProblemReportLink className="btn sm" />
         </div>
       )}
@@ -126,19 +127,14 @@ export function WorkspaceWelcomeBanner({
       <div className="upgrade-notice-icon">
         <Icon name="spark" size={16} />
       </div>
-      <div className="upgrade-notice-copy" style={{ gap: '6px' }}>
-        <strong>Welcome to RoadForge!</strong>
+      <div className="upgrade-notice-copy">
+        <strong>Your roadmap is local</strong>
         <span>
-          RoadForge is a collaborative planner where teams and individuals build, organize, and track project roadmaps.
+          Edit tasks now, export JSON for backup, and choose Share only when collaboration is needed.
         </span>
-        <ul style={{ margin: '4px 0 8px', paddingLeft: '20px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <li><strong>No accounts required:</strong> Start planning immediately without any signup.</li>
-          <li><strong>Private local draft:</strong> Your roadmaps live privately in your browser until you choose to save or share.</li>
-          <li><strong>Easy collaboration:</strong> Share roadmaps using secure invite links with viewer or editor roles.</li>
-        </ul>
-        <div style={{ marginTop: '4px' }}>
-          <button type="button" className="btn sm primary" onClick={onCreateOwn}>
-            <Icon name="plus" size={13} /> Create New Roadmap
+        <div>
+          <button type="button" className="btn sm" onClick={onCreateOwn}>
+            <Icon name="plus" size={13} /> Start a different roadmap
           </button>
         </div>
       </div>
@@ -148,12 +144,6 @@ export function WorkspaceWelcomeBanner({
           className="iconbtn"
           aria-label="Dismiss welcome onboarding banner"
           onClick={onDismiss}
-          onKeyDown={(e) => {
-            if (e.key === ' ' || e.key === 'Enter') {
-              e.preventDefault()
-              onDismiss()
-            }
-          }}
         >
           <Icon name="x" size={15} />
         </button>
