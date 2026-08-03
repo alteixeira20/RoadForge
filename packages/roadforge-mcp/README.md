@@ -8,7 +8,7 @@ A small stdio MCP server that gives coding agents controlled access to one RoadF
 ROADFORGE_API_URL="https://roadforge.example.com" \
 ROADFORGE_INVITE_TOKEN="ed_..." \
 ROADFORGE_DISPLAY_NAME="Roadmap Agent" \
-node apps/mcp/bin/roadforge-mcp.mjs
+node packages/roadforge-mcp/bin/roadforge-mcp.mjs
 ```
 
 After the package is published, the equivalent command is:
