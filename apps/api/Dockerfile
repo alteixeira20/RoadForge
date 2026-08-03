@@ -1,26 +1,26 @@
 FROM python:3.12-slim
 
-# Install uv from the official image (avoids pip overhead)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    ROADFORGE_API_WORKERS=1
 
 WORKDIR /app
 
-# Copy metadata first — dependency install is cached separately from source changes
-COPY pyproject.toml .
+# The local package declares src/api as its wheel content, so source must be
+# present before installation. Copying only pyproject.toml made clean builds
+# attempt to install a package that did not exist in the image yet.
+COPY pyproject.toml ./
+COPY src/ ./src/
+RUN python -m pip install --no-cache-dir --disable-pip-version-check .
 
-# Install runtime dependencies from pyproject.toml (non-editable; no dev extras)
-RUN uv pip install --system --no-cache .
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
 
-# Copy Alembic config and migration scripts
-COPY alembic.ini .
-COPY alembic/ alembic/
-
-# Copy application source
-COPY src/ src/
-
-# src/ is on the Python path so `import api` resolves to src/api/
-ENV PYTHONPATH=/app/src
-ENV ROADFORGE_API_WORKERS=1
+# Keep runtime writes and accidental package modification away from root.
+RUN addgroup --system roadforge \
+    && adduser --system --ingroup roadforge --home /app roadforge \
+    && chown -R roadforge:roadforge /app
+USER roadforge
 
 EXPOSE 7878
 
