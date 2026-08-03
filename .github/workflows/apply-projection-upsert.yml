@@ -1,0 +1,40 @@
+name: Apply projection upsert
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/apply-projection-upsert.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-projection-upsert
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Apply atomic patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/projection-upsert.a* | base64 --decode > /tmp/projection-upsert.patch
+          git apply --check /tmp/projection-upsert.patch
+          git apply /tmp/projection-upsert.patch
+          rm -f .github/projection-upsert.a* .github/workflows/apply-projection-upsert.yml
+          git config user.name "RoadForge CI"
+          git config user.email "roadforge-ci@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "perf(api): preserve projection rows across full saves"
+          git push origin HEAD:dev
