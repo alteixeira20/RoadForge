@@ -32,7 +32,79 @@ jobs:
         run: |
           set -euo pipefail
           cat .github/projection-upsert.a* | base64 --decode > /tmp/projection-upsert.patch
-          git apply --3way /tmp/projection-upsert.patch
+          git apply --3way \
+            --include=apps/api/src/api/services/roadmap_projection_service.py \
+            /tmp/projection-upsert.patch
+
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("apps/api/tests/test_roadmap_projection_parity.py")
+          text = path.read_text()
+
+          old_import = "from api.models.roadmap import Roadmap, RoadmapTask"
+          new_import = "from api.models.roadmap import Roadmap, RoadmapPhase, RoadmapTask"
+          if text.count(old_import) != 1:
+              raise SystemExit("unexpected roadmap model import in parity test")
+          text = text.replace(old_import, new_import, 1)
+
+          setup_marker = '''    owner_token = body["owner_session_token"]
+
+    new_phases = ['''
+          setup_replacement = '''    owner_token = body["owner_session_token"]
+
+    original_phase = await db_session.scalar(
+        select(RoadmapPhase).where(
+            RoadmapPhase.roadmap_id == roadmap_id,
+            RoadmapPhase.client_phase_id == "ph_a",
+        )
+    )
+    original_task = await db_session.scalar(
+        select(RoadmapTask).where(
+            RoadmapTask.roadmap_id == roadmap_id,
+            RoadmapTask.client_task_id == "tk_a1",
+        )
+    )
+    assert original_phase is not None and original_task is not None
+    original_phase_row_id = original_phase.id
+    original_task_row_id = original_task.id
+
+    new_phases = ['''
+          if text.count(setup_marker) != 1:
+              raise SystemExit("unexpected full-update setup in parity test")
+          text = text.replace(setup_marker, setup_replacement, 1)
+
+          assertion_marker = '''    assert parity.phase_count_snapshot == 1
+    assert parity.task_count_snapshot == 2
+
+
+# ─── Group G'''
+          assertion_replacement = '''    assert parity.phase_count_snapshot == 1
+    assert parity.task_count_snapshot == 2
+
+    retained_phase = await db_session.scalar(
+        select(RoadmapPhase).where(
+            RoadmapPhase.roadmap_id == roadmap_id,
+            RoadmapPhase.client_phase_id == "ph_a",
+        )
+    )
+    retained_task = await db_session.scalar(
+        select(RoadmapTask).where(
+            RoadmapTask.roadmap_id == roadmap_id,
+            RoadmapTask.client_task_id == "tk_a1",
+        )
+    )
+    assert retained_phase is not None and retained_phase.id == original_phase_row_id
+    assert retained_task is not None and retained_task.id == original_task_row_id
+
+
+# ─── Group G'''
+          if text.count(assertion_marker) != 1:
+              raise SystemExit("unexpected full-update assertions in parity test")
+          text = text.replace(assertion_marker, assertion_replacement, 1)
+          path.write_text(text)
+          PY
+
           rm -f .github/projection-upsert.a* .github/workflows/apply-projection-upsert.yml
           git config user.name "RoadForge CI"
           git config user.email "roadforge-ci@users.noreply.github.com"
