@@ -12,7 +12,8 @@ collaboration.
 
 RoadForge is distributed under the
 [PolyForm Noncommercial License 1.0.0](LICENSE). It is source-available for
-non-commercial use and is not OSI-approved open source.
+non-commercial use, not open source under the Open Source Definition, and
+commercial use remains restricted.
 
 ## Product principles
 
