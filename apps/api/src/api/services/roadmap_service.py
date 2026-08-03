@@ -240,9 +240,11 @@ async def update_roadmap(
     if _should_create_version(action, metadata_json):
         await _create_roadmap_version(db, roadmap, participant, action, metadata_json)
 
-    # The canonical JSON snapshot is the only synchronous write model. Rebuilding
-    # every relational projection row here made each autosave O(total roadmap
-    # size) twice and increased lock contention without serving normal reads.
+    # Full snapshot replacements can move, add, or remove arbitrary phases and
+    # tasks, so they require one full derivative projection rebuild. Ordinary
+    # task writes use the incremental path in roadmap_task_service instead.
+    if payload.phases is not None:
+        await sync_roadmap_projection_best_effort(db, roadmap, "roadmap.updated")
     await db.commit()
     await db.refresh(roadmap)
 

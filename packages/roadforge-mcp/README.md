@@ -1,0 +1,50 @@
+# RoadForge MCP
+
+A small stdio MCP server that gives coding agents controlled access to one RoadForge roadmap without sending credentials in prompts or tool arguments.
+
+## Run from the repository
+
+```bash
+ROADFORGE_API_URL="https://roadforge.example.com" \
+ROADFORGE_INVITE_TOKEN="ed_..." \
+ROADFORGE_DISPLAY_NAME="Roadmap Agent" \
+node apps/mcp/bin/roadforge-mcp.mjs
+```
+
+After the package is published, the equivalent command is:
+
+```bash
+npx -y @anvilary/roadforge-mcp
+```
+
+The easiest configuration uses an owner/editor/viewer invite token. RoadForge exchanges it for one in-memory participant session when the MCP process first calls a tool. For an existing session, set `ROADFORGE_SESSION_TOKEN` together with `ROADFORGE_ROADMAP_ID` instead. Password-protected roadmaps also accept `ROADFORGE_PASSWORD`. Never place credentials in an agent prompt, repository file, or tool argument.
+
+## Exposed tools
+
+- `roadforge_get`: deterministic compact context by default, or summary/full JSON.
+- `roadforge_task_update`: patch title, description, estimate, assignees, tags, or links.
+- `roadforge_task_done`: complete or reopen one task.
+- `roadforge_task_claim` and `roadforge_task_unclaim`: coordinate active work.
+- `roadforge_tag_create`: add optional label/color metadata for a tag ID.
+
+Writes use RoadForge's exact `updated_at` compare-and-swap token. Pass `expectedUpdatedAt` from a previous read when coordinating multiple actions; omit it for a fresh read-before-write.
+
+## Host configuration example
+
+```json
+{
+  "mcpServers": {
+    "roadforge": {
+      "command": "npx",
+      "args": ["-y", "@anvilary/roadforge-mcp"],
+      "env": {
+        "ROADFORGE_API_URL": "https://roadforge.example.com",
+        "ROADFORGE_INVITE_TOKEN": "ed_...",
+        "ROADFORGE_DISPLAY_NAME": "Roadmap Agent"
+      }
+    }
+  }
+}
+```
+
+The server writes only JSON-RPC messages to stdout. Diagnostic failures are written to stderr and credentials are never logged.

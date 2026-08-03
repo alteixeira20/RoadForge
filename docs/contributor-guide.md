@@ -152,8 +152,10 @@ rules are security boundaries—not UI hints.
 - Preserve local drafts when sessions expire or access changes.
 - Require Redis before enabling multiple API workers.
 - Treat imports and user-authored Markdown/links as untrusted input.
-- Do not add accounts, OAuth/OIDC, personal access tokens, public API v1, MCP,
-  webhooks, service accounts, billing, or automatic GitHub task mutation.
+- Do not add accounts, OAuth/OIDC, personal access tokens, a generic public API
+  v1, webhooks, service accounts, billing, or automatic GitHub task mutation.
+- MCP changes must remain roadmap-scoped, use existing participant permissions,
+  read credentials from the host environment, and preserve optimistic concurrency.
 
 Review [Access model](access-model.md), [Security documentation](security/README.md),
 and [Public deployment security](public-deployment-security.md) for relevant

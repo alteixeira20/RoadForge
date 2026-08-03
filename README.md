@@ -69,6 +69,7 @@ locks.
 | Database | PostgreSQL 16 |
 | Realtime | Server-Sent Events with memory or Redis coordination |
 | Migrations | Alembic |
+| Agent integration | Publishable stdio MCP package (`packages/roadforge-mcp`) |
 | Deployment | Docker Compose and nginx |
 
 ## Local development
@@ -110,6 +111,7 @@ pnpm --dir apps/web test
 pnpm --dir apps/web lint
 pnpm --dir apps/web typecheck
 pnpm --dir apps/web build
+pnpm --dir packages/roadforge-mcp check
 
 cd apps/api
 python -m pytest -q
@@ -180,6 +182,17 @@ The browser uses a JSON HTTP API under `/api`. Major surfaces include:
 
 Shared roadmap writes use optimistic concurrency. Clients must echo the server's
 latest update token; stale or future values cannot overwrite newer data.
+
+## Agent and MCP integration
+
+The publishable [`@anvilary/roadforge-mcp`](packages/roadforge-mcp/README.md) package exposes a
+small, roadmap-scoped stdio tool surface. It reads credentials only from the MCP
+host environment, defaults to deterministic compact context, and uses the same
+optimistic-concurrency token as the web application. No account system or generic
+public API key is introduced.
+
+The package is ready to run from the repository. Publishing it to npm is a
+separate release action after this branch is validated. See [MCP integration](docs/mcp.md).
 
 Detailed references:
 

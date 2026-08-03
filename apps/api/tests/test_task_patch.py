@@ -458,7 +458,7 @@ async def test_same_value_patch_has_no_write_side_effects(
     async def record_publish(event):
         published_events.append(event)
 
-    monkeypatch.setattr(task_service, "sync_roadmap_projection_best_effort", record_projection)
+    monkeypatch.setattr(task_service, "sync_task_projection_best_effort", record_projection)
     monkeypatch.setattr(task_service.event_bus, "publish", record_publish)
 
     response = await _patch(client, roadmap, title="  Alpha task one  ")

@@ -1,0 +1,40 @@
+{
+  "name": "@anvilary/roadforge-mcp",
+  "version": "0.1.0-alpha.0",
+  "description": "Token-efficient MCP server for RoadForge roadmaps.",
+  "type": "module",
+  "private": false,
+  "bin": {
+    "roadforge-mcp": "./bin/roadforge-mcp.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check bin/roadforge-mcp.mjs && node --check src/*.mjs && node --test test/*.test.mjs && npm pack --dry-run",
+    "pack:check": "npm pack --dry-run"
+  },
+  "keywords": [
+    "roadmap",
+    "mcp",
+    "model-context-protocol",
+    "agents"
+  ],
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "homepage": "https://roadforge.anvilary.tools",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alteixeira20/RoadForge.git",
+    "directory": "apps/mcp"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

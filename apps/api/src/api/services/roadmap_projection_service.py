@@ -247,6 +247,138 @@ async def sync_roadmap_projection_best_effort(
         )
 
 
+def _snapshot_task(
+    snapshot_json: dict[str, Any],
+    task_id: str,
+) -> tuple[int, dict[str, Any], int, dict[str, Any]] | None:
+    for phase_position, phase_data in enumerate(_snapshot_phases(snapshot_json)):
+        if not isinstance(phase_data, dict):
+            continue
+        tasks = phase_data.get("tasks")
+        if not isinstance(tasks, list):
+            continue
+        for task_position, task_data in enumerate(tasks):
+            if isinstance(task_data, dict) and task_data.get("id") == task_id:
+                return phase_position, phase_data, task_position, task_data
+    return None
+
+
+async def _replace_task_assignees(
+    db: AsyncSession,
+    roadmap_id: str,
+    task: RoadmapTask,
+    task_data: dict[str, Any],
+) -> None:
+    await db.execute(
+        delete(RoadmapTaskAssignee).where(
+            RoadmapTaskAssignee.roadmap_id == roadmap_id,
+            RoadmapTaskAssignee.task_id == task.id,
+        )
+    )
+    assignees = task_data.get("assignees")
+    if not isinstance(assignees, list):
+        return
+
+    seen: set[str] = set()
+    for position, display_name in enumerate(assignees):
+        if not isinstance(display_name, str) or display_name in seen:
+            continue
+        seen.add(display_name)
+        db.add(RoadmapTaskAssignee(
+            id=generate_id("ra_"),
+            roadmap_id=roadmap_id,
+            task_id=task.id,
+            display_name=display_name,
+            position=position,
+        ))
+
+
+async def sync_task_projection(
+    db: AsyncSession,
+    roadmap: Roadmap,
+    task_id: str,
+) -> None:
+    """Synchronize one canonical task into the derivative relational projection.
+
+    Task edits, completion changes, and claim changes must stay O(1) in written
+    rows. A missing or structurally incomplete projection falls back to one full
+    rebuild so old deployments can repair themselves without serving stale data.
+    """
+    located = _snapshot_task(roadmap.snapshot_json, task_id)
+    if located is None:
+        raise ValueError(f"task {task_id!r} is missing from the canonical snapshot")
+    phase_position, phase_data, task_position, task_data = located
+
+    phase = await db.scalar(
+        select(RoadmapPhase).where(
+            RoadmapPhase.roadmap_id == roadmap.id,
+            RoadmapPhase.client_phase_id == str(phase_data.get("id", "")),
+        )
+    )
+    task = await db.scalar(
+        select(RoadmapTask).where(
+            RoadmapTask.roadmap_id == roadmap.id,
+            RoadmapTask.client_task_id == task_id,
+        )
+    )
+    if phase is None or task is None:
+        await rebuild_roadmap_projection(db, roadmap)
+        return
+
+    phase.position = phase_position
+    phase.num = str(phase_data.get("num", ""))
+    phase.name = str(phase_data.get("name", ""))
+    phase.color = str(phase_data.get("color", ""))
+    phase.status = str(phase_data.get("status", "future"))
+    phase.progress = int(phase_data.get("progress", 0))
+    phase.source_json = _source_json(phase_data, _PHASE_KEYS)
+
+    task.phase_id = phase.id
+    task.position = task_position
+    task.title = str(task_data.get("title", ""))
+    task.done = bool(task_data.get("done", False))
+    task.next = task_data.get("next") if isinstance(task_data.get("next"), bool) else None
+    task.est = task_data.get("est") if isinstance(task_data.get("est"), str) else None
+    task.desc = task_data.get("desc") if isinstance(task_data.get("desc"), str) else None
+    task.tags_json = task_data.get("tags") if isinstance(task_data.get("tags"), list) else None
+    task.claimed_by_display_name = (
+        task_data.get("claimedBy") if isinstance(task_data.get("claimedBy"), str) else None
+    )
+    task.claimed_by_participant_id = (
+        task_data.get("claimedById") if isinstance(task_data.get("claimedById"), str) else None
+    )
+    task.claimed_at = _parse_claimed_at(task_data.get("claimedAt"))
+    task.source_json = _source_json(task_data, _TASK_KEYS)
+
+    # Partial task endpoints cannot move tasks or edit parent/dependency edges.
+    # Preserve those projection relationships and update only mutable task data.
+    await _replace_task_assignees(db, roadmap.id, task, task_data)
+    await db.flush()
+
+
+async def sync_task_projection_best_effort(
+    db: AsyncSession,
+    roadmap: Roadmap,
+    task_id: str,
+    context: str,
+) -> None:
+    await db.flush()
+    try:
+        async with db.begin_nested():
+            await sync_task_projection(db, roadmap, task_id)
+    except (ValueError, TypeError, SQLAlchemyError) as exc:
+        logger.warning(
+            "task projection sync failed; keeping canonical snapshot write",
+            extra={
+                "roadmap_id": roadmap.id,
+                "task_id": task_id,
+                "context": context,
+                "error": str(exc),
+            },
+            exc_info=True,
+        )
+
+
 def _active_roadmaps_stmt(limit: int | None = None):
     stmt = select(Roadmap).where(Roadmap.deleted_at.is_(None)).order_by(Roadmap.created_at.asc())
     if limit is not None:

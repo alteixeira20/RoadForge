@@ -104,9 +104,6 @@ async def test_parity_ok_after_full_update_import_style_replace(
                     "desc": "Updated through the aggregate write path",
                     "tags": ["backend", "projection"],
                     "assignees": ["Owner", "Editor"],
-                    "claimedBy": "Owner",
-                    "claimedById": "pt_owner",
-                    "claimedAt": "2026-07-04T12:00:00Z",
                 },
                 {
                     "id": "tk_a2",

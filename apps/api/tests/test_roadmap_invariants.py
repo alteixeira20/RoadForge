@@ -114,9 +114,8 @@ def test_allows_stale_derived_progress_for_repair() -> None:
     validate_roadmap_domain([stale])
 
 
-def test_rejects_unknown_task_tags() -> None:
+def test_allows_task_tags_before_registry_metadata_exists() -> None:
     phases = [phase("p1", [task("a", tags=["missing"])])]
     registry = [TagDefinitionDTO(id="known", label="Known")]
 
-    with pytest.raises(HTTPException, match="unknown tags"):
-        validate_roadmap_domain(phases, registry)
+    validate_roadmap_domain(phases, registry)

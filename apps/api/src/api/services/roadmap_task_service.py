@@ -32,6 +32,7 @@ from api.services.roadmap_helpers import (
     _phases_from_snapshot,
     _roadmap_response,
 )
+from api.services.roadmap_projection_service import sync_task_projection_best_effort
 from api.services.roadmap_validation import validate_roadmap_domain
 
 logger = logging.getLogger(__name__)
@@ -95,6 +96,7 @@ async def patch_task(
         },
     ))
 
+    await sync_task_projection_best_effort(db, roadmap, task_id, "task.updated")
     await db.commit()
     await db.refresh(roadmap)
 
@@ -154,6 +156,7 @@ async def patch_task_done(
         },
     ))
 
+    await sync_task_projection_best_effort(db, roadmap, task_id, action)
     await db.commit()
     await db.refresh(roadmap)
 
@@ -232,6 +235,7 @@ async def patch_task_claim(
         },
     ))
 
+    await sync_task_projection_best_effort(db, roadmap, task_id, "task.claimed")
     await db.commit()
     await db.refresh(roadmap)
 
@@ -309,6 +313,7 @@ async def delete_task_claim(
         },
     ))
 
+    await sync_task_projection_best_effort(db, roadmap, task_id, "task.unclaimed")
     await db.commit()
     await db.refresh(roadmap)
 
