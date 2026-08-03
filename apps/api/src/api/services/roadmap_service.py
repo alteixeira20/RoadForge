@@ -19,14 +19,13 @@ from api.schemas.roadmap import (
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.password_service import hash_password
+from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
-    RoadmapConflictError,
     _change_summary_fields,
     _fetch_active_roadmap,
     _fetch_active_roadmap_for_update,
     _phases_for_read,
     _phases_from_snapshot,
-    _roadmap_conflict_response,
     _roadmap_response,
     _snapshot_from_phases,
 )
@@ -34,7 +33,8 @@ from api.services.roadmap_join_service import join_roadmap  # noqa: F401
 from api.services.roadmap_projection_service import (
     sync_roadmap_projection_best_effort,
 )
-from api.services.session_policy import ensure_aware_utc, session_expires_at
+from api.services.roadmap_validation import validate_roadmap_domain
+from api.services.session_policy import session_expires_at
 from api.services.sharing_service import _ROLE_LABELS, _ROLE_ORDER, _SHARE_PREFIXES  # noqa: F401
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
@@ -63,6 +63,7 @@ async def create_roadmap(
     raw tokens are held only in local variables and returned in the response.
     Viewer raw tokens may be persisted because they are public read-only demo links.
     """
+    validate_roadmap_domain(payload.phases, payload.tag_registry)
     now = datetime.now(timezone.utc)
     roadmap_id = generate_id("rm_")
 
@@ -177,19 +178,16 @@ async def update_roadmap(
 ) -> RoadmapResponse:
     roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
 
-    # ── Concurrency check ─────────────────────────────────────────────────────
-    # Strict > (not >=): equal timestamps mean no concurrent write occurred and
-    # the update is safe.  >= would cause spurious 409s on first-writer-wins
-    # saves because the client echoes back the exact timestamp it received.
-    # DB microsecond precision can exceed client serialization precision, so a
-    # slightly-truncated client timestamp landing below the DB value correctly
-    # fires the conflict (safe direction: spurious 409, never silent overwrite).
-    # Coerce naive client timestamps to UTC to avoid TypeError on comparison.
-    client_ts = ensure_aware_utc(payload.last_updated_at)
-    if roadmap.updated_at > client_ts:
-        raise RoadmapConflictError(
-            _roadmap_conflict_response(roadmap, client_ts, payload.phases)
-        )
+    # The echoed server timestamp is an opaque compare-and-swap token. Exact
+    # equality prevents future client timestamps from bypassing conflict checks.
+    ensure_roadmap_is_current(roadmap, payload.last_updated_at, payload.phases)
+
+    next_phases = (
+        payload.phases
+        if payload.phases is not None
+        else _phases_from_snapshot(roadmap.snapshot_json)
+    )
+    validate_roadmap_domain(next_phases, payload.tag_registry)
 
     # Advance updated_at explicitly so subsequent stale-check comparisons work.
     # sa.func.now() (onupdate) emits SQL NOW() = transaction_timestamp(), which
@@ -343,5 +341,3 @@ async def get_activity_logs(
         ],
         has_more=has_more,
     )
-
-
