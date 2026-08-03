@@ -12,52 +12,13 @@ on:
       - dev
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # BEGIN ONE_SHOT_PROJECTION_APPLY
-  apply-projection-final:
-    name: Apply Final Projection Update
-    if: github.event_name == 'pull_request' && github.head_ref == 'dev' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout dev
-        uses: actions/checkout@v4
-        with:
-          ref: dev
-          fetch-depth: 0
-
-      - name: Apply clean projection update
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat .github/projection-upsert.a* | base64 --decode > /tmp/projection-upsert.patch
-          awk '
-            /^diff --git a\/apps\/api\/tests\/test_roadmap_projection_parity.py / { exit }
-            { print }
-          ' /tmp/projection-upsert.patch > /tmp/projection-service.patch
-          git apply --3way /tmp/projection-service.patch
-          python -c "import base64; exec(base64.b64decode('ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgp0ZXN0X3BhdGggPSBQYXRoKCJhcHBzL2FwaS90ZXN0cy90ZXN0X3JvYWRtYXBfcHJvamVjdGlvbl9wYXJpdHkucHkiKQp0ZXh0ID0gdGVzdF9wYXRoLnJlYWRfdGV4dCgpCnJlcGxhY2VtZW50cyA9IFsKICAgICgKICAgICAgICAiZnJvbSBhcGkubW9kZWxzLnJvYWRtYXAgaW1wb3J0IFJvYWRtYXAsIFJvYWRtYXBUYXNrIiwKICAgICAgICAiZnJvbSBhcGkubW9kZWxzLnJvYWRtYXAgaW1wb3J0IFJvYWRtYXAsIFJvYWRtYXBQaGFzZSwgUm9hZG1hcFRhc2siLAogICAgKSwKICAgICgKICAgICAgICAnICAgIG93bmVyX3Rva2VuID0gYm9keVsib3duZXJfc2Vzc2lvbl90b2tlbiJdXG5cbiAgICBuZXdfcGhhc2VzID0gWycsCiAgICAgICAgJycnICAgIG93bmVyX3Rva2VuID0gYm9keVsib3duZXJfc2Vzc2lvbl90b2tlbiJdCgogICAgb3JpZ2luYWxfcGhhc2UgPSBhd2FpdCBkYl9zZXNzaW9uLnNjYWxhcigKICAgICAgICBzZWxlY3QoUm9hZG1hcFBoYXNlKS53aGVyZSgKICAgICAgICAgICAgUm9hZG1hcFBoYXNlLnJvYWRtYXBfaWQgPT0gcm9hZG1hcF9pZCwKICAgICAgICAgICAgUm9hZG1hcFBoYXNlLmNsaWVudF9waGFzZV9pZCA9PSAicGhfYSIsCiAgICAgICAgKQogICAgKQogICAgb3JpZ2luYWxfdGFzayA9IGF3YWl0IGRiX3Nlc3Npb24uc2NhbGFyKAogICAgICAgIHNlbGVjdChSb2FkbWFwVGFzaykud2hlcmUoCiAgICAgICAgICAgIFJvYWRtYXBUYXNrLnJvYWRtYXBfaWQgPT0gcm9hZG1hcF9pZCwKICAgICAgICAgICAgUm9hZG1hcFRhc2suY2xpZW50X3Rhc2tfaWQgPT0gInRrX2ExIiwKICAgICAgICApCiAgICApCiAgICBhc3NlcnQgb3JpZ2luYWxfcGhhc2UgaXMgbm90IE5vbmUgYW5kIG9yaWdpbmFsX3Rhc2sgaXMgbm90IE5vbmUKICAgIG9yaWdpbmFsX3BoYXNlX3Jvd19pZCA9IG9yaWdpbmFsX3BoYXNlLmlkCiAgICBvcmlnaW5hbF90YXNrX3Jvd19pZCA9IG9yaWdpbmFsX3Rhc2suaWQKCiAgICBuZXdfcGhhc2VzID0gWycnJywKICAgICksCiAgICAoCiAgICAgICAgJyAgICBhc3NlcnQgcGFyaXR5LnBoYXNlX2NvdW50X3NuYXBzaG90ID09IDFcbiAgICBhc3NlcnQgcGFyaXR5LnRhc2tfY291bnRfc25hcHNob3QgPT0gMlxuXG5cbiMg4pSA4pSA4pSAIEdyb3VwIEcnLAogICAgICAgICcnJyAgICBhc3NlcnQgcGFyaXR5LnBoYXNlX2NvdW50X3NuYXBzaG90ID09IDEKICAgIGFzc2VydCBwYXJpdHkudGFza19jb3VudF9zbmFwc2hvdCA9PSAyCgogICAgcmV0YWluZWRfcGhhc2UgPSBhd2FpdCBkYl9zZXNzaW9uLnNjYWxhcigKICAgICAgICBzZWxlY3QoUm9hZG1hcFBoYXNlKS53aGVyZSgKICAgICAgICAgICAgUm9hZG1hcFBoYXNlLnJvYWRtYXBfaWQgPT0gcm9hZG1hcF9pZCwKICAgICAgICAgICAgUm9hZG1hcFBoYXNlLmNsaWVudF9waGFzZV9pZCA9PSAicGhfYSIsCiAgICAgICAgKQogICAgKQogICAgcmV0YWluZWRfdGFzayA9IGF3YWl0IGRiX3Nlc3Npb24uc2NhbGFyKAogICAgICAgIHNlbGVjdChSb2FkbWFwVGFzaykud2hlcmUoCiAgICAgICAgICAgIFJvYWRtYXBUYXNrLnJvYWRtYXBfaWQgPT0gcm9hZG1hcF9pZCwKICAgICAgICAgICAgUm9hZG1hcFRhc2suY2xpZW50X3Rhc2tfaWQgPT0gInRrX2ExIiwKICAgICAgICApCiAgICApCiAgICBhc3NlcnQgcmV0YWluZWRfcGhhc2UgaXMgbm90IE5vbmUgYW5kIHJldGFpbmVkX3BoYXNlLmlkID09IG9yaWdpbmFsX3BoYXNlX3Jvd19pZAogICAgYXNzZXJ0IHJldGFpbmVkX3Rhc2sgaXMgbm90IE5vbmUgYW5kIHJldGFpbmVkX3Rhc2suaWQgPT0gb3JpZ2luYWxfdGFza19yb3dfaWQKCgojIOKUgOKUgOKUgCBHcm91cCBHJycnLAogICAgKSwKXQpmb3Igb2xkLCBuZXcgaW4gcmVwbGFjZW1lbnRzOgogICAgaWYgdGV4dC5jb3VudChvbGQpICE9IDE6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdChmInVuZXhwZWN0ZWQgcGFyaXR5IHRlc3QgbWFya2VyOiB7b2xkWzo2MF0hcn0iKQogICAgdGV4dCA9IHRleHQucmVwbGFjZShvbGQsIG5ldywgMSkKdGVzdF9wYXRoLndyaXRlX3RleHQodGV4dCkK'))"
-          rm -f .github/projection-upsert.a* .github/projection-upsert.trigger
-          git config user.name "RoadForge CI"
-          git config user.email "roadforge-ci@users.noreply.github.com"
-          git add \
-            apps/api/src/api/services/roadmap_projection_service.py \
-            apps/api/tests/test_roadmap_projection_parity.py \
-            .github/projection-upsert.aa \
-            .github/projection-upsert.ab \
-            .github/projection-upsert.ac \
-            .github/projection-upsert.trigger
-          git diff --cached --check
-          git commit -m "perf(api): preserve projection rows across full saves"
-          git push origin HEAD:dev
-  # END ONE_SHOT_PROJECTION_APPLY
-
   quality:
     name: Quality Gate
     runs-on: ubuntu-latest
