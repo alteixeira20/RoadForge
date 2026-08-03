@@ -1,10 +1,12 @@
 name: Apply final projection update
 
-# One-shot PR workflow. It deletes itself after a successful application.
+# One-shot push workflow. It deletes itself after a successful application.
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - dev
+    paths:
+      - .github/workflows/apply-projection-final.yml
 
 permissions:
   contents: write
@@ -15,7 +17,6 @@ concurrency:
 
 jobs:
   apply:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'dev'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout dev
