@@ -12,8 +12,9 @@ from __future__ import annotations
 from httpx import AsyncClient
 
 # Two-phase snapshot with tasks covering all mapped fields.
-# Phase ph_a: two tasks (tk_a1 has all scalars + tags + assignees; tk_a2 deps on tk_a1).
-# Phase ph_b: one task with a cross-phase parentId and a tag.
+# Phase ph_a: two tasks (tk_a1 has all scalars + tags + assignees; tk_a2 is a
+# same-phase subtask with a dependency on tk_a1).
+# Phase ph_b: one top-level task with a tag.
 PHASES_WITH_TASKS = [
     {
         "id": "ph_a",
@@ -50,6 +51,7 @@ PHASES_WITH_TASKS = [
                 "id": "tk_a2",
                 "title": "Alpha task two",
                 "done": True,
+                "parentId": "tk_a1",
                 "assignees": ["Alice"],
                 "deps": ["tk_a1"],
             },
@@ -67,11 +69,16 @@ PHASES_WITH_TASKS = [
                 "id": "tk_b1",
                 "title": "Beta task one",
                 "done": False,
-                "parentId": "tk_a1",
                 "tags": ["tag-c"],
             },
         ],
     },
+]
+
+TAG_REGISTRY = [
+    {"id": "tag-a", "label": "Tag A"},
+    {"id": "tag-b", "label": "Tag B"},
+    {"id": "tag-c", "label": "Tag C"},
 ]
 
 
@@ -82,6 +89,7 @@ async def create_with_phases(client: AsyncClient) -> dict:
             "name": "Projection Test",
             "owner_display_name": "Owner",
             "phases": PHASES_WITH_TASKS,
+            "tag_registry": TAG_REGISTRY,
         },
     )
     assert resp.status_code == 201, resp.text
