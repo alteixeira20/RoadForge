@@ -5,6 +5,8 @@ import {
   compactWriteResult,
   createRoadForgeClient,
   roadmapSummary,
+  searchRoadmapTasks,
+  taskDetails,
 } from './roadforge-client.mjs'
 
 export const SERVER_VERSION = '0.1.0-alpha.0'
@@ -33,15 +35,41 @@ export const TOOLS = [
   {
     name: 'roadforge_get',
     title: 'Read Roadmap',
-    description: 'Read the configured RoadForge roadmap. Compact mode is deterministic and optimized for low token use.',
+    description: 'Read the configured roadmap. Summary mode is the lowest-token overview; compact mode supports bounded filters.',
     inputSchema: objectSchema({
       mode: {
         type: 'string',
-        enum: ['compact', 'summary', 'full'],
-        default: 'compact',
-        description: 'compact text, summary JSON, or the full portable roadmap',
+        enum: ['summary', 'compact', 'full'],
+        default: 'summary',
+        description: 'summary JSON, filtered compact text, or the full portable roadmap',
       },
+      phaseIds: { type: 'array', items: { type: 'string' }, maxItems: 50 },
+      taskIds: { type: 'array', items: { type: 'string' }, maxItems: 100 },
+      openOnly: { type: 'boolean', default: false },
+      nextOnly: { type: 'boolean', default: false },
+      includeDescriptions: { type: 'boolean', default: false, description: 'Compact mode only. Descriptions are capped at 240 characters.' },
+      maxTasks: { type: 'integer', minimum: 1, maximum: 500, default: 200 },
     }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'roadforge_task_get',
+    title: 'Read Task',
+    description: 'Read one task and its phase by stable task ID.',
+    inputSchema: objectSchema({
+      taskId: { type: 'string', minLength: 1 },
+    }, ['taskId']),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'roadforge_task_search',
+    title: 'Search Tasks',
+    description: 'Search task IDs, titles, descriptions, phase names, tags, and assignees without returning the full roadmap.',
+    inputSchema: objectSchema({
+      query: { type: 'string', minLength: 1, maxLength: 200 },
+      includeCompleted: { type: 'boolean', default: false },
+      maxResults: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+    }, ['query']),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
@@ -118,6 +146,28 @@ function requiredString(value, name) {
   return value.trim()
 }
 
+function optionalStringArray(value, name, maxItems) {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value) || value.length > maxItems || value.some((item) => typeof item !== 'string' || !item.trim())) {
+    throw new TypeError(`${name} must be an array of at most ${maxItems} non-empty strings`)
+  }
+  return [...new Set(value.map((item) => item.trim()))]
+}
+
+function boundedInteger(value, name, fallback, minimum, maximum) {
+  if (value === undefined) return fallback
+  if (!Number.isInteger(value) || value < minimum || value > maximum) {
+    throw new TypeError(`${name} must be an integer from ${minimum} to ${maximum}`)
+  }
+  return value
+}
+
+function optionalBoolean(value, name, fallback = false) {
+  if (value === undefined) return fallback
+  if (typeof value !== 'boolean') throw new TypeError(`${name} must be a boolean`)
+  return value
+}
+
 function toolResult(value, text = JSON.stringify(value)) {
   return {
     content: [{ type: 'text', text }],
@@ -156,18 +206,36 @@ export function createToolHandler(options = {}) {
     try {
       switch (name) {
         case 'roadforge_get': {
-          const mode = args.mode || 'compact'
-          if (!['compact', 'summary', 'full'].includes(mode)) throw new TypeError('mode is invalid')
+          const mode = args.mode || 'summary'
+          if (!['summary', 'compact', 'full'].includes(mode)) throw new TypeError('mode is invalid')
           const roadmap = await client.getRoadmap()
-          if (mode === 'compact') {
-            const summary = roadmapSummary(roadmap)
-            return toolResult(summary, compactRoadmap(roadmap))
-          }
-          if (mode === 'summary') {
-            const summary = roadmapSummary(roadmap)
-            return toolResult(summary)
-          }
-          return toolResult(roadmap)
+          if (mode === 'summary') return toolResult(roadmapSummary(roadmap))
+          if (mode === 'full') return toolResult(roadmap)
+
+          const compact = compactRoadmap(roadmap, {
+            phaseIds: optionalStringArray(args.phaseIds, 'phaseIds', 50),
+            taskIds: optionalStringArray(args.taskIds, 'taskIds', 100),
+            openOnly: optionalBoolean(args.openOnly, 'openOnly'),
+            nextOnly: optionalBoolean(args.nextOnly, 'nextOnly'),
+            includeDescriptions: optionalBoolean(args.includeDescriptions, 'includeDescriptions'),
+            maxTasks: boundedInteger(args.maxTasks, 'maxTasks', 200, 1, 500),
+          })
+          return toolResult({ ...roadmapSummary(roadmap), selection: compact.selection }, compact.text)
+        }
+        case 'roadforge_task_get': {
+          const taskId = requiredString(args.taskId, 'taskId')
+          const details = taskDetails(await client.getRoadmap(), taskId)
+          if (!details) throw new TypeError(`task ${taskId} was not found`)
+          return toolResult(details)
+        }
+        case 'roadforge_task_search': {
+          const query = requiredString(args.query, 'query')
+          if (query.length > 200) throw new TypeError('query must be at most 200 characters')
+          const result = searchRoadmapTasks(await client.getRoadmap(), query, {
+            includeCompleted: optionalBoolean(args.includeCompleted, 'includeCompleted'),
+            maxResults: boundedInteger(args.maxResults, 'maxResults', 20, 1, 100),
+          })
+          return toolResult(result)
         }
         case 'roadforge_task_update': {
           const taskId = requiredString(args.taskId, 'taskId')
@@ -264,7 +332,7 @@ export function createMessageHandler(options = {}) {
           websiteUrl: 'https://roadforge.anvilary.tools',
         },
         instructions:
-          'Use compact reads by default. Preserve updatedAt and pass it as expectedUpdatedAt when coordinating several writes.',
+          'Start with summary reads, then use task search/get or filtered compact reads. Preserve updatedAt and pass it as expectedUpdatedAt when coordinating several writes.',
       })
     }
 
