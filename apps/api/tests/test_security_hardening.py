@@ -44,7 +44,6 @@ async def test_access_log_excludes_query_credentials(client, caplog):
 
 def test_docs_are_disabled_outside_development(monkeypatch):
     monkeypatch.setenv("ROADFORGE_ENVIRONMENT", "production")
-    monkeypatch.setenv("ROADFORGE_SECRET_KEY", "x" * 32)
     monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://user:pass@db.example.com/roadforge")
     get_settings.cache_clear()
 
@@ -57,22 +56,10 @@ def test_docs_are_disabled_outside_development(monkeypatch):
     get_settings.cache_clear()
 
 
-def test_production_requires_strong_secret_key():
-    settings = Settings(
-        environment="production",
-        database_url="postgresql+asyncpg://user:pass@db.example.com/roadforge",
-        secret_key="change-me",
-    )
-
-    with pytest.raises(RuntimeError, match="ROADFORGE_SECRET_KEY"):
-        settings.validate_startup_security()
-
-
 def test_production_rejects_wildcard_cors_with_credentials():
     settings = Settings(
         environment="production",
         database_url="postgresql+asyncpg://user:pass@db.example.com/roadforge",
-        secret_key="x" * 32,
         cors_origins=["*"],
     )
 
@@ -84,7 +71,6 @@ def test_production_rejects_empty_cors_origins():
     settings = Settings(
         environment="production",
         database_url="postgresql+asyncpg://user:pass@db.example.com/roadforge",
-        secret_key="x" * 32,
         cors_origins=[],
     )
 
@@ -97,7 +83,6 @@ def test_production_rejects_malformed_cors_origin(malformed):
     settings = Settings(
         environment="production",
         database_url="postgresql+asyncpg://user:pass@db.example.com/roadforge",
-        secret_key="x" * 32,
         cors_origins=["https://app.example.com", malformed],
     )
 
@@ -109,7 +94,6 @@ def test_production_accepts_explicit_cors_origins():
     settings = Settings(
         environment="production",
         database_url="postgresql+asyncpg://user:pass@db.example.com/roadforge",
-        secret_key="x" * 32,
         cors_origins=["https://app.example.com", "https://admin.example.com:8443"],
     )
 
@@ -141,7 +125,6 @@ def test_production_rejects_default_database_url():
         database_url=(
             "postgresql+asyncpg://roadforge:roadforge_dev@localhost:5432/roadforge"
         ),
-        secret_key="x" * 32,
     )
 
     with pytest.raises(RuntimeError, match="default local development DATABASE_URL"):
