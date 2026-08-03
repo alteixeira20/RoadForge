@@ -1,6 +1,7 @@
 name: Apply final projection update
 
 # One-shot push workflow. It deletes itself after a successful application.
+# This update executes the already-active push trigger.
 on:
   push:
     branches:
