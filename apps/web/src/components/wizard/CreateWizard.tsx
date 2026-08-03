@@ -13,11 +13,13 @@ interface CreateWizardProps {
 }
 
 export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
-  const { displayName, setDisplayName, roadmapName, createLocalRoadmap } = useRoadmap()
+  const { displayName, setDisplayName, createLocalRoadmap } = useRoadmap()
   const [step, setStep] = useState(0)
   const [startingPoint, setStartingPoint] = useState<'template' | 'blank'>('blank')
   const [draftDisplayName, setDraftDisplayName] = useState(() => displayName)
-  const [draftRoadmapName, setDraftRoadmapName] = useState(() => roadmapName)
+  // A new roadmap should never inherit the hidden starter snapshot's title or
+  // the title of the roadmap that happened to be open before this dialog.
+  const [draftRoadmapName, setDraftRoadmapName] = useState('')
   const headingId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const displayNameInputRef = useRef<HTMLInputElement>(null)
@@ -71,7 +73,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
     const nextDisplayName = draftDisplayName.trim()
     setDisplayName(nextDisplayName)
     const newRoadmapId = createLocalRoadmap(
-      draftRoadmapName.trim() || 'Untitled Roadmap',
+      draftRoadmapName.trim(),
       nextPhases,
       template?.tagRegistry,
     )
@@ -132,6 +134,7 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
                 <input
                   id="rn"
                   className="input"
+                  autoComplete="off"
                   placeholder="e.g. Launch the first product version"
                   value={draftRoadmapName}
                   onChange={(event) => setDraftRoadmapName(event.target.value)}
