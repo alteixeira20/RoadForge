@@ -14,8 +14,13 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.roadmap import ActivityLog, Participant
-from api.schemas.roadmap import PatchTaskDoneRequest, PatchTaskRequest, RoadmapResponse
+from api.models.roadmap import ActivityLog, Participant, Roadmap
+from api.schemas.roadmap import (
+    PatchTaskDoneRequest,
+    PatchTaskRequest,
+    RoadmapResponse,
+    TagDefinitionDTO,
+)
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.roadmap_concurrency import ensure_roadmap_is_current
@@ -27,8 +32,18 @@ from api.services.roadmap_helpers import (
     _phases_from_snapshot,
     _roadmap_response,
 )
+from api.services.roadmap_validation import validate_roadmap_domain
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_snapshot(roadmap: Roadmap, snapshot_json: dict) -> None:
+    tag_registry = (
+        None
+        if roadmap.tag_registry_json is None
+        else [TagDefinitionDTO.model_validate(tag) for tag in roadmap.tag_registry_json]
+    )
+    validate_roadmap_domain(_phases_from_snapshot(snapshot_json), tag_registry)
 
 
 async def patch_task(
@@ -51,6 +66,7 @@ async def patch_task(
     if not patched.changed_fields:
         return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
 
+    _validate_snapshot(roadmap, patched.snapshot_json)
     before_json = {
         field: patched.before_task.get(field) for field in patched.changed_fields
     }
@@ -117,6 +133,7 @@ async def patch_task_done(
     if before_done == payload.done:
         return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
 
+    _validate_snapshot(roadmap, snapshot_json)
     action = "task.completed" if payload.done else "task.reopened"
     roadmap.snapshot_json = snapshot_json
     roadmap.updated_at = datetime.now(timezone.utc)
