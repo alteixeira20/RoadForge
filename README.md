@@ -184,7 +184,7 @@ latest update token; stale or future values cannot overwrite newer data.
 Detailed references:
 
 - [Backend API](docs/backend-api.md)
-- [Architecture](docs/architecture-overview.md)
+- [Architecture](docs/architecture/overview.md)
 - [Access model](docs/access-model.md)
 - [Manual QA](docs/manual-qa.md)
 - [Performance](docs/performance.md)
