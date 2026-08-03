@@ -40,7 +40,7 @@ silently overwrites or retries a conflicting write.
 
 ```bash
 pnpm --dir packages/roadforge-mcp check
-npm pack --dry-run --workspace packages/roadforge-mcp
+npm --prefix packages/roadforge-mcp pack --dry-run
 ```
 
 Publishing to npm is intentionally separate from merging application changes. The
