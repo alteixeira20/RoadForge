@@ -12,6 +12,7 @@ from api.schemas.roadmap import (
     CreateRoadmapResponse,
     RoadmapResponse,
     ShareLinkResponse,
+    TagDefinitionDTO,
     UpdateRoadmapRequest,
 )
 
@@ -49,6 +50,12 @@ from api.services.version_service import (  # noqa: F401
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _stored_tag_registry(roadmap: Roadmap) -> list[TagDefinitionDTO] | None:
+    if roadmap.tag_registry_json is None:
+        return None
+    return [TagDefinitionDTO.model_validate(tag) for tag in roadmap.tag_registry_json]
 
 
 async def create_roadmap(
@@ -187,7 +194,12 @@ async def update_roadmap(
         if payload.phases is not None
         else _phases_from_snapshot(roadmap.snapshot_json)
     )
-    validate_roadmap_domain(next_phases, payload.tag_registry)
+    next_tag_registry = (
+        payload.tag_registry
+        if payload.tag_registry is not None
+        else _stored_tag_registry(roadmap)
+    )
+    validate_roadmap_domain(next_phases, next_tag_registry)
 
     # Advance updated_at explicitly so subsequent stale-check comparisons work.
     # sa.func.now() (onupdate) emits SQL NOW() = transaction_timestamp(), which
