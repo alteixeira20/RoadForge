@@ -2,10 +2,11 @@ name: Apply projection upsert
 
 # One-shot workflow: self-deletes after applying the staged patch.
 on:
-  push:
+  pull_request:
     branches:
-      - dev
+      - main
     paths:
+      - .github/projection-upsert.*
       - .github/workflows/apply-projection-upsert.yml
 
 permissions:
@@ -17,6 +18,7 @@ concurrency:
 
 jobs:
   apply:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'dev'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout dev
