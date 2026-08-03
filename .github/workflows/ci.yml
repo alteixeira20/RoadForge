@@ -176,7 +176,7 @@ jobs:
         run: docker build --pull -t roadforge-api:ci apps/api
 
       - name: Build web image
-        run: docker build --pull -t roadforge-web:ci apps/web
+        run: docker build --pull -f apps/web/Dockerfile -t roadforge-web:ci .
 
       - name: Verify API runs as non-root
         run: |
