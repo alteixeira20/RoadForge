@@ -4,7 +4,6 @@ import { useCallback, useState } from 'react'
 import { useRoadmapData } from '@/context/RoadmapContext'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
-import { getParticipants } from '@/services/roadmap-sharing.service'
 import {
   buildChangeSummary,
   mergePendingActivityChange,
@@ -157,8 +156,8 @@ export function useSaveFlow({
     const changeSummary = buildChangeSummary(pendingActivityChanges, serverRoadmapId)
     try {
       if (!serverRoadmapId) {
-        // First save: no bearer token needed — create returns a new owner session.
-        const { roadmap, ownerSessionToken } = await createRoadmap(
+        // First save: no bearer token needed — create returns a complete owner session.
+        const { roadmap, ownerParticipantId, ownerSessionToken } = await createRoadmap(
           roadmapName,
           displayName || 'Owner',
           phases,
@@ -169,23 +168,12 @@ export function useSaveFlow({
         const nextRoadmapId = roadmap.roadmap.id
         setServerRoadmapId(nextRoadmapId)
         setSessionToken(ownerSessionToken)
+        setParticipantId(ownerParticipantId)
         setRole('owner')
         setOwnerDisplayName(roadmap.ownerDisplayName)
         setUpdatedAt(roadmap.updatedAt)
         setPendingActivityChanges([])
         routerReplace(`/workspace?roadmap=${encodeURIComponent(nextRoadmapId)}`)
-
-        // Creation historically omitted the owner participant ID. Resolve it
-        // immediately without making a successfully created roadmap appear to
-        // have failed if this optional follow-up request is interrupted.
-        void getParticipants(nextRoadmapId, ownerSessionToken)
-          .then((participants) => {
-            const currentOwner = participants.find((participant) => (
-              participant.isCurrentParticipant && participant.role === 'owner'
-            ))
-            if (currentOwner) setParticipantId(currentOwner.id)
-          })
-          .catch(() => undefined)
       } else {
         if (!sessionToken) {
           showToast('Session expired. Rejoin from an active invite link.')
