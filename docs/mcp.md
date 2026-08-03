@@ -9,6 +9,7 @@ existing participant-scoped API, not a new identity or authorization system.
 The MCP host supplies these environment variables:
 
 - `ROADFORGE_API_URL` — RoadForge API origin; defaults to `http://localhost:7878`.
+
 Choose one credential mode:
 
 - `ROADFORGE_INVITE_TOKEN` (or `ROADFORGE_INVITE_URL`) exchanges an invite for one
@@ -23,10 +24,15 @@ should be reserved for trusted hosts.
 
 ## Token-efficient contract
 
-`roadforge_get` defaults to a deterministic compact representation containing the
-roadmap revision, phase/task progress, task IDs, dependencies, tags, assignees, and
-short descriptions. Agents can request summary or full JSON explicitly. Write tools
-return only the changed task and its phase rather than echoing the entire roadmap.
+`roadforge_get` defaults to a small summary containing revision, aggregate counts,
+phase progress, and bounded next-task IDs. Agents can request compact output filtered
+by phase IDs, task IDs, open state, or next-task state. Compact output is capped,
+reports omitted matches, excludes descriptions by default, and limits requested
+descriptions to 240 normalized characters.
+
+Use `roadforge_task_search` to locate relevant tasks and `roadforge_task_get` to read
+one exact task. Full portable JSON remains an explicit mode. Write tools return only
+the changed task and its phase rather than echoing the entire roadmap.
 
 ## Concurrency
 
@@ -40,7 +46,7 @@ silently overwrites or retries a conflicting write.
 
 ```bash
 pnpm --dir packages/roadforge-mcp check
-npm --prefix packages/roadforge-mcp pack --dry-run
+(cd packages/roadforge-mcp && npm pack --dry-run)
 ```
 
 Publishing to npm is intentionally separate from merging application changes. The
