@@ -148,3 +148,64 @@ test('invite credentials join once and remain in memory for the process', async 
   assert.equal(reads.length, 2)
   assert.equal(reads[0].options.headers.Authorization, 'Bearer sess_joined')
 })
+
+test('summary defaults and targeted task reads avoid full roadmap payloads', async () => {
+  const { createToolHandler } = await import('../src/server.mjs')
+  const call = createToolHandler({
+    env: {
+      ROADFORGE_API_URL: 'https://roadforge.test',
+      ROADFORGE_ROADMAP_ID: 'rm_test',
+      ROADFORGE_SESSION_TOKEN: 'sess_test',
+    },
+    fetchImpl: async () => new Response(JSON.stringify(roadmap), { status: 200 }),
+  })
+
+  const summary = await call('roadforge_get', {})
+  assert.equal(summary.isError, false)
+  assert.equal(summary.structuredContent.taskCount, 1)
+  assert.equal(summary.structuredContent.phases[0].id, 'ph_1')
+  assert.doesNotMatch(summary.content[0].text, /Ship alpha.*alpha/s)
+
+  const task = await call('roadforge_task_get', { taskId: 'tk_1' })
+  assert.equal(task.isError, false)
+  assert.equal(task.structuredContent.task.title, 'Ship alpha')
+  assert.equal(task.structuredContent.phase.id, 'ph_1')
+
+  const search = await call('roadforge_task_search', { query: 'alpha' })
+  assert.equal(search.isError, false)
+  assert.equal(search.structuredContent.matchingTaskCount, 1)
+  assert.equal(search.structuredContent.results[0].task.id, 'tk_1')
+})
+
+test('compact reads omit descriptions by default and report bounded truncation', async () => {
+  const { compactRoadmap } = await import('../src/roadforge-client.mjs')
+  const longDescription = `Sensitive context ${'x'.repeat(500)}`
+  const largeRoadmap = {
+    ...roadmap,
+    phases: [{
+      ...roadmap.phases[0],
+      tasks: [
+        { ...roadmap.phases[0].tasks[0], desc: longDescription },
+        { id: 'tk_2', title: 'Second task', done: false },
+        { id: 'tk_3', title: 'Completed task', done: true },
+      ],
+    }],
+  }
+
+  const defaultCompact = compactRoadmap(largeRoadmap, { maxTasks: 1 })
+  assert.doesNotMatch(defaultCompact.text, /Sensitive context/)
+  assert.equal(defaultCompact.selection.matchingTaskCount, 3)
+  assert.equal(defaultCompact.selection.returnedTaskCount, 1)
+  assert.equal(defaultCompact.selection.omittedTaskCount, 2)
+  assert.equal(defaultCompact.selection.truncated, true)
+  assert.match(defaultCompact.text, /2 matching task\(s\) omitted/)
+
+  const withDescription = compactRoadmap(largeRoadmap, {
+    taskIds: ['tk_1'],
+    includeDescriptions: true,
+    maxTasks: 10,
+  })
+  assert.match(withDescription.text, /Sensitive context/)
+  assert.match(withDescription.text, /…/)
+  assert.ok(withDescription.text.length < longDescription.length)
+})
