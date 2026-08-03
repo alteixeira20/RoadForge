@@ -1,8 +1,10 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { useRoadmapData } from '@/context/RoadmapContext'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
+import { getParticipants } from '@/services/roadmap-sharing.service'
 import {
   buildChangeSummary,
   mergePendingActivityChange,
@@ -65,6 +67,7 @@ export function useSaveFlow({
   showToast,
   routerReplace,
 }: UseSaveFlowParams) {
+  const { setTagRegistry } = useRoadmapData()
   const [activityRefreshKey, setActivityRefreshKey] = useState(0)
   const [pendingActivityChanges, setPendingActivityChanges] = useState<ActivityChange[]>([])
   const [confirmReload, setConfirmReload] = useState(false)
@@ -164,23 +167,43 @@ export function useSaveFlow({
           changeSummary,
         )
         const nextRoadmapId = roadmap.roadmap.id
-        setServerRoadmapId(roadmap.roadmap.id)
+        setServerRoadmapId(nextRoadmapId)
         setSessionToken(ownerSessionToken)
         setRole('owner')
         setOwnerDisplayName(roadmap.ownerDisplayName)
         setUpdatedAt(roadmap.updatedAt)
         setPendingActivityChanges([])
         routerReplace(`/workspace?roadmap=${encodeURIComponent(nextRoadmapId)}`)
+
+        // Creation historically omitted the owner participant ID. Resolve it
+        // immediately without making a successfully created roadmap appear to
+        // have failed if this optional follow-up request is interrupted.
+        void getParticipants(nextRoadmapId, ownerSessionToken)
+          .then((participants) => {
+            const currentOwner = participants.find((participant) => (
+              participant.isCurrentParticipant && participant.role === 'owner'
+            ))
+            if (currentOwner) setParticipantId(currentOwner.id)
+          })
+          .catch(() => undefined)
       } else {
         if (!sessionToken) {
-          showToast('Session expired — rejoin from the invite link')
+          showToast('Session expired. Rejoin from an active invite link.')
           return
         }
         if (!updatedAt) {
-          showToast('Reload the server roadmap before saving again')
+          showToast('Reload the server roadmap before saving again.')
           return
         }
-        const data = await saveToServer(serverRoadmapId, roadmapName, phases, sessionToken, updatedAt, changeSummary, tagRegistry)
+        const data = await saveToServer(
+          serverRoadmapId,
+          roadmapName,
+          phases,
+          sessionToken,
+          updatedAt,
+          changeSummary,
+          tagRegistry,
+        )
         setUpdatedAt(data.updated_at)
         setPendingActivityChanges([])
       }
@@ -189,7 +212,7 @@ export function useSaveFlow({
       setIsConflict(false)
       setConflictMetadata(null)
       if (showActivity) setActivityRefreshKey((k) => k + 1)
-      showToast('Saved · collaboration enabled')
+      showToast('Saved and ready to share.')
     } catch (err) {
       const { kind, conflictMetadata: nextConflict, validationMessage } = classifyRoadmapSaveError(err)
       if (kind === 'conflict') {
@@ -202,13 +225,13 @@ export function useSaveFlow({
       } else if (kind === 'unauthorized') {
         handleSessionExpired()
       } else if (kind === 'forbidden') {
-        showToast('You do not have permission for this action')
+        showToast('You do not have permission for this action.')
       } else if (kind === 'validation') {
-        showToast(validationMessage ?? 'Save rejected: the server could not validate this roadmap.')
+        showToast(validationMessage ?? 'RoadForge could not save this roadmap because some data is invalid.')
       } else if (kind === 'connection') {
-        showToast('RoadForge API is not reachable. Start the backend with make start.')
+        showToast('Could not reach RoadForge. Your work is still saved in this browser.')
       } else {
-        showToast('Save failed — check backend connection')
+        showToast('Could not save to the server. Your work is still saved in this browser.')
       }
     }
   }
@@ -274,7 +297,7 @@ export function useSaveFlow({
         return `${message} Your local edits are unchanged.`
       } else if (kind === 'connection') {
         setIsOffline(true)
-        showToast('Could not reach the server — try again later.')
+        showToast('Could not reach the server. Try again later.')
         return 'Could not reach the server. Your local edits are still preserved in this browser.'
       } else {
         showToast('Could not keep your local version.')
@@ -296,6 +319,7 @@ export function useSaveFlow({
       })
       setRoadmapName(upgraded.roadmapName || loaded.roadmap.name)
       setPhases(normalizePhasesProgress(upgraded.phases))
+      setTagRegistry(loaded.tagRegistry ?? [])
       setOwnerDisplayName(loaded.ownerDisplayName)
       setUpdatedAt(loaded.updatedAt)
       setPendingActivityChanges([])
@@ -304,11 +328,11 @@ export function useSaveFlow({
       setConflictMetadata(null)
       setShowConflictReview(false)
       setIsOffline(false)
-      showToast('Reloaded server version.')
+      showToast('Reloaded the server version.')
     } catch (err) {
       const { kind } = classifyRoadmapSaveError(err)
       if (kind === 'connection') {
-        showToast('Could not reach the server — try again later.')
+        showToast('Could not reach the server. Try again later.')
       } else if (kind === 'session-expired') {
         handleSessionExpired()
       } else if (kind === 'unauthorized') {
@@ -316,7 +340,7 @@ export function useSaveFlow({
       } else if (kind === 'forbidden') {
         showToast('You do not have permission to reload this roadmap.')
       } else {
-        showToast('Could not reload server version.')
+        showToast('Could not reload the server version.')
       }
     }
   }
