@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from api.schemas.roadmap import PhaseDTO, TaskDTO
+from api.schemas.roadmap import PhaseDTO, TagDefinitionDTO, TaskDTO
 from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import RoadmapConflictError
 from api.services.roadmap_validation import validate_roadmap_domain
@@ -18,6 +18,7 @@ def task(
     done: bool = False,
     deps: list[str] | None = None,
     parent_id: str | None = None,
+    tags: list[str] | None = None,
 ) -> TaskDTO:
     return TaskDTO(
         id=task_id,
@@ -25,6 +26,7 @@ def task(
         done=done,
         deps=deps,
         parentId=parent_id,
+        tags=tags,
     )
 
 
@@ -96,7 +98,7 @@ def test_rejects_missing_and_cyclic_dependencies() -> None:
         validate_roadmap_domain(cyclic)
 
 
-def test_rejects_cross_phase_parent_and_stale_progress() -> None:
+def test_rejects_cross_phase_parent() -> None:
     cross_phase = [
         phase("p1", [task("parent")]),
         phase("p2", [task("child", parent_id="parent")], num="02"),
@@ -104,7 +106,17 @@ def test_rejects_cross_phase_parent_and_stale_progress() -> None:
     with pytest.raises(HTTPException, match="same phase"):
         validate_roadmap_domain(cross_phase)
 
+
+def test_allows_stale_derived_progress_for_repair() -> None:
     stale = phase("p1", [task("done", done=True)])
     stale.progress = 0
-    with pytest.raises(HTTPException, match="expected 100"):
-        validate_roadmap_domain([stale])
+
+    validate_roadmap_domain([stale])
+
+
+def test_rejects_unknown_task_tags() -> None:
+    phases = [phase("p1", [task("a", tags=["missing"])])]
+    registry = [TagDefinitionDTO(id="known", label="Known")]
+
+    with pytest.raises(HTTPException, match="unknown tags"):
+        validate_roadmap_domain(phases, registry)
