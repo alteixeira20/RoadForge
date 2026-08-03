@@ -81,7 +81,10 @@ def validate_roadmap_domain(
     if duplicate_phase_ids:
         errors.append(f"duplicate phase IDs: {', '.join(sorted(duplicate_phase_ids))}")
 
-    duplicate_phase_nums = _duplicates(phase.num for phase in phases, casefold=True)
+    duplicate_phase_nums = _duplicates(
+        (phase.num for phase in phases),
+        casefold=True,
+    )
     if duplicate_phase_nums:
         errors.append(f"duplicate phase numbers: {', '.join(sorted(duplicate_phase_nums))}")
 
