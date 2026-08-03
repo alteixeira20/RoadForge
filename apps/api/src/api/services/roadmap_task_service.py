@@ -27,7 +27,6 @@ from api.services.roadmap_helpers import (
     _phases_from_snapshot,
     _roadmap_response,
 )
-from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +78,6 @@ async def patch_task(
             "changedFields": patched.changed_fields,
         },
     ))
-    await sync_roadmap_projection_best_effort(db, roadmap, "task_update_patch")
 
     await db.commit()
     await db.refresh(roadmap)
@@ -138,7 +136,6 @@ async def patch_task_done(
             "task_title": task.get("title"),
         },
     ))
-    await sync_roadmap_projection_best_effort(db, roadmap, "task_done_patch")
 
     await db.commit()
     await db.refresh(roadmap)
@@ -217,7 +214,6 @@ async def patch_task_claim(
             "previous_claimed_by": previous_claimed_by if is_owner_override else None,
         },
     ))
-    await sync_roadmap_projection_best_effort(db, roadmap, "task_claim")
 
     await db.commit()
     await db.refresh(roadmap)
@@ -295,7 +291,6 @@ async def delete_task_claim(
             "override": is_owner_override,
         },
     ))
-    await sync_roadmap_projection_best_effort(db, roadmap, "task_unclaim")
 
     await db.commit()
     await db.refresh(roadmap)
