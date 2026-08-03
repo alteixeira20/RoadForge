@@ -32,9 +32,7 @@ from api.services.roadmap_helpers import (
     _snapshot_from_phases,
 )
 from api.services.roadmap_join_service import join_roadmap  # noqa: F401
-from api.services.roadmap_projection_service import (
-    sync_roadmap_projection_best_effort,
-)
+from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
 from api.services.roadmap_validation import validate_roadmap_domain
 from api.services.session_policy import session_expires_at
 from api.services.sharing_service import _ROLE_LABELS, _ROLE_ORDER, _SHARE_PREFIXES  # noqa: F401
@@ -75,7 +73,6 @@ async def create_roadmap(
     now = datetime.now(timezone.utc)
     roadmap_id = generate_id("rm_")
 
-    # ── Roadmap ───────────────────────────────────────────────────────────────
     roadmap = Roadmap(
         id=roadmap_id,
         name=payload.name,
@@ -89,7 +86,6 @@ async def create_roadmap(
     )
     db.add(roadmap)
 
-    # ── Owner participant ─────────────────────────────────────────────────────
     owner_session_token = generate_token("sess_")
     participant = Participant(
         id=generate_id("pt_"),
@@ -101,14 +97,12 @@ async def create_roadmap(
     )
     db.add(participant)
 
-    # ── Share links — one per role ────────────────────────────────────────────
-    # Owner/editor raw tokens live only in this dict and the response.
     raw_tokens: dict[str, str] = {}
     share_link_rows: list[ShareLink] = []
     for role, prefix in _SHARE_PREFIXES.items():
         raw = generate_token(prefix)
         raw_tokens[role] = raw
-        sl = ShareLink(
+        share_link = ShareLink(
             id=generate_id("sl_"),
             roadmap_id=roadmap_id,
             role=role,
@@ -116,10 +110,9 @@ async def create_roadmap(
             public_token=raw if role == "viewer" else None,
             token_prefix=make_token_prefix(raw),
         )
-        db.add(sl)
-        share_link_rows.append(sl)
+        db.add(share_link)
+        share_link_rows.append(share_link)
 
-    # ── Activity log ──────────────────────────────────────────────────────────
     action, entity_type, entity_id, metadata_json = _change_summary_fields(
         payload.change_summary,
         default_action="roadmap.created",
@@ -139,23 +132,25 @@ async def create_roadmap(
         metadata_json=metadata_json,
     ))
     await _create_roadmap_version(db, roadmap, participant, "roadmap.created", metadata_json)
+
+    # Seed the derivative projection once for operators that later run parity
+    # checks. Normal edits intentionally update only the canonical snapshot; a
+    # backfill is required before projection reads can be enabled.
     await sync_roadmap_projection_best_effort(db, roadmap, "create")
 
     await db.commit()
-    # Refresh roadmap to read server-set created_at / updated_at timestamps.
     await db.refresh(roadmap)
 
-    # Build share link responses while raw_tokens are still in scope.
     share_links_out = [
         ShareLinkResponse(
-            id=sl.id,
-            role=sl.role,  # type: ignore[arg-type]
-            token_prefix=sl.token_prefix,
-            url=f"{web_base_url}/join?token={raw_tokens[sl.role]}",
+            id=share_link.id,
+            role=share_link.role,  # type: ignore[arg-type]
+            token_prefix=share_link.token_prefix,
+            url=f"{web_base_url}/join?token={raw_tokens[share_link.role]}",
             is_active=True,
             created_at=now,
         )
-        for sl in share_link_rows
+        for share_link in share_link_rows
     ]
 
     return CreateRoadmapResponse(
@@ -203,10 +198,6 @@ async def update_roadmap(
     )
     validate_roadmap_domain(next_phases, next_tag_registry)
 
-    # Advance updated_at explicitly so subsequent stale-check comparisons work.
-    # sa.func.now() (onupdate) emits SQL NOW() = transaction_timestamp(), which
-    # is pinned to the outer transaction start — shared in tests and in long-lived
-    # DB transactions. A Python-side timestamp is always strictly newer.
     roadmap.updated_at = datetime.now(timezone.utc)
 
     before_json: dict = {}
@@ -217,14 +208,15 @@ async def update_roadmap(
         after_json["name"] = payload.name
         roadmap.name = payload.name
 
-    phases_changed = payload.phases is not None
     if payload.phases is not None:
         before_json["phase_count"] = len(roadmap.snapshot_json.get("phases", []))
         after_json["phase_count"] = len(payload.phases)
         roadmap.snapshot_json = _snapshot_from_phases(payload.phases)
 
     if payload.tag_registry is not None:
-        roadmap.tag_registry_json = [t.model_dump(exclude_none=True) for t in payload.tag_registry]
+        roadmap.tag_registry_json = [
+            tag.model_dump(exclude_none=True) for tag in payload.tag_registry
+        ]
 
     action, entity_type, entity_id, metadata_json = _change_summary_fields(
         payload.change_summary,
@@ -247,13 +239,13 @@ async def update_roadmap(
     ))
     if _should_create_version(action, metadata_json):
         await _create_roadmap_version(db, roadmap, participant, action, metadata_json)
-    if phases_changed:
-        await sync_roadmap_projection_best_effort(db, roadmap, "update")
 
+    # The canonical JSON snapshot is the only synchronous write model. Rebuilding
+    # every relational projection row here made each autosave O(total roadmap
+    # size) twice and increased lock contention without serving normal reads.
     await db.commit()
     await db.refresh(roadmap)
 
-    # ── Realtime broadcast ────────────────────────────────────────────────────
     await event_bus.publish(Event(
         roadmap_id=roadmap_id,
         action="roadmap.updated",
@@ -261,7 +253,7 @@ async def update_roadmap(
             "roadmap_id": roadmap_id,
             "updated_at": roadmap.updated_at.isoformat(),
             "participant_id": participant.id if participant else None,
-        }
+        },
     ))
 
     return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
@@ -305,7 +297,7 @@ async def delete_roadmap(
             "roadmap_id": roadmap_id,
             "updated_at": now.isoformat(),
             "participant_id": participant.id,
-        }
+        },
     ))
 
     return {"ok": True}
@@ -319,10 +311,7 @@ async def get_activity_logs(
 ) -> ActivityLogListResponse:
     await _fetch_active_roadmap(db, roadmap_id)
 
-    # Max limit 200
     safe_limit = min(limit, 200)
-
-    # Fetch logs + 1 to check for has_more
     stmt = (
         select(ActivityLog)
         .where(ActivityLog.roadmap_id == roadmap_id)
@@ -339,19 +328,19 @@ async def get_activity_logs(
     return ActivityLogListResponse(
         logs=[
             ActivityLogResponse(
-                id=al.id,
-                roadmap_id=al.roadmap_id,
-                participant_id=al.participant_id,
-                actor_name=al.actor_name,
-                action=al.action,
-                entity_type=al.entity_type,
-                entity_id=al.entity_id,
-                before_json=al.before_json,
-                after_json=al.after_json,
-                metadata_json=al.metadata_json,
-                created_at=al.created_at,
+                id=activity.id,
+                roadmap_id=activity.roadmap_id,
+                participant_id=activity.participant_id,
+                actor_name=activity.actor_name,
+                action=activity.action,
+                entity_type=activity.entity_type,
+                entity_id=activity.entity_id,
+                before_json=activity.before_json,
+                after_json=activity.after_json,
+                metadata_json=activity.metadata_json,
+                created_at=activity.created_at,
             )
-            for al in return_logs
+            for activity in return_logs
         ],
         has_more=has_more,
     )
