@@ -100,6 +100,7 @@ def validate_roadmap_domain(
     if duplicate_task_ids:
         errors.append(f"duplicate task IDs: {', '.join(sorted(duplicate_task_ids))}")
 
+    registered_tag_ids: set[str] | None = None
     if tag_registry is not None:
         duplicate_tag_ids = _duplicates(tag.id for tag in tag_registry)
         duplicate_tag_labels = _duplicates(
@@ -110,6 +111,7 @@ def validate_roadmap_domain(
             errors.append(f"duplicate tag IDs: {', '.join(sorted(duplicate_tag_ids))}")
         if duplicate_tag_labels:
             errors.append("duplicate tag labels")
+        registered_tag_ids = {tag.id for tag in tag_registry}
 
     parent_graph: dict[str, list[str]] = {task.id: [] for task in all_tasks}
     dependency_graph: dict[str, list[str]] = {task.id: [] for task in all_tasks}
@@ -133,6 +135,14 @@ def validate_roadmap_domain(
             ):
                 if _duplicates(values, casefold=field_name != "dependencies"):
                     errors.append(f"task {task.id!r} has duplicate {field_name}")
+
+            if registered_tag_ids is not None:
+                unknown_tag_ids = sorted(set(task.tags or []) - registered_tag_ids)
+                if unknown_tag_ids:
+                    errors.append(
+                        f"task {task.id!r} references unknown tags: "
+                        f"{', '.join(unknown_tag_ids)}"
+                    )
 
             if task.done and any((task.claimedBy, task.claimedById, task.claimedAt)):
                 errors.append(f"completed task {task.id!r} must not remain claimed")
