@@ -49,7 +49,8 @@ Assignees and participants are different:
 ## Data and exports
 
 Browser-local roadmaps are stored in `localStorage`. Clearing site data can remove
-them, so keep JSON backups of important work.
+them, so keep JSON backups of important work. If the browser rejects a local write,
+RoadForge displays a persistent warning instead of treating the write as successful.
 
 - **JSON:** complete portable roadmap data, suitable for re-import.
 - **Markdown:** deterministic presentation format for people and agents; it does
@@ -97,12 +98,15 @@ make logs
 make stop
 ```
 
-Run the full validation gate before opening a pull request:
+Run the local validation gate before opening a pull request:
 
 ```bash
 make check
 make release-check
 ```
+
+The complete release evidence, including PostgreSQL, Redis, production browser,
+container, deployment, MCP, and dependency checks, runs in GitHub Actions.
 
 Focused commands:
 
@@ -142,8 +146,14 @@ Production requirements:
 - back up PostgreSQL before schema-sensitive releases;
 - validate create, share, join, conflict, export, and import flows in a browser.
 
-The API container runs as a non-root user. API, browser import, and supplied nginx
-configuration use the same 5 MiB roadmap payload limit.
+The API and web containers run as non-root users. API, browser import, and supplied
+nginx configuration use the same 5 MiB roadmap payload limit.
+
+Operability endpoints:
+
+- `/api/health/live` checks process liveness only;
+- `/api/health/ready` checks PostgreSQL and configured Redis readiness;
+- `/api/health` is the backward-compatible readiness alias.
 
 See [Public Deployment Security](docs/public-deployment-security.md) for the
 current security contract.
@@ -196,6 +206,7 @@ separate release action after this branch is validated. See [MCP integration](do
 
 Detailed references:
 
+- [Senior-readiness audit](docs/senior-readiness-audit.md)
 - [Backend API](docs/backend-api.md)
 - [Architecture](docs/architecture/overview.md)
 - [Access model](docs/access-model.md)
