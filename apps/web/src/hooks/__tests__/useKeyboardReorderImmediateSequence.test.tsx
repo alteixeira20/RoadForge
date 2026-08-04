@@ -46,6 +46,11 @@ describe('useKeyboardReorder immediate event delivery', () => {
     const onAnnounce = vi.fn()
     let state: ReorderState | null = null
 
+    const current = (): ReorderState => {
+      if (!state) throw new Error('Keyboard reorder harness did not initialize')
+      return state
+    }
+
     act(() => {
       root.render(
         <Harness
@@ -55,12 +60,11 @@ describe('useKeyboardReorder immediate event delivery', () => {
         />,
       )
     })
-    if (!state) throw new Error('Keyboard reorder harness did not initialize')
 
     // Browser key events can arrive in one task before React renders state
     // from the preceding event. Keep using the same pre-render handler to
     // reproduce that scheduling boundary exactly.
-    const initialHandler = state.handleKeyDown
+    const initialHandler = current().handleKeyDown
     act(() => {
       initialHandler(press('Space'), 'task-b')
       initialHandler(press('ArrowUp'), 'task-b')
