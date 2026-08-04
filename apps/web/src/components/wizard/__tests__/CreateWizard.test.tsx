@@ -48,9 +48,17 @@ describe('CreateWizard starting point', () => {
     act(() => button.click())
   }
 
+  const inputForLabel = (labelText: string): HTMLInputElement => {
+    const label = [...container.querySelectorAll('label')]
+      .find((candidate) => candidate.textContent?.trim() === labelText)
+    const id = label?.htmlFor
+    const input = id ? container.querySelector<HTMLInputElement>(`#${CSS.escape(id)}`) : null
+    if (!input) throw new Error(`Missing input labelled: ${labelText}`)
+    return input
+  }
+
   const fillRoadmapTitle = (title = 'My roadmap') => {
-    const input = container.querySelector<HTMLInputElement>('#rn')
-    if (!input) throw new Error('Missing roadmap title input')
+    const input = inputForLabel('Roadmap title')
     const valueSetter = Object.getOwnPropertyDescriptor(
       HTMLInputElement.prototype,
       'value',
@@ -72,11 +80,11 @@ describe('CreateWizard starting point', () => {
   }
 
   it('does not inherit the hidden sample or currently open roadmap title', () => {
-    const input = container.querySelector<HTMLInputElement>('#rn')
+    const input = inputForLabel('Roadmap title')
     const continueButton = [...container.querySelectorAll('button')]
       .find((candidate) => candidate.textContent?.includes('Continue'))
 
-    expect(input?.value).toBe('')
+    expect(input.value).toBe('')
     expect(continueButton?.hasAttribute('disabled')).toBe(true)
   })
 
