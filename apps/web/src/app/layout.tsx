@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Lexend, JetBrains_Mono } from 'next/font/google'
+import { StorageWriteFailureBanner } from '@/components/ui/StorageWriteFailureBanner'
 import { RoadmapProvider } from '@/context/RoadmapContext'
 import './globals.css'
 
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${lexend.variable} ${jetbrainsMono.variable}`}>
       <body>
+        <StorageWriteFailureBanner />
         <RoadmapProvider>{children}</RoadmapProvider>
       </body>
     </html>
