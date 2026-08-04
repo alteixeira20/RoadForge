@@ -21,6 +21,8 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
   // the title of the roadmap that happened to be open before this dialog.
   const [draftRoadmapName, setDraftRoadmapName] = useState('')
   const headingId = useId()
+  const displayNameId = useId()
+  const roadmapNameId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const displayNameInputRef = useRef<HTMLInputElement>(null)
 
@@ -113,9 +115,9 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
               </p>
 
               <div className="field">
-                <label htmlFor="dn">Your display name</label>
+                <label htmlFor={displayNameId}>Your display name</label>
                 <input
-                  id="dn"
+                  id={displayNameId}
                   ref={displayNameInputRef}
                   className="input"
                   autoComplete="nickname"
@@ -130,9 +132,9 @@ export function CreateWizard({ onComplete, onClose }: CreateWizardProps) {
               </div>
 
               <div className="field">
-                <label htmlFor="rn">Roadmap title</label>
+                <label htmlFor={roadmapNameId}>Roadmap title</label>
                 <input
-                  id="rn"
+                  id={roadmapNameId}
                   className="input"
                   autoComplete="off"
                   placeholder="e.g. Launch the first product version"

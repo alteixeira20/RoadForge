@@ -18,9 +18,15 @@ export async function createRoadmap(
   // Step 1: both identity and roadmap title are required before the wizard
   // advances. Keep this helper coupled to the visible product contract rather
   // than the removed five-step implementation.
-  await wizard.getByLabel('Display name').fill('Browser Tester')
-  await wizard.getByLabel('Roadmap title').fill(title)
-  await wizard.getByRole('button', { name: /Continue/ }).click()
+  const displayNameInput = wizard.getByLabel('Your display name', { exact: true })
+  const roadmapTitleInput = wizard.getByLabel('Roadmap title', { exact: true })
+  await displayNameInput.fill('Browser Tester')
+  await expect(displayNameInput).toHaveValue('Browser Tester')
+  await roadmapTitleInput.fill(title)
+  await expect(roadmapTitleInput).toHaveValue(title)
+  const continueButton = wizard.getByRole('button', { name: /Continue/ })
+  await expect(continueButton).toBeEnabled()
+  await continueButton.click()
 
   // Step 2 defaults to blank; select the example only when requested.
   const startingPointStep = page.getByRole('dialog', { name: 'Start simple' })

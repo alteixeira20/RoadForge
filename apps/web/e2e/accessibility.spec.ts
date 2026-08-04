@@ -4,15 +4,44 @@ import { createRoadmap } from './helpers'
 
 /** Pointer drag with enough intermediate moves to clear dnd-kit's activation distance. */
 async function dragHandleOnto(page: Page, handle: Locator, target: Locator) {
+  // A locator may be present below the current viewport even though
+  // boundingBox() returns document-relative coordinates for it. Move the
+  // destination into the visible center before calculating mouse positions;
+  // otherwise Playwright can faithfully send the pointer outside the viewport
+  // and dnd-kit never receives a drag sequence.
+  await target.evaluate((element) => element.scrollIntoView({ block: 'center' }))
+  await handle.scrollIntoViewIfNeeded()
+
   const from = await handle.boundingBox()
   const to = await target.boundingBox()
+  const viewport = page.viewportSize()
   expect(from).not.toBeNull()
   expect(to).not.toBeNull()
+  expect(viewport).not.toBeNull()
 
-  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2)
+  const fromX = from!.x + from!.width / 2
+  const fromY = from!.y + from!.height / 2
+  const toX = to!.x + to!.width / 2
+  const toY = to!.y + to!.height / 2
+
+  for (const coordinate of [fromX, toX]) {
+    expect(coordinate).toBeGreaterThanOrEqual(0)
+    expect(coordinate).toBeLessThanOrEqual(viewport!.width)
+  }
+  for (const coordinate of [fromY, toY]) {
+    expect(coordinate).toBeGreaterThanOrEqual(0)
+    expect(coordinate).toBeLessThanOrEqual(viewport!.height)
+  }
+
+  const direction = toY >= fromY ? 1 : -1
+  await page.mouse.move(fromX, fromY)
   await page.mouse.down()
-  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2 + 12, { steps: 4 })
-  await page.mouse.move(to!.x + to!.width / 2, to!.y + to!.height / 2 + 8, { steps: 12 })
+  await page.mouse.move(fromX, fromY + direction * 12, { steps: 4 })
+  await page.mouse.move(
+    toX,
+    toY + direction * Math.min(8, to!.height / 4),
+    { steps: 12 },
+  )
   await page.mouse.up()
 }
 
