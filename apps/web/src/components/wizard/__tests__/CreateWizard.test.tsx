@@ -52,7 +52,10 @@ describe('CreateWizard starting point', () => {
     const label = [...container.querySelectorAll('label')]
       .find((candidate) => candidate.textContent?.trim() === labelText)
     const id = label?.htmlFor
-    const input = id ? container.querySelector<HTMLInputElement>(`#${CSS.escape(id)}`) : null
+    const candidate = id ? document.getElementById(id) : null
+    const input = candidate instanceof HTMLInputElement && container.contains(candidate)
+      ? candidate
+      : null
     if (!input) throw new Error(`Missing input labelled: ${labelText}`)
     return input
   }
