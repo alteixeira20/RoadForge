@@ -17,9 +17,9 @@ describe('storage write failure reporting', () => {
       throw new DOMException('Storage quota exceeded', 'QuotaExceededError')
     })
 
-    let detail: StorageWriteFailureDetail | null = null
+    const failures: StorageWriteFailureDetail[] = []
     window.addEventListener(STORAGE_WRITE_ERROR_EVENT, (event) => {
-      detail = (event as CustomEvent<StorageWriteFailureDetail>).detail
+      failures.push((event as CustomEvent<StorageWriteFailureDetail>).detail)
     }, { once: true })
 
     storage.setRoadmapCache('rm_private', {
@@ -31,8 +31,10 @@ describe('storage write failure reporting', () => {
       isPasswordEnabled: false,
     })
 
+    expect(failures).toHaveLength(1)
+    const detail = failures[0]
     expect(detail).toMatchObject({ reason: 'quota', scope: 'roadmap' })
-    expect(detail?.occurredAt).toEqual(expect.any(String))
+    expect(detail.occurredAt).toEqual(expect.any(String))
     expect(JSON.stringify(detail)).not.toContain('rm_private')
     expect(JSON.stringify(detail)).not.toContain('Secret roadmap name')
   })
@@ -42,13 +44,15 @@ describe('storage write failure reporting', () => {
       throw new DOMException('Access denied', 'SecurityError')
     })
 
-    let detail: StorageWriteFailureDetail | null = null
+    const failures: StorageWriteFailureDetail[] = []
     window.addEventListener(STORAGE_WRITE_ERROR_EVENT, (event) => {
-      detail = (event as CustomEvent<StorageWriteFailureDetail>).detail
+      failures.push((event as CustomEvent<StorageWriteFailureDetail>).detail)
     }, { once: true })
 
     storage.setDisplayName('Alexandre')
 
-    expect(detail).toMatchObject({ reason: 'blocked', scope: 'preferences' })
+    expect(failures).toEqual([
+      expect.objectContaining({ reason: 'blocked', scope: 'preferences' }),
+    ])
   })
 })
