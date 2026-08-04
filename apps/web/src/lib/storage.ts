@@ -19,6 +19,17 @@ const LEGACY_KEYS = {
   updatedAt: 'rf:updatedAt',
 } as const
 
+export const STORAGE_WRITE_ERROR_EVENT = 'roadforge:storage-write-error'
+
+export type StorageWriteFailureReason = 'quota' | 'blocked' | 'unknown'
+export type StorageWriteScope = 'roadmap' | 'auth' | 'ui' | 'preferences' | 'other'
+
+export interface StorageWriteFailureDetail {
+  reason: StorageWriteFailureReason
+  scope: StorageWriteScope
+  occurredAt: string
+}
+
 export interface RoadmapCache {
   roadmapName: string
   phases: Phase[]
@@ -84,12 +95,44 @@ function getLocal(key: string): string | null {
   }
 }
 
+function storageScope(key: string): StorageWriteScope {
+  if (key.startsWith('rf:roadmap:')) return 'roadmap'
+  if (key.startsWith('rf:auth:')) return 'auth'
+  if (key.startsWith('rf:ui:')) return 'ui'
+  if (key === KEYS.displayName || key === KEYS.lastRoadmapId) return 'preferences'
+  return 'other'
+}
+
+function storageFailureReason(error: unknown): StorageWriteFailureReason {
+  if (!(error instanceof DOMException)) return 'unknown'
+  if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+    return 'quota'
+  }
+  if (error.name === 'SecurityError' || error.name === 'NotAllowedError') return 'blocked'
+  return 'unknown'
+}
+
+function reportStorageWriteFailure(key: string, error: unknown): void {
+  if (typeof window === 'undefined') return
+  const detail: StorageWriteFailureDetail = {
+    reason: storageFailureReason(error),
+    scope: storageScope(key),
+    occurredAt: new Date().toISOString(),
+  }
+  window.dispatchEvent(new CustomEvent<StorageWriteFailureDetail>(
+    STORAGE_WRITE_ERROR_EVENT,
+    { detail },
+  ))
+}
+
 function setLocal(key: string, value: string): void {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.setItem(key, value)
-  } catch {
-    // storage full or blocked — silently ignore
+  } catch (error) {
+    // Local storage is canonical for browser-only roadmaps. Never represent a
+    // rejected write as success: notify the UI without exposing the key or data.
+    reportStorageWriteFailure(key, error)
   }
 }
 
@@ -98,7 +141,7 @@ function removeLocal(key: string): void {
   try {
     window.localStorage.removeItem(key)
   } catch {
-    // ignore
+    // Removal failure does not risk silently losing newly edited source data.
   }
 }
 
@@ -124,7 +167,9 @@ function setSession(key: string, value: string): void {
   if (typeof window === 'undefined') return
   try {
     window.sessionStorage.setItem(key, value)
-  } catch {}
+  } catch {
+    // Active-tab selection is transient and does not contain roadmap source data.
+  }
 }
 
 export const storage = {
@@ -170,7 +215,7 @@ export const storage = {
   setRoadmapCache(id: string, cache: RoadmapCache): void {
     setLocal(`rf:roadmap:${id}`, JSON.stringify(cache))
   },
-  
+
   getAuthCache(id: string): AuthCache | null {
     const raw = getLocal(`rf:auth:${id}`)
     if (!raw) return null
@@ -207,7 +252,7 @@ export const storage = {
   listRoadmapCaches(): Array<{ id: string; cache: RoadmapCache; auth: AuthCache | null }> {
     if (typeof window === 'undefined') return []
     const results: Array<{ id: string; cache: RoadmapCache; auth: AuthCache | null }> = []
-    
+
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i)
       if (key && key.startsWith('rf:roadmap:')) {
@@ -219,7 +264,7 @@ export const storage = {
         }
       }
     }
-    
+
     return results.sort((a, b) => {
       const aTime = a.cache.updatedAt ? new Date(a.cache.updatedAt).getTime() : 0
       const bTime = b.cache.updatedAt ? new Date(b.cache.updatedAt).getTime() : 0
@@ -270,7 +315,9 @@ export const storage = {
             if (parsed.isOnboardingDismissed === true) {
               return true
             }
-          } catch {}
+          } catch {
+            // Ignore malformed non-canonical UI state entries.
+          }
         }
       }
     }
@@ -294,7 +341,7 @@ export const storage = {
   migrateLegacyStorageIfNeeded(): string | null {
     const serverRoadmapId = getLocal(LEGACY_KEYS.serverRoadmapId)
     const rawPhases = getLocal(LEGACY_KEYS.phases)
-    
+
     if (!serverRoadmapId && !rawPhases) {
       return null // nothing to migrate
     }
@@ -302,7 +349,9 @@ export const storage = {
     let phases: Phase[] = []
     try {
       phases = rawPhases ? JSON.parse(rawPhases) : []
-    } catch {}
+    } catch {
+      // Leave malformed legacy data empty rather than failing hydration.
+    }
 
     const roadmapName = getLocal(LEGACY_KEYS.roadmapName) || 'Untitled Roadmap'
     const saved = getLocal(LEGACY_KEYS.saved) === 'true'
@@ -318,7 +367,7 @@ export const storage = {
       saved,
       ownerDisplayName,
       updatedAt,
-      isPasswordEnabled
+      isPasswordEnabled,
     }
     this.setRoadmapCache(newId, roadmapCache)
 
@@ -333,7 +382,7 @@ export const storage = {
           serverRoadmapId,
           sessionToken,
           participantId,
-          role
+          role,
         }
         this.setAuthCache(serverRoadmapId, authCache)
       }
@@ -346,5 +395,5 @@ export const storage = {
     Object.values(LEGACY_KEYS).forEach(removeLocal)
 
     return newId
-  }
+  },
 }
