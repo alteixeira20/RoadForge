@@ -1,0 +1,45 @@
+name: Apply final browser fixes
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - .github/browser-fixes.trigger
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-final-browser-fixes
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v6
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Apply browser contract fixes
+        run: |
+          set -euo pipefail
+          python .github/apply-final-browser-fixes.py
+          rm -f .github/apply-final-browser-fixes.py .github/browser-fixes.trigger
+          git config user.name "RoadForge CI"
+          git config user.email "roadforge-ci@users.noreply.github.com"
+          git add \
+            apps/web/e2e/accessibility.spec.ts \
+            apps/web/e2e/clean-beta-smoke.spec.ts \
+            apps/web/e2e/helpers.ts \
+            apps/web/src/components/wizard/CreateWizard.tsx \
+            .github/apply-final-browser-fixes.py \
+            .github/browser-fixes.trigger
+          git diff --cached --check
+          git commit -m "test(web): align final browser contracts"
+          git push origin HEAD:dev
