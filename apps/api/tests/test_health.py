@@ -1,5 +1,8 @@
+import os
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+
+import pytest
 
 import api.routers.health as health_module
 
@@ -65,3 +68,11 @@ async def test_redis_deployment_requires_both_database_and_redis(client, monkeyp
 
     assert response.status_code == 503
     redis_check.assert_awaited_once_with("redis://redis.test:6379/0")
+
+
+@pytest.mark.skipif(
+    not os.getenv("REAL_REDIS_TEST_URL"),
+    reason="REAL_REDIS_TEST_URL is required for the integration probe",
+)
+async def test_redis_readiness_probe_against_real_server():
+    assert await health_module._redis_is_ready(os.environ["REAL_REDIS_TEST_URL"])
