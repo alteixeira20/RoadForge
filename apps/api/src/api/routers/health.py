@@ -1,23 +1,23 @@
 import logging
 
 import redis.asyncio as redis
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
-from api.database import engine
+from api.database import get_db
 from api.schemas.common import HealthResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 
 
-async def _database_is_ready() -> bool:
+async def _database_is_ready(db: AsyncSession) -> bool:
     try:
-        async with engine.connect() as connection:
-            await connection.execute(text("SELECT 1"))
+        await db.execute(text("SELECT 1"))
         return True
     except (SQLAlchemyError, OSError):
         logger.warning("Readiness check failed: PostgreSQL is unavailable", exc_info=True)
@@ -43,9 +43,9 @@ async def _redis_is_ready(redis_url: str) -> bool:
             await client.aclose()
 
 
-async def _readiness_response() -> HealthResponse:
+async def _readiness_response(db: AsyncSession) -> HealthResponse:
     settings = get_settings()
-    database_ready = await _database_is_ready()
+    database_ready = await _database_is_ready(db)
     redis_ready = True
     if settings.realtime_backend == "redis":
         redis_ready = bool(settings.redis_url) and await _redis_is_ready(settings.redis_url or "")
@@ -66,12 +66,12 @@ async def liveness() -> HealthResponse:
 
 
 @router.get("/health/ready", response_model=HealthResponse)
-async def readiness() -> HealthResponse:
+async def readiness(db: AsyncSession = Depends(get_db)) -> HealthResponse:
     """Readiness for traffic, including PostgreSQL and configured Redis."""
-    return await _readiness_response()
+    return await _readiness_response(db)
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health() -> HealthResponse:
+async def health(db: AsyncSession = Depends(get_db)) -> HealthResponse:
     """Backward-compatible readiness alias used by existing deployments."""
-    return await _readiness_response()
+    return await _readiness_response(db)
