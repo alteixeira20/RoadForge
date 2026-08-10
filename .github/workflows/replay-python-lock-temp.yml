@@ -1,0 +1,61 @@
+name: Temporary Python Lock Replay
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - foundation/release-baseline
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    if: >-
+      github.head_ref == 'foundation/python-lock' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 1
+      - name: Replay audited non-workflow files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin foundation/python-lock-snapshot
+          git checkout FETCH_HEAD -- \
+            Makefile \
+            apps/api/Dockerfile \
+            apps/api/UV_VERSION \
+            apps/api/scripts/audit-locked-runtime.sh \
+            apps/api/scripts/check-lock.sh \
+            apps/api/scripts/sync-locked-env.sh \
+            apps/api/uv.lock \
+            docs/security/dependency-audit-policy.md
+
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('docs/security/dependency-audit-policy.md')
+          lines = path.read_text().splitlines()
+          path.write_text('\n'.join(line.rstrip() for line in lines) + '\n')
+          PY
+
+          rm .github/workflows/replay-python-lock-temp.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            Makefile \
+            apps/api/Dockerfile \
+            apps/api/UV_VERSION \
+            apps/api/scripts/audit-locked-runtime.sh \
+            apps/api/scripts/check-lock.sh \
+            apps/api/scripts/sync-locked-env.sh \
+            apps/api/uv.lock \
+            docs/security/dependency-audit-policy.md \
+            .github/workflows/replay-python-lock-temp.yml
+          git diff --cached --check
+          git commit -m 'build(api): replay locked dependency foundation'
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
