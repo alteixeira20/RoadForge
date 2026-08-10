@@ -45,8 +45,8 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
         </div>
         <div className="meta-row" aria-label="RoadForge highlights">
           <span><Icon name="lock" size={14} /> No account required</span>
-          <span><Icon name="device" size={14} /> Starts on your device</span>
-          <span><Icon name="export" size={14} /> JSON stays portable</span>
+          <span><Icon name="device" size={14} /> Runs locally</span>
+          <span><Icon name="export" size={14} /> Portable exports</span>
           <span><Icon name="shield" size={14} /> Non-commercial source available</span>
         </div>
       </div>
