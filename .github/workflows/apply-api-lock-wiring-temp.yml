@@ -1,0 +1,122 @@
+name: Temporary API Lock Wiring
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  apply-wiring:
+    if: >-
+      github.head_ref == 'foundation/python-lock' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Apply exact lock-consumer wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(text: str, old: str, new: str, *, count: int = 1) -> str:
+              actual = text.count(old)
+              if actual != count:
+                  raise SystemExit(f'expected {count} matches, found {actual}: {old[:80]!r}')
+              return text.replace(old, new)
+
+          ci_path = Path('.github/workflows/ci.yml')
+          ci = ci_path.read_text()
+
+          api_lock_job = '''  api-lock:\n    name: API Dependency Lock\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n\n    steps:\n      - name: Checkout\n        uses: actions/checkout@v6\n\n      - name: Set up Python\n        uses: actions/setup-python@v6\n        with:\n          python-version: '3.12'\n\n      - name: Check lock drift and deterministic export\n        working-directory: apps/api\n        run: bash scripts/check-lock.sh\n\n'''
+          ci = replace_exact(ci, '  api-lint:\n', api_lock_job + '  api-lint:\n')
+
+          ci = replace_exact(
+              ci,
+              '''      - name: Install API with dev extras\n        working-directory: apps/api\n        run: pip install -e ".[dev]"\n\n      - name: Run ruff\n        working-directory: apps/api\n        run: ruff check src/\n''',
+              '''      - name: Sync locked API dev environment\n        working-directory: apps/api\n        run: bash scripts/sync-locked-env.sh dev\n\n      - name: Run ruff\n        working-directory: apps/api\n        run: uv run --no-sync ruff check src/\n''',
+          )
+
+          ci = replace_exact(
+              ci,
+              '''      - name: Install API dependencies\n        working-directory: apps/api\n        run: pip install -e .\n''',
+              '''      - name: Sync locked API runtime environment\n        working-directory: apps/api\n        run: bash scripts/sync-locked-env.sh\n''',
+          )
+          ci = replace_exact(ci, '        run: alembic upgrade head\n', '        run: uv run --no-sync alembic upgrade head\n')
+          ci = replace_exact(ci, '        run: alembic check\n', '        run: uv run --no-sync alembic check\n')
+
+          ci = replace_exact(
+              ci,
+              '''      - name: Install API with test extras\n        working-directory: apps/api\n        run: pip install -e ".[test]"\n''',
+              '''      - name: Sync locked API test environment\n        working-directory: apps/api\n        run: bash scripts/sync-locked-env.sh test\n''',
+              count=2,
+          )
+          ci = replace_exact(
+              ci,
+              '        run: python3 -m pytest -q --junitxml=pytest-report.xml\n',
+              '        run: uv run --no-sync python3 -m pytest -q --junitxml=pytest-report.xml\n',
+          )
+          ci = replace_exact(
+              ci,
+              '        run: python3 -m pytest -q tests/test_realtime_revocation.py\n',
+              '        run: uv run --no-sync python3 -m pytest -q tests/test_realtime_revocation.py\n',
+          )
+
+          ci = replace_exact(
+              ci,
+              '''      - name: Install API with audit extras\n        run: pip install -e "apps/api[audit]" -q\n\n      - name: Run Python audit\n        run: make api-audit\n''',
+              '''      - name: Audit locked API runtime\n        working-directory: apps/api\n        run: bash scripts/audit-locked-runtime.sh\n''',
+          )
+          ci_path.write_text(ci)
+
+          make_path = Path('Makefile')
+          make = make_path.read_text()
+          make = replace_exact(make, 'api-check-prepare api-lint', 'api-check-prepare api-lock api-lint')
+          make = replace_exact(
+              make,
+              '\t@echo "  make api-lint           Run ruff linter against apps/api/src"\n',
+              '\t@echo "  make api-lock           Verify uv.lock drift and deterministic runtime export"\n'
+              '\t@echo "  make api-lint           Run ruff linter against apps/api/src from uv.lock"\n',
+          )
+          make = replace_exact(
+              make,
+              '\t$(MAKE) api-lint\n\t$(MAKE) api-test\n',
+              '\t$(MAKE) api-lock\n\t$(MAKE) api-lint\n\t$(MAKE) api-test\n',
+          )
+          make = replace_exact(
+              make,
+              '''api-audit:\n\tpython3 -c "\\\nimport tomllib, sys; \\\ndata = tomllib.load(open('apps/api/pyproject.toml','rb')); \\\ndeps = data['project']['dependencies']; \\\nopen('/tmp/rf_audit_reqs.txt','w').write('\\n'.join(deps)+'\\n')"\n\tpip-audit -r /tmp/rf_audit_reqs.txt\n\trm -f /tmp/rf_audit_reqs.txt\n''',
+              '''api-audit:\n\tcd apps/api && bash scripts/audit-locked-runtime.sh\n''',
+          )
+          make = replace_exact(
+              make,
+              '''api-lint:\n\tcd apps/api && ruff check src/\n''',
+              '''api-lock:\n\tcd apps/api && bash scripts/check-lock.sh\n\napi-lint:\n\tcd apps/api && bash scripts/sync-locked-env.sh dev && uv run --no-sync ruff check src/\n''',
+          )
+          make = replace_exact(
+              make,
+              '''api-test: api-test-prepare\n\tcd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \\\n\t\tuv run --no-sync python3 -m pytest -q\n\napi-test-fast:\n\tcd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \\\n\t\tuv run --no-sync python3 -m pytest -q\n''',
+              '''api-test: api-test-prepare\n\tcd apps/api && bash scripts/sync-locked-env.sh test && \\\n\t\tTEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \\\n\t\tuv run --no-sync python3 -m pytest -q\n\napi-test-fast:\n\tcd apps/api && bash scripts/sync-locked-env.sh test && \\\n\t\tTEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \\\n\t\tuv run --no-sync python3 -m pytest -q\n''',
+          )
+          make = replace_exact(
+              make,
+              '''\t@trap 'docker rm -f roadforge-test-redis >/dev/null 2>&1 || true' EXIT; \\\n\tcd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \\\n\t\tREAL_REDIS_TEST_URL=redis://localhost:6390/0 \\\n\t\tuv run --no-sync python3 -m pytest -q tests/test_realtime_revocation.py\n''',
+              '''\t@trap 'docker rm -f roadforge-test-redis >/dev/null 2>&1 || true' EXIT; \\\n\tcd apps/api && bash scripts/sync-locked-env.sh test && \\\n\t\tTEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \\\n\t\tREAL_REDIS_TEST_URL=redis://localhost:6390/0 \\\n\t\tuv run --no-sync python3 -m pytest -q tests/test_realtime_revocation.py\n''',
+          )
+          make_path.write_text(make)
+          PY
+
+          rm .github/workflows/apply-api-lock-wiring-temp.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/ci.yml Makefile .github/workflows/apply-api-lock-wiring-temp.yml
+          git diff --cached --check
+          git commit -m 'ci(api): consume uv.lock across validation paths'
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
