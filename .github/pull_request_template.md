@@ -1,36 +1,57 @@
-## Summary
+## What problem does this solve?
 
-<!-- What does this change do? -->
+<!-- Describe the user-visible bug, usability problem, maintenance need, or accepted issue. -->
 
-## Why this change is needed
+## What changed?
 
-<!-- What user problem, bug, or maintenance need does it address? -->
+<!-- Keep this focused. Mention the main implementation areas, not every edited file. -->
 
-## Changes
+## Contract impact
 
-<!-- List the focused changes. Mention migrations, contracts, or configuration changes. -->
+Check every area this PR changes and explain it below when applicable:
+
+- [ ] Portable roadmap/import-export format
+- [ ] Browser persistence/local-first behavior
+- [ ] API request/response behavior
+- [ ] Authorization/session/sharing behavior
+- [ ] Database schema or persisted server data
+- [ ] Realtime/locks/claims/concurrency
+- [ ] Deployment/configuration/operations
+- [ ] User-visible UI/accessibility
+- [ ] No contract impact
+
+**Notes:**
+
+<!-- Name migrations, environment variables, compatibility behavior, or source-of-truth changes. -->
 
 ## Validation
 
-<!-- List automated checks and manual QA performed. Note anything not run and why. -->
+<!-- Paste the exact commands/checks you ran and the result. Do not write "tests pass" without naming them. -->
 
-## Risk and compatibility
+```text
+<command> -> PASS / FAIL / NOT RUN
+```
 
-<!-- Describe behavior, security, data/storage, deployment, migration, or import/export risks and recovery. -->
+Manual QA performed:
+
+<!-- Describe the browser/role/scenario when behavior changed. Write "Not applicable" if genuinely not needed. -->
+
+## Risk and recovery
+
+<!-- What can fail? Could existing roadmaps/data be affected? How would we recover or roll back? -->
 
 ## Screenshots
 
-<!-- Include screenshots only when this pull request changes the UI. Otherwise write "Not applicable." -->
+<!-- UI changes only. Otherwise write "Not applicable." Never include private roadmap data or credentials. -->
 
-## Checklist
+## Final checklist
 
-- [ ] This change is focused and avoids unrelated cleanup.
-- [ ] Relevant tests were added or updated, or this is not applicable.
-- [ ] Applicable automated checks were run, or the unrun checks are explained above.
-- [ ] Manual QA was performed when behavior or UI changed, or this is not applicable.
-- [ ] Documentation was updated when contracts or behavior changed, or this is not applicable.
-- [ ] No credentials, invite links, tokens, passwords, private roadmaps, or generated artifacts were committed.
-- [ ] Backward compatibility for portable roadmap imports is preserved or explicitly handled.
-- [ ] Roadmap source-of-truth and runtime/credential exclusion boundaries are preserved.
-- [ ] Persisted-data changes include a reviewed migration, compatibility evidence, and backup/rollback notes, or are not applicable.
-- [ ] Security-sensitive changes were reviewed carefully, or this is not applicable.
+- [ ] The PR solves one coherent outcome and avoids unrelated cleanup.
+- [ ] Focused regression tests were added/updated, or I explained why none are needed.
+- [ ] Applicable local checks were run, and anything not run is explicitly listed.
+- [ ] Current documentation changed with any user/API/data/operational contract change.
+- [ ] Supported historical roadmap imports remain compatible, or an explicit upgrade path is included.
+- [ ] No participant token, invite link, password, private roadmap, production data, or secret is committed or shown in evidence.
+- [ ] Persisted-data changes include a reviewed migration and recovery/rollback notes, or are not applicable.
+- [ ] Security-sensitive changes include negative authorization/failure-path coverage, or are not applicable.
+- [ ] Source-of-truth boundaries remain intact: portable roadmap data is credential-free and derivative state is not made canonical accidentally.
