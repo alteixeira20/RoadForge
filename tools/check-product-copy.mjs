@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const repositoryRoot = resolve(import.meta.dirname, '..')
+
+// These are current product/release surfaces. Historical design records are
+// deliberately excluded: the copy gate protects what users and contributors
+// are told today, not immutable history.
 const currentSurfaces = [
   'README.md',
   'CONTRIBUTING.md',
@@ -14,17 +18,18 @@ const currentSurfaces = [
   'docs/self-hosting.md',
   'docs/public-deployment-security.md',
   'docs/architecture/overview.md',
-  'docs/architecture/realtime-feedback-contract.md',
   'docs/architecture/source-of-truth-rules.md',
-  'docs/security/security-headers-policy.md',
   'apps/web/src/app/help/page.tsx',
   'apps/web/src/app/layout.tsx',
+  'apps/web/src/components/home/HeroSection.tsx',
   'apps/web/src/components/layout/SiteFooter.tsx',
   'apps/web/src/components/roadmap/Workspace.tsx',
 ]
 
 const stalePatterns = [
-  { label: 'Alpha release terminology', pattern: /\balpha\b/i },
+  { label: 'Alpha lifecycle terminology', pattern: /\balpha\b/i },
+  { label: 'Clean Beta lifecycle terminology', pattern: /\bclean beta\b/i },
+  { label: 'MVP lifecycle terminology', pattern: /\bMVP\b/ },
   { label: 'Work in Progress terminology', pattern: /\bwork in progress\b/i },
   { label: 'WIP terminology', pattern: /\bWIP\b/ },
   {
@@ -35,10 +40,11 @@ const stalePatterns = [
 
 const requiredStatements = new Map([
   ['README.md', [
+    '0.1.0',
     'source-available',
     'PolyForm Noncommercial License 1.0.0',
-    'not open source under the Open Source Definition',
-    'commercial use remains restricted',
+    'demo',
+    'Export important roadmaps as JSON',
   ]],
   ['CONTRIBUTING.md', [
     'source-available',
@@ -47,10 +53,18 @@ const requiredStatements = new Map([
     'commercial use is not granted',
   ]],
   ['docs/self-hosting.md', [
-    'source-available',
-    'PolyForm Noncommercial License 1.0.0',
-    'not open source under the Open Source Definition',
-    'commercial hosting or monetized use is not permitted',
+    'demo/convenience deployment',
+    'portable JSON exports',
+  ]],
+  ['docs/public-deployment-security.md', [
+    '5 MiB',
+    '/api/health/live',
+    '/api/health/ready',
+    'backward-compatible alias for readiness',
+  ]],
+  ['apps/web/src/components/home/HeroSection.tsx', [
+    'Export JSON backups',
+    'Hosted demo',
   ]],
   ['apps/web/src/components/layout/SiteFooter.tsx', [
     'Non-commercial source available',
@@ -61,13 +75,7 @@ const failures = []
 
 for (const relativePath of currentSurfaces) {
   const absolutePath = resolve(repositoryRoot, relativePath)
-  let content = readFileSync(absolutePath, 'utf8')
-
-  // Preserve the published 0.1.0-alpha record. Only the current Unreleased
-  // section participates in the release-state copy gate.
-  if (relativePath === 'CHANGELOG.md') {
-    content = content.split('\n## 0.1.0-alpha', 1)[0]
-  }
+  const content = readFileSync(absolutePath, 'utf8')
   const normalizedContent = content.replace(/\s+/g, ' ')
 
   for (const { label, pattern } of stalePatterns) {

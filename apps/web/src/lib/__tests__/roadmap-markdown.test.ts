@@ -97,37 +97,47 @@ describe('formatRoadmapMarkdown', () => {
   it('preserves phase, task, and subtask order', () => {
     const output = formatRoadmapMarkdown({ roadmapName: 'Public Alpha', phases, tagRegistry })
 
-    expect(output.indexOf('Phase 01 - Discovery')).toBeLessThan(output.indexOf('Phase 02 - Implementation'))
-    expect(output.indexOf('`RF-2` - Parent task')).toBeLessThan(output.indexOf('`RF-3` - Markdown export'))
-    expect(output).toContain('#### [ ] `RF-3` - Markdown export')
-    expect(output).toContain('- **Parent:** `RF-2`')
+    expect(output.indexOf('## 01 Discovery')).toBeLessThan(output.indexOf('## 02 Implementation'))
+    expect(output.indexOf('`RF-2` Parent task')).toBeLessThan(output.indexOf('`RF-3` Markdown export'))
+    expect(output).toContain('  - [ ] `RF-3` Markdown export')
+    expect(output).toContain('parent:`RF-2`')
   })
 
-  it('renders phase status, progress, completion, and next indicators', () => {
+  it('keeps phase and task state on compact lines', () => {
     const output = formatRoadmapMarkdown({ roadmapName: 'Public Alpha', phases, tagRegistry })
 
-    expect(output).toContain('## Phase 01 - Discovery\n\n- **Status:** Done\n- **Progress:** 100%')
-    expect(output).toContain('## Phase 02 - Implementation\n\n- **Status:** Active\n- **Progress:** 0%')
-    expect(output).toContain('### [x] `RF-1` - Completed dependency')
-    expect(output).toContain('#### [ ] `RF-3` - Markdown export')
-    expect(output).toContain('- **Next:** Yes')
+    expect(output).toContain('## 01 Discovery | done | 100%')
+    expect(output).toContain('## 02 Implementation | active | 0%')
+    expect(output).toContain('- [x] `RF-1` Completed dependency | tags:Planning')
+    expect(output).toContain('  - [ ] `RF-3` Markdown export | next;')
   })
 
-  it('preserves complex user-authored Markdown descriptions', () => {
+  it('preserves complex user-authored Markdown descriptions as nested task details', () => {
     const output = formatRoadmapMarkdown({ roadmapName: 'Public Alpha', phases, tagRegistry })
+    const indentedDescription = description
+      .split('\n')
+      .map((line) => `    ${line}`)
+      .join('\n')
 
-    expect(output).toContain(`\n${description}\n`)
+    expect(output).toContain(indentedDescription)
   })
 
-  it('renders estimates, assignees, tags, dependencies, and links', () => {
+  it('renders planning metadata and links without multi-line labels', () => {
     const output = formatRoadmapMarkdown({ roadmapName: 'Public Alpha', phases, tagRegistry })
 
-    expect(output).toContain('- **Estimate:** 2d')
-    expect(output).toContain('- **Assignees:** Alex, Sam')
-    expect(output).toContain('- **Tags:** Frontend, unknown-tag')
-    expect(output).toContain('- **Dependencies:** `RF-1`')
-    expect(output).toContain('- Implementation issue: <https://github.com/anvilary/roadforge/issues/1005>')
-    expect(output).toContain('- External link: <https://example.com/spec>')
+    expect(output).toContain('est:2d')
+    expect(output).toContain('assignees:Alex, Sam')
+    expect(output).toContain('tags:Frontend, unknown-tag')
+    expect(output).toContain('deps:`RF-1`')
+    expect(output).toContain('links: Implementation issue <https://github.com/anvilary/roadforge/issues/1005>; External link <https://example.com/spec>')
+  })
+
+  it('uses substantially fewer structural lines than the old per-field format', () => {
+    const output = formatRoadmapMarkdown({ roadmapName: 'Public Alpha', phases, tagRegistry })
+
+    expect(output.split('\n')).toHaveLength(16)
+    expect(output).not.toContain('**Estimate:**')
+    expect(output).not.toContain('**Dependencies:**')
   })
 
   it('uses valid code spans for identifiers containing backticks', () => {
@@ -154,9 +164,9 @@ describe('formatRoadmapMarkdown', () => {
       phases: [specialPhase],
     })
 
-    expect(output).toContain('#### [ ] `` RF-`1` `` - Escaped identifiers')
-    expect(output).toContain('- **Parent:** `` PARENT-`0` ``')
-    expect(output).toContain('- **Dependencies:** ```DEP-``-2```')
+    expect(output).toContain('  - [ ] `` RF-`1` `` Escaped identifiers')
+    expect(output).toContain('parent:`` PARENT-`0` ``')
+    expect(output).toContain('deps:```DEP-``-2```')
     expect(output).not.toContain('\\`')
   })
 
@@ -174,9 +184,7 @@ describe('formatRoadmapMarkdown', () => {
       tasks: [],
     }
     expect(formatRoadmapMarkdown({ roadmapName: 'Empty', phases: [emptyPhase] }))
-      .toContain(
-        '## Phase 01 - Empty phase\n\n- **Status:** Future\n- **Progress:** 0%\n\n_No tasks._',
-      )
+      .toContain('## 01 Empty phase | future | 0%\n_No tasks._')
   })
 
   it('does not serialize credential, session, or volatile claim fields', () => {

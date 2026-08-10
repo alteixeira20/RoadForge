@@ -1,138 +1,92 @@
-# Partial Roadmap Write Endpoints
+# Focused roadmap writes
 
-This document records focused roadmap writes implemented after the relational
-projection foundation. Task completion, task claims, and tag registry operations have
-dedicated routes; broader task/phase editing remains on the aggregate save path.
-`roadmaps.snapshot_json` remains canonical for phases and tasks.
+**Status:** Current architecture summary.
+**Endpoint semantics:** [`../backend-api.md`](../backend-api.md) and API tests.
 
-## Scope
+RoadForge uses a mix of aggregate saves and focused mutation endpoints. Focused writes are
+an optimization and intent-narrowing mechanism; they do not change the canonical roadmap
+source of truth.
 
-Partial writes use owner/editor authorization and keep viewer access read-only.
-Task partial writes update `roadmaps.snapshot_json` first and
-then rebuild/sync derivative projection rows. Existing GET, import/export,
-version, and restore flows keep their shape.
+## Invariant
 
-## Implemented endpoint: task done toggle
+For synced roadmaps:
 
-`PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}/done`
+- the canonical phase/task document remains `roadmaps.snapshot_json`;
+- the tag registry remains canonical roadmap data;
+- relational phase/task tables are derivative;
+- activity/version records are separate recovery/history evidence;
+- optimistic content writes preserve the current exact-revision contract.
 
-Request:
+Local-only roadmaps continue to use the browser-local mutation path and remain usable
+without the API.
 
-```json
-{
-  "done": true,
-  "last_updated_at": "2026-05-29T12:00:00Z"
-}
-```
+## Current focused surfaces
 
-Response: the normal `RoadmapResponse`.
+Current code includes focused operations for:
 
-Behavior:
+- task planning-field updates;
+- task completion/reopen;
+- task claim/release;
+- tag registry listing/mutation.
 
-- owner/editor only; viewers receive 403.
-- Uses the same roadmap-level optimistic concurrency policy as full `PUT`:
-  stale `last_updated_at` returns structured 409 `RoadmapConflictResponse`.
-- Returns 404 when the roadmap is missing/deleted or the task ID does not exist
-  in the current canonical snapshot.
-- Updates only the target task's `done` field in `roadmaps.snapshot_json`.
-- Rebuilds derivative projection rows after the canonical snapshot update.
-- Creates `task.completed` or `task.reopened` activity only when the value
-  actually changes.
-- Same-value no-op returns 200 with the current roadmap and does not create an
-  activity log or SSE event.
+The exact routes, roles, fields, limits, and errors are maintained in
+[`../backend-api.md`](../backend-api.md) and the corresponding router/schema/service tests.
+Do not duplicate those contracts here.
 
-## Implemented endpoints: task claims
+## Aggregate saves remain valid
 
-```text
-PATCH  /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim
-DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim
-```
+`PUT /api/roadmaps/{id}` remains the aggregate save path for roadmap edits without a
+focused endpoint. A contributor should not add another partial endpoint merely because a
+more granular API sounds cleaner.
 
-Claims are owner/editor coordination metadata. A participant can release their own
-claim; another editor receives 409. The owner can explicitly take over or clear another
-claim with `override=true`. Completing a task clears the claim.
+Add a focused path when there is evidence that it improves at least one of:
 
-## Implemented endpoints: tag registry
+- correctness by preventing unrelated client state from joining a mutation;
+- payload/write amplification;
+- conflict scope or recovery clarity;
+- a concrete integration/agent use case.
 
-```text
-GET    /api/roadmaps/{roadmap_id}/tags
-POST   /api/roadmaps/{roadmap_id}/tags
-PUT    /api/roadmaps/{roadmap_id}/tags/{tag_id}
-DELETE /api/roadmaps/{roadmap_id}/tags/{tag_id}
-```
-
-All roles can list tags. Owner/editor can create, update, and delete unused tags with
-roadmap-level optimistic concurrency. The registry remains canonical on
-`roadmaps.tag_registry_json`; these routes do not create a relational task-tag model.
-
-## Frontend behavior
-
-The workspace keeps local-only roadmaps on the existing local mutation path.
-For synced owner/editor roadmaps, task checkbox toggles optimistically call the
-task done PATCH endpoint with the last observed roadmap `updated_at`.
-
-While a task done PATCH is in flight, the same task checkbox is temporarily
-guarded against repeat toggles and autosync/full-save PUTs are suppressed until
-the partial write finishes. On success, clean local state is reconciled from the
-server roadmap response and `updatedAt` is advanced. On failure, the optimistic
-checkbox change is reverted. A 409 conflict leaves the server state untouched,
-shows the stale-write message, and reuses the roadmap conflict review path when
-the API returns conflict metadata.
-
-## Deferred endpoints
-
-- `POST /api/roadmaps/{roadmap_id}/phases`: create a phase after an optional `after_phase_id`, or at the end when omitted.
-- `PATCH /api/roadmaps/{roadmap_id}/phases/{phase_id}`: update `num`, `name`, `color`, `status`, or `progress`.
-- `DELETE /api/roadmaps/{roadmap_id}/phases/{phase_id}`: delete a phase and its tasks.
-- `POST /api/roadmaps/{roadmap_id}/phases/reorder`: submit ordered client phase IDs.
-- `POST /api/roadmaps/{roadmap_id}/tasks`: create a task in a phase after an optional `after_task_id`, or at the end when omitted.
-- `PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}`: future broad task patching
-  for fields such as `title`, `next`, `est`, `desc`, and `parentId`.
-- `DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}`: delete a task, dependency edges, and assignees.
-- `POST /api/roadmaps/{roadmap_id}/tasks/reorder`: submit ordered task IDs for one phase, or a task move between phases.
-- `POST /api/roadmaps/{roadmap_id}/tasks/{task_id}/dependencies`: link a dependency by `depends_on_task_id`.
-- `DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}/dependencies/{depends_on_task_id}`: unlink a dependency.
-- `PUT /api/roadmaps/{roadmap_id}/tasks/{task_id}/assignees`: replace ordered task-local display names.
-- `PUT /api/roadmaps/{roadmap_id}/tasks/{task_id}/tags`: replace ordered task-local tag IDs.
-
-## Optimistic concurrency
-
-Requests should carry the last observed roadmap `updated_at` plus, when available, an entity-level version or `updated_at`. The first implementation can keep the current roadmap-level timestamp check. Later slices can narrow conflicts to phase/task rows once entity timestamps are reliable.
-
-Conflict responses should use HTTP 409 and include the changed entity type, client ID, current field values, and enough metadata for the frontend to offer keep mine, accept theirs, or manual edit.
-
-## Activity logs
-
-Each partial write should create one `activity_logs` row in the same transaction. Use precise entities where possible: `entity_type="phase"`, `entity_type="task"`, `entity_type="dependency"`, `entity_type="assignees"`, or `entity_type="tags"`. `entity_id` should remain the client-visible phase/task ID. `before_json` and `after_json` should contain only the changed fields or ordered IDs needed for audit display.
-
-## Versions and checkpoints
-
-Routine partial writes should follow the existing conservative version policy. Manual checkpoints continue to snapshot the current roadmap. Restore continues to copy `roadmap_versions.snapshot_json` into `roadmaps.snapshot_json` and rebuild projection rows.
-
-If a future partial write action becomes version-worthy, create the version after snapshot compatibility regeneration and before commit, matching current full-save behavior.
-
-## Snapshot compatibility cache
-
-During the staged architecture, partial writes should either update `snapshot_json` first and rebuild projection, or update relational rows and immediately regenerate `snapshot_json` before commit. The safer first slice is usually snapshot-first because it preserves the current canonical source and reuses projection parity checks.
-
-The API response shape remains unchanged: roadmap responses return `phases` matching the current DTOs. Import/export schema is unchanged.
+The new path must preserve portable JSON, authorization, activity, projection, realtime,
+and recovery invariants.
 
 ## Conflict behavior
 
-- Missing phase/task: return 404 when the client ID does not exist in the active roadmap.
-- Stale roadmap timestamp: return 409 with current roadmap metadata.
-- Invalid dependency or parent reference: return 400 unless the operation is explicitly repair-style.
-- Self dependency or self parent: return 400.
-- Duplicate assignee/tag labels in a replace request: normalize deterministically or return 400; choose one behavior per endpoint before implementation.
+Focused content writes do not bypass optimistic concurrency. Stale or future revisions
+must not silently overwrite newer server state. Conflict UI/integrations should preserve
+local work and require an explicit next action.
 
-## Rollback strategy
+Claims/other coordination operations can have additional atomic ownership semantics; use
+the current service tests as the contract rather than inferring them from this overview.
 
-Keep `PUT /api/roadmaps/{id}` as the stable full-save path. If a partial endpoint causes drift, disable that endpoint, continue serving snapshots, clear projection rows for affected roadmaps, and rebuild projection from `snapshot_json`.
+## Projection behavior
 
-## Non-goals
+Projection tables are rebuildable derivatives. Focused writes should keep them consistent
+with canonical state, but projection architecture must not make a best-effort derivative
+more authoritative than the roadmap snapshot.
 
-- Do not remove `roadmaps.snapshot_json`.
-- Do not change import/export schema.
-- Do not change roadmap version restore semantics.
-- Do not introduce accounts, email identity, OAuth, Redis, WebSockets, or CRDT infrastructure.
-- Do not require task assignees to be participants.
+Any proposal to make relational rows canonical is a separate data-model decision and must
+include migration, parity, recovery, and compatibility evidence.
+
+## Versions and activity
+
+Routine focused writes create appropriately scoped activity for real changes but should
+not automatically create an unbounded full-snapshot version history. Manual checkpoints
+and deliberately version-worthy operations own restore history.
+
+## Adding another focused write
+
+A PR should demonstrate:
+
+1. a concrete user/operational reason;
+2. API role enforcement;
+3. exact revision/ownership behavior;
+4. canonical snapshot mutation correctness;
+5. projection parity;
+6. precise activity behavior;
+7. realtime behavior when applicable;
+8. normalized no-op behavior;
+9. browser/integration reconciliation without losing unrelated dirty local state;
+10. no portable-format regression.
+
+Do not introduce generic mutation infrastructure, CRDTs, provider synchronization, or
+account concepts as incidental work in a focused endpoint PR.

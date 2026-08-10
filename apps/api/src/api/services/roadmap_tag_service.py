@@ -24,15 +24,13 @@ from api.schemas.roadmap import (
 )
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
+from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
-    RoadmapConflictError,
     _fetch_active_roadmap,
     _fetch_active_roadmap_for_update,
     _phases_from_snapshot,
-    _roadmap_conflict_response,
     _roadmap_response,
 )
-from api.services.session_policy import ensure_aware_utc
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +69,7 @@ def _ensure_tag_mutation_is_current(
     roadmap: Roadmap,
     last_updated_at: datetime,
 ) -> None:
-    client_ts = ensure_aware_utc(last_updated_at)
-    if roadmap.updated_at > client_ts:
-        raise RoadmapConflictError(_roadmap_conflict_response(roadmap, client_ts, None))
+    ensure_roadmap_is_current(roadmap, last_updated_at)
 
 
 def _ensure_unique_tag_label(

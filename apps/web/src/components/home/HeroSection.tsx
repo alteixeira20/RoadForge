@@ -17,8 +17,9 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
         </h1>
         <p className="lede">
           Plan in phases, track tasks and dependencies, and work entirely on
-          your device. Save to a server later when you need to share.
-          No account required to start.
+          your device. Save to a server later when you need to share. No account
+          required to start. <strong>Hosted demo:</strong> Export JSON backups of
+          important work and store them somewhere you control.
         </p>
         <div className="ctas">
           <button className="btn primary lg" onClick={onCreate}>
@@ -37,7 +38,7 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           <div className="preview">
             <div className="preview-bar">
               <span className="dots"><i /><i /><i /></span>
-              <span className="url">roadforge.anvilary.tools · API Integration Sprint</span>
+              <span className="url">roadforge.anvilary.tools · Local-first product roadmap</span>
             </div>
             <MiniPreview />
           </div>

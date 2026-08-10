@@ -25,6 +25,7 @@ interface ApiRoadmapResponse {
 }
 
 interface ApiCreateRoadmapResponse extends ApiRoadmapResponse {
+  owner_participant_id: string
   owner_session_token: string
 }
 
@@ -102,7 +103,11 @@ export async function createRoadmap(
   tagRegistry?: TagDefinition[],
   password?: string,
   changeSummary?: ChangeSummary | null,
-): Promise<{ roadmap: Roadmap; ownerSessionToken: string }> {
+): Promise<{
+  roadmap: Roadmap
+  ownerParticipantId: string
+  ownerSessionToken: string
+}> {
   const body: Record<string, unknown> = { name, owner_display_name: ownerDisplayName, phases }
   if (tagRegistry && tagRegistry.length > 0) body.tag_registry = tagRegistry
   if (password) body.password = password
@@ -111,7 +116,11 @@ export async function createRoadmap(
     method: 'POST',
     body: JSON.stringify(body),
   })
-  return { roadmap: toRoadmap(data), ownerSessionToken: data.owner_session_token }
+  return {
+    roadmap: toRoadmap(data),
+    ownerParticipantId: data.owner_participant_id,
+    ownerSessionToken: data.owner_session_token,
+  }
 }
 
 /**

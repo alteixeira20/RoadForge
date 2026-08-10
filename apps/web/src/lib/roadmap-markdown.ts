@@ -52,10 +52,10 @@ const INLINE_MARKDOWN_CHARACTERS = new Set([
 ])
 
 const PHASE_STATUS_LABELS: Record<Phase['status'], string> = {
-  done: 'Done',
-  active: 'Active',
-  next: 'Next',
-  future: 'Future',
+  done: 'done',
+  active: 'active',
+  next: 'next',
+  future: 'future',
 }
 
 function toSingleLine(value: string): string {
@@ -97,41 +97,46 @@ function linkLabel(link: TaskExternalLink): string {
   return labels[link.kind]
 }
 
+function indentBlock(value: string, indent: string): string[] {
+  return value.split(/\r?\n/).map((line) => `${indent}${line}`)
+}
+
 function formatTask(
   task: Task,
   tagLabels: ReadonlyMap<string, string>,
 ): string[] {
-  const heading = task.parentId ? '####' : '###'
+  const indent = task.parentId ? '  ' : ''
   const checkbox = task.done ? '[x]' : '[ ]'
-  const lines = [
-    `${heading} ${checkbox} ${formatInlineCode(task.id)} - ${escapeInlineMarkdown(task.title)}`,
-  ]
   const metadata: string[] = []
 
-  if (task.parentId) {
-    metadata.push(`- **Parent:** ${formatInlineCode(task.parentId)}`)
-  }
-  if (task.next === true) metadata.push('- **Next:** Yes')
-  if (task.est) metadata.push(`- **Estimate:** ${escapeInlineMarkdown(task.est)}`)
+  if (task.next === true) metadata.push('next')
+  if (task.parentId) metadata.push(`parent:${formatInlineCode(task.parentId)}`)
+  if (task.est) metadata.push(`est:${escapeInlineMarkdown(task.est)}`)
   if (task.assignees?.length) {
-    metadata.push(`- **Assignees:** ${task.assignees.map(escapeInlineMarkdown).join(', ')}`)
+    metadata.push(`assignees:${task.assignees.map(escapeInlineMarkdown).join(', ')}`)
   }
   if (task.tags?.length) {
     const tags = task.tags.map((tagId) => tagLabels.get(tagId) ?? tagId)
-    metadata.push(`- **Tags:** ${tags.map(escapeInlineMarkdown).join(', ')}`)
+    metadata.push(`tags:${tags.map(escapeInlineMarkdown).join(', ')}`)
   }
   if (task.deps?.length) {
-    metadata.push(`- **Dependencies:** ${task.deps.map(formatInlineCode).join(', ')}`)
+    metadata.push(`deps:${task.deps.map(formatInlineCode).join(', ')}`)
   }
 
-  if (metadata.length) lines.push('', ...metadata)
-  if (task.desc) lines.push('', task.desc)
+  const suffix = metadata.length > 0 ? ` | ${metadata.join('; ')}` : ''
+  const lines = [
+    `${indent}- ${checkbox} ${formatInlineCode(task.id)} ${escapeInlineMarkdown(task.title)}${suffix}`,
+  ]
+  const detailIndent = `${indent}  `
+
+  if (task.desc) {
+    lines.push(...indentBlock(task.desc, detailIndent))
+  }
   if (task.links?.length) {
-    lines.push(
-      '',
-      '**Links**',
-      ...task.links.map((link) => `- ${linkLabel(link)}: <${link.url}>`),
-    )
+    const links = task.links
+      .map((link) => `${linkLabel(link)} <${link.url}>`)
+      .join('; ')
+    lines.push(`${detailIndent}links: ${links}`)
   }
 
   return lines
@@ -141,20 +146,18 @@ function formatPhase(
   phase: Phase,
   tagLabels: ReadonlyMap<string, string>,
 ): string[] {
+  const status = PHASE_STATUS_LABELS[phase.status]
   const lines = [
-    `## Phase ${escapeInlineMarkdown(phase.num)} - ${escapeInlineMarkdown(phase.name)}`,
-    '',
-    `- **Status:** ${PHASE_STATUS_LABELS[phase.status]}`,
-    `- **Progress:** ${phase.progress}%`,
+    `## ${escapeInlineMarkdown(phase.num)} ${escapeInlineMarkdown(phase.name)} | ${status} | ${phase.progress}%`,
   ]
 
   if (phase.tasks.length === 0) {
-    lines.push('', '_No tasks._')
+    lines.push('_No tasks._')
     return lines
   }
 
   for (const task of phase.tasks) {
-    lines.push('', ...formatTask(task, tagLabels))
+    lines.push(...formatTask(task, tagLabels))
   }
   return lines
 }

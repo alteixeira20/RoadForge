@@ -1,4 +1,4 @@
-.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-check-fast api-check-prepare api-lint api-test api-test-prepare api-test-fast api-test-real-redis api-audit api-backfill-projection web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check release-check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
+.PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-check-fast api-check-prepare api-lock api-lint api-test api-test-prepare api-test-fast api-test-real-redis api-audit api-backfill-projection web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check release-check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -57,7 +57,8 @@ help:
 	@echo "  make api-check          Validate ORM/migration drift (starts postgres automatically; api service need not be running)"
 	@echo "  make api-check-fast     Validate ORM/migration drift (api container must already be running)"
 	@echo "  make api-check-prepare  Start and wait for the postgres container (called automatically by api-check)"
-	@echo "  make api-lint           Run ruff linter against apps/api/src"
+	@echo "  make api-lock           Verify uv.lock drift and deterministic runtime export"
+	@echo "  make api-lint           Run ruff linter against apps/api/src from uv.lock"
 	@echo "  make api-test           Run backend pytest suite (starts/prepares Postgres automatically)"
 	@echo "  make api-test-fast      Run backend pytest suite (skips Docker preparation; DB must be ready)"
 	@echo "  make api-test-prepare   Start Postgres and ensure roadforge_test DB exists"
@@ -135,6 +136,7 @@ web-test: ensure-deps
 release-check:
 	$(MAKE) web-test
 	$(MAKE) check
+	$(MAKE) api-lock
 	$(MAKE) api-lint
 	$(MAKE) api-test
 	$(MAKE) api-check
@@ -178,13 +180,7 @@ audit-prod: ensure-deps
 	pnpm audit --audit-level high --prod
 
 api-audit:
-	python3 -c "\
-import tomllib, sys; \
-data = tomllib.load(open('apps/api/pyproject.toml','rb')); \
-deps = data['project']['dependencies']; \
-open('/tmp/rf_audit_reqs.txt','w').write('\n'.join(deps)+'\n')"
-	pip-audit -r /tmp/rf_audit_reqs.txt
-	rm -f /tmp/rf_audit_reqs.txt
+	cd apps/api && bash scripts/audit-locked-runtime.sh
 
 # ─── App Lifecycle ────────────────────────────────────────────────────────────
 
@@ -263,8 +259,11 @@ api-check: api-check-prepare
 api-check-fast:
 	docker compose exec api alembic check
 
+api-lock:
+	cd apps/api && bash scripts/check-lock.sh
+
 api-lint:
-	cd apps/api && ruff check src/
+	cd apps/api && bash scripts/sync-locked-env.sh dev && uv run --no-sync ruff check src/
 
 # Local operator tool: backfills projection tables using the local dev Postgres (port 5433).
 # For production, run inside the container instead:
@@ -301,11 +300,13 @@ api-test-prepare:
 	@echo "roadforge_test is ready."
 
 api-test: api-test-prepare
-	cd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
+	cd apps/api && bash scripts/sync-locked-env.sh test && \
+		TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
 		uv run --no-sync python3 -m pytest -q
 
 api-test-fast:
-	cd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
+	cd apps/api && bash scripts/sync-locked-env.sh test && \
+		TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
 		uv run --no-sync python3 -m pytest -q
 
 # Runs the RF-044 revocation suite (tests/test_realtime_revocation.py) against
@@ -320,7 +321,8 @@ api-test-real-redis: api-test-prepare
 	docker rm -f roadforge-test-redis >/dev/null 2>&1 || true
 	docker run -d --name roadforge-test-redis -p 6390:6379 redis:7-alpine >/dev/null
 	@trap 'docker rm -f roadforge-test-redis >/dev/null 2>&1 || true' EXIT; \
-	cd apps/api && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
+	cd apps/api && bash scripts/sync-locked-env.sh test && \
+		TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
 		REAL_REDIS_TEST_URL=redis://localhost:6390/0 \
 		uv run --no-sync python3 -m pytest -q tests/test_realtime_revocation.py
 

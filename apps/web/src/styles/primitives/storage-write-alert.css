@@ -1,0 +1,51 @@
+.storage-write-alert {
+  position: fixed;
+  z-index: 1200;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.98), rgba(69, 10, 10, 0.98));
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.storage-write-alert-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  flex: 1;
+}
+
+.storage-write-alert-copy strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.storage-write-alert-copy span {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.storage-write-alert .btn {
+  flex-shrink: 0;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 600px) {
+  .storage-write-alert {
+    bottom: 12px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+}

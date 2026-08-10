@@ -1,329 +1,242 @@
 # RoadForge
 
-RoadForge by Anvilary is a structured roadmap planning tool for indie hackers and small teams. Break a release into phases, track task dependencies, and share access through private owner/editor invite links or a stable public read-only viewer link. No accounts required.
+RoadForge by Anvilary is a local-first roadmap tool for individuals and small teams.
+Create phases, tasks, dependencies, tags, and portable backups without an account.
+Enable server sync only when you deliberately want sharing and realtime collaboration.
 
-> **Pre-release software**
->
-> RoadForge is pre-release software. Core create/save/share/join and realtime
-> collaboration are implemented, but behavior, data formats, and deployment
-> requirements may change. Export important roadmaps regularly and do not treat
-> any hosted instance as the only copy of critical data.
+**Release target:** `0.1.0`
 
-**Current status:** Clean Beta preparation. Security, collaboration,
-accessibility, and UX hardening remain active work.
+> [!IMPORTANT]
+> The hosted RoadForge instance at `roadforge.anvilary.tools` is a convenience demo,
+> not a managed storage service or the only place you should keep important work.
+> Browser-local roadmaps depend on browser storage, and hosted synced roadmaps have no
+> durability or recovery guarantee. **Export important roadmaps as JSON and keep that
+> file somewhere you control.**
 
-**Source availability:** This repository is distributed as non-commercial
-source-available software under the
-[PolyForm Noncommercial License 1.0.0](LICENSE). It is source-available but
-not open source under the Open Source Definition or an OSI-approved license;
-commercial use remains restricted.
+RoadForge is currently distributed under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). That license is source-available
+for non-commercial use and is **not** an OSI-approved open-source license. The
+engineering repository is being prepared for the `0.1.0` baseline independently
+from any future relicensing decision.
 
----
+## Product contract
+
+RoadForge intentionally keeps its core model small:
+
+- **Local first.** A new roadmap starts in the browser and does not require the API.
+- **No accounts.** Shared access uses roadmap-scoped owner, editor, and viewer credentials.
+- **Portable.** JSON is the canonical backup/import format. Markdown is a deterministic read-only export.
+- **Explicit sync.** Moving a roadmap to the server is a deliberate user action.
+- **Recoverable.** Local drafts survive failed saves, conflicts preserve local work, and synced roadmaps support bounded restore history.
+- **Simple by default.** Start blank or from a compact three-phase example.
+
+RoadForge is not trying to become an account-based project-management suite. Accounts,
+OAuth, billing, generic webhooks, CRDT infrastructure, and automatic GitHub-to-roadmap
+state mutation are outside the `0.1.0` product contract.
+
+## Hosted demo and data ownership
+
+The online Anvilary deployment is primarily for trying RoadForge and demonstrating
+collaboration. Treat it as disposable infrastructure:
+
+1. Create or open a roadmap.
+2. Export **JSON** after meaningful work.
+3. Store the JSON in your own filesystem, cloud drive, repository, or backup system.
+4. Re-export periodically while the roadmap changes.
+
+Clearing browser site data can remove local-only roadmaps. Deleting a synced roadmap
+removes it from normal RoadForge use through server soft deletion; final live-database
+records are purged later according to the operator retention policy. Independent database
+backups may remain until their own documented expiry. Do not place secrets in roadmap
+content or exports.
+
+See [Server data retention and purge](docs/server-data-retention.md) for the exact hosted/
+self-hosted deletion lifecycle and operator safeguards.
 
 ## Access model
 
-RoadForge is accountless. There are no logins, user records, or dashboards.
+RoadForge has no login system or verified personal identities.
 
-- **Create** — owner saves a roadmap, receives a session token and three role-specific share links.
-- **Share** — send private owner/editor invite links to collaborators, or copy a stable public viewer/demo link for read-only sharing. Links are role-scoped and revocable.
-- **Join** — visitor opens the link, optionally enters a display name, and receives a session token for that role.
-- **Password gate** — roadmaps can optionally require a password before a join token is issued.
-- **Session token** — stored in scoped `localStorage` after create or join and sent as a Bearer token for authorized actions.
-- **Display name** — optional, used only as a collaboration label. Blank joins get a role-based default ("Guest Editor", etc.).
+- **Owner** — edit, manage sharing and participants, restore versions, override claims, and delete the roadmap.
+- **Editor** — edit roadmap content and claim tasks.
+- **Viewer** — read roadmap content and activity.
 
-Nothing is emailed. Nothing is verified. Private owner/editor invite links are sensitive credentials. The public viewer link is intentionally read-only and suitable for a README, portfolio, or live demo.
+Owner/editor invite links and participant sessions are bearer credentials. Share them
+privately. Viewer links are intentionally read-only. Display names are collaboration
+labels, not verified identities.
 
-Assignees and collaborators are separate concepts:
+Task assignees and server participants are separate concepts: an assignee is roadmap
+data; a participant is a joined server session.
 
-- **Assignees** are task-local names used for filters and workload views. They can exist in local-only roadmaps.
-- **Participants / collaborators** are server-side joined users with roles and sessions. Team management is shown only for synced owner roadmaps.
+## Data formats
 
-## Portable exports
+Browser-local roadmaps are stored in scoped `localStorage`. A storage failure is shown
+as a persistent warning rather than being treated as a successful save.
 
-- **JSON** - canonical portable backup and import format, including phases, tasks, tags, dependencies, and credential-free external links.
-- **Markdown** - deterministic client-side presentation format for reading and sharing roadmap content. It cannot be imported.
+- **JSON** — complete portable roadmap data and the supported re-import format.
+- **Markdown** — deterministic human/agent-readable presentation; not importable.
 
-Both export paths run entirely in the browser and exclude RoadForge session, invite, password, and browser-authentication state.
+Exports exclude session tokens, invite tokens, passwords, edit locks, and transient
+collaboration state.
 
----
-
-## Security note
-
-RoadForge is built with a security-first mindset, but remains pre-release software.
-
-CI defines dependency, lint, test, migration, and build gates. Those checks are
-point-in-time evidence and must be rerun for each release candidate. See
-[`SECURITY.md`](SECURITY.md) and the
-[`dependency audit policy`](docs/security/dependency-audit-policy.md).
-
----
+The maintained import/parser contract lives in
+`apps/web/src/lib/roadmap-validation.ts`; TypeScript interfaces and historical design
+documents do not override the parser.
 
 ## Stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
 | Monorepo | pnpm workspace |
-| Frontend | Next.js 15 App Router, TypeScript 5 |
-| Styling | Tailwind CSS v3 + CSS custom properties |
-| Client persistence | `localStorage` (local-first, optimistic cache) |
-| Realtime | Server-Sent Events (SSE) + memory or Redis-backed coordination |
+| Frontend | Next.js App Router, TypeScript, Tailwind CSS |
+| Client persistence | browser `localStorage` |
 | Backend | FastAPI, Python 3.12 |
 | Database | PostgreSQL 16 |
-| Redis | Provisioned in Compose; required for multi-worker realtime mode |
-| ORM / migrations | SQLAlchemy 2.x async + asyncpg + Alembic |
-| Container | Docker Compose |
+| Realtime | Server-Sent Events with memory or Redis coordination |
+| Migrations | Alembic |
+| Agent integration | repository-local stdio MCP package |
+| Deployment | Docker Compose and nginx |
 
----
+## Local development
 
-## Local development setup
+Reference toolchain:
 
-### Prerequisites
+- Node.js **24** (`.nvmrc`)
+- pnpm **9.15.9** (`packageManager`)
+- Python **3.12**
+- Docker + Docker Compose for the standard backend/test stack
 
-- Node.js 20+, pnpm 9+
-- Docker + Docker Compose (backend only)
-
-### Quick Start (Makefile)
-
-The repository includes a `Makefile` for full background lifecycle management:
-
-```bash
-make help           # List all available commands
-make start          # Start everything (API in Docker, Web in background)
-make status         # Check what is running
-make logs           # Follow all logs (API + Web)
-make stop           # Stop everything
-```
-
----
-
-## Production hardening
-
-Before self-hosting or releasing RoadForge publicly:
-
-- **Do not expose `make dev`** — always run a production build (`pnpm build`) and start the production server (`pnpm --dir apps/web start`).
-- **Use a reverse proxy** — terminate TLS (HTTPS) at a proxy like Caddy or Nginx.
-- **Enable HSTS** — configure HTTP Strict Transport Security at the proxy level.
-- **Configure proxy logs** — join URLs are credentials. Omit query strings and
-  `Referer` from access logs, restrict error-log access, and review upstream
-  provider logging. The self-hosted nginx template includes a safe access format.
-- **Run security audits** — regularly run `make audit` and address high-severity vulnerabilities.
-- **Review CSP violations** — the current application emits a report-only Content
-  Security Policy. There is no report collector, so use a production-build browser
-  pass and move to enforcement only after the release candidate works without
-  required exceptions.
-- **API worker mode** — the API defaults to one Uvicorn worker. Set `ROADFORGE_API_WORKERS` above `1` only with `ROADFORGE_REALTIME_BACKEND=redis`; application and container startup refuse unsafe memory-backed multi-worker mode.
-- **Run `make check` before deploying** — this validates current product copy,
-  documentation links, issue forms, lint, types, and the production build. Every
-  gate must pass.
-- **Database migrations before rollback** — Alembic migrations are not reversible by default. Take a Postgres snapshot before any release that includes new files under `apps/api/alembic/versions/`.
-- **Run migrations on deploy** — releases at or after `0005_add_public_viewer_tokens.py` require `make migrate` so active viewer links can remain copyable as public read-only demo links.
-
----
-
-## Makefile targets
-
-| Target | Description |
-|---|---|
-| `make start` | Start all services (API in Docker, Web in background) |
-| `make stop` | Stop all services |
-| `make restart` | Stop and then start all services |
-| `make status` | Show status of all services |
-| `make logs` | Follow all logs (API, Postgres, Web) |
-| `make reset` | Destructive reset: wipe DB and start fresh |
-| `make check` | Validate copy, documentation links, issue forms, lint, types, and production build |
-| `make release-check` | Run web tests/lint/typecheck/build, API lint/tests/migration drift, and `git diff --check` |
-| `make audit` | Run dependency security audit |
-| `make audit-prod` | Run dependency security audit (production only) |
-| `make dev` | Run Next.js frontend in the foreground (standard dev) |
-| `make api-up` | Start Postgres and FastAPI in Docker |
-| `make api-down` | Stop backend services |
-| `make api-migrate` | Run database migrations |
-| `make api-health` | Check if backend is reachable |
-| `make web-start` | Start frontend in the background |
-| `make web-stop` | Stop background frontend process |
-| `make logs-web` | Follow Web logs specifically |
-
----
-
-## Frontend commands
+The package manifests currently accept Node `>=22 <27`; Node 24 is the canonical
+version used by development and CI.
 
 ```bash
-pnpm dev          # Dev server
-pnpm build        # Production build (all 5 routes must build statically)
-pnpm lint         # ESLint — must pass with no warnings
-pnpm typecheck    # tsc --noEmit — must pass with 0 errors
+git clone https://github.com/alteixeira20/RoadForge.git
+cd RoadForge
+corepack enable
+pnpm install --frozen-lockfile
+make start
 ```
 
----
-
-## Backend commands
+Useful lifecycle commands:
 
 ```bash
-# Start API + Postgres
-docker compose up --build api postgres
-
-# Confirm health
-curl http://localhost:7878/api/health
-# → {"status":"ok","version":"0.1.0"}
-
-# Interactive docs
-open http://localhost:7878/api/docs
-
-# Run migrations (required after schema releases such as 0005_add_public_viewer_tokens.py)
-docker compose exec api alembic upgrade head
-
-# View API logs
-docker compose logs --tail=40 api
-
-# Stop
-docker compose down
+make help
+make status
+make logs
+make stop
 ```
 
----
+Run the normal contributor gate before opening a pull request:
 
-## Environment variables
-
-Defaults are listed below and set by Compose or application configuration.
-`deploy/self-hosted/.env.example` is the production-oriented deployment
-template. For direct web development, put only required public web overrides
-such as `NEXT_PUBLIC_API_URL` in `apps/web/.env.local`; never place secrets in a
-`NEXT_PUBLIC_*` variable.
-
-| Variable | Default | Used by |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:7878` | Frontend — base URL for all API calls |
-| `DATABASE_URL` | `postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge` | Alembic / host-side scripts |
-| `POSTGRES_DB` | `roadforge` | Docker Compose |
-| `POSTGRES_USER` | `roadforge` | Docker Compose |
-| `POSTGRES_PASSWORD` | `roadforge_dev` | Docker Compose |
-| `ROADFORGE_ENVIRONMENT` | `development` | Backend — log verbosity, SQL echo |
-| `ROADFORGE_SECRET_KEY` | unset | Backend — required non-default production secret guard outside development |
-| `ROADFORGE_TRUSTED_PROXY_IPS` | unset | Backend — comma-separated proxy IPs/CIDRs allowed to supply forwarded client IP headers |
-| `ROADFORGE_ALLOW_LOCAL_DATABASE_IN_PRODUCTION` | `false` | Backend — explicit override for documented host-local production DB topologies |
-| `ROADFORGE_WEB_BASE_URL` | `http://localhost:3020` | Backend — builds `/join?token=…` URLs |
-| `REDIS_URL` | `redis://redis:6379/0` | Backend Redis connection string |
-| `ROADFORGE_REALTIME_BACKEND` | `memory` | Backend realtime storage, `memory` or `redis` |
-| `ROADFORGE_REDIS_KEY_PREFIX` | `roadforge` | Backend namespace for Redis keys |
-| `ROADFORGE_REDIS_CONNECT_TIMEOUT_SECONDS` | `2` | Backend Redis connection timeout |
-| `ROADFORGE_REDIS_SOCKET_TIMEOUT_SECONDS` | `2` | Backend Redis command timeout |
-| `ROADFORGE_API_WORKERS` | `1` | Backend Uvicorn worker count; values greater than `1` require `ROADFORGE_REALTIME_BACKEND=redis` |
-
----
-
-## Manual QA
-
-See [docs/manual-qa.md](docs/manual-qa.md) for the full pre-release QA checklist
-(functional, collaboration, import/export, security, and deployment verification).
-For a focused backend API smoke test with curl commands, see
-[docs/backend-smoke-tests.md](docs/backend-smoke-tests.md).
-For large-roadmap scale budgets and the reproducible benchmark command, see
-[docs/performance.md](docs/performance.md).
-
-For security policies and responsible disclosure, see [SECURITY.md](SECURITY.md) and [docs/security/README.md](docs/security/README.md).
-For public deployment security assumptions, see [docs/public-deployment-security.md](docs/public-deployment-security.md).
-For non-commercial self-hosting, see [docs/self-hosting.md](docs/self-hosting.md).
-For contribution and support expectations, see [CONTRIBUTING.md](CONTRIBUTING.md)
-and [SUPPORT.md](SUPPORT.md).
-
----
-
-## Manual MVP test flow
-
-Quick path:
-1. `docker compose up --build api postgres` + `pnpm dev`
-2. Open `http://localhost:3020`, complete wizard, click **Save to server**
-3. Open Share modal — rotate editor link, copy the URL
-4. Open a private browser window, paste the URL — join without a name
-5. Confirm editor is routed to `/workspace`, viewer to `/shared`
-
----
-
-## Backend API summary
-
-Full reference: [docs/backend-api.md](docs/backend-api.md)
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/health` | Health check |
-| `POST` | `/api/roadmaps` | Create roadmap, returns share links + owner session token |
-| `POST` | `/api/roadmaps/join` | Accept invite token, create participant, return session token |
-| `GET` | `/api/roadmaps/{id}` | Fetch roadmap and phases |
-| `PUT` | `/api/roadmaps/{id}` | Update name and/or phases (full snapshot replace) |
-| `PATCH` | `/api/roadmaps/{id}/tasks/{task_id}` | Update task planning fields with optimistic concurrency |
-| `PATCH` | `/api/roadmaps/{id}/tasks/{task_id}/done` | Set task completion with optimistic concurrency |
-| `PATCH` | `/api/roadmaps/{id}/tasks/{task_id}/claim` | Claim a task; owner may explicitly override |
-| `DELETE` | `/api/roadmaps/{id}/tasks/{task_id}/claim` | Release a task claim; owner may explicitly override |
-| `DELETE` | `/api/roadmaps/{id}` | Soft-delete roadmap; broadcasts `roadmap.deleted` SSE event |
-| `GET` | `/api/roadmaps/{id}/share-links` | Owner-only share-link list; owner/editor URLs stay hidden, active viewer URL is copyable |
-| `POST` | `/api/roadmaps/{id}/share-links/{role}/rotate` | Generate new token for role, returns join URL |
-| `DELETE` | `/api/roadmaps/{id}/share-links/{role}` | Revoke share link (soft-deactivate) |
-| `GET` | `/api/roadmaps/{id}/participants` | Owner full list; editor active-participant summaries |
-| `POST` | `/api/roadmaps/{id}/participants/{pid}/revoke` | Revoke participant session; broadcasts `participant.revoked` |
-| `GET` | `/api/roadmaps/{id}/versions` | List version history summaries |
-| `POST` | `/api/roadmaps/{id}/versions/checkpoint` | Create a manual checkpoint snapshot |
-| `GET` | `/api/roadmaps/{id}/versions/{vid}` | Fetch a specific version's full phase snapshot |
-| `POST` | `/api/roadmaps/{id}/versions/{vid}/restore` | Restore roadmap to a previous version |
-| `GET` | `/api/roadmaps/{id}/activity` | Paginated activity log (newest first) |
-| `POST` | `/api/roadmaps/{id}/events/ticket` | Request a short-lived SSE ticket |
-| `GET` | `/api/roadmaps/{id}/events` | SSE stream (ticket auth via query param) |
-| `POST` | `/api/roadmaps/{id}/locks` | Acquire or refresh an edit lock |
-| `DELETE` | `/api/roadmaps/{id}/locks/{target}` | Release a lock |
-| `GET` | `/api/roadmaps/{id}/locks` | List active locks |
-| `GET` | `/api/roadmaps/{id}/tags` | List tag registry |
-| `POST` | `/api/roadmaps/{id}/tags` | Create a tag |
-| `PUT` | `/api/roadmaps/{id}/tags/{tag_id}` | Update a tag |
-| `DELETE` | `/api/roadmaps/{id}/tags/{tag_id}` | Delete an unused tag |
-
----
-
-## Frontend routes
-
-| Route | Component | Notes |
-|---|---|---|
-| `/` | `Homepage` / `Workspace` | Wizard on first visit; workspace after |
-| `/workspace` | `Workspace` (owner mode) | Editable, save/share controls |
-| `/shared` | `Workspace` (viewer mode) | Read-only with viewer banner |
-| `/join` | `JoinPage` | Reads `?token=`, optional name + password |
-| `/help` | Help page | Task-based user guide and safe reporting path |
-
----
-
-## Current limitations / deferred features
-
-- **PDF export** - deferred and absent from the current UI.
-- **Email verification** — not implemented. Planned as an optional future security layer.
-- **Rate limiting** — app-level rate limiting is active. It is shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`.
-- **Content Security Policy** — a report-only policy is active; enforcement remains deferred.
-- **No CRDT merge UI** — conflict recovery reloads the server version; there is no three-way merge.
-- **Memory backend is single-process only** — multiple workers or API instances require `ROADFORGE_REALTIME_BACKEND=redis`.
-
----
-
-## Project structure
-
-```
-roadforge/
-├── apps/
-│   ├── api/                  # FastAPI backend
-│   │   ├── alembic/          # Migrations
-│   │   └── src/api/
-│   │       ├── models/       # SQLAlchemy ORM models
-│   │       ├── routers/      # Route handlers
-│   │       ├── schemas/      # Pydantic request/response models
-│   │       └── services/     # Business logic
-│   └── web/                  # Next.js frontend
-│       └── src/
-│           ├── app/          # App Router routes
-│           ├── components/   # UI components by feature
-│           ├── context/      # RoadmapContext and provider state
-│           ├── hooks/        # Custom hooks
-│           ├── lib/          # storage.ts (localStorage helpers)
-│           ├── services/     # domain API clients + legacy compatibility barrel
-│           ├── styles/       # CSS split by concern
-│           └── types/        # TypeScript types
-└── docs/                     # Architecture and API documentation
+```bash
+make release-check
 ```
 
-Contributors should start with the [contributor guide](docs/contributor-guide.md)
-for module ownership, data and security boundaries, roadmap schema compatibility,
-migrations, tests, triage, and a reproducible fresh-clone walkthrough.
+The complete exact-head release evidence additionally runs in GitHub Actions, including
+browser, Redis, dependency, container, deployment, CSP, and MCP checks.
+
+Focused commands:
+
+```bash
+pnpm --dir apps/web test
+pnpm --dir apps/web lint
+pnpm --dir apps/web typecheck
+pnpm --dir apps/web build
+pnpm --dir apps/web test:browser:production
+pnpm --dir packages/roadforge-mcp check
+
+make api-lock
+make api-lint
+make api-test
+make api-check
+make api-audit
+```
+
+## Architecture
+
+RoadForge supports two modes:
+
+```text
+local roadmap
+  browser state -> scoped localStorage -> portable JSON
+
+synced roadmap
+  browser cache -> typed web service -> FastAPI
+                -> PostgreSQL canonical snapshot + history/activity
+                -> derivative relational projection
+                -> SSE / Redis volatile coordination
+```
+
+For synced roadmaps, `roadmaps.snapshot_json` plus the roadmap tag registry are the
+canonical current document. Relational phase/task tables are derivative and must be
+rebuildable from the snapshot. Optimistic writes use an exact server revision token;
+a stale or future revision does not silently overwrite newer work.
+
+Start with:
+
+- [Architecture overview](docs/architecture/overview.md)
+- [Source-of-truth rules](docs/architecture/source-of-truth-rules.md)
+- [Access model](docs/access-model.md)
+- [Frontend foundation](docs/frontend-foundation.md)
+- [Backend API](docs/backend-api.md)
+
+## Health and operations
+
+Public deployments must terminate HTTPS at a trusted edge, configure explicit CORS
+origins, restrict trusted proxy addresses, preserve the app-owned CSP, and keep
+credentials/query strings out of retained logs.
+
+Health endpoints have one contract:
+
+- `/api/health/live` — process liveness only.
+- `/api/health/ready` — PostgreSQL plus configured Redis readiness.
+- `/api/health` — backward-compatible alias for readiness.
+
+Use the maintained production example under [`deploy/self-hosted`](deploy/self-hosted/README.md)
+and read [Public deployment security](docs/public-deployment-security.md) before exposing
+an instance.
+
+## Known `0.1.0` boundaries
+
+These are explicit release boundaries, not hidden guarantees:
+
+- browser-local data can be lost when site storage is cleared;
+- the hosted Anvilary instance is a demo/convenience deployment, not a managed backup service;
+- synced roadmap deletion is soft-first; final live-database purge follows the bounded operator retention schedule and backup copies have their own lifecycle;
+- production scripts are protected by enforced nonce CSP, while inline CSS remains an explicit compatibility boundary;
+- nonce-bearing HTML is dynamically rendered and intentionally not CDN-cacheable;
+- MCP currently reuses participant credentials and remains experimental;
+- multi-browser/deployed collaboration still requires release-candidate manual validation.
+
+Tracked hardening work should be resolved independently rather than hidden inside new
+feature development.
+
+## Contributing
+
+Contributions should be small, reviewable, and backed by the relevant tests. Start with
+[CONTRIBUTING.md](CONTRIBUTING.md) and the
+[contributor guide](docs/contributor-guide.md). Use the issue chooser for bugs,
+usability, documentation, self-hosting, and accessibility reports.
+
+Security vulnerabilities must be reported privately through [SECURITY.md](SECURITY.md).
+Never publish invite links, participant session tokens, passwords, private roadmap
+exports, database credentials, or unredacted private logs in an issue.
+
+## Release evidence
+
+A release candidate is acceptable only when the exact candidate revision has green
+required CI and the relevant deployed/manual checks are complete. A historical green
+run does not certify a later commit.
+
+See:
+
+- [Senior readiness audit](docs/senior-readiness-audit.md)
+- [Manual QA](docs/manual-qa.md)
+- [Performance baseline](docs/performance.md)
+- [Security documentation](docs/security/README.md)
+- [Server data retention](docs/server-data-retention.md)
+- [Self-hosting](docs/self-hosting.md)
+- [Support](SUPPORT.md)
+
+RoadForge `0.1.0` is intended to be the stable baseline from which future feature work
+can proceed without changing these core data-ownership and collaboration principles.

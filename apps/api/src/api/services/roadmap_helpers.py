@@ -194,6 +194,14 @@ def _add_task_assignee(task: dict[str, Any], display_name: str) -> None:
     task["assignees"] = result
 
 
+def _phase_progress(tasks: list[Any]) -> int:
+    valid_tasks = [task for task in tasks if isinstance(task, dict)]
+    if not valid_tasks:
+        return 0
+    done_count = sum(1 for task in valid_tasks if bool(task.get("done", False)))
+    return round(done_count / len(valid_tasks) * 100)
+
+
 def _patch_task_done_snapshot(
     snapshot_json: dict[str, Any],
     task_id: str,
@@ -233,12 +241,16 @@ def _patch_task_done_snapshot(
 
         next_phase = dict(phase)
         next_phase["tasks"] = next_tasks
+        if found is not None and phase is found[0]:
+            next_phase["progress"] = _phase_progress(next_tasks)
         next_phases.append(next_phase)
 
     if found is None:
         return None
     phase, task = found
-    return {"phases": next_phases}, phase, task
+    next_snapshot = dict(snapshot_json)
+    next_snapshot["phases"] = next_phases
+    return next_snapshot, phase, task
 
 
 def _patch_task_claim_snapshot(
@@ -292,7 +304,9 @@ def _patch_task_claim_snapshot(
     if found is None:
         return None
     phase, task = found
-    return {"phases": next_phases}, phase, task
+    next_snapshot = dict(snapshot_json)
+    next_snapshot["phases"] = next_phases
+    return next_snapshot, phase, task
 
 
 # ---------------------------------------------------------------------------

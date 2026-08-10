@@ -1,149 +1,156 @@
-# RoadForge — Access Model
+# RoadForge access model
 
-RoadForge is accountless. There are no user records, no login flow, and no email-based identity. Access to a roadmap is controlled entirely by invite links and, optionally, a roadmap password.
+RoadForge `0.1.0` is accountless. There are no user accounts, global profiles, login
+flow, password reset flow, email identity records, or account dashboard.
 
----
+Access to a synced roadmap is roadmap-scoped and uses invite links, optional roadmap
+passwords, and participant sessions.
 
-## Invite link model
+## Roles
 
-When a roadmap is created, the backend generates three share links — one per role:
+| Role | Current capability |
+| --- | --- |
+| `owner` | edit roadmap; manage sharing/participants; restore versions; override claims; delete roadmap |
+| `editor` | edit roadmap; claim tasks; read collaboration/version information allowed to editors |
+| `viewer` | read roadmap, activity, tags, locks, and realtime updates |
 
-| Role | Description |
-|---|---|
-| `owner` | Full control: manage settings, share links, and members |
-| `editor` | Can edit phases, tasks, and dependencies |
-| `viewer` | Read-only; can see everything but cannot change anything |
+The API enforces authorization. Hiding a UI control is not an authorization mechanism.
 
-Each link is a URL of the form:
+## Invite links
 
+A newly synced roadmap has role-scoped share-link records for owner, editor, and viewer
+access.
+
+Private owner/editor invite tokens:
+
+- are generated with cryptographically random values;
+- are stored hashed rather than raw;
+- are returned only when initially issued/rotated;
+- cannot be recovered from ordinary share-link listing;
+- stop authorizing future joins when rotated/revoked.
+
+The viewer link is intentionally usable as a stable read-only sharing/demo URL while
+active. It still grants roadmap read access and should be treated as access-bearing.
+
+Invite rotation/revocation controls **future joins**. It does not automatically revoke
+participant sessions that already joined through an older link.
+
+## Participant sessions
+
+After roadmap creation or invite exchange, the client receives an opaque session token.
+The browser stores it in scoped local storage and sends:
+
+```http
+Authorization: Bearer sess_<token>
 ```
-http://localhost:3020/join?token=ed_<43-char-random-token>
-```
 
-**Security properties:**
-- Owner/editor raw tokens are generated with `secrets.token_urlsafe(32)` and only returned in the HTTP response at creation or rotation time. They are never stored raw — only SHA-256 hex digests are persisted.
-- Viewer links are public read-only demo links. The active viewer token may be stored so owners can re-copy the same public URL later.
-- Once a link is rotated or revoked, the old token hash is overwritten or deactivated. Old links immediately stop working.
-- `GET /api/roadmaps/{id}/share-links` keeps owner/editor `url: null`; active viewer links may return a copyable public read-only URL.
+Session tokens:
 
-The invite link is the durable access handle. Losing a private owner/editor link means losing that role's access path until the owner rotates a new one. The active viewer link is intentionally stable and copyable for public demos.
+- are stored hashed at rest;
+- are roadmap-scoped;
+- carry a role through their participant record;
+- can expire or be revoked;
+- are never placed in normal application URLs;
+- must not appear in exports, logs, public issues, task text, or analytics.
 
-## Assignees vs participants
+The backend validates the session, roadmap scope, revocation/expiry state, and required
+role for every protected operation.
 
-RoadForge keeps task assignment and collaboration access separate.
+## Display names are labels
 
-| Concept | Source | Scope | Used for |
-|---|---|---|---|
-| Assignee | `task.assignees` or legacy `owner:` / `review:` tags | The active roadmap's task data only | Task filters, "My tasks", workload context |
-| Participant / collaborator | Server-side `Participant` row created by joining a link | A synced roadmap only | Role, session, access source, last seen, revoke state |
+Participant display names exist for collaboration UX and activity attribution. They are
+not verified identity, are not globally unique, and must not be presented as proof of
+who a person is.
 
-Local-only roadmaps can have assignees, but they do not have participants or Team management. The Team workspace view is available only for synced owner roadmaps and shows actual participants only; it must not invent collaborators from task assignee names.
+Blank names may receive a role-oriented guest label.
 
----
+## Assignees and participants are different
 
-## Password gate
+An **assignee** is portable task planning data. It can exist on a local-only roadmap and
+does not grant access.
 
-A roadmap can optionally require a password for joining.
+A **participant** is a server-side joined collaboration session. It has a role and can
+be revoked.
 
-- Password is set at creation time via `POST /api/roadmaps` with the `password` field (min 6 characters).
-- Stored as a PBKDF2-SHA256 hash (260,000 iterations, 16-byte random salt, `hashlib.pbkdf2_hmac`). Compared with `hmac.compare_digest` for timing safety.
-- At join time, the backend checks `is_password_enabled` on the roadmap. If true, the supplied password is verified before a session token is issued.
-- A wrong or missing password returns `401 Unauthorized` with `"Invalid invite token or password"`. The error message does not indicate which was wrong.
+RoadForge must not invent participant access from task assignee names or require an
+assignee to be a joined participant.
 
----
+## Optional roadmap password
 
-## Optional display name
+A synced roadmap may require a password in addition to an invite before a participant
+session is issued.
 
-The `display_name` field in `POST /api/roadmaps/join` is optional. If omitted or blank:
-- Backend assigns a role-based default: `"Guest Owner"`, `"Guest Editor"`, or `"Guest Viewer"`.
-- The name is stored on the `Participant` row and used only as a collaboration label.
-- It has no security significance and is not validated for uniqueness.
+Current server behavior:
 
----
+- minimum/maximum password constraints are defined by API schema limits;
+- the password is stored as a salted PBKDF2-SHA256 hash;
+- verification uses a timing-safe comparison;
+- join errors do not reveal whether the invite or password was the failing secret.
 
-## Local session token
+A roadmap password is not a user account password and has no email recovery mechanism.
 
-After creating or joining a roadmap, the frontend receives an opaque session token:
-- **Create:** `owner_session_token` in `POST /api/roadmaps` response
-- **Join:** `session_token` in `POST /api/roadmaps/join` response
+## Realtime authorization
 
-The token is:
-- Generated with `secrets.token_urlsafe(32)` prefixed with `sess_`
-- Stored as a SHA-256 hex hash on the `Participant` row
-- Returned once in the response and never re-exposed
-- Stored in scoped local storage under `rf:auth:{roadmapId}` alongside the participant role and server roadmap ID
+RoadForge uses SSE for collaboration updates.
 
-**Enforcement:** Accountless access does not mean unauthenticated access. The session
-token is stored in `localStorage` and sent as
-`Authorization: Bearer <session_token>` on protected reads and writes.
+Long-lived participant session tokens are not placed in SSE query strings. An
+authenticated participant first requests a short-lived single-use event ticket, then
+uses that ticket to establish the event stream.
 
-- Owner/editor can update roadmap content, task completion/claims, and tags.
-- Owner/editor can read version history; the RoadForge editor UI presents it as
-  read-only. The owner alone can restore a version.
-- Owner/editor can read participant names and roles. Only owners receive session/link
-  details or can revoke participants.
-- Share-link management and roadmap deletion are owner-only.
-- Viewers can read roadmap content, tags, activity, locks, and realtime events.
+The event stream remains subject to participant authorization/revocation checks.
 
-The backend verifies the token hash, expiry, revocation state, roadmap scope, and role
-before processing a protected request.
+## Edit locks
 
----
+Owner/editor sessions can acquire short-lived soft edit locks. Locks reduce accidental
+concurrent editing but are not the source of truth for write authorization or data
+integrity.
 
-## Realtime sync and locks
+Optimistic concurrency remains the final stale-write protection.
 
-RoadForge uses Server-Sent Events (SSE) for real-time collaboration.
+## Claims
 
-- **Sync:** When a participant saves a roadmap, all other connected participants receive a `roadmap.updated` event and automatically re-fetch the latest state.
-- **Tickets:** SSE connections do not send long-lived session tokens in the URL. Instead, they use 30-second single-use tickets obtained via a Bearer-authenticated POST request.
-- **Soft Locks:** To prevent edit collisions, RoadForge uses 30-second soft locks. The
-  editor refreshes its lock every 20 seconds while active and pauses refresh after 90
-  seconds without interaction. Memory mode is single-worker; Redis mode shares locks
-  across workers.
-- **Concurrency:** `PUT` requests use optimistic concurrency control. If the roadmap has been updated on the server since the client last fetched it, the save is rejected with a `409 Conflict`.
+Task claims are collaboration coordination metadata for eligible synced participants.
+They are distinct from portable task assignees.
 
----
+- a participant can release their own claim;
+- owners may explicitly override according to the current claim contract;
+- task completion clears the active claim;
+- claims do not become portable identity credentials.
 
-## What is intentionally not present
+## Security boundaries
 
-| Feature | Decision |
-|---|---|
-| User accounts | Not planned for MVP. The invite link is the access primitive. |
-| Login / password reset | No accounts means no login. |
-| Email collection | No emails are collected or stored. |
-| User dashboard | No concept of "your roadmaps" — users navigate via saved links. |
-| No accounts / OAuth | RoadForge has no user-account login or OAuth provider. Protected write endpoints still require a bearer session token. |
-| Email verification codes | Deferred future security layer (see below). |
+Accountless access does not mean public access.
 
----
+Operators and contributors must preserve these rules:
 
-## Future: optional email verification code
+- never log raw invite/session tokens or passwords;
+- never add credentials to portable roadmap JSON;
+- never put session tokens in URLs;
+- enforce roles in the API;
+- preserve local work when server access expires or is revoked;
+- require Redis-backed coordination for multi-process realtime deployments;
+- treat user-authored imports/Markdown/links as untrusted input.
 
-A planned optional security layer (not in MVP):
+## Deliberately absent from `0.1.0`
 
-1. Owner enables email-code verification for a roadmap.
-2. When a joiner presents an invite token, the backend sends a one-time code to their email.
-3. The joiner enters the code; on success, a session token is issued.
+RoadForge does not currently provide:
 
-This adds a second factor without requiring accounts. It is purely opt-in per roadmap.
+- accounts or email identity;
+- OAuth/OIDC login;
+- email verification/recovery;
+- service accounts or generic public API keys;
+- billing/subscriptions;
+- automatic GitHub-to-roadmap state mutation.
 
-**Status:** Not designed, not implemented. Do not add this without explicit instruction.
+These are not implied future commitments. Any change to the identity/access model
+requires an explicit architecture/security decision before implementation.
 
----
+## Known boundaries
 
-## Security caveats for MVP
+- Invite tokens can appear in join URLs and therefore browser history/upstream logging layers.
+- The maintained application/nginx log formats omit query strings, but operators must review external infrastructure separately.
+- Browser session credentials live in local storage; the frontend CSP remains report-only until the tracked nonce-based enforcement work is complete.
+- Roadmap deletion is soft-only until the tracked retention/purge work lands.
 
-- **Opaque IDs** — Roadmap IDs are opaque (`rm_` prefix + random) but not secret. Access to data requires an active session or a valid invite token.
-- **Rate limiting** — public join/create, password checks, authenticated reads/writes,
-  share management, events, locks, versions, and tags use action-specific limits.
-  Limits are process-local in memory mode and shared across workers in Redis mode.
-- **No HTTPS enforcement** — the Docker setup serves plain HTTP. Production deployment must terminate TLS at a reverse proxy and configure HSTS.
-- **Tokens in URLs** — invite tokens appear in the URL query string and remain in
-  browser history. The RoadForge application and self-hosted access-log format
-  omit query strings, headers, and `Referer`, but upstream proxies and error logs
-  may still record them. Self-hosters must review and restrict every logging layer.
-- **Soft deletes only** — `Roadmap.deleted_at` is set on delete; no hard purge yet.
-- **No development server exposure** — `next dev` (or `make dev`) should never be exposed publicly. Use a production build for hosting.
-- **Content Security Policy** — RoadForge currently reports CSP violations without
-  enforcing the policy. Enforcement is required before moving beyond the public
-  pre-release status because script injection can expose `localStorage` tokens.
+See [Public deployment security](public-deployment-security.md) and
+[Security documentation](security/README.md) for deployment controls.

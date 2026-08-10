@@ -54,24 +54,24 @@ test('keeps drag descriptions deterministic across navigation and reload', async
     title: 'Hydration template roadmap',
     startingPoint: 'template',
   })
-  await ensurePhaseExpanded(page, 'Delivered local-first foundation')
-  await ensurePhaseExpanded(page, 'Delivered collaboration and server persistence')
+  await ensurePhaseExpanded(page, 'Define the outcome')
+  await ensurePhaseExpanded(page, 'Build and test')
 
   const phaseHandles = page.getByRole('button', { name: /Reorder phase/ })
-  await expect(phaseHandles).toHaveCount(17)
+  await expect(phaseHandles).toHaveCount(3)
   await expect(phaseHandles.first()).toHaveAttribute(
     'aria-describedby',
     'roadmap-phases',
   )
 
   const firstPhase = page.locator('.phase').filter({
-    hasText: 'Delivered local-first foundation',
+    hasText: 'Define the outcome',
   }).first()
   const taskHandles = firstPhase.locator('.task-row .drag-handle[role="button"]')
   await expect(taskHandles.first()).toBeVisible()
   await expect(taskHandles.first()).toHaveAttribute(
     'aria-describedby',
-    'phase-tasks-p01',
+    'phase-tasks-starter-define',
   )
 
   await page.getByRole('tab', { name: 'Tags' }).click()
@@ -83,7 +83,7 @@ test('keeps drag descriptions deterministic across navigation and reload', async
   )
   await expect(taskHandles.first()).toHaveAttribute(
     'aria-describedby',
-    'phase-tasks-p01',
+    'phase-tasks-starter-define',
   )
 
   await page.reload()
@@ -93,11 +93,11 @@ test('keeps drag descriptions deterministic across navigation and reload', async
   await expect(
     page
       .locator('.phase')
-      .filter({ hasText: 'Delivered local-first foundation' })
+      .filter({ hasText: 'Define the outcome' })
       .first()
       .locator('.task-row .drag-handle[role="button"]')
       .first(),
-  ).toHaveAttribute('aria-describedby', 'phase-tasks-p01')
+  ).toHaveAttribute('aria-describedby', 'phase-tasks-starter-define')
 
   await createRoadmap(page, {
     title: 'Hydration blank roadmap',

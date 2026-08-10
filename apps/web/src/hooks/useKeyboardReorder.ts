@@ -38,6 +38,13 @@ import { arrayMove } from '@dnd-kit/sortable'
  * plus plain arithmetic - nothing rect- or observer-based, so it can never
  * be stale either.
  *
+ * React state alone is not sufficient for that guarantee: several keydown
+ * events may be delivered in one browser task before React renders the
+ * state written by the preceding event. The refs below are therefore the
+ * synchronous session state used by the event handler; React state mirrors
+ * them for rendering. This makes a zero-delay Space -> Arrow -> Space
+ * sequence deterministic even under a heavily loaded CI runner.
+ *
  * Preview-then-commit: Arrow only ever mutates local `previewIds` state -
  * it never calls `onCommit`, sets `saved`, writes an activity entry, or
  * triggers autosync. `onCommit` fires exactly once, with the final ordered
@@ -103,8 +110,13 @@ export function useKeyboardReorder(
   const orderedIdsRef = useRef(orderedIds)
   orderedIdsRef.current = orderedIds
 
-  const activeIdRef = useRef(activeId)
+  // These refs are the authoritative event-session state. Updating them in
+  // the same call stack as setState prevents a following keydown from
+  // observing a stale render when React batches multiple events.
+  const activeIdRef = useRef<string | null>(activeId)
   activeIdRef.current = activeId
+  const previewIdsRef = useRef<string[] | null>(previewIds)
+  previewIdsRef.current = previewIds
 
   // The full committed order at pickup, kept separate from `previewIds`
   // (which changes on every Arrow move). Comparing the live `orderedIds`
@@ -121,9 +133,11 @@ export function useKeyboardReorder(
   }, [onAnnounce])
 
   const endSession = useCallback((message: string) => {
+    activeIdRef.current = null
+    previewIdsRef.current = null
+    pickupOrderRef.current = null
     setActiveId(null)
     setPreviewIds(null)
-    pickupOrderRef.current = null
     announce(message)
     onSessionEnd?.()
   }, [announce, onSessionEnd])
@@ -173,7 +187,9 @@ export function useKeyboardReorder(
   }, [orderedIds, disabled, activeId])
 
   const handleKeyDown = useCallback((event: MinimalKeyboardEvent, itemId: string) => {
-    if (activeId === null) {
+    const currentActiveId = activeIdRef.current
+
+    if (currentActiveId === null) {
       // `disabled` only gates *starting* a new session. Once one is
       // already active, dropping or cancelling it via keyboard must still
       // be possible even if `disabled` becomes true in the meantime -
@@ -190,17 +206,19 @@ export function useKeyboardReorder(
       onSessionStart?.()
       const snapshot = [...orderedIdsRef.current]
       pickupOrderRef.current = snapshot
+      activeIdRef.current = itemId
+      previewIdsRef.current = snapshot
       setActiveId(itemId)
       setPreviewIds(snapshot)
       announce(`Picked up ${itemLabel(itemId)}. Use the arrow keys to move, space bar to drop.`)
       return
     }
 
-    if (activeId !== itemId) return
+    if (currentActiveId !== itemId) return
 
     if (event.code === 'Space' || event.code === 'Enter') {
       event.preventDefault()
-      const finalIds = previewIds ?? orderedIdsRef.current
+      const finalIds = previewIdsRef.current ?? orderedIdsRef.current
       const index = finalIds.indexOf(itemId)
       const pickupOrder = pickupOrderRef.current ?? finalIds
       const changed =
@@ -224,7 +242,7 @@ export function useKeyboardReorder(
     if (!isNext && !isPrev) return
 
     event.preventDefault()
-    const ids = previewIds ?? orderedIdsRef.current
+    const ids = previewIdsRef.current ?? orderedIdsRef.current
     const current = ids.indexOf(itemId)
     const next = isNext ? Math.min(current + 1, ids.length - 1) : Math.max(current - 1, 0)
     if (next === current) {
@@ -232,9 +250,11 @@ export function useKeyboardReorder(
       announce(`${itemLabel(itemId)} is already at the ${boundary} position.`)
       return
     }
-    setPreviewIds(arrayMove(ids, current, next))
+    const nextIds = arrayMove(ids, current, next)
+    previewIdsRef.current = nextIds
+    setPreviewIds(nextIds)
     announce(`${itemLabel(itemId)} moved to position ${next + 1} of ${ids.length}.`)
-  }, [activeId, disabled, previewIds, itemLabel, onCommit, onSessionStart, endSession, cancel, announce])
+  }, [disabled, itemLabel, onCommit, onSessionStart, endSession, cancel, announce])
 
   return { activeId, previewIds, announcement, handleKeyDown, cancel }
 }

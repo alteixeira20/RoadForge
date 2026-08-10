@@ -16,7 +16,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.roadmap import Roadmap, RoadmapTask
+from api.models.roadmap import Roadmap, RoadmapPhase, RoadmapTask
 from api.services.id_service import generate_id
 from api.services.roadmap_projection_service import (
     backfill_and_report_projection_drift,
@@ -86,6 +86,22 @@ async def test_parity_ok_after_full_update_import_style_replace(
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
 
+    original_phase = await db_session.scalar(
+        select(RoadmapPhase).where(
+            RoadmapPhase.roadmap_id == roadmap_id,
+            RoadmapPhase.client_phase_id == "ph_a",
+        )
+    )
+    original_task = await db_session.scalar(
+        select(RoadmapTask).where(
+            RoadmapTask.roadmap_id == roadmap_id,
+            RoadmapTask.client_task_id == "tk_a1",
+        )
+    )
+    assert original_phase is not None and original_task is not None
+    original_phase_row_id = original_phase.id
+    original_task_row_id = original_task.id
+
     new_phases = [
         {
             "id": "ph_a",
@@ -104,9 +120,6 @@ async def test_parity_ok_after_full_update_import_style_replace(
                     "desc": "Updated through the aggregate write path",
                     "tags": ["backend", "projection"],
                     "assignees": ["Owner", "Editor"],
-                    "claimedBy": "Owner",
-                    "claimedById": "pt_owner",
-                    "claimedAt": "2026-07-04T12:00:00Z",
                 },
                 {
                     "id": "tk_a2",
@@ -136,6 +149,21 @@ async def test_parity_ok_after_full_update_import_style_replace(
     assert parity.issues == []
     assert parity.phase_count_snapshot == 1
     assert parity.task_count_snapshot == 2
+
+    retained_phase = await db_session.scalar(
+        select(RoadmapPhase).where(
+            RoadmapPhase.roadmap_id == roadmap_id,
+            RoadmapPhase.client_phase_id == "ph_a",
+        )
+    )
+    retained_task = await db_session.scalar(
+        select(RoadmapTask).where(
+            RoadmapTask.roadmap_id == roadmap_id,
+            RoadmapTask.client_task_id == "tk_a1",
+        )
+    )
+    assert retained_phase is not None and retained_phase.id == original_phase_row_id
+    assert retained_task is not None and retained_task.id == original_task_row_id
 
 
 # ─── Group G — Parity after restore ──────────────────────────────────────────

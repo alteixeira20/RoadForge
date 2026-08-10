@@ -1,30 +1,22 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { createRoadForgeTemplate } from '@/data/roadforge-template'
 
 describe('createRoadForgeTemplate', () => {
-  it('returns the canonical roadmap through the real parser', () => {
+  it('returns a compact example that teaches the core workflow', () => {
     const template = createRoadForgeTemplate()
     const tasks = template.phases.flatMap((phase) => phase.tasks)
-
-    // Cross-check against the canonical file's own declared counts, rather
-    // than a hand-maintained number that goes stale every time
-    // docs/roadforge-roadmap.json is updated.
-    const canonicalRaw = JSON.parse(readFileSync(
-      new URL('../../../../../docs/roadforge-roadmap.json', import.meta.url),
-      'utf8',
-    )) as { roadmap: { name: string }; meta: { phaseCount: number; taskCount: number } }
 
     expect(Object.keys(template).sort()).toEqual([
       'phases',
       'roadmapName',
       'tagRegistry',
     ])
-    expect(template.roadmapName).toBe(canonicalRaw.roadmap.name)
-    expect(template.phases).toHaveLength(canonicalRaw.meta.phaseCount)
-    expect(tasks).toHaveLength(canonicalRaw.meta.taskCount)
+    expect(template.roadmapName).toBe('Product launch')
+    expect(template.phases).toHaveLength(3)
+    expect(tasks).toHaveLength(9)
     expect(tasks.filter((task) => task.next)).toHaveLength(1)
-    expect(template.tagRegistry.length).toBeGreaterThan(0)
+    expect(tasks.some((task) => (task.deps?.length ?? 0) > 0)).toBe(true)
+    expect(template.tagRegistry).toHaveLength(3)
   })
 
   it('deep-clones every selection and never exposes mutable source data', () => {

@@ -41,15 +41,11 @@ export function AppHeader({
       </div>
 
       <div className="header-end">
-        {/* The Help action is hidden from the workspace header pending
-            refinement. /help stays routable and linked from the site header. */}
         {!readOnly && (
           <button className="iconbtn" title="Import / Export" aria-label="Import / Export" onClick={onIO}>
             <Icon name="export" size={16} />
           </button>
         )}
-        {/* Sits between Import/Export and Save, and stays available to viewers,
-            who get no Import/Export or Save action at all. */}
         <ProblemReportLink className="btn sm header-report-link" />
         {!readOnly && (
           <>
@@ -57,18 +53,18 @@ export function AppHeader({
               <button
                 className="btn sm header-save-btn"
                 onClick={onSave}
-                title="Save to RoadForge"
-                aria-label="Save to RoadForge"
+                title="Enable sharing"
+                aria-label="Enable sharing"
               >
                 <Icon name="cloud" size={14} />
-                <span className="header-save-label">Save</span>
+                <span className="header-save-label">Share</span>
               </button>
             ) : syncStatus === 'conflict' ? (
               <button
                 className="btn sm header-save-btn"
                 onClick={onReloadServerVersion}
-                title="Reload server version"
-                aria-label="Reload server version"
+                title="Load the server version"
+                aria-label="Load the server version"
               >
                 <Icon name="cloud" size={14} />
                 <span className="header-save-label">Reload</span>

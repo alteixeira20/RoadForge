@@ -1,720 +1,348 @@
-# RoadForge — Manual QA Checklist
+# RoadForge manual QA
 
-Dense pre-release checklist. Run top to bottom. Mark blockers immediately.
+This checklist covers release behavior that static/unit/API checks cannot fully prove.
+Run it against the exact candidate revision. Record failures immediately; do not work
+around a blocker and still certify the candidate.
 
-For a focused backend API smoke test (health, create, join, 403/401 checks, SSE, rate limit, migration drift), see [docs/backend-smoke-tests.md](backend-smoke-tests.md).
+## 1. Automated pre-flight
 
----
-
-## Pre-flight
+From a clean checkout of the candidate:
 
 ```bash
-make reset                        # Wipe DB, rebuild images, start API + Postgres
-make check                        # lint + typecheck + build — must be clean
-curl http://localhost:7878/api/health
-# → {"status":"ok","version":"0.1.0"}
-pnpm dev                          # Start frontend (localhost:3020)
+make release-check
 ```
 
----
+Then require the exact candidate's GitHub Actions jobs to be green, including the locked
+API and production CSP gates when their paths are relevant.
 
-## Setup
-
-Open four browser contexts and keep them active throughout:
-
-| Label | Context | Starting URL |
-|---|---|---|
-| **Owner** | Main browser, tab A | `http://localhost:3020` |
-| **Editor** | Private window | Join via editor link (generated in §4) |
-| **Viewer** | Second private window | Join via viewer link (generated in §4) |
-| **Local** | Main browser, tab B | `http://localhost:3020` (new roadmap, never saved to server) |
-
----
-
-## 1 — Local roadmap (tab B)
-
-- [ ] Complete wizard → name "Local QA Roadmap" → start blank.
-- [ ] Workspace loads. Roadmap name appears in header. The bottom-right status indicator shows **Local draft**.
-- [ ] Team button is hidden. No participant/collaborator management appears for this local-only roadmap.
-- [ ] Add a phase. Add two tasks to it. Mark one done.
-- [ ] Add an assignee named "Farreca" to one local task. Confirm Farreca appears only as a task/person filter option, not as a collaborator.
-- [ ] Close and reopen the tab. Phase and tasks persist (localStorage).
-- [ ] **Expected:** Everything loads from localStorage without an API call. No "Save" button shows a server ID.
-
----
-
-## 2 — Server roadmap creation (Owner tab)
-
-- [ ] Complete wizard → name "QA Roadmap" → use template/blank.
-- [ ] Click **Save to server** in header.
-- [ ] Save modal opens. Submit without a password (leave blank).
-- [ ] Toast: "Saved · collaboration enabled".
-- [ ] Bottom-right status indicator changes to **Live**.
-- [ ] `localStorage` contains scoped entries: `rf:roadmap:rm_...` and `rf:auth:rm_...` with a session token and owner role.
-
----
-
-## 3 — Sync status indicator verification
-
-- [ ] With server roadmap loaded and SSE connected, the subtle bottom-right indicator shows **Live**.
-- [ ] Trigger a save that takes longer than 300ms → indicator shows **Saving…**, then returns to **Live**. A faster save does not flash **Saving…**.
-- [ ] Change the roadmap in a collaborator window → the local view updates without refresh. A fetch longer than 300ms shows **Updating…**.
-- [ ] Interrupt and restore the SSE connection → indicator shows **Reconnecting…**, then **Live** after the stream opens.
-- [ ] Kill Docker API (`make api-down`) while roadmap is loaded.
-- [ ] Edit a task and click Save → indicator shows **Offline** and the existing failure feedback remains visible.
-- [ ] Restart API (`make api-up`). Retry Save → succeeds, indicator returns to **Live**.
-- [ ] **Conflict test:** open same roadmap in a second tab. Save from tab 2 first, then try to save from tab 1 → indicator shows **Conflict**, toast says local edits are preserved, and the conflict banner offers review plus reload fallback.
-
----
-
-## 4 — Share modal (Owner)
-
-- [ ] Click **Share**. Modal opens.
-- [ ] Three role rows visible: Private owner link, Private editor invite, Public viewer link.
-- [ ] Owner/editor active links do not reveal raw URLs after fetch.
-- [ ] Public viewer link explains that anyone with the link can view read-only.
-- [ ] Click **Rotate link** on Editor row → URL appears. Copy it (editor link).
-- [ ] Click **Reset link** or **Generate public link** on Viewer row → URL appears. Copy it (viewer link).
-- [ ] Owner row: active link metadata is visible, but no raw join URL is exposed
-  until **Rotate link** generates a new owner invite.
-- [ ] Close and reopen Share modal. Editor row shows "Active link" but NOT the raw URL. Viewer row still shows a copyable public read-only URL.
-- [ ] Copy the viewer URL after reopening the modal and save it somewhere temporary. It should be the stable public read-only demo link for this roadmap.
-
----
-
-## 5 — Join as Editor and Viewer
-
-**Editor (private window):**
-- [ ] Open editor link.
-- [ ] Enter display name "Jordan". Submit (no password).
-- [ ] Routed to `/workspace`. Workspace loads. No viewer banner.
-- [ ] `rf:auth:rm_...` role = `editor` in localStorage.
-
-**Viewer (second private window):**
-- [ ] Open viewer link.
-- [ ] Enter display name "Sam". Submit.
-- [ ] Routed to `/shared`. Read-only banner visible.
-- [ ] `rf:auth:rm_...` role = `viewer` in localStorage.
-- [ ] Task checkboxes are disabled. Share/Save buttons absent.
-
----
-
-## 6 — Participant list and share-link usage tracking
-
-- [ ] Owner opens Share modal → each role section shows a "Participants" sub-list.
-- [ ] Jordan appears under Editor section with display name, join date, last-seen date.
-- [ ] Sam appears under Viewer section.
-- [ ] `Access source` label shows the link that was used to join (not "Legacy / unknown link").
-- [ ] "Current session" badge appears on the Owner's own participant row.
-
----
-
-## 7 — Participant revoke
-
-- [ ] Owner clicks **Revoke** next to Jordan (Editor participant).
-- [ ] A styled in-app confirm dialog appears (shared `ConfirmDialog`, not a native browser `confirm()` popup). It has a Cancel and a destructive confirm button. Press Escape or Cancel once to verify it dismisses without revoking, then reopen and confirm.
-- [ ] Jordan's row disappears from the participant list.
-- [ ] **In Editor window:** toast "Your access was revoked." appears. Workspace goes read-only or prompts to leave.
-- [ ] Editor attempts to save → 401/403 error; save fails.
-- [ ] Viewer (Sam) is unaffected — still sees roadmap.
-
----
-
-## 8 — Link revoke / rotate / generate
-
-**Revoke viewer link:**
-- [ ] Owner opens Share modal → Viewer row → click **Revoke**.
-- [ ] Toast: "Link revoked". Row shows "No active link".
-- [ ] Open the old viewer URL in a new private window → error: "This invite link is invalid or has expired."
-- [ ] Sam (already joined Viewer) is **not** revoked — still connected.
-
-**Rotate editor link:**
-- [ ] Owner clicks **Rotate link** on Editor row → new URL generated.
-- [ ] Old editor URL no longer works in a new private window.
-- [ ] New editor URL works and routes to `/workspace`.
-
-**Generate (from no-link state):**
-- [ ] After revoking Viewer link, click **Generate** on Viewer row → new URL appears. Confirm it works.
-
----
-
-## 9 — Realtime: roadmap.updated
-
-- [ ] Owner adds a task and saves.
-- [ ] **In Viewer window (Sam):** Roadmap auto-updates — new task appears without manual refresh.
-- [ ] **In Editor window (Jordan, or re-join as new editor):** Same auto-update behavior.
-
----
-
-## 10 — Realtime: roadmap.deleted
-
-_(Requires a DELETE endpoint trigger — currently owner-only via API/docs if no UI button exists)_
-- [ ] If a delete endpoint is wired in the UI: trigger deletion as Owner.
-- [ ] **In active Editor/Viewer windows:** toast "This roadmap was deleted." appears.
-- [ ] If only accessible via `/api/docs`: call `DELETE /api/roadmaps/{id}` with Bearer token, then confirm toast fires in other tabs.
-
----
-
-## 11 — Task creation / editing / done state
-
-- [ ] **Create:** Add task → task appears with unique ID.
-- [ ] **Inline title:** click the task title, edit it, and press Enter or blur → the new title persists. Press Escape on a second edit → the draft is discarded.
-- [ ] **Inline estimate:** click the estimate chip, edit it, and press Enter or blur → the new estimate persists.
-- [ ] **Inline description:** expand the task, click its description, edit Markdown, then save → formatted content updates without opening the full edit form.
-- [ ] **Inline tags:** add and remove tags from the expanded task → task chips and tag registry-backed labels update and persist.
-- [ ] **Inline assignees:** add, select, and remove assignees from the expanded task → names update and persist.
-- [ ] **Full edit form:** change title, description, estimate, tags, assignees, and dependencies → save → values persist after reload.
-- [ ] **Markdown description:** use the toolbar or type paragraphs, bold, italic, inline code, links, bullet/numbered lists, and `- [ ]` / `- [x]` items → save → compact formatted content renders in the task detail.
-- [ ] **Description limit:** save a 5,000-character description → it persists after reload; verify a 5,001-character task PATCH or import is rejected.
-- [ ] **Markdown safety:** enter `<b>raw HTML</b>` and a `vbscript:` link → raw HTML displays as text and the unsafe link is not clickable.
-- [ ] **Legacy description:** load a plain-text description with line breaks → it remains readable without conversion.
-- [ ] **Done:** Tick checkbox → phase progress bar updates → save → state persists.
-- [ ] **Undone:** Untick → progress bar decrements → save → state persists.
-- [ ] **Subtask:** Set `parentId` on a task (via edit form if wired) → renders indented under parent.
-- [ ] **Dependency:** Add dep ID → appears in task detail.
-- [ ] Editor can do all of the above. Viewer cannot (checkboxes disabled).
-
----
-
-## 11a — Task GitHub links
-
-RoadForge remains the source of truth for task state. A linked GitHub issue, pull
-request, or discussion is a reference only — there is no automatic sync, no
-metadata fetch, and no automatic task completion from GitHub activity. See
-[Task External Links](architecture/task-external-links.md) for the full
-source-of-truth decision.
-
-- [ ] Expand a task, click **Add GitHub link**, paste an issue URL, and save → an `Issue #<number>` link appears and opens GitHub in a new tab.
-- [ ] Repeat with a pull request and discussion → concise `PR #<number>` and `Discussion #<number>` links appear.
-- [ ] Attach links from two repositories → each compact link shows enough `owner/repo` context to distinguish them.
-- [ ] Paste an invalid URL, commit, release, generic URL, unsupported GitHub page, credential query, or URL username/password → a friendly error appears and the pasted input remains.
-- [ ] Paste a URL already attached to the task → duplicate feedback appears and the task is unchanged.
-- [ ] Remove one link → only that link is removed; other links and task fields remain.
-- [ ] Open the roadmap as a Viewer → links remain visible and openable, while add/remove controls are absent.
-- [ ] In two synced sessions, hold the task lock while adding or removing a link → the other session cannot mutate that task's links.
-- [ ] After the lock releases, make a concurrent server edit before saving a pasted link or removing one → the standard structured conflict flow appears, no links are silently overwritten, and pasted input remains available for review.
-
----
-
-## 11b — Task claim and override (styled confirmation)
-
-- [ ] Every task row shows exactly one status badge: **Done**, **In progress**, **Blocked**, **Ready to start**, or **Planned**. The badge remains visible when the task is expanded and at 375px width.
-- [ ] A claimed task with incomplete dependencies shows **In progress**; an unclaimed recommended task with incomplete dependencies shows **Blocked**.
-- [ ] Expand an incomplete task. The detail shows a **Work on this** claim button.
-- [ ] Click **Work on this** → task shows **In progress**, the button becomes **Stop working**, and the current participant is added once to Assigned without removing existing assignees.
-- [ ] Click **Stop working** → claim clears, the participant remains assigned, and the task returns to its derived non-claim status.
-- [ ] **In Editor window:** claim the same task as Jordan. Owner now sees "Jordan is working on this".
-- [ ] As Owner (claim-override permitted role), an **Override claim** button appears next to Jordan's claim.
-- [ ] Click **Override claim** → a styled in-app confirm dialog opens (shared `ConfirmDialog`, not a native `confirm()`), titled "Override claim?" with a destructive **Override claim** confirm button and a Cancel.
-- [ ] Press Cancel or Escape → no change; Jordan keeps the claim.
-- [ ] Reopen and confirm **Override claim** → claim transfers to the current user; the dialog shows "Please wait…" while the claim request is in flight.
-- [ ] Viewer cannot claim or override (no claim controls in read-only mode).
-
----
-
-## 11c — Tags view and unused-tag deletion
-
-- [ ] Open the **Tags** tab. The Roadmap task search/filter/expansion toolbar is absent, and the navigation contains only one Roadmap and one Tags control.
-- [ ] Task rows and the Tags view render the same chip foreground, translucent background, border, radius, spacing, typography, truncation, and invalid-color fallback.
-- [ ] Create, rename, and recolor an unused tag → the chip updates and survives reload. Viewer sees the same registry and usage counts without mutation controls.
-- [ ] Usage wording is exactly **Not used**, **1 task**, or **N tasks**.
-- [ ] A tag that is used by at least one task shows its usage wording; its delete (✕) control is disabled with a "Cannot delete" accessible name. No confirm appears.
-- [ ] For an **unused** tag, click its delete (✕) control → a styled in-app confirm dialog opens (shared `ConfirmDialog`, not a native `confirm()`), titled "Delete tag?" naming the tag, with a destructive **Delete tag** confirm button.
-- [ ] Press Cancel or Escape → the tag remains.
-- [ ] Confirm **Delete tag** → the unused tag is removed and the roadmap is marked unsaved (autosync/Save persists it).
-
----
-
-## 12 — Task edit locks
-
-- [ ] Owner expands a task and clicks Edit → `task:<id>` lock acquired.
-- [ ] **In Editor window:** same task shows "Owner is editing" badge. Checkbox and edit inputs are disabled.
-- [ ] Type or click inside the edit form before 90 seconds elapse → the idle deadline resets and the lock refreshes every 20 seconds while editing remains active.
-- [ ] Leave the edit form untouched for 90 seconds → the form stays open, an editing-paused notice appears, lock refresh stops, and release is attempted. The badge disappears in the Editor window.
-- [ ] Confirm changed title, description, estimate, tags, and assignees remain in the Owner's local draft after the pause.
-- [ ] Click **Resume editing** → the lock is reacquired before Save enables.
-- [ ] While paused, acquire the same task lock in the Editor window. Resume in Owner → Owner's draft remains visible, Save stays disabled, and conflict feedback identifies the active editor.
-- [ ] Release from Editor, then resume in Owner → Owner reacquires the lock and can save the preserved draft.
-- [ ] Simulate a failed 20-second lock refresh → ownership is cleared and Save disables until explicit reacquisition; the draft remains mounted.
-- [ ] Owner cancels or closes a clean edit → lock released. Badge disappears in Editor window.
-- [ ] Editor can now expand and edit the task.
-
----
-
-## 13 — Phase settings menu: color, modes, and lock
-
-Color is no longer a bare swatch in the header. It opens from the phase **settings (···)** menu.
-
-- [ ] Click the phase **settings (···)** button (Owner) → menu opens with **Rename**, **Change color**, and **Delete phase**.
-- [ ] Click **Change color** → the color popover opens with **Auto** / **Manual** mode toggle.
-- [ ] Repeat **Change color** with the phase expanded and collapsed → the popover stays open in both states.
-- [ ] **Auto** mode: empty or zero-done phases are grey, partially complete phases are orange, and non-empty fully complete phases are green.
-- [ ] A phase with no `colorMode` in legacy local/server/imported data upgrades to **Auto**; an explicit **Manual** mode and its color remain unchanged.
-- [ ] Switch to **Manual** mode: a preset swatch grid appears plus a custom hex input with an **Apply** button.
-- [ ] Pick a preset → phase header color updates immediately and the popover closes.
-- [ ] Reopen, switch to Manual, type a valid `#rrggbb` hex → **Apply** enables → click it → color applies. Invalid hex keeps Apply disabled.
-- [ ] **Self-lock does not flash the menu closed:** opening the settings menu / color popover acquires the current user's own phase lock, but the menu/popover stays open and is **not** replaced by a lock badge. The current user is never shown "… is editing" for their own lock.
-- [ ] **In Editor window:** while Owner has the color popover open, the same phase shows a "<Owner> is editing" lock pill and the settings (···) menu is hidden for the editor.
-- [ ] Owner closes the popover (outside click, selecting a color, or Escape) → lock releases → Editor's lock pill clears and the settings menu returns.
-- [ ] Save → color persists after reload.
-- [ ] **Delete phase confirmation:** open settings (···) → **Delete phase** → a styled in-app confirm dialog opens (shared `ConfirmDialog`, not a native `confirm()`), titled "Delete phase?", describing how many tasks/subtasks will be removed, with a destructive **Delete phase** confirm and a **Keep phase** cancel. Cancel/Escape keeps the phase; confirm removes it.
-- [ ] Viewer sees no settings (···) menu and cannot change color (read-only).
-
----
-
-## 14 — Phase drag-and-drop
-
-- [ ] Drag a phase to a new position (drag handle appears on hover).
-- [ ] No phase, task, or subtask row/menu/detail state exposes a Move earlier/later/up/down button.
-- [ ] Focus each drag handle and use **Space → Arrow key → Space** → ordering changes without pointer input.
-- [ ] Phases reorder immediately with animation.
-- [ ] Phase display numbers are recomputed from the new order: first phase `01`, second `02`, third `03`, etc.
-- [ ] Phase IDs and tasks stay with their moved phase.
-- [ ] Save → reload → order persists.
-- [ ] Export JSON after reorder and confirm phase `num` values match the visible order.
-- [ ] With search/filter active → drag handle is hidden (disabled). No reordering while filtered.
-- [ ] Viewer sees phases in correct order but no drag handles.
-
----
-
-## 15 — Task filters
-
-- [ ] Open filter dropdown. Options: All, Mine, Pair, Next, Open, Done (and person:Name options if assignees exist).
-- [ ] **All:** all tasks visible.
-- [ ] **Done:** only completed tasks visible.
-- [ ] **Open:** only incomplete tasks visible.
-- [ ] **Next:** only tasks marked `next` visible.
-- [ ] **Mine/Pair:** requires assignees — tested in §16.
-- [ ] Search bar: type a keyword → only matching task titles shown.
-- [ ] Filter + search work together (AND logic).
-- [ ] With active filter: phase drag handle hidden (cannot reorder).
-- [ ] Clear filter → full list returns.
-
----
-
-## 16 — Assignees, filters, and Team view
-
-- [ ] Edit a task → add assignees (by name/handle).
-- [ ] Assignee names appear on the task row.
-- [ ] Filter dropdown shows person options derived only from assignees on the active roadmap's tasks.
-- [ ] **Mine** filter: shows tasks where current participant's display name matches an assignee.
-- [ ] Remove assignee from task → matching person filter option disappears after the active filter is cleared or reset.
-- [ ] Owner opens synced roadmap → click **Team** in the toolbar.
-- [ ] Team opens as a main workspace view, replacing the phase list until returning to Roadmap.
-- [ ] Team shows actual server participants only: display name, role, access source, last seen, current-session marker.
-- [ ] Owner can click Invite/Add team member and the existing Share modal opens.
-- [ ] Owner can revoke a non-current participant from Team.
-- [ ] Editor opens Team and sees active participant names and roles only; session expiry, last-seen, and invite-link metadata are absent.
-- [ ] In the Editor window, open inline assignee editing → active participant names appear as suggestions.
-- [ ] Revoke a participant as Owner, refresh the Editor participant list, and confirm the revoked name is no longer suggested.
-- [ ] Task assignees who have not joined through a share link do **not** appear as Team collaborators.
-- [ ] Editor does not see invite/revoke controls; Viewer cannot open Team.
-
----
-
-## 17 — Activity panel and anti-spam behavior
-
-- [ ] Open **Activity** panel.
-- [ ] Double-click the roadmap title, rename it, press Enter, then Save/autosync.
-- [ ] Activity shows "Renamed roadmap"; Versions count does not increase from the rename alone.
-- [ ] Complete one task → Save → one activity entry appears (e.g., "Completed task RF-101").
-- [ ] Immediately uncheck and recheck the same task several times before saving → Save → still ONE consolidated entry (anti-spam deduplication), not one per tick.
-- [ ] Add a new task → Save → "Added task RF-..." entry appears.
-- [ ] Complete the last task in a phase → Save → "Completed phase 01" entry appears.
-- [ ] Reorder phases → Save → "Reordered phases" entry appears.
-- [ ] Make >5 diverse edits before saving → Save → single "Saved N changes" batch entry, not N rows.
-- [ ] Rotate a share link → "Rotated editor link" appears in activity.
-- [ ] Revoke a share link → "Revoked viewer link" appears.
-- [ ] Revoke a participant → "Revoked participant" appears.
-
----
-
-## 18 - Export JSON and Markdown
-
-**JSON**
-
-- [ ] Open **Import / Export** -> Export tab.
-- [ ] Click **Download .roadforge.json** -> a timestamped `.roadforge.json` file downloads.
-- [ ] Inspect file: contains `"schema": "anvilary.roadmap.export"`, `"version": 1`, phases, tasks. The legacy schema ID is intentionally retained so older RoadForge deployments can import new exports.
-- [ ] Markdown descriptions remain plain JSON strings, and each phase includes its `colorMode`.
-- [ ] **No session tokens, invite tokens, passwords, or browser auth data** appear in the exported file.
-- [ ] A task with GitHub/URL links (§11a) exports with its `links` array intact - no credentials, only the fields listed in [Task External Links](architecture/task-external-links.md).
-- [ ] Re-import that same file (§19) -> no compatibility warning (known schema/version).
-
-**Markdown**
-
-- [ ] Click **Download readable Markdown** -> `<roadmap-name>.roadforge.md` downloads.
-- [ ] Export the unchanged roadmap twice -> generated Markdown contents and requested filename are identical.
-- [ ] Inspect phase order, phase status/progress, task/subtask order, done/next state, estimates, assignees, tags, dependencies, and external links.
-- [ ] Confirm user-authored task descriptions retain their Markdown paragraphs, lists, checkboxes, quotes, and inline formatting.
-- [ ] Confirm participant claims, session tokens, invite tokens, passwords, and browser auth state are absent.
-- [ ] Confirm the import file picker remains JSON-only and the Markdown file is not presented as importable.
-- [ ] Confirm no PDF control or dead "coming soon" export action appears.
-
----
-
-## 19 — Import: replace current roadmap
-
-- [ ] Open **Import / Export** → Import tab.
-- [ ] Click **Replace current roadmap** → select the `.roadforge.json` file from §18.
-- [ ] No notice shown (clean format, own export). Roadmap phases replace current phases immediately.
-- [ ] **Server roadmap:** toast "Roadmap replaced — syncing after autosave". ID, session, switcher entry unchanged.
-- [ ] Save → server reflects imported data.
-- [ ] **Viewer cannot** use "Replace current roadmap" (button disabled).
-- [ ] Import a file with an old/unknown schema → **Import notice** appears listing the compatibility warning → click "Replace current roadmap" → import proceeds.
-- [ ] Import a file with auto-repaired issues (see §21) → **Import notice** appears listing what was repaired → confirm → roadmap loads.
-- [ ] Import an older file with plain-text descriptions and no phase `colorMode` → descriptions render readably and phases use Auto colors.
-- [ ] Import the file from §18 → the task's GitHub/URL links reappear unchanged (same `owner`/`repo`/`number`/`kind`), confirming links survive an export/import round trip.
-
----
-
-## 20 — Import: new local roadmap
-
-- [ ] With server roadmap active (Owner), click **Import as new local roadmap**.
-- [ ] Select any `.roadforge.json` file.
-- [ ] Toast: "Imported as new local roadmap".
-- [ ] URL changes to `?roadmap=<new-local-id>`.
-- [ ] New roadmap appears in roadmap switcher.
-- [ ] **Collaborators (Editor, Viewer) are unaffected** — they still see the original server roadmap.
-- [ ] Switch back to server roadmap via switcher → original data intact.
-
----
-
-## 21 — Import compatibility warnings and auto-repair
-
-**Compatibility warnings** (schema/version issues — shown when valid but non-canonical format):
-- [ ] Import version-1 files using each accepted schema ID: `anvilary.roadmap.import`, `anvilary.roadmap.export`, `roadforge.roadmap.import`, and `roadforge.roadmap.export` → no schema compatibility warning.
-- [ ] Create a JSON file with `"schema": "roadforge.roadmap.v0"` (unknown schema) and valid phases.
-- [ ] Import it → **Import notice** appears with the compatibility warning. "This file will still import successfully." shown. Confirm → roadmap loads.
-- [ ] Create a JSON file with `"version": 99` (future version) → warning: "This file was created with a newer version..."
-- [ ] Create a file with an extra unknown field on a task (`"foo": "bar"`) → "Some fields in this file are not supported..."
-- [ ] Import own exported file (§18) → **no notice at all** (clean schema, version 1, no unknown fields).
-
-**Auto-repair** (safe structural fixes applied silently before validation):
-- [ ] Create a JSON with a task where `"done": 1` (integer, not boolean) → Import notice lists "Boolean task fields (done, next) were coerced from non-boolean values."
-- [ ] Create a JSON with a task where `"tags": null` → Import notice lists "Null values on optional fields were cleared."
-- [ ] Create a JSON with a task where `"tags": "planning"` (string, not array) → Import notice lists "Non-array fields (tags, deps, assignees, links, or tasks) were replaced with empty arrays."
-- [ ] Create a JSON with two tasks sharing the same `id` → Import notice lists "Duplicate task IDs were renamed to be unique."
-- [ ] Create a JSON with a task `"parentId"` referencing a non-existent task ID → Import notice lists "parentId references to non-existent tasks were removed."
-- [ ] Create a JSON with a task using legacy assignment tags (`"tags": ["owner:Alice"]`) → Import notice lists "Assignment tags (owner:, review:) were migrated to the assignees field."
-- [ ] In all auto-repair cases: confirm import → roadmap loads with repaired data.
-- [ ] **Truly malformed input** (not a JSON object/array, `{}` with no phases key, garbage text) → hard failure toast "Import failed: …". No notice panel shown.
-
----
-
-## 21b — Schema auto-upgrade notice
-
-- [ ] Seed/load an old local roadmap cache with `task.next: null` or missing `task.assignees`, `task.tags`, or `task.deps`.
-- [ ] Open the roadmap. It loads without error and shows **Roadmap updated** near the workspace top.
-- [ ] Notice copy says RoadForge updated the roadmap for the latest version. It does not show technical repair details or a backup/download button.
-- [ ] Click **Dismiss**. The notice does not reappear for that active roadmap/session.
-- [ ] Reload the local roadmap and confirm the cache has the repaired current shape.
-- [ ] Load an old synced roadmap as owner/editor. It repairs, marks local state unsaved, and autosync persists the upgraded snapshot.
-- [ ] Load an old synced roadmap as viewer. It repairs in memory for UI safety but does not attempt to save.
-- [ ] Confirm automatic schema upgrade does not create an Activity entry or a version checkpoint.
-
----
-
-## 22 — Version history
-
-- [ ] Open **Versions** panel as Owner and Editor; Viewer cannot access it.
-- [ ] After saving §11 edits: one "Updated" version entry appears.
-- [ ] After importing §19: one "Imported" or "Updated" entry appears.
-- [ ] Task tick/untick/tick cycle before save → still ONE version created on save (not one per toggle).
-- [ ] Editor sees read-only version history with no checkpoint or restore controls; Viewer does not see Versions.
-
----
-
-## 23 — Manual checkpoint
-
-- [ ] Owner opens Versions panel → click **Create checkpoint**.
-- [ ] Toast: "Checkpoint created." A new "Checkpoint" entry appears in the list.
-- [ ] Click **Create checkpoint** again immediately → toast: "Latest version already matches current roadmap." No duplicate entry.
-
----
-
-## 24 — Restore version
-
-- [ ] Owner opens Versions panel → click **Restore** on a previous version.
-- [ ] A styled in-app confirm dialog appears (shared `ConfirmDialog`, not a native `confirm()`): "Restore this version? Current roadmap will be replaced for all collaborators."
-- [ ] Toast: "Restored roadmap". Workspace reflects restored state.
-- [ ] **In Editor/Viewer windows:** SSE `roadmap.updated` fires → both auto-reload to restored state.
-- [ ] Activity panel shows "Restored" entry.
-- [ ] Editor cannot restore (button absent or 403 if called via API).
-
----
-
-## 25 — 409 conflict recovery
-
-- [ ] Open roadmap in two Owner tabs (same session or two owner participants).
-- [ ] Tab 2: save a change → success.
-- [ ] Tab 1: save a different change → 409 toast says the roadmap changed elsewhere and local edits are preserved.
-- [ ] Repeat with the same task edit form open in both tabs. Tab 2 saves a
-  title/description/estimate/tag/assignee change first; Tab 1 then saves its
-  stale draft → structured conflict feedback appears and Tab 1's draft remains
-  available for review/retry.
-- [ ] While a task PATCH is in flight, make an unrelated local phase/task change.
-  When the PATCH response arrives, its timestamp and patched task fields apply
-  without replacing that unrelated dirty state.
-- [ ] Tab 1: conflict banner shows **Review conflict** and **Reload server version**.
-- [ ] Click **Review conflict**. Panel shows server updated time, local unsynced state, server state, and name/phase/task differences.
-- [ ] Click **Keep editing locally**. Panel closes, badge remains **CONFLICT**, and local unsynced edits remain visible.
-- [ ] Reopen review and click **Keep my local version**. Save retries against the latest server timestamp, clears conflict on success, and Activity refreshes if open.
-- [ ] Repeat conflict, then click **Reload server version**. A styled in-app confirm dialog (shared `ConfirmDialog`, not a native `confirm()`) appears before discarding local unsynced edits.
-- [ ] Confirm reload. Tab 1 loads the server version. Local unsynced edits from tab 1 are discarded only after confirmation.
-- [ ] If a 409 response has no structured metadata, the reload-only fallback still works.
-
----
-
-## 25b — RF-023 two-session collaboration evidence
-
-Use separate browser profiles so session storage and auth caches are independent.
-Save the same roadmap, then join it as Owner **Alex**, Editor **Jordan**, and
-Viewer **Casey**.
-
-- [ ] All three contexts reach **Live** and can read the roadmap, activity, and visible edit-lock state.
-- [ ] Casey cannot edit, complete, claim, acquire/release locks, manage links, or reveal mutation controls.
-- [ ] Jordan claims an incomplete task. Alex sees “Jordan is working on this” without reloading.
-- [ ] A second editor cannot replace or clear Jordan's claim, including direct requests with `override=true`.
-- [ ] Alex opens **Override claim**, cancels with Escape, and confirms Jordan retains the claim.
-- [ ] Alex confirms **Override claim**. The claim transfers once; Activity has one `task.claimed` event attributed to Alex with Jordan as the previous claimer.
-- [ ] Mark the claimed task done. The claim clears, assignment remains, and exactly one completion event appears.
-- [ ] Alex edits a task. Jordan sees “Alex is editing”; conflicting mutation controls are disabled.
-- [ ] Interact before 90 seconds. The lock refreshes while the editor and caret remain stable.
-- [ ] Leave the form untouched for 90 seconds. The draft remains, editing pauses, release is attempted, and Jordan sees the lock disappear.
-- [ ] Jordan acquires the released lock. Alex tries **Resume editing**; Alex's draft remains and Save stays disabled with Jordan identified.
-- [ ] Jordan releases. Alex resumes, reacquires, and saves the preserved draft.
-- [ ] Simulate a failed 20-second refresh. Alex loses commit permission while the draft remains mounted.
-- [ ] Keep an unsaved draft in one context, commit a server update in the other, then save the stale context.
-- [ ] A structured 409 shows server/client timestamps and server state; the local draft is not discarded.
-- [ ] Exercise **Keep editing locally**, **Keep my local version**, and confirmed server reload; each resulting sync state is truthful.
-- [ ] Jordan patches one task while Alex has unrelated dirty state. Alex's unrelated draft is not overwritten.
-- [ ] Each claim, task patch, completion, and aggregate save creates exactly one correctly attributed Activity row, including after autosync and realtime refresh.
-- [ ] Revoke Jordan with the SSE stream active. Jordan loses server authority, keeps a dirty local cache, and receives 401 on later writes.
-- [ ] Record browser versions, roadmap ID, participant roles, timestamps, and pass/fail evidence without copying invite or session tokens.
-
----
-
-## 26 — Mobile layout at 375px
-
-Set browser devtools to 375×812 (iPhone SE / 13 mini):
-
-- [ ] **No horizontal overflow** — no horizontal scrollbar on any page.
-- [ ] Workspace header is a single compact row: brand mark, sync badge, spacer, primary action (Save/Share/Reload icon), More (···) button. No roadmap name in the header row.
-- [ ] Roadmap name appears in the workspace `<h1>` below the header — it is **not** duplicated in the header.
-- [ ] Tap the title edit button near the workspace `<h1>`; input opens, Enter/blur save a valid title, Escape cancels, empty title is rejected.
-- [ ] More (···) menu button is tappable (≥36px touch target). Tapping opens a panel with: Import/Export, Theme toggle, Roadmap switcher.
-- [ ] More menu closes on outside tap and on Escape.
-- [ ] Save / Share / Reload primary action remains visible as a compact icon button (≥36px) in the header row without opening More.
-- [ ] Search bar stretches full width.
-- [ ] Filter dropdown opens without off-screen clipping.
-- [ ] Phase list renders correctly. Phase status badge hidden.
-- [ ] Phase drag handle visible and usable on touch.
-- [ ] Task rows readable — no text clipped or overflowing card edges.
-- [ ] **Share modal:** fits within viewport. Footer buttons wrap if needed. Participant rows wrap.
-- [ ] **IO modal:** fits within viewport. Import/export action buttons readable.
-- [ ] **Save modal:** readable and submittable.
-- [ ] Activity/Versions panels: full-width overlay; scrollable. Team remains a main workspace view when available.
-- [ ] Join page: form fits without overflow.
-
----
-
-## 27 — Theme-aware favicon
-
-- [ ] OS/browser in **light mode**: browser tab shows light-background favicon.
-- [ ] OS/browser in **dark mode**: browser tab shows dark-background favicon.
-- [ ] Toggle OS theme while tab is open → favicon updates without reload.
-- [ ] Check at both 16×16 and 32×32 sizes (browser zoom or devtools).
-
----
-
-## 28 — Data safety
-
-- [ ] **Import replace does not create a new roadmap:** after replacing, active `rf:auth:rm_...` still points to the same server roadmap. Only one entry in roadmap switcher for this roadmap.
-- [ ] **Import as local does not affect collaborators:** Editor/Viewer windows show original server data; only the importer's tab switches to the new local roadmap.
-- [ ] **Versions do not spam:** 10 task ticks before one save → activity shows max one new version entry, not 10.
-- [ ] **Checkpoint idempotent:** double-clicking Checkpoint does not create duplicate entries.
-- [ ] **Restore broadcasts:** after restore, Editor window auto-syncs without manual reload.
-
----
-
-## 29 — Access and security
-
-- [ ] **Revoked participant cannot save:** After being revoked (§7), Editor's save attempt returns 401/403.
-- [ ] **Link revoke does not kick existing participants:** revoking Viewer link (§8) leaves Sam's active session alive.
-- [ ] **Editor cannot see Share management panel:** Share modal either absent from toolbar or omits rotate/revoke controls for editor role.
-- [ ] **Viewer cannot see Share or Save:** both controls absent in `/shared` route.
-- [ ] **Version role matrix:** Owner and Editor can list/read versions; Viewer receives 403. Editor restore receives 403.
-- [ ] **Replacement checkpoint:** Editor replace-current still creates a checkpoint before applying the imported roadmap.
-- [ ] **Old invite token fails after rotate:** rotating editor link invalidates the previous URL immediately.
-- [ ] **Invalid Bearer token on PUT returns 401:** call `PUT /api/roadmaps/{id}` with a garbage Bearer token and a valid `last_updated_at` field → 401.
-
----
-
-## 30 — Deployment verification
-
-Run on the production host or a staging clone of the deployment:
-
-- [ ] `git status --short` is clean on `main`.
-- [ ] GitHub Actions CI is green for latest commit (Quality Gate + API Syntax Check jobs both pass).
-- [ ] `make update` completes: git pull → build → up → migrate → ps all succeed.
-- [ ] `make migrate` run standalone shows "Running upgrade" or "Already up to date."
-- [ ] Confirm migration `0005_add_public_viewer_tokens.py` has been applied before testing persistent public viewer links.
-- [ ] `make ps` shows `api` container as `Up`. No restart loops.
-- [ ] `docker compose logs --tail=40 api` shows `Application startup complete.` No ERROR lines at startup.
-- [ ] `curl https://roadforge.anvilary.tools/api/health` → `{"status":"ok","version":"0.1.0"}`.
-- [ ] Confirm normal deployment uses `ROADFORGE_API_WORKERS=1`.
-- [ ] Confirm any deployment with `ROADFORGE_API_WORKERS` greater than `1` also sets `ROADFORGE_REALTIME_BACKEND=redis`.
-- [ ] Migration/schema drift check passes — run `make api-check` (requires running stack) or `alembic check` directly. Expect: `No new upgrade operations detected.`
-
----
-
-## 30b — RF-886 multi-worker realtime regression checklist
-
-Run this only in a local or staging stack where Redis-backed realtime is enabled.
-Do not mark RF-823 production rollout complete until every item passes.
-
-Environment preconditions:
+For a disposable local QA database, you may start from a reset:
 
 ```bash
-ROADFORGE_REALTIME_BACKEND=redis
-ROADFORGE_API_WORKERS=2
-REDIS_URL=redis://<redis-host>:6379/0
+make reset
 ```
 
-Worker routing note: run the API with two workers and use access logs, container
-logs, or a temporary load-balancer/session routing setup to confirm the "worker
-A" and "worker B" references below really hit different processes. If worker
-selection cannot be observed or controlled, this checklist is inconclusive.
+`make reset` is destructive: it removes the local development database and then starts
+the normal RoadForge stack, including the web app. **Do not start a second `pnpm dev`
+process afterward.**
 
-- [ ] Open Owner and Editor/Viewer browser contexts against the same roadmap.
-- [ ] Confirm `roadmap.updated` published by a request handled on worker A reaches an SSE client connected through worker B.
-- [ ] Request an SSE ticket through worker A, then open `/events?ticket=...` through worker B. It succeeds once.
-- [ ] Reuse the same ticket through either worker. It returns `401 Invalid or expired event ticket`.
-- [ ] Wait more than 30 seconds before consuming a fresh ticket. It returns `401 Invalid or expired event ticket`.
-- [ ] Acquire a task edit lock through worker A. `GET /locks` through worker B lists that lock.
-- [ ] Attempt to acquire the same target as a different participant through worker B. It returns 409.
-- [ ] Refresh the same participant's lock through worker B. The lock remains owned by that participant and its TTL extends.
-- [ ] Release a lock acquired on worker A through worker B as the same participant. Other connected clients receive `lock.released`.
-- [ ] Attempt lock release as a different participant. The lock remains active until owner release or TTL expiry.
-- [ ] Trigger configured rate limits with requests split across both workers. The combined attempts return `429` at the same effective limit as one worker.
-- [ ] Confirm `Retry-After` remains present and the 429 body remains `{"detail":"Too many requests. Try again later."}`.
-- [ ] Revoke a participant through worker A. The revoked participant's SSE stream on worker B receives `participant.revoked`.
-- [ ] Delete a roadmap through worker A. Active Editor/Viewer SSE streams on worker B receive `roadmap.deleted`.
-- [ ] Force an SSE disconnect, then reconnect through the normal ticket-renewal flow. Realtime resumes without frontend changes.
-- [ ] Restart or stop Redis during the staging session and record behavior:
-  tickets and locks fail closed/degraded, Pub/Sub delivery is interrupted,
-  reconnect requires Redis recovery, and rate limiting may fail open per policy.
-- [ ] Restore Redis and confirm new tickets, locks, rate limits, and SSE streams recover without switching to memory fallback.
-- [ ] Reset to `ROADFORGE_API_WORKERS=1` before returning the environment to ordinary use unless this was an approved multi-worker rollout.
+If existing local data must be preserved, use:
 
----
+```bash
+make start
+```
 
-## 31 — Security hardening smoke checklist
+Expected local endpoints:
 
-Use this checklist after migrations, backend checks, frontend checks, and a local
-or staging stack are available. Do not mark these as complete until you run them.
+```text
+Web: http://localhost:3020
+API: http://localhost:7878
+```
 
-- [ ] New owner and joined participant sessions receive `session_expires_at`.
-- [ ] Valid authenticated API requests renew `session_expires_at` by 30 days and update `last_seen_at` when the participant presence timestamp is stale.
-- [ ] Expired participant session returns `401` with `{"detail":"Session expired"}` and does not create activity logs.
-- [ ] Expired frontend session clears only `rf:auth:<roadmapId>`, preserves `rf:roadmap:<roadmapId>`, marks the local copy unsynced, and tells the user to rejoin through an active invite link.
-- [ ] Revoked participant behavior is unchanged: existing session fails, `participant.revoked` copy remains owner/action language, and the local roadmap cache remains.
-- [ ] Share-link revoke/rotate behavior is unchanged: future joins with the old link fail, existing participant sessions are not kicked.
-- [ ] Wrong password attempts eventually return `429` with `Retry-After`.
-- [ ] Invalid-token join attempts and roadmap creation are rate-limited by client IP.
-- [ ] Event ticket requests allow normal page load/reconnect, then repeated direct calls return `429`.
-- [ ] Owner share rotate/revoke works normally, then rapid repeated calls return `429`.
-- [ ] CSP response header is `Content-Security-Policy-Report-Only`, not
-  `Content-Security-Policy`.
-- [ ] With a production build, inspect browser console CSP violations while
-  loading every route and exercising save, join, Markdown rendering,
-  import/export, fonts, icons, API calls, and SSE. Record violations before
-  proposing enforcement.
-- [ ] Realtime SSE still works after the header changes.
-- [ ] Sensitive roadmap API JSON responses include `Cache-Control: no-store`.
-- [ ] API responses include `X-Content-Type-Options: nosniff`.
+Verify health semantics:
 
----
+```bash
+curl -fsS http://localhost:7878/api/health/live
+curl -fsS http://localhost:7878/api/health/ready
+curl -fsS http://localhost:7878/api/health
+```
 
-## 32 — Modal keyboard accessibility (focus trap)
+`/live` checks only the process. `/ready` and `/health` must reflect PostgreSQL and,
+when configured, Redis readiness.
 
-All overlays built on the shared `Modal` (Save, Share, Import/Export, and every `ConfirmDialog`) trap keyboard focus. Verify on at least the Share modal and one `ConfirmDialog`.
+## 2. Browser contexts
 
-- [ ] Open the modal. Focus moves into the dialog (the dialog or its first control), not left behind on the page underneath.
-- [ ] Press **Tab** repeatedly → focus cycles only through controls inside the modal and wraps from the last focusable control back to the first. It never lands on page content behind the scrim.
-- [ ] Press **Shift+Tab** from the first control → focus wraps backward to the last control inside the modal.
-- [ ] Press **Escape** → the modal closes.
-- [ ] After the modal closes (via Escape, the ✕ button, or completing the action), focus returns to the element that opened it (e.g. the Share/Save trigger button).
-- [ ] Repeat the Tab/Shift+Tab/Escape checks on a `ConfirmDialog` (e.g. delete unused tag from §11c or override claim from §11b): Tab cycles between Cancel and the confirm button, and focus returns to the triggering control after close.
+Use independent contexts so participant storage/session state cannot leak between roles:
 
----
+| Context | Purpose |
+| --- | --- |
+| Owner | synced roadmap owner |
+| Editor | editor invite participant |
+| Viewer | viewer invite participant |
+| Local | roadmap that is never saved to the server |
 
-## 33 — Assistive-technology Beta smoke
+Private/incognito windows or isolated browser profiles are acceptable.
 
-Run once with NVDA and Firefox or Chrome, and once with VoiceOver and Safari.
-Record browser, assistive-technology version, operating system, and any defect.
+## 3. Local-first flow
 
-- [ ] Navigate the landing and workspace by landmarks and headings; names and
-  order match the visual structure.
-- [ ] Complete the create wizard; each step change, field name, selected
-  starting point, and final action is announced.
-- [ ] Expand and collapse a phase, open its settings menu, inspect color mode
-  state, close with Escape, and confirm focus returns to the trigger.
-- [ ] Create, edit, complete, and reorder a task and subtask. Confirm checkbox
-  state, validation errors, drag handles, Space → Arrow → Space ordering, and
-  dependency navigation are announced without relying on pointer drag.
-- [ ] Exercise empty, filtered-empty, final-phase recovery, and viewer
-  restriction states; each explanation and available action is announced once.
-- [ ] Trigger local, saving, offline, conflict, expired-session, and restored
-  states where available; live-region wording is timely and does not interrupt
-  typing.
-- [ ] At 200% browser zoom and with the mobile screen reader enabled, reach
-  every primary creation and recovery action without horizontal scrolling.
-- [ ] With reduced motion enabled, confirm no decorative animation continues
-  and no interaction depends on motion.
+In the Local context:
 
----
+- [ ] Create a blank roadmap without enabling server sync.
+- [ ] Add a phase and tasks.
+- [ ] Add an assignee and a tag.
+- [ ] Add a dependency between tasks.
+- [ ] Mark a task complete.
+- [ ] Reload the page and confirm the roadmap survives from browser storage.
+- [ ] Confirm collaboration-only Team/share controls are absent or accurately unavailable.
+- [ ] Export JSON.
+- [ ] Import that JSON as a new local roadmap and confirm the meaningful structure survives.
+- [ ] Export Markdown and confirm it contains roadmap content but no credentials.
 
-## Blocker criteria
+The user-facing experience must make it clear that browser storage is not a backup and
+that important roadmaps should be exported as JSON.
 
-Stop QA and file a blocker if any of the following are true:
+## 4. Starter template
 
-- Health check returns non-200 after `make update`.
-- Any route (/, /workspace, /shared, /join) fails to load or throws a JS error.
-- Save to server fails with an unrecoverable error (not 409).
-- Join fails with a valid, non-revoked invite link.
-- SSE events (roadmap.updated, participant.revoked, roadmap.deleted) do not fire within 5 seconds under normal conditions.
-- Any multi-worker deployment runs with `ROADFORGE_REALTIME_BACKEND=memory` or without Redis connectivity.
-- RF-886 multi-worker checks cannot prove cross-worker routing.
-- 409 conflict recovery leaves the UI in a broken/unrecoverable state or discards local edits without explicit confirmation.
-- Any exported JSON contains session tokens, invite tokens, or passwords.
-- Import replace changes the `serverRoadmapId` stored in localStorage.
-- Participant revoke does not reflect within 5 seconds in the revoked participant's window.
-- Horizontal overflow at 375px on any primary route.
-- CI fails on `main` (either job).
+Create a roadmap from the bundled example.
 
----
+- [ ] Exactly three phases are created.
+- [ ] The phase names are `Define the outcome`, `Build and test`, and `Release and learn`.
+- [ ] The example contains nine tasks.
+- [ ] One task is marked next.
+- [ ] Dependencies and tags are visible and understandable.
+- [ ] The example feels like generic product planning, not RoadForge's internal backlog.
 
-## Known acceptable limitations
+## 5. Promote local roadmap to server
 
-- **No CRDT / three-way merge.** Conflict recovery (§25) offers structured review, keep-local retry, and reload-server fallback. It does not automatically merge fields or silently discard local edits.
-- **Memory backend is single-process only.** Running multiple Uvicorn workers
-  or API instances with `ROADFORGE_REALTIME_BACKEND=memory` would break
-  realtime features. Application and container startup reject a configured
-  memory worker count other than one; operators must also avoid multiple
-  one-worker memory instances. Multi-worker mode requires
-  `ROADFORGE_REALTIME_BACKEND=redis`, a successful startup ping, and successful
-  RF-886 validation.
-- **No accounts / OAuth.** Session tokens in localStorage are the auth primitive. There is no login page, no password reset, and no user dashboard.
-- **Invite links have no timer expiry.** Owner/editor links remain usable until
-  rotated or revoked. The public viewer link is stable until reset/disabled.
-  Participant sessions expire after 30 days of inactivity and active use renews
-  that sliding window.
-- **Link revoke does not kick active participants.** Revoking a share link prevents new joins via that link but does not terminate existing sessions. To remove an active participant, use participant revoke (§7).
-- **Password gate not enforced on existing sessions.** A participant who already holds a session token is not re-prompted if the owner later enables a password.
-- **Rate limiting is backend-dependent.** The limiter is shared across workers only with `ROADFORGE_REALTIME_BACKEND=redis`. Memory-backed rate limiting is single-worker only.
-- **CSP is report-only.** Enforcement is deferred until a production-build
-  browser pass shows no required Next.js bootstrap, styled JSX/inline style,
-  Markdown, API, or SSE violations. There is no CSP report collector. Do not
-  treat report-only CSP as blocking protection.
+In the Owner context:
+
+- [ ] Create/edit a local roadmap first.
+- [ ] Choose the explicit save/share action to enable server collaboration.
+- [ ] Save without a password once.
+- [ ] Confirm the workspace becomes synced/live without losing the local work.
+- [ ] Confirm scoped roadmap and auth cache entries exist in browser storage.
+- [ ] Confirm a JSON export remains available after promotion.
+
+Repeat the save flow with a password-protected disposable roadmap and verify the password
+gate during join.
+
+## 6. Share links
+
+As Owner:
+
+- [ ] Open sharing controls.
+- [ ] Owner/editor raw invite URLs are not recoverable from ordinary listing after the one-time response.
+- [ ] Rotate the editor link and save the new URL temporarily for QA.
+- [ ] Obtain/refresh the viewer link and save it temporarily for QA.
+- [ ] Re-open sharing and verify owner/editor raw URLs are hidden.
+- [ ] Verify the active viewer link remains intentionally copyable when the current product contract says it should be.
+
+Destroy temporary QA invite URLs after the run. Never paste them into an issue or CI log.
+
+## 7. Join and role authorization
+
+Editor context:
+
+- [ ] Join with the editor invite.
+- [ ] Set a display name.
+- [ ] Reach the editable workspace.
+- [ ] Edit task content successfully.
+- [ ] Confirm owner-only sharing/deletion controls are unavailable.
+
+Viewer context:
+
+- [ ] Join with the viewer invite.
+- [ ] Reach the read-only workspace.
+- [ ] Confirm task/phase mutations are unavailable.
+- [ ] Confirm read-only tags/activity/roadmap content remain usable.
+- [ ] Confirm a viewer can create an independent local copy when that action is offered.
+
+The API must enforce these boundaries even when a control is hidden in the UI.
+
+## 8. Participants and revocation
+
+With owner, editor, and viewer active:
+
+- [ ] Owner participant controls show the expected joined participants.
+- [ ] Editor receives only the participant summary data intended for editors.
+- [ ] Owner revokes the editor participant.
+- [ ] The editor loses access without requiring a full browser restart.
+- [ ] A subsequent editor API mutation fails authorization.
+- [ ] Viewer remains unaffected.
+- [ ] Rotate/revoke an invite and prove that future joins using the old link fail.
+- [ ] Confirm invite rotation does not automatically revoke an already joined participant.
+
+## 9. Realtime and reconnect
+
+With two authorized editing contexts:
+
+- [ ] Save a change in one context and observe the other refresh without manual reload.
+- [ ] Acquire/release an edit lock and observe the other context's lock state.
+- [ ] Interrupt the API/network temporarily and confirm status becomes offline/reconnecting rather than falsely live.
+- [ ] Restore the API/network and confirm realtime reconnects.
+- [ ] Verify unsaved local work is not overwritten by a reconnect refresh.
+
+When validating Redis/multi-worker mode, use an actual Redis-backed deployment rather
+than only in-memory test doubles.
+
+## 10. Optimistic-concurrency conflict
+
+Open the same editable roadmap in two independent contexts:
+
+1. make distinct local edits in both;
+2. save context A;
+3. attempt to save the stale revision from context B.
+
+Expected:
+
+- [ ] context B receives a conflict rather than overwriting A;
+- [ ] B's local edits remain available for review;
+- [ ] conflict UI offers explicit recovery choices;
+- [ ] accepting/reloading server state is deliberate;
+- [ ] any explicit overwrite/restore path remains bound to the reviewed server revision and does not bypass a second concurrent change.
+
+## 11. Activity and versions
+
+- [ ] Routine edits create meaningful activity without duplicating autosync noise.
+- [ ] Participant attribution uses collaboration labels without implying verified identity.
+- [ ] Create a manual checkpoint.
+- [ ] Make later changes.
+- [ ] Editor can inspect permitted version history but cannot perform owner-only restore.
+- [ ] Owner restores the checkpoint successfully.
+- [ ] Restored tags, tasks, dependencies, and ordering match the checkpoint.
+
+Do not describe activity as an immutable compliance ledger.
+
+## 12. Import safety
+
+Exercise:
+
+- [ ] replace import;
+- [ ] create-new-local import;
+- [ ] safe-additions merge;
+- [ ] supported historical schema import;
+- [ ] malformed/invalid import.
+
+Confirm:
+
+- [ ] previews explain destructive effects before application;
+- [ ] safe merge does not silently overwrite matched tasks/tag definitions;
+- [ ] repairs/warnings are visible when applicable;
+- [ ] invalid imports do not mutate the current roadmap;
+- [ ] exported files contain no participant/session/invite/password data.
+
+## 13. Accessibility and responsive behavior
+
+In addition to the automated axe/Playwright coverage:
+
+- [ ] keyboard-create/edit/delete flows work without a pointer;
+- [ ] keyboard phase/task/tag reorder supports pickup, movement, drop, and Escape cancellation;
+- [ ] focus returns sensibly after popovers, dialogs, and side panels close;
+- [ ] visible focus is never clipped;
+- [ ] 200% browser zoom/reflow does not create unreachable controls;
+- [ ] narrow mobile viewport has no page-level horizontal overflow;
+- [ ] reduced-motion preference removes non-essential movement;
+- [ ] touch targets remain usable on a real touch device when available.
+
+Before release, perform at least one real screen-reader smoke test on the supported
+platform matrix and record the tool/browser combination used.
+
+## 14. Browser storage failure
+
+Use a browser/devtools setup that rejects or exhausts local storage writes.
+
+- [ ] A failed local write produces a persistent visible warning.
+- [ ] RoadForge does not claim the roadmap was durably saved.
+- [ ] Existing in-memory work remains exportable where possible.
+
+## 15. Payload ceiling
+
+The supported RoadForge payload ceiling is 5 MiB across browser import, API request
+middleware, and maintained nginx configuration.
+
+- [ ] A valid request below the limit is accepted.
+- [ ] An oversized request is rejected with `413` without exposing request contents.
+- [ ] Proxy configuration does not impose an accidental smaller historical 512 KiB limit.
+
+The 384 KiB autosync value in `docs/performance.md` is a performance budget, not the API
+ceiling.
+
+## 16. Hosted/demo messaging
+
+On the public Anvilary deployment:
+
+- [ ] users can tell the deployment is a demo/convenience service;
+- [ ] the UI/docs advise exporting important work as JSON;
+- [ ] nothing implies managed backup, guaranteed durability, or account recovery;
+- [ ] synced deletion wording distinguishes soft deletion, final live-database purge, and backup retention;
+- [ ] self-hosting and source links are discoverable.
+
+## 17. Production CSP rollout and deployment smoke
+
+For a new public deployment or meaningful Next.js/frontend runtime upgrade, first deploy
+the **exact candidate revision** with:
+
+```text
+ROADFORGE_CSP_MODE=report-only
+```
+
+During the bounded observation period:
+
+- [ ] HTTPS is valid.
+- [ ] `/api/health/live` is 200.
+- [ ] `/api/health/ready` is 200.
+- [ ] `/api/health` behaves as the readiness alias.
+- [ ] baseline security headers are present.
+- [ ] the frontend emits exactly one `Content-Security-Policy-Report-Only` header and no conflicting proxy/Cloudflare CSP.
+- [ ] the report-only `script-src` contains a per-response nonce and contains neither `unsafe-inline` nor production `unsafe-eval`.
+- [ ] document HTML is `private, no-store` while static assets remain cacheable normally.
+- [ ] create/share/join/revoke/conflict/realtime/import/export flows work through the actual proxy/tunnel.
+- [ ] owner/editor/viewer contexts produce no unexpected CSP console reports.
+- [ ] fonts, icons, images, manifest, downloads, dynamic colors/styles, API fetches, and SSE remain functional.
+- [ ] access logs do not contain invite query strings or `Referer` values.
+
+After the observation result is clean, change only the deployment mode to:
+
+```text
+ROADFORGE_CSP_MODE=enforce
+```
+
+Then verify again:
+
+- [ ] the frontend now emits exactly one enforced `Content-Security-Policy` header and no report-only duplicate;
+- [ ] page reloads produce different nonce values;
+- [ ] production `script-src` still contains no `unsafe-inline` or `unsafe-eval`;
+- [ ] the critical local/create/import/export/share/join/realtime flows still work;
+- [ ] browser console contains no unexpected CSP violations.
+
+If a legitimate RoadForge flow is reproducibly blocked, return the deployment to
+`report-only` on the same build while fixing the specific directive/source. Do not add a
+broad production script exception merely to pass QA.
+
+## 18. Retention dry run
+
+Against any candidate deployment that already contains synced data, run the retention
+command in dry-run mode before release:
+
+- [ ] record the emitted UTC `as_of` value and policy thresholds;
+- [ ] counts are plausible for the deployment and contain no roadmap/user/token content;
+- [ ] active/newly deleted roadmaps are not selected;
+- [ ] no category unexpectedly saturates the configured batch limit without investigation;
+- [ ] a current database backup exists before any planned destructive purge.
+
+Do not run `--execute --confirm PURGE` merely as a release smoke test. Destructive retention
+is an operator lifecycle action, not a mandatory release-candidate mutation.
+
+## 19. Backup and restore proof
+
+For a schema-sensitive release:
+
+- [ ] create and checksum a PostgreSQL backup before migration;
+- [ ] restore it into a uniquely named disposable database;
+- [ ] confirm representative roadmap/participant/version/activity rows;
+- [ ] confirm projection integrity/parity;
+- [ ] remove only the disposable restore database.
+
+Never test restore by overwriting the live RoadForge database.
+
+## 20. Release record
+
+Record:
+
+```text
+Candidate SHA:
+Version: 0.1.0
+Date:
+Automated CI: PASS / FAIL
+Manual local QA: PASS / FAIL
+Deployed QA: PASS / FAIL / NOT RUN
+CSP report-only observation: PASS / FAIL / NOT RUN
+CSP enforcement verification: PASS / FAIL / NOT RUN
+Retention dry-run: PASS / FAIL / NOT RUN
+Screen-reader smoke:
+Backup/restore proof:
+Known accepted limitations:
+Operator / reviewer:
+```
+
+A release is not certified by an older SHA's green run. Any accepted change after the
+candidate is recorded requires rerunning the gates affected by that change.

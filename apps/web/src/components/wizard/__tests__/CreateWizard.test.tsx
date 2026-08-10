@@ -1,25 +1,9 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CreateWizard } from '@/components/wizard/CreateWizard'
-
-// Cross-checked against the canonical file's own declared counts, rather
-// than a hand-maintained number that goes stale every time
-// docs/roadforge-roadmap.json is updated.
-function readCanonicalRoadmapMeta() {
-  // `new URL(..., import.meta.url)` is unreliable under the jsdom test
-  // environment this file opts into (jsdom shims module-URL resolution), so
-  // resolve from the working directory (apps/web) instead.
-  const raw = JSON.parse(readFileSync(
-    join(process.cwd(), '../../docs/roadforge-roadmap.json'),
-    'utf8',
-  )) as { meta: { phaseCount: number; taskCount: number } }
-  return raw.meta
-}
 
 const { mockedUseRoadmap } = vi.hoisted(() => ({
   mockedUseRoadmap: vi.fn(),
@@ -41,7 +25,7 @@ describe('CreateWizard starting point', () => {
     mockedUseRoadmap.mockReturnValue({
       displayName: 'Alex',
       setDisplayName: vi.fn(),
-      roadmapName: 'My roadmap',
+      roadmapName: 'Hidden sample title',
       createLocalRoadmap,
     })
     container = document.createElement('div')
@@ -64,30 +48,60 @@ describe('CreateWizard starting point', () => {
     act(() => button.click())
   }
 
+  const inputForLabel = (labelText: string): HTMLInputElement => {
+    const label = [...container.querySelectorAll('label')]
+      .find((candidate) => candidate.textContent?.trim() === labelText)
+    const id = label?.htmlFor
+    const candidate = id ? document.getElementById(id) : null
+    const input = candidate instanceof HTMLInputElement && container.contains(candidate)
+      ? candidate
+      : null
+    if (!input) throw new Error(`Missing input labelled: ${labelText}`)
+    return input
+  }
+
+  const fillRoadmapTitle = (title = 'My roadmap') => {
+    const input = inputForLabel('Roadmap title')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )?.set
+    if (!valueSetter) throw new Error('Missing HTMLInputElement value setter')
+    act(() => {
+      valueSetter.call(input, title)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  }
+
   const advanceToStartingPoint = () => {
-    clickButton('Continue')
+    fillRoadmapTitle()
     clickButton('Continue')
   }
 
   const finishWizard = () => {
-    clickButton('Continue')
-    clickButton('Continue')
-    clickButton('Open roadmap')
+    clickButton('Create roadmap')
   }
 
-  it('creates an independent canonical template with its tag registry', () => {
+  it('does not inherit the hidden sample or currently open roadmap title', () => {
+    const input = inputForLabel('Roadmap title')
+    const continueButton = [...container.querySelectorAll('button')]
+      .find((candidate) => candidate.textContent?.includes('Continue'))
+
+    expect(input.value).toBe('')
+    expect(continueButton?.hasAttribute('disabled')).toBe(true)
+  })
+
+  it('creates an independent compact starter with its tag registry', () => {
     advanceToStartingPoint()
-    clickButton('Use RoadForge template')
+    clickButton('Starter example')
     finishWizard()
 
     expect(createLocalRoadmap).toHaveBeenCalledTimes(1)
     const [name, phases, registry] = createLocalRoadmap.mock.calls[0]
-    const canonicalRoadmapMeta = readCanonicalRoadmapMeta()
     expect(name).toBe('My roadmap')
-    expect(phases).toHaveLength(canonicalRoadmapMeta.phaseCount)
-    expect(phases.flatMap((phase: { tasks: unknown[] }) => phase.tasks))
-      .toHaveLength(canonicalRoadmapMeta.taskCount)
-    expect(registry.length).toBeGreaterThan(0)
+    expect(phases).toHaveLength(3)
+    expect(phases.flatMap((phase: { tasks: unknown[] }) => phase.tasks)).toHaveLength(9)
+    expect(registry).toHaveLength(3)
     expect(onComplete).toHaveBeenCalledWith('local_1')
   })
 
@@ -95,7 +109,8 @@ describe('CreateWizard starting point', () => {
     advanceToStartingPoint()
     finishWizard()
 
-    const [, phases, registry] = createLocalRoadmap.mock.calls[0]
+    const [name, phases, registry] = createLocalRoadmap.mock.calls[0]
+    expect(name).toBe('My roadmap')
     expect(phases).toHaveLength(1)
     expect(phases[0]).toMatchObject({
       num: '01',

@@ -267,7 +267,7 @@ afterEach(() => {
 })
 
 describe('WorkspaceWelcomeBanner unit tests', () => {
-  it('renders welcome message, description, and list of features with proper ARIA attributes', () => {
+  it('renders concise local-first guidance with proper ARIA attributes', () => {
     const onDismiss = vi.fn()
     const onCreateOwn = vi.fn()
     act(() => {
@@ -279,10 +279,9 @@ describe('WorkspaceWelcomeBanner unit tests', () => {
     const welcomeElement = container.querySelector('[aria-label="Welcome to RoadForge Onboarding"]')
     expect(welcomeElement).not.toBeNull()
     expect(welcomeElement?.getAttribute('role')).toBe('status')
-    expect(container.textContent).toContain('Welcome to RoadForge!')
-    expect(container.textContent).toContain('No accounts required')
-    expect(container.textContent).toContain('Private local draft')
-    expect(container.textContent).toContain('Easy collaboration')
+    expect(container.textContent).toContain('Your roadmap is local')
+    expect(container.textContent).toContain('export JSON')
+    expect(container.textContent).toContain('Share only when collaboration is needed')
   })
 
   it('triggers onDismiss when close button is clicked', () => {
@@ -302,7 +301,7 @@ describe('WorkspaceWelcomeBanner unit tests', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
-  it('triggers onCreateOwn when Create New Roadmap button is clicked', () => {
+  it('triggers onCreateOwn when the different-roadmap button is clicked', () => {
     const onDismiss = vi.fn()
     const onCreateOwn = vi.fn()
     act(() => {
@@ -312,7 +311,7 @@ describe('WorkspaceWelcomeBanner unit tests', () => {
     })
 
     const createBtn = Array.from(container.querySelectorAll('button')).find(
-      (btn) => btn.textContent?.includes('Create New Roadmap')
+      (btn) => btn.textContent?.includes('Start a different roadmap')
     ) as HTMLButtonElement
     expect(createBtn).not.toBeNull()
     act(() => {
@@ -414,21 +413,19 @@ describe('Workspace integration tests for onboarding dismissal', () => {
       dismissBtn.click()
     })
 
-    // Banner is removed from DOM
     expect(container.querySelector('[aria-label="Welcome to RoadForge Onboarding"]')).toBeNull()
-    // Storage has registered onboarding dismissal
     expect(storage.hasDismissedOnboarding()).toBe(true)
     expect(storage.getRoadmapUiState(mockActiveRoadmapId)?.isOnboardingDismissed).toBe(true)
   })
 
-  it('triggers onCreateOwn, dismisses onboarding, and updates storage on click of Create New Roadmap button', () => {
+  it('starts a different roadmap, dismisses onboarding, and updates storage', () => {
     const onCreateOwnMock = vi.fn()
     act(() => {
       root.render(<Workspace mode="owner" onCreateOwn={onCreateOwnMock} />)
     })
 
     const createBtn = Array.from(container.querySelectorAll('button')).find(
-      (btn) => btn.textContent?.includes('Create New Roadmap')
+      (btn) => btn.textContent?.includes('Start a different roadmap')
     ) as HTMLButtonElement
     expect(createBtn).not.toBeNull()
 

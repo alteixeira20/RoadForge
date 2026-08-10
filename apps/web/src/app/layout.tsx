@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Lexend, JetBrains_Mono } from 'next/font/google'
+import { headers } from 'next/headers'
+import { StorageWriteFailureBanner } from '@/components/ui/StorageWriteFailureBanner'
 import { RoadmapProvider } from '@/context/RoadmapContext'
 import './globals.css'
 
@@ -51,10 +53,17 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Nonce-based CSP requires request-time rendering so Next.js can read the
+  // middleware CSP header and attach the per-response nonce to framework and
+  // hydration scripts. This intentionally opts document routes out of static
+  // HTML caching; middleware also marks those responses private/no-store.
+  await headers()
+
   return (
     <html lang="en" className={`${lexend.variable} ${jetbrainsMono.variable}`}>
       <body>
+        <StorageWriteFailureBanner />
         <RoadmapProvider>{children}</RoadmapProvider>
       </body>
     </html>

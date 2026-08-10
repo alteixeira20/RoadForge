@@ -1,7 +1,10 @@
 {
   "name": "@anvilary/roadforge-web",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22 <27"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

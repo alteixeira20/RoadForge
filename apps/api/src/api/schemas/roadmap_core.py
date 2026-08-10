@@ -121,6 +121,8 @@ class CreateRoadmapResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     share_links: list[ShareLinkResponse]
+    # Opaque owner participant identity used for own-event and claim matching.
+    owner_participant_id: str
     # Opaque session token for the owner participant; shown once, never stored raw.
     owner_session_token: str
 

@@ -76,8 +76,16 @@ test('recovers after deleting the final phase and creates another phase', async 
 test('creates a roadmap from the bundled template', async ({ page }) => {
   await createRoadmap(page, { title: 'Template browser roadmap', startingPoint: 'template' })
 
-  await page.getByText('Delivered local-first foundation', { exact: true }).click()
-  await expect(page.getByText('RF-001', { exact: true }).first()).toBeVisible()
+  await expect(page.locator('.phase-head .name')).toHaveText([
+    'Define the outcome',
+    'Build and test',
+    'Release and learn',
+  ])
+  const expand = page.getByRole('button', { name: 'Expand phase Define the outcome' })
+  if (await expand.isVisible()) await expand.click()
+  await expect(
+    page.getByText('Write one measurable success outcome', { exact: true }),
+  ).toBeVisible()
 })
 
 test('announces invalid imports and exposes only the safe static report link', async ({ page }) => {
@@ -407,7 +415,7 @@ test('uses the same canonical tag chip in task rows and the Tags panel', async (
 
   await page.getByRole('tab', { name: 'Tags' }).click()
   const panelChip = page.locator('.tags-view .tag-chip', {
-    hasText: 'Core workflow',
+    hasText: 'Focus',
   }).first()
   await expect(panelChip).toBeVisible()
   const panelStyle = await panelChip.evaluate((element) => {
@@ -429,11 +437,11 @@ test('uses the same canonical tag chip in task rows and the Tags panel', async (
 
   await page.getByRole('tab', { name: 'Roadmap' }).click()
   const expand = page.getByRole('button', {
-    name: 'Expand phase Delivered local-first foundation',
+    name: 'Expand phase Define the outcome',
   })
   if (await expand.isVisible()) await expand.click()
   const taskChip = page.locator('.task-row .tag-chip', {
-    hasText: 'Core workflow',
+    hasText: 'Focus',
   }).first()
   await expect(taskChip).toBeVisible()
   const taskStyle = await taskChip.evaluate((element) => {

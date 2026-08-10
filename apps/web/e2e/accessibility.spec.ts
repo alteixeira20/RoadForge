@@ -4,15 +4,69 @@ import { createRoadmap } from './helpers'
 
 /** Pointer drag with enough intermediate moves to clear dnd-kit's activation distance. */
 async function dragHandleOnto(page: Page, handle: Locator, target: Locator) {
-  const from = await handle.boundingBox()
-  const to = await target.boundingBox()
+  // Start from a visible source, then calculate the smallest window scroll
+  // that keeps both source and destination inside the viewport. The old
+  // sequence centered the destination and then scrolled the source back
+  // into view, which could undo the first scroll and leave the destination
+  // a few pixels below the fold on CI.
+  await handle.scrollIntoViewIfNeeded()
+
+  let from = await handle.boundingBox()
+  let to = await target.boundingBox()
+  const viewport = page.viewportSize()
   expect(from).not.toBeNull()
   expect(to).not.toBeNull()
+  expect(viewport).not.toBeNull()
 
-  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2)
+  const margin = 16
+  const minTop = Math.min(from!.y, to!.y)
+  const maxBottom = Math.max(from!.y + from!.height, to!.y + to!.height)
+  const availableHeight = viewport!.height - margin * 2
+  const span = maxBottom - minTop
+  expect(span).toBeLessThanOrEqual(availableHeight)
+
+  // After scrolling by delta, both boxes fit when:
+  //   maxBottom - delta <= viewport.height - margin
+  //   minTop - delta >= margin
+  // therefore delta must be in [lower, upper]. Pick the value closest to
+  // zero so we never scroll more than the fixture actually requires.
+  const lower = maxBottom - (viewport!.height - margin)
+  const upper = minTop - margin
+  let delta = 0
+  if (delta < lower) delta = lower
+  if (delta > upper) delta = upper
+
+  if (Math.abs(delta) > 0.5) {
+    await page.evaluate((scrollDelta) => window.scrollBy(0, scrollDelta), delta)
+    from = await handle.boundingBox()
+    to = await target.boundingBox()
+    expect(from).not.toBeNull()
+    expect(to).not.toBeNull()
+  }
+
+  const fromX = from!.x + from!.width / 2
+  const fromY = from!.y + from!.height / 2
+  const toX = to!.x + to!.width / 2
+  const toY = to!.y + to!.height / 2
+
+  for (const coordinate of [fromX, toX]) {
+    expect(coordinate).toBeGreaterThanOrEqual(0)
+    expect(coordinate).toBeLessThanOrEqual(viewport!.width)
+  }
+  for (const coordinate of [fromY, toY]) {
+    expect(coordinate).toBeGreaterThanOrEqual(0)
+    expect(coordinate).toBeLessThanOrEqual(viewport!.height)
+  }
+
+  const direction = toY >= fromY ? 1 : -1
+  await page.mouse.move(fromX, fromY)
   await page.mouse.down()
-  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2 + 12, { steps: 4 })
-  await page.mouse.move(to!.x + to!.width / 2, to!.y + to!.height / 2 + 8, { steps: 12 })
+  await page.mouse.move(fromX, fromY + direction * 12, { steps: 4 })
+  await page.mouse.move(
+    toX,
+    toY + direction * Math.min(8, to!.height / 4),
+    { steps: 12 },
+  )
   await page.mouse.up()
 }
 

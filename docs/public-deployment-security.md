@@ -1,142 +1,202 @@
-# Public Deployment Security
+# Public deployment security
 
-Status: implemented baseline for Phase 18 public-deploy hardening.
+This document describes the security contract of the current RoadForge runtime.
+It is an operator reference, not a future design document.
 
-This page records the assumptions a public RoadForge API deployment must satisfy. Local development keeps the default permissive behavior where noted.
+RoadForge `0.1.0` can be self-hosted, but the Anvilary-hosted instance is a demo and
+convenience deployment rather than a managed data-storage service. Users should keep
+portable JSON exports of important roadmaps.
 
-The legacy `ROADFORGE_*` environment variable prefix, the `roadforge`/`roadforge_dev` database defaults, and the `roadforge-*` Docker service names are retained for compatibility and are unchanged by the rebrand.
+## Production mode
 
-## Runtime mode
+Set:
 
-Set `ROADFORGE_ENVIRONMENT` to a non-`development` value for public deployments. Outside development, FastAPI docs, ReDoc, and `/api/openapi.json` are disabled.
+```sh
+ROADFORGE_ENVIRONMENT=production
+```
 
-## Required secret
-
-Set `ROADFORGE_SECRET_KEY` to a non-default value of at least 32 characters outside development. The current implementation uses this as a startup guard for production readiness; it does not rewrite session-token generation.
+Production mode disables FastAPI interactive documentation/OpenAPI routes and enables
+the production security-header path. RoadForge intentionally has no generic
+application secret setting: add a secret only when a concrete cryptographic feature
+actually consumes it.
 
 ## Database guard
 
-Public deployments must set a production `DATABASE_URL`. Startup fails outside development when the URL is the local default, points at `localhost`/`127.0.0.1`/`::1`, or uses the obvious development credentials `roadforge:roadforge_dev`.
-
-Only set `ROADFORGE_ALLOW_LOCAL_DATABASE_IN_PRODUCTION=true` for a documented topology where the API and database intentionally share a host-local private network. Do not use it to run the default development database publicly.
-
-## Trusted proxies
-
-By default, RoadForge ignores `X-Forwarded-For` and `X-Real-IP` and rate limits by the immediate peer address. Configure `ROADFORGE_TRUSTED_PROXY_IPS` with comma-separated proxy IPs or CIDR ranges, for example:
+Production must use an explicit `DATABASE_URL`. Startup rejects the repository's
+local development database configuration and unsafe localhost/default credential
+combinations unless the operator explicitly acknowledges a documented host-local
+production topology with:
 
 ```sh
-ROADFORGE_TRUSTED_PROXY_IPS=10.0.0.10,10.0.1.0/24
+ROADFORGE_ALLOW_LOCAL_DATABASE_IN_PRODUCTION=true
 ```
 
-When the immediate peer is trusted, RoadForge accepts the first `X-Forwarded-For` address or `X-Real-IP`. Malformed forwarded values are ignored. The reverse proxy should overwrite inbound forwarding headers from clients before forwarding to the API.
+Do not use that override merely to bypass a failed deployment check.
 
-Wildcard networks such as `0.0.0.0/0` and `::/0` are rejected. Use only the
-specific proxy address or narrow private network range required by the deployment.
+## Cross-origin access
 
-## Cross-origin configuration (CORS)
+`ROADFORGE_CORS_ORIGINS` must contain explicit `scheme://host[:port]` origins.
+Production startup rejects empty, malformed, and wildcard origins.
 
-Set `ROADFORGE_CORS_ORIGINS` to an explicit, comma-separated list of `scheme://host[:port]` origins outside development. Startup fails with an actionable error when, in production, the list is empty, contains an empty/malformed entry, or contains the wildcard `*` — the API always allows credentialed requests, and a wildcard origin combined with credentials is unsafe (browsers already reject it, but the API should not silently rely on that).
+RoadForge uses bearer participant credentials rather than authentication cookies.
+That removes cookie-oriented CSRF assumptions; it does not reduce the need to protect
+bearer tokens and restrict origins.
 
-RoadForge authenticates every roadmap API request with a bearer session token (`Authorization: Bearer <token>`) or a single-use SSE ticket passed as a query parameter — never a cookie. Because no ambient credential is ever attached automatically by the browser, the API does not implement cookie-based CSRF protection (double-submit token, `SameSite`, etc.); a cross-site page cannot forge an authenticated request without first exfiltrating the bearer token, which is a token-handling concern, not a CSRF one.
+## Trusted proxies and client addresses
 
-## Security headers
+RoadForge ignores `X-Forwarded-For` and `X-Real-IP` unless the immediate peer is
+within `ROADFORGE_TRUSTED_PROXY_IPS`.
 
-The API sets `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, and a conservative `Permissions-Policy`. Sensitive roadmap API responses keep `Cache-Control: no-store`. `Strict-Transport-Security` is sent only when `ROADFORGE_ENVIRONMENT=production`.
+Configure the narrowest proxy address or CIDR and make the proxy replace—not append
+untrusted client-provided forwarding headers. Catch-all networks such as `0.0.0.0/0`
+and `::/0` are rejected.
 
-SSE responses at `/api/roadmaps/{id}/events` keep their streaming headers and are not forced into `no-store` by the roadmap response rule.
+## Credential-safe logging
 
-The frontend CSP remains report-only during pre-release. Enforcement is blocked on
-a recorded production-build browser pass across Next.js bootstrap, styled
-JSX/inline styles, Markdown, API calls, import/export, and SSE. There is no CSP
-report collector, so browser console and Network inspection are authoritative.
+Owner/editor invite links are credentials. Viewer links grant read access. Participant
+session tokens are bearer credentials.
+
+The FastAPI access log records method, path, and status without query strings,
+headers, request bodies, or full request URLs. The maintained self-hosted nginx
+configuration also omits query strings and `Referer` from access logs.
+
+Operators must separately review:
+
+- reverse-proxy error logs;
+- tunnel/CDN/provider logs;
+- load balancer logs;
+- shell history;
+- support attachments;
+- retained logs created before safe formats were configured.
+
+Never place participant session tokens in URLs.
+
+## Content Security Policy
+
+The frontend CSP is **report-only** for `0.1.0`. This is an explicit residual risk,
+not an enforcement claim. Participant credentials live in browser storage, so script
+injection remains consequential.
+
+Do not switch the header to enforcement by adding broad `unsafe-inline` exceptions.
+The enforcement path requires a tested nonce/hash design compatible with Next.js
+hydration and all supported RoadForge flows. This work is tracked separately.
+
+## Request-body limits
+
+The browser import path, API request middleware, and maintained nginx configuration
+use the same roadmap payload ceiling:
+
+```text
+5 MiB
+```
+
+The authoritative API constant is `REQUEST_BODY_MAX_BYTES` in
+`apps/api/src/api/schemas/limits.py`. Documentation must not reintroduce historical
+512 KiB limits.
 
 ## Rate limiting
 
-Main app-level and service-level rate limits include:
+RoadForge applies action-specific limits to creates, joins/password failures,
+authenticated reads/writes, sharing, versions, participants, event tickets, locks,
+activity, and tag operations.
 
-| Action | Limit | Window | Scope |
-|---|---|---|---|
-| `roadmap.create.ip` (unauthenticated) | 10 | 3600 s | IP |
-| `join.ip` (unauthenticated) | 20 | 60 s | IP |
-| `join.share_link` | 30 | 600 s | share link |
-| `join.password_failure.ip_share` | 5 | 600 s | IP + share link |
-| `join.password_failure.share` | 30 | 600 s | share link |
-| `roadmap.read` | 240 | 60 s | participant |
-| `roadmap.update` | 60 | 60 s | participant |
-| `task.done.patch` | 120 | 60 s | participant |
-| `roadmap.delete` | 10 | 60 s | participant |
-| `share_links.read` | 60 | 60 s | participant |
-| `share_link.rotate` | 5 | 60 s | participant |
-| `share_link.revoke` | 10 | 60 s | participant |
-| `versions.read` | 120 | 60 s | participant |
-| `versions.checkpoint` | 10 | 60 s | participant |
-| `version.read` | 120 | 60 s | participant |
-| `versions.restore` | 10 | 60 s | participant |
-| `participants.read` | 120 | 60 s | participant |
-| `participants.revoke` | 10 | 60 s | participant |
-| `events.ticket.participant` | 10 | 60 s | participant |
-| `events.ticket.ip` | 60 | 60 s | IP |
-| `locks.acquire` | 120 | 60 s | participant |
-| `locks.release` | 120 | 60 s | participant |
-| `locks.read` | 120 | 60 s | participant |
-| `activity.read` | 120 | 60 s | participant |
+Memory-backed limits are process-local. When multiple API workers or instances are
+used, configure:
 
-Participant-scoped limits use a `{participant_id}:{roadmap_id}` key. IP-scoped limits use the resolved client IP. Redis-backed rate limits are shared across workers only when `ROADFORGE_REALTIME_BACKEND=redis`; memory-backed limits are single-worker.
+```sh
+ROADFORGE_REALTIME_BACKEND=redis
+REDIS_URL=redis://...
+```
 
-## Database migrations and deployment ordering
+Redis mode shares event coordination, locks, tickets, revocation state, and rate
+limits. RoadForge refuses multiple configured workers with the memory backend.
+Operators must also avoid running multiple independent one-worker memory instances.
 
-The self-hosted Compose file starts the API after Postgres is healthy, but it
-does **not** run migrations automatically.  If a deployment includes schema
-changes, the API may fail requests with database errors until migrations are
-applied.
+## Health contract
 
-Current operator workflow:
+The health endpoints have one authoritative meaning:
 
-1. Deploy the new API image (`docker compose up -d --build roadforge-api`).
-2. Wait for the container to be healthy (`make api-health` or watch
-   `docker compose ps`).
-3. Apply migrations: `make migrate` (or
-   `docker compose exec roadforge-api alembic upgrade head`).
+| Endpoint | Meaning |
+| --- | --- |
+| `GET /api/health/live` | Process liveness only; no external dependency checks |
+| `GET /api/health/ready` | PostgreSQL and configured Redis readiness |
+| `GET /api/health` | backward-compatible alias for readiness |
 
-If the API starts before migrations complete, it will return 500 errors on any
-route that touches a new or changed table.  Restart the API container after
-migrations if needed.
+A `503` from `/api/health` or `/api/health/ready` means a required dependency is not
+ready; it does not by itself prove that the API process is dead.
 
-A dedicated migration job/container is a future hardening step; for the current
-single-operator self-hosted topology, the manual sequence above is the expected
-workflow.
+Use readiness for Docker/orchestration traffic checks. Use `/live` only when a true
+process-liveness probe is required.
 
-## Relational projection rollout
+## Realtime topology
 
-`roadmaps.snapshot_json` remains canonical. The relational roadmap projection
-tables are derivative and can be rebuilt from the snapshot.
+- `ROADFORGE_REALTIME_BACKEND=memory` supports one API process.
+- `ROADFORGE_REALTIME_BACKEND=redis` is required for multi-worker/multi-instance operation.
+- Redis must remain on private/protected networks and must not be publicly exposed.
+- Redis connection credentials, when present in `REDIS_URL`, must never be logged.
 
-For deployments that include projection schema or mapper changes:
+Roadmap state remains PostgreSQL-backed; realtime delivery is not the data source of
+truth.
 
-1. Apply database migrations.
-2. Run projection backfill:
-   `docker compose exec roadforge-api python -m api.scripts.backfill_projection --verify`
-3. Confirm the command reports zero drift/errors before enabling
-   `ROADFORGE_ROADMAP_PROJECTION_READ_ENABLED=true`.
+## Database migrations and projection
 
-The projection-read flag is disabled by default. If enabled and parity or
-projection serialization fails for a roadmap, the API falls back to
-`roadmaps.snapshot_json` and logs a warning.
+Every deployment must migrate to the current Alembic head:
 
-## Reverse proxy and HTTPS
+```sh
+make migrate
+```
 
-Terminate HTTPS at the public edge or reverse proxy and forward only to the API over a private network. Public deployments should use HSTS-capable HTTPS for all browser traffic. Do not expose the API directly behind an untrusted proxy that preserves client-supplied forwarding headers.
+or use the maintained update path:
 
-Join URLs and SSE tickets are query credentials. FastAPI access logs contain only
-method, path, and status. The self-hosted nginx access format additionally omits
-query strings and `Referer`. Retained old logs, nginx error logs, Cloudflare, and
-other upstream providers still require an operator review; follow the
-[credential-safe log commands](../deploy/self-hosted/README.md#credential-safe-log-review).
+```sh
+make update
+```
 
-`GET /api/health` is liveness only and returns status/version without dependency
-or environment details. Check PostgreSQL directly and Redis when configured;
-multi-worker realtime still requires the RF-886 staging checklist.
+Take a PostgreSQL backup before schema-sensitive deployment. Alembic downgrade is not
+the generic rollback plan.
 
-## Local development differences
+`roadmaps.snapshot_json` remains canonical for the phase/task tree. Relational
+projection reads are optional and disabled by default. Before enabling them, verify
+projection parity from the canonical snapshot.
 
-Development mode keeps `/api/docs`, `/api/redoc`, and `/api/openapi.json` enabled, does not require `ROADFORGE_SECRET_KEY`, permits the default local database URL, does not require trusted proxy configuration, omits HSTS, and does not enforce the CORS wildcard-plus-credentials guard (the default `ROADFORGE_CORS_ORIGINS` list is explicit localhost origins, not a wildcard, so this rarely matters in practice).
+## Containers and network exposure
+
+The maintained API and web production images run as non-root users. Public deployments
+must:
+
+- terminate HTTPS at a trusted edge;
+- keep PostgreSQL and Redis off public networks;
+- expose the API only through intended proxy/private paths;
+- use non-development database credentials;
+- configure explicit CORS and trusted proxies;
+- retain backups outside the repository and database volume.
+
+Do not expose `next dev`, FastAPI development servers, PostgreSQL, or Redis directly to
+the public Internet.
+
+## Data deletion and retention
+
+Roadmap deletion is currently soft deletion. A final operator-enforced retention and
+hard-purge policy is tracked separately. Until that work lands, do not promise users
+that a delete action immediately removes every server-side historical record or backup.
+
+Public copy should distinguish:
+
+- deleting a browser-local roadmap;
+- soft-deleting a synced roadmap;
+- final server/backup retention.
+
+## Release proof
+
+A public release/deployment requires more than a green unit-test suite. Require:
+
+- exact-candidate CI success;
+- migration and dependency checks;
+- production container validation;
+- independent owner/editor/viewer browser contexts;
+- revoke, conflict, realtime, import/export, and recovery checks;
+- confirmation that proxy logs do not record invite query strings;
+- backup/restore evidence for schema-sensitive releases.
+
+See [Manual QA](manual-qa.md), [Senior readiness audit](senior-readiness-audit.md),
+and [Self-hosting](self-hosting.md).

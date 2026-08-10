@@ -1,26 +1,32 @@
 FROM python:3.12-slim
 
-# Install uv from the official image (avoids pip overhead)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    ROADFORGE_API_WORKERS=1 \
+    PATH="/app/.venv/bin:${PATH}"
 
 WORKDIR /app
 
-# Copy metadata first — dependency install is cached separately from source changes
-COPY pyproject.toml .
+# Pin the lock-maintenance tool independently from the application dependency
+# graph. The first sync installs only third-party runtime dependencies so Docker
+# can cache that layer; the second sync validates the lock against the complete
+# project and installs RoadForge non-editably into the same virtual environment.
+COPY UV_VERSION pyproject.toml uv.lock ./
+RUN python -m pip install --no-cache-dir --disable-pip-version-check "uv==$(cat UV_VERSION)" \
+    && uv lock --check \
+    && uv sync --frozen --no-dev --no-install-project
 
-# Install runtime dependencies from pyproject.toml (non-editable; no dev extras)
-RUN uv pip install --system --no-cache .
+COPY src/ ./src/
+RUN uv sync --locked --no-dev --no-editable
 
-# Copy Alembic config and migration scripts
-COPY alembic.ini .
-COPY alembic/ alembic/
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
 
-# Copy application source
-COPY src/ src/
-
-# src/ is on the Python path so `import api` resolves to src/api/
-ENV PYTHONPATH=/app/src
-ENV ROADFORGE_API_WORKERS=1
+# Keep runtime writes and accidental package modification away from root.
+RUN addgroup --system roadforge \
+    && adduser --system --ingroup roadforge --home /app roadforge \
+    && chown -R roadforge:roadforge /app
+USER roadforge
 
 EXPOSE 7878
 

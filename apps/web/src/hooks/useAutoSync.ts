@@ -67,10 +67,10 @@ export function useAutoSync({
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Ref prevents concurrent autosync calls without adding isSyncing to effect deps
   const isSyncingRef = useRef(false)
-  // Bumped whenever phases/roadmapName actually change, so an in-flight
-  // request can detect edits made after it captured its snapshot
+  // Bumped whenever any shared roadmap data changes, so an in-flight request
+  // cannot mark a newer phase, name, or tag edit as already saved.
   const revisionRef = useRef(0)
-  const lastEditedSnapshotRef = useRef({ phases, roadmapName })
+  const lastEditedSnapshotRef = useRef({ phases, roadmapName, tagRegistry })
   // Holds latest values so the debounced callback is never stale
   const syncParamsRef = useRef({
     phases,
@@ -115,9 +115,14 @@ export function useAutoSync({
 
   // ─── Debounced autosync for server-backed roadmaps ─────────────────────────
   useEffect(() => {
-    if (phases !== lastEditedSnapshotRef.current.phases || roadmapName !== lastEditedSnapshotRef.current.roadmapName) {
+    const previous = lastEditedSnapshotRef.current
+    if (
+      phases !== previous.phases
+      || roadmapName !== previous.roadmapName
+      || tagRegistry !== previous.tagRegistry
+    ) {
       revisionRef.current += 1
-      lastEditedSnapshotRef.current = { phases, roadmapName }
+      lastEditedSnapshotRef.current = { phases, roadmapName, tagRegistry }
     }
 
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
@@ -220,8 +225,17 @@ export function useAutoSync({
       cancelled = true
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
     }
-  // phases/roadmapName resets the debounce; other values read from syncParamsRef to avoid stale closures
-  }, [serverRoadmapId, sessionToken, readOnly, saved, partialWriteInFlight, phases, roadmapName])
+  // Shared roadmap data resets the debounce; other values are read from refs.
+  }, [
+    serverRoadmapId,
+    sessionToken,
+    readOnly,
+    saved,
+    partialWriteInFlight,
+    phases,
+    roadmapName,
+    tagRegistry,
+  ])
 
   const syncStatus: SyncStatus = !serverRoadmapId
     ? 'local'

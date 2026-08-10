@@ -14,24 +14,37 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.roadmap import ActivityLog, Participant
-from api.schemas.roadmap import PatchTaskDoneRequest, PatchTaskRequest, RoadmapResponse
+from api.models.roadmap import ActivityLog, Participant, Roadmap
+from api.schemas.roadmap import (
+    PatchTaskDoneRequest,
+    PatchTaskRequest,
+    RoadmapResponse,
+    TagDefinitionDTO,
+)
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
+from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
-    RoadmapConflictError,
     _fetch_active_roadmap_for_update,
     _patch_task_claim_snapshot,
     _patch_task_done_snapshot,
     _patch_task_fields_in_snapshot,
     _phases_from_snapshot,
-    _roadmap_conflict_response,
     _roadmap_response,
 )
-from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
-from api.services.session_policy import ensure_aware_utc
+from api.services.roadmap_projection_service import sync_task_projection_best_effort
+from api.services.roadmap_validation import validate_roadmap_domain
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_snapshot(roadmap: Roadmap, snapshot_json: dict) -> None:
+    tag_registry = (
+        None
+        if roadmap.tag_registry_json is None
+        else [TagDefinitionDTO.model_validate(tag) for tag in roadmap.tag_registry_json]
+    )
+    validate_roadmap_domain(_phases_from_snapshot(snapshot_json), tag_registry)
 
 
 async def patch_task(
@@ -42,10 +55,7 @@ async def patch_task(
     participant: Participant,
 ) -> RoadmapResponse:
     roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
-
-    client_ts = ensure_aware_utc(payload.last_updated_at)
-    if roadmap.updated_at > client_ts:
-        raise RoadmapConflictError(_roadmap_conflict_response(roadmap, client_ts, None))
+    ensure_roadmap_is_current(roadmap, payload.last_updated_at)
 
     updates = payload.model_dump(
         exclude={"last_updated_at"},
@@ -57,6 +67,7 @@ async def patch_task(
     if not patched.changed_fields:
         return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
 
+    _validate_snapshot(roadmap, patched.snapshot_json)
     before_json = {
         field: patched.before_task.get(field) for field in patched.changed_fields
     }
@@ -84,8 +95,8 @@ async def patch_task(
             "changedFields": patched.changed_fields,
         },
     ))
-    await sync_roadmap_projection_best_effort(db, roadmap, "task_update_patch")
 
+    await sync_task_projection_best_effort(db, roadmap, task_id, "task.updated")
     await db.commit()
     await db.refresh(roadmap)
 
@@ -113,10 +124,7 @@ async def patch_task_done(
     participant: Participant,
 ) -> RoadmapResponse:
     roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
-
-    client_ts = ensure_aware_utc(payload.last_updated_at)
-    if roadmap.updated_at > client_ts:
-        raise RoadmapConflictError(_roadmap_conflict_response(roadmap, client_ts, None))
+    ensure_roadmap_is_current(roadmap, payload.last_updated_at)
 
     patched = _patch_task_done_snapshot(roadmap.snapshot_json, task_id, payload.done)
     if patched is None:
@@ -127,6 +135,7 @@ async def patch_task_done(
     if before_done == payload.done:
         return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
 
+    _validate_snapshot(roadmap, snapshot_json)
     action = "task.completed" if payload.done else "task.reopened"
     roadmap.snapshot_json = snapshot_json
     roadmap.updated_at = datetime.now(timezone.utc)
@@ -146,8 +155,8 @@ async def patch_task_done(
             "task_title": task.get("title"),
         },
     ))
-    await sync_roadmap_projection_best_effort(db, roadmap, "task_done_patch")
 
+    await sync_task_projection_best_effort(db, roadmap, task_id, action)
     await db.commit()
     await db.refresh(roadmap)
 
@@ -225,8 +234,8 @@ async def patch_task_claim(
             "previous_claimed_by": previous_claimed_by if is_owner_override else None,
         },
     ))
-    await sync_roadmap_projection_best_effort(db, roadmap, "task_claim")
 
+    await sync_task_projection_best_effort(db, roadmap, task_id, "task.claimed")
     await db.commit()
     await db.refresh(roadmap)
 
@@ -303,8 +312,8 @@ async def delete_task_claim(
             "override": is_owner_override,
         },
     ))
-    await sync_roadmap_projection_best_effort(db, roadmap, "task_unclaim")
 
+    await sync_task_projection_best_effort(db, roadmap, task_id, "task.unclaimed")
     await db.commit()
     await db.refresh(roadmap)
 

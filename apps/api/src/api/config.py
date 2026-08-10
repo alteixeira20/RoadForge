@@ -7,7 +7,6 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _DEFAULT_DATABASE_URL = "postgresql+asyncpg://roadforge:roadforge_dev@localhost:5432/roadforge"
-_UNSAFE_SECRET_VALUES = {"", "change-me", "changeme", "secret", "roadforge", "development"}
 
 
 class Settings(BaseSettings):
@@ -25,7 +24,6 @@ class Settings(BaseSettings):
         default=_DEFAULT_DATABASE_URL,
         alias="DATABASE_URL",
     )
-    secret_key: str | None = Field(default=None, alias="ROADFORGE_SECRET_KEY")
     allow_local_database_in_production: bool = Field(
         default=False,
         alias="ROADFORGE_ALLOW_LOCAL_DATABASE_IN_PRODUCTION",
@@ -56,14 +54,14 @@ class Settings(BaseSettings):
     def assemble_cors_origins(cls, v: Union[str, list[str]]) -> list[str]:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
-        return v # type: ignore
+        return v  # type: ignore
 
     @field_validator("trusted_proxy_ips", mode="before")
     @classmethod
     def assemble_trusted_proxy_ips(cls, v: Union[str, list[str]]) -> list[str]:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",") if i.strip()]
-        return v # type: ignore
+        return v  # type: ignore
 
     @field_validator("trusted_proxy_ips")
     @classmethod
@@ -103,7 +101,6 @@ class Settings(BaseSettings):
     def validate_startup_security(self) -> None:
         if not self.is_production_like:
             return
-        _validate_production_secret(self.secret_key)
         _validate_production_database_url(
             self.database_url,
             allow_local=self.allow_local_database_in_production,
@@ -120,21 +117,6 @@ class Settings(BaseSettings):
             raise RuntimeError(
                 "REDIS_URL is required when ROADFORGE_REALTIME_BACKEND=redis."
             )
-
-
-def _validate_production_secret(secret_key: str | None) -> None:
-    value = (secret_key or "").strip()
-    lowered = value.lower()
-    if (
-        len(value) < 32
-        or lowered in _UNSAFE_SECRET_VALUES
-        or "change-me" in lowered
-        or "changeme" in lowered
-    ):
-        raise RuntimeError(
-            "ROADFORGE_SECRET_KEY must be set to a non-default value of at least 32 characters "
-            "outside development."
-        )
 
 
 def _validate_production_cors_origins(cors_origins: list[str]) -> None:

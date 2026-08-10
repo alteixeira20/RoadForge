@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { saveToServer } from '@/services/roadmap-crud.service'
 import { ApiConnectionError, ApiError } from '@/services/roadmap-http'
-import type { ActivityChange, Phase } from '@/types/roadmap'
+import type { ActivityChange, Phase, TagDefinition } from '@/types/roadmap'
 
 vi.mock('@/services/roadmap-crud.service', () => ({
   saveToServer: vi.fn(),
@@ -192,6 +192,64 @@ describe('useAutoSync pending activity', () => {
       '2026-07-25T17:01:00Z',
       true,
       [color],
+    )
+  })
+
+  it('does not mark a tag-only edit as saved by an older in-flight request', async () => {
+    const firstSave = deferred<Awaited<ReturnType<typeof saveToServer>>>()
+    mockedSaveToServer
+      .mockImplementationOnce(() => firstSave.promise)
+      .mockResolvedValueOnce(saveResponse('2026-07-25T17:02:00Z'))
+
+    const onSyncSuccess = vi.fn()
+    const baseParams = createParams({ onSyncSuccess, tagRegistry: [] })
+    act(() => root.render(<Harness params={baseParams} />))
+    act(() => vi.advanceTimersByTime(1500))
+    expect(mockedSaveToServer).toHaveBeenCalledTimes(1)
+
+    const editedTags: TagDefinition[] = [
+      { id: 'priority', label: 'Priority', color: '#f97316' },
+    ]
+    act(() => {
+      root.render(<Harness params={{ ...baseParams, tagRegistry: editedTags }} />)
+    })
+    act(() => vi.advanceTimersByTime(1500))
+    expect(mockedSaveToServer).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      firstSave.resolve(saveResponse('2026-07-25T17:01:00Z'))
+      await Promise.resolve()
+    })
+    expect(onSyncSuccess).toHaveBeenNthCalledWith(
+      1,
+      '2026-07-25T17:01:00Z',
+      false,
+      [],
+    )
+
+    act(() => {
+      root.render(
+        <Harness
+          params={{
+            ...baseParams,
+            tagRegistry: editedTags,
+            updatedAt: '2026-07-25T17:01:00Z',
+          }}
+        />,
+      )
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(250)
+      await Promise.resolve()
+    })
+
+    expect(mockedSaveToServer).toHaveBeenCalledTimes(2)
+    expect(mockedSaveToServer.mock.calls[1]?.[6]).toEqual(editedTags)
+    expect(onSyncSuccess).toHaveBeenNthCalledWith(
+      2,
+      '2026-07-25T17:02:00Z',
+      true,
+      [],
     )
   })
 

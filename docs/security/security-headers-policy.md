@@ -1,80 +1,54 @@
-# Security Headers Policy
+# Security headers and Content Security Policy
 
-Status: baseline implemented. Next.js emits report-only CSP and baseline browser
-headers; FastAPI emits API security/cache headers. CSP enforcement remains deferred.
+Status: `0.1.0` browser-header baseline implemented. Production RoadForge document
+responses use a per-response nonce CSP owned by Next.js middleware. The deployment can
+explicitly switch the same policy to report-only for observation or emergency rollback.
 
-Related policies:
+Related documents:
 
-- [Session Expiry and Revocation Policy](./session-expiry-and-revocation-policy.md)
-- [Rate Limiting Policy](./rate-limiting-policy.md)
+- [Public deployment security](../public-deployment-security.md)
+- [Self-hosting](../self-hosting.md)
+- [Manual QA](../manual-qa.md)
+- [Operational proof gate](./operational-proof-gate.md)
 
-RoadForge is accountless. Access is controlled by role-scoped invite links, optional roadmap passwords, and participant session tokens stored in browser storage. A strict security headers policy should reduce browser-side attack surface without changing that collaboration model.
+## Threat model
 
-## 1. Current exposure
+RoadForge stores local roadmap data and participant bearer credentials in browser storage.
+A successful script injection can therefore read local roadmap content, act as the current
+participant, and attempt data exfiltration. CSP does not make XSS harmless, but it can turn
+many script-injection paths into browser-enforced failures.
 
-Security headers may be applied in four places:
+RoadForge also uses fetch and `EventSource`; a CSP must preserve the configured API origin
+in `connect-src` or normal collaboration breaks.
 
-- The Next.js frontend can set response headers from `apps/web/next.config.ts`.
-- The FastAPI API can set API response headers from middleware.
-- The reverse proxy can set or override headers before responses reach browsers.
-- Cloudflare may add, remove, or override edge behavior depending on zone settings, Tunnel routing, and caching configuration.
+## Header ownership
 
-Current repository evidence:
+Use one authoritative CSP owner per frontend response.
 
-- `apps/web/next.config.ts` sets `X-Content-Type-Options: nosniff`,
-  `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, a
-  restrictive `Permissions-Policy`, and `Content-Security-Policy-Report-Only`.
-- `deploy/self-hosted/nginx/roadforge.conf` sets the same baseline headers at the Nginx layer and proxies `/api/` to FastAPI and everything else to Next.js.
-- `apps/api/src/api/main.py` wires CORS, body-size, and security-header middleware.
-  Sensitive roadmap JSON receives `Cache-Control: no-store`; API responses receive
-  `X-Content-Type-Options: nosniff`, while SSE retains stream-safe headers.
-- `apps/api/src/api/middleware/cors.py` allows configured origins, credentials, all methods, and all headers.
-- The hosted deployment path is documented as Cloudflare Tunnel -> central Nginx -> Docker `edge` network. Cloudflare should be treated as an outer layer, not the only place headers exist, because self-hosted deployments can bypass Cloudflare entirely.
+- **Next.js middleware** owns `Content-Security-Policy` or
+  `Content-Security-Policy-Report-Only` for document routes.
+- **Next.js `next.config.ts`** owns baseline frontend headers such as `nosniff`, frame,
+  referrer, and permissions policy.
+- **FastAPI** owns API-specific cache/security behavior.
+- **nginx / Cloudflare / another HTTPS edge** may reinforce compatible baseline headers and
+  HSTS, but must not inject a second CSP with different directives.
 
-Browser storage is sensitive in this app. Roadmap content is cached locally under `rf:roadmap:{roadmapId}`. Participant bearer credentials are stored under `rf:auth:{roadmapId}` and sent as `Authorization: Bearer <session_token>` on protected API calls. The active roadmap ID is stored in `sessionStorage`. A successful XSS can read local roadmap data, read bearer tokens, call protected APIs as the participant, and open SSE tickets. CSP cannot make XSS harmless, but it can reduce the blast radius and make some injection paths fail.
+Multiple CSP headers are enforced together by browsers. A proxy-added policy therefore does
+not override the app policy; it can accidentally make the effective policy stricter and
+break RoadForge.
 
-SSE is part of the current runtime model. The frontend obtains a short-lived ticket with a Bearer-authenticated API call and opens `EventSource` to `/api/roadmaps/{id}/events?ticket=...`. Any CSP must allow the configured API origin in `connect-src`; otherwise normal realtime collaboration breaks.
+## Production CSP
 
-## 2. Security goals
+Each document request receives a fresh unpredictable nonce. The production script directive
+is equivalent to:
 
-- Reduce XSS blast radius, especially against participant session tokens in `localStorage`.
-- Reduce clickjacking by preventing untrusted framing.
-- Reduce MIME sniffing and content-type confusion.
-- Control cross-origin connections so injected code cannot freely exfiltrate data.
-- Preserve API calls, SSE/EventSource, Next.js static assets, fonts, images, favicons, the web manifest, and local development.
-- Avoid breaking Next.js runtime behavior, hydration, font loading, or development HMR.
-- Preserve accountless collaboration, invite links, optional roadmap passwords, and local-first cache behavior.
-- Keep the first implementation small, observable, and reversible.
+```text
+script-src 'self' 'nonce-<per-response-nonce>' 'strict-dynamic'
+```
 
-## 3. Recommended headers
+Production `script-src` contains neither `unsafe-inline` nor `unsafe-eval`.
 
-| Header | Recommended value | Apply at | Risk and compatibility notes |
-| --- | --- | --- | --- |
-| `Content-Security-Policy-Report-Only` | Start with the staged policy in section 4. | Prefer Next.js for frontend routes first; proxy may add it for all HTML responses. | Report-only must come before enforcement. Include the API origin in `connect-src` for fetch and SSE. Do not enforce a brittle policy until reports and manual QA confirm runtime needs. |
-| `Content-Security-Policy` | Enforce the same staged policy after observation. | Frontend HTML responses; proxy may enforce consistently for self-hosted production. | Enforcement can break Next.js hydration, fonts, inline styles/scripts, images, EventSource, import/export UI, and local dev if applied too early. |
-| `X-Frame-Options` | `DENY` while the product has no embedding requirement. | Frontend and proxy. | Current Next.js and Nginx already set `DENY`. CSP `frame-ancestors` is the modern control and should be the source of truth once CSP is enforced. |
-| `frame-ancestors` | Prefer `frame-ancestors 'none'`; use `'self'` only if same-origin embedding becomes a product requirement. | CSP on frontend HTML responses and proxy-managed HTML responses. | `frame-ancestors` does not use `default-src`. It replaces the need for `X-Frame-Options` in modern browsers, but keeping both during rollout is acceptable if values agree. |
-| `X-Content-Type-Options` | `nosniff` | Frontend, API, and proxy. | Low risk. Already set by Next.js and Nginx. API should add it if the API can be reached without the proxy. |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | Frontend and proxy; API optional. | Current value is a good default. It avoids leaking full invite-token URLs cross-origin while preserving useful same-origin referrers. `no-referrer` is stricter but can make diagnostics harder. |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()` | Frontend and proxy. | Current value matches RoadForge's needs. Add features only when a product feature requires them. |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` after HTTPS is stable. Add `preload` only after deliberate preload review. | TLS-terminating reverse proxy or Cloudflare edge, not local dev. | Do not send HSTS on localhost or plain HTTP. HSTS belongs where HTTPS is guaranteed. Misconfiguration can break subdomains. |
-| `Cross-Origin-Opener-Policy` | Start with `same-origin-allow-popups`; consider `same-origin` later if no workflow needs cross-origin popups. | Frontend HTML responses. | RoadForge does not currently appear to need OAuth popups. `same-origin` is stricter but can affect integrations and popup flows if added later. |
-| `Cross-Origin-Resource-Policy` | `same-origin` for HTML and API JSON where practical; `cross-origin` or omit for static assets that must be embeddable elsewhere. | Frontend/proxy for HTML and API; be careful with static assets. | `same-origin` can break cross-origin loading of shared assets or public images if those become product requirements. It should not block same-origin Next.js assets. |
-| `Cache-Control` | Auth-sensitive API responses: `no-store`. Static Next.js assets: keep framework defaults. SSE: `no-cache`/stream-friendly behavior. | API for JSON/SSE; proxy may reinforce. | Do not mark the whole site `no-store`; it hurts static asset caching. API responses that include session tokens, invite URLs, participants, roadmap data, or activity logs should not be cached by shared proxies. |
-
-Recommended first baseline:
-
-- Keep the existing conservative headers in Next.js and Nginx.
-- Add CSP in report-only mode first.
-- Add API `nosniff` and `Cache-Control` for sensitive API responses if the API can be accessed directly.
-- Add HSTS only at HTTPS termination.
-- Keep `X-Frame-Options: DENY` aligned with `frame-ancestors 'none'` until CSP enforcement is stable.
-
-## 4. CSP policy design
-
-Use a staged CSP. The first shipped policy should be report-only in production-like environments, then enforced after manual QA and report review.
-
-Production report-only starting point:
+The complete production policy contains these controls:
 
 ```text
 default-src 'self';
@@ -82,262 +56,216 @@ base-uri 'self';
 object-src 'none';
 frame-ancestors 'none';
 form-action 'self';
-script-src 'self';
+script-src 'self' 'nonce-<nonce>' 'strict-dynamic';
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: blob:;
 font-src 'self';
-connect-src 'self' https://<api-origin>;
+connect-src 'self' <configured-api-origin>;
 manifest-src 'self';
 worker-src 'self' blob:;
-upgrade-insecure-requests;
 ```
 
-Replace `https://<api-origin>` with the deployed `NEXT_PUBLIC_API_URL` origin. If the API and frontend share the same public origin, `'self'` covers API fetches and SSE. If the API uses a separate host or port, that origin must be listed explicitly in `connect-src`.
+`upgrade-insecure-requests` is added only when the externally observed request is HTTPS.
+The maintained nginx configuration already forwards `X-Forwarded-Proto: https` to the web
+container. This avoids making local production smoke tests served over HTTP attempt HTTPS
+subresource loads while still hardening real HTTPS deployments.
 
-Development report-only starting point:
+### Why styles still allow inline CSS
+
+RoadForge currently uses React `style` attributes for dynamic colors, geometry, and
+interaction state. This work targets executable script injection; it does not pretend that
+a nonce on `<style>` tags would authorize arbitrary element style attributes.
+
+`style-src 'unsafe-inline'` is therefore an explicit residual boundary, not an accidental
+script exception. A future style-CSP project can remove it only after the UI no longer
+depends on inline style attributes.
+
+## Nonce lifecycle
+
+`apps/web/src/middleware.ts`:
+
+1. creates a new nonce for a document request;
+2. constructs the CSP for the current environment/API origin;
+3. overwrites the internal request `x-nonce` value;
+4. places the CSP on the internal request so Next.js can parse the nonce during rendering;
+5. emits the selected CSP response header;
+6. marks nonce-bearing document responses `private, no-store`.
+
+`apps/web/src/app/layout.tsx` uses a request-time dynamic API so document rendering is not
+statically prerendered. Next.js can then apply the request nonce to framework, page, and
+hydration scripts.
+
+Do not cache nonce-bearing HTML at nginx, Cloudflare, or another CDN. Static `/_next/*` and
+public asset paths are excluded from nonce middleware and retain normal asset caching.
+
+## CSP operating modes
+
+`ROADFORGE_CSP_MODE` accepts exactly:
 
 ```text
-default-src 'self';
-base-uri 'self';
-object-src 'none';
-frame-ancestors 'none';
-form-action 'self';
-script-src 'self' 'unsafe-eval' 'unsafe-inline';
-style-src 'self' 'unsafe-inline';
-img-src 'self' data: blob:;
-font-src 'self' data:;
-connect-src 'self' http://localhost:7878 http://127.0.0.1:7878 ws://localhost:* ws://127.0.0.1:*;
-manifest-src 'self';
-worker-src 'self' blob:;
+report-only
+enforce
 ```
 
-Development needs are intentionally looser. Next.js development can require `unsafe-eval`, runtime style injection, and websocket connections for HMR. Those allowances should not be copied into production enforcement unless observation proves they are required.
+Behavior:
 
-Directive notes:
+- production default or unknown value -> `enforce`;
+- development default or unknown value -> `report-only`;
+- explicit `report-only` -> emit `Content-Security-Policy-Report-Only` while Next.js still
+  receives the same nonce policy internally for correct script annotation;
+- explicit `enforce` -> emit `Content-Security-Policy`.
 
-- `connect-src` must allow the API origin used by `NEXT_PUBLIC_API_URL`. EventSource uses the same directive as fetch, so this covers `/api/roadmaps/{id}/events`.
-- `img-src 'self' data: blob:` matches the current local image footprint: favicons, app icons, brand images, and possible browser-generated blobs. Remove `blob:` later if import/export previews or generated image URLs do not need it.
-- `font-src 'self'` matches current `next/font/google` usage because Next.js self-hosts the selected Lexend and JetBrains Mono font files under `/_next/static/media`. If the app later loads fonts from a CDN, this directive must be updated deliberately.
-- `style-src 'self' 'unsafe-inline'` is a pragmatic first value for Next.js. Inline styles may appear from framework/runtime behavior, next/font, or component-level style attributes. `unsafe-inline` weakens XSS protection, so the long-term goal should be nonce or hash-based styles if Next.js usage allows it without brittle maintenance.
-- `script-src 'self'` is the production goal. Do not add `unsafe-eval` in production unless a measured Next.js production build violation proves it is required. Do not add broad third-party script hosts without a product need.
-- Avoid `unsafe-inline` for production scripts if possible. If Next.js inline bootstrap scripts require it, prefer a nonce-based implementation following Next.js guidance over permanent `script-src 'unsafe-inline'`.
-- `object-src 'none'` blocks legacy plugin content and should be enforced.
-- `base-uri 'self'` reduces base-tag injection risk.
-- `form-action 'self'` is compatible with the app because forms are handled by the frontend and API calls use fetch.
-- `frame-ancestors 'none'` should be the first choice because RoadForge does not currently require embedding. Use `'self'` only if same-origin embedding becomes an explicit product requirement.
-- `upgrade-insecure-requests` is production-only. Do not use it for localhost HTTP development.
+Production fails closed so a mistyped environment value cannot silently disable script
+protection.
 
-Report collection can start without a custom endpoint by watching browser console violations during QA. A later implementation can add a dedicated report endpoint or use proxy/edge logging, but it must avoid logging raw invite tokens, session tokens, Authorization headers, full join URLs, and passwords.
+## Observation before public enforcement
 
-## 5. API-specific headers
+For a new public deployment or after a meaningful frontend/runtime upgrade:
 
-FastAPI should eventually set headers that protect API responses even when the API is reached without the production proxy:
+1. deploy the exact candidate with `ROADFORGE_CSP_MODE=report-only`;
+2. confirm there is no separate CSP being injected by the proxy/edge;
+3. exercise the deployed manual QA flows in independent browser contexts;
+4. inspect browser console CSP reports for every supported route and role;
+5. sanitize any evidence before attaching it to an issue;
+6. after the observation window is clean, set `ROADFORGE_CSP_MODE=enforce` and redeploy the
+   **same application revision**;
+7. rerun critical create/open/import/export/share/join/realtime checks.
 
-- `X-Content-Type-Options: nosniff` on all API responses.
-- `Cache-Control: no-store` on responses containing roadmap data, participant data, activity logs, share links, session tokens, invite URLs, or auth errors that might include sensitive context.
-- SSE responses should remain stream-friendly. Use no shared proxy caching and preserve existing Nginx behavior: buffering off, proxy cache off, long read/send timeouts.
-- `Referrer-Policy` and `Permissions-Policy` can be set at proxy/frontend level. They do little for JSON clients but are harmless if consistent.
-- CSP is primarily a browser document policy. It should be attached to frontend HTML responses. Adding CSP to JSON API responses is usually unnecessary and can create misleading duplication.
-- HSTS should not be set by FastAPI unless it is directly responsible for HTTPS. In the documented deployment, TLS terminates before the app.
+The repository's production Playwright gate runs with `ROADFORGE_CSP_MODE=enforce`; the
+observation period is a deployed-configuration step, not a substitute for enforced CI.
 
-CORS interaction:
+## Rollback criteria
 
-- CORS decides which browser origins may read API responses. CSP decides which origins the frontend page may connect to.
-- Both must allow the same intended API origin in production, but they are not substitutes.
-- Current API CORS uses configured origins and credentials. Keep it explicit; do not use wildcard origins with credentialed requests.
-- The `Authorization` header is required for protected API calls and must remain allowed by CORS.
-- EventSource to a separate API origin is still governed by CORS and `connect-src`.
+Switch the deployed instance back to `ROADFORGE_CSP_MODE=report-only` when a reproducible
+legitimate RoadForge flow is blocked by CSP and the block cannot be corrected immediately
+without adding an unsafe broad exception.
 
-## 6. Reverse proxy / Cloudflare strategy
+Examples:
 
-Next.js app:
+- hydration or route navigation cannot complete;
+- a required same-product bundle is rejected;
+- owner/editor/viewer UI becomes unusable;
+- import/export or Share/Join stops functioning because of a CSP directive;
+- API fetch or SSE is blocked for the configured legitimate API origin.
 
-- Own frontend HTML CSP policy and report-only rollout when possible.
-- Continue setting `nosniff`, clickjacking, referrer, and permissions headers for frontend routes.
-- Keep policy generation aware of `NEXT_PUBLIC_API_URL` so `connect-src` matches the deployed API/SSE origin.
+Do **not** roll back CSP merely because an injected/third-party script is blocked. First
+confirm the blocked resource is a required RoadForge dependency.
 
-FastAPI app:
+Do not “fix” an incident by adding permanent production `script-src 'unsafe-inline'` or
+`'unsafe-eval'`.
 
-- Own API-specific `nosniff` and sensitive-response cache headers if the API may be exposed directly.
-- Preserve CORS as the API's browser-origin access control.
-- Preserve SSE behavior and do not add response buffering or caching.
+## Incident evidence
 
-Nginx/reverse proxy:
+CSP diagnostics can contain URLs. Join URLs may contain bearer invite credentials, and
+other browser/network evidence can contain session tokens or private roadmap details.
 
-- Own HTTPS-adjacent deployment controls where it terminates public traffic, including HSTS when HTTPS is stable.
-- Reinforce shared baseline headers for both frontend and API when self-hosting.
-- Keep SSE location buffering and caching disabled.
-- Avoid duplicating CSP with conflicting values. If both Next.js and Nginx emit CSP, browsers enforce both, and the effective policy becomes the intersection. That can cause hard-to-debug breakage.
+Record only what is required to reproduce the directive failure:
 
-Cloudflare:
+- RoadForge revision;
+- deployed CSP mode;
+- affected route category (not a token-bearing URL);
+- violated directive;
+- sanitized blocked origin/path category;
+- browser/version;
+- reproducible product action;
+- whether report-only or enforcement was active.
 
-- Own outer edge controls, TLS mode, optional HSTS if Cloudflare is the stable HTTPS edge, and coarse security rules.
-- Do not rely only on Cloudflare for security headers because self-hosted or direct-origin deployments may bypass it.
-- Avoid Cloudflare transformations that inject scripts unless the CSP explicitly accounts for them and the product accepts the tradeoff.
-- Avoid caching API responses that include roadmap data, tokens, invite URLs, participant lists, or activity logs.
+Do not publish invite tokens, session tokens, passwords, `Authorization` values, full join
+URLs, private roadmap exports, or unredacted browser logs.
 
-Choose one authoritative CSP owner per deployment. For this repo's first implementation, Next.js is the best owner for report-only frontend CSP because it can be versioned with the app and can derive the API origin from the same configuration as the client. The proxy can remain the owner for HSTS and broad deployment headers.
+RoadForge does not add a server-side CSP-report collector in `0.1.0`. Avoiding a collector
+also avoids creating a new retention/logging surface for potentially sensitive report URLs.
+Browser QA and automated console monitoring are the current observation mechanism.
 
-## 7. Local development strategy
+## Development policy
 
-Local development must not be broken by production CSP decisions.
+Development keeps the nonce model but defaults the browser-facing response to report-only.
+The script directive additionally permits `unsafe-eval`, which Next.js/React development
+instrumentation may require. It does **not** add script `unsafe-inline`.
 
-- Keep production CSP enforcement disabled in local dev.
-- Use report-only mode if developers want early visibility.
-- Allow the default local API origin: `http://localhost:7878`.
-- Include `http://127.0.0.1:7878` if developers commonly use that address.
-- Allow Next.js HMR websocket origins in development policy only.
-- Allow `unsafe-eval` in development policy only if Next.js dev tooling needs it.
-- Do not set HSTS on localhost.
-- Do not require Cloudflare or Nginx for local development.
-- Keep import/export, local cache hydration, and accountless join flows usable without a deployed proxy.
+Development `connect-src` additionally allows the maintained local API and HMR origins:
 
-The development policy can be noisier and less strict than production. The production decision should be based on production build behavior, production URLs, and manual QA rather than dev-server violations.
-
-## 8. Implementation phases
-
-### Phase A: document policy
-
-- Likely files touched: `docs/security/security-headers-policy.md`; optionally `docs/security/README.md` if an index exists later.
-- Validation: documentation review against `next.config.ts`, FastAPI middleware, CORS settings, SSE code, and deployment docs.
-- Rollback: remove or amend the document.
-- Risk: low; no runtime behavior change.
-
-### Phase B: add report-only CSP and conservative headers in Next.js or proxy
-
-- Likely files touched: `apps/web/next.config.ts` for app-owned CSP, or deployment proxy config if the deployment chooses proxy ownership.
-- Validation: inspect response headers, load the production build, run browser QA, confirm only expected report-only CSP messages appear.
-- Rollback: remove the report-only header or disable it with an environment flag.
-- Risk: low to medium; report-only should not block runtime behavior, but noisy reports can hide real violations.
-
-### Phase C: add API headers middleware if needed
-
-- Likely files touched: `apps/api/src/api/middleware/...`, `apps/api/src/api/main.py`, and focused API tests if code work is scheduled.
-- Validation: confirm API responses include `nosniff`; sensitive JSON responses include `Cache-Control: no-store`; SSE still streams and is not buffered or cached.
-- Rollback: remove middleware or disable the sensitive cache-control branch.
-- Risk: medium; incorrect cache headers can hurt performance, and incorrect SSE headers can break realtime behavior.
-
-### Phase D: review reports and tighten CSP
-
-- Likely files touched: CSP generation in `apps/web/next.config.ts` or proxy CSP config; docs if decisions change.
-- Validation: review report-only violations across create, save, join, share, import/export, theme switching, fonts, icons, and SSE.
-- Rollback: restore the previous report-only policy.
-- Risk: medium; tightening may reveal hidden dependencies on inline styles, blob URLs, or dev-only behavior.
-
-### Phase E: enforce production CSP
-
-- Likely files touched: CSP header owner only.
-- Validation: production smoke test, manual QA checklist below, response-header inspection, and rollback drill.
-- Rollback: switch enforcement back to report-only or remove the CSP header.
-- Risk: medium to high; an incorrect enforced policy can break app load, API calls, SSE, images, fonts, or import/export flows.
-
-Current pre-release decision: remain in Phase D/report-only. The repository has
-no CSP report collector and no recorded production-build browser evidence that
-Next.js bootstrap scripts, styled JSX/inline React styles, Markdown, API calls,
-and SSE satisfy the proposed enforced policy. Do not add production
-`script-src 'unsafe-inline'` simply to bypass that evidence requirement.
-
-## 9. Manual QA checklist
-
-- App loads in production with the intended response headers.
-- App loads in local development without production CSP enforcement.
-- API requests work for create, fetch, update, delete, share management, join, and activity reads.
-- SSE/EventSource works: collaborators see realtime task updates without refresh.
-- Join flow works with editor and viewer links.
-- Password-protected join flow still prompts and succeeds with the correct password.
-- Share modal works: list, copy, rotate, revoke, and public viewer link behavior.
-- Export/import works and does not require unexpected `blob:` or `data:` relaxations beyond the documented policy.
-- Images, icons, favicons, manifest, and fonts load.
-- Theme switching and local-first hydration still work.
-- Browser console shows no enforced CSP violations.
-- Report-only violations are understood, expected, and tracked before enforcement.
-- The app cannot be framed by another origin when `frame-ancestors 'none'` or `X-Frame-Options: DENY` is active.
-- API responses containing session tokens, invite URLs, participants, roadmap data, and activity logs are not cached by shared proxies.
-
-## 10. Risks and non-goals
-
-- Do not break local-first browser storage. CSP should protect the page; it should not remove cached roadmap data or auth cache behavior.
-- Do not block SSE/EventSource. Realtime collaboration is part of the current product.
-- Do not add accounts, OAuth, email verification, password reset, or global identity as part of this policy.
-- Do not suggest or introduce WebSockets. Current realtime behavior uses SSE.
-- Do not pretend headers solve XSS alone. Input handling, output encoding, dependency hygiene, session expiry, and revocation still matter.
-- Do not rely only on Cloudflare. Self-hosters may run without Cloudflare or may expose the origin differently.
-- Do not over-tighten CSP before report-only observation. A broken CSP can lock users out of collaboration flows.
-- Do not log raw CSP reports without filtering. Reports can include URLs with invite tokens or SSE tickets.
-- Do not add broad third-party origins to CSP preemptively.
-
-## 11. Recommended decision
-
-Recommended first implementation path:
-
-1. Keep this document as the RF-827 policy baseline.
-2. Keep the existing conservative frontend and Nginx headers: `nosniff`, `DENY`, `strict-origin-when-cross-origin`, and restrictive `Permissions-Policy`.
-3. Add a production `Content-Security-Policy-Report-Only` header from the Next.js app as the first implementation step, with `connect-src` derived from `NEXT_PUBLIC_API_URL`.
-4. Keep `frame-ancestors 'none'` in CSP and keep `X-Frame-Options: DENY` unless a real embedding use case appears.
-5. Add API `nosniff` and `no-store` for sensitive API responses only if the API is reachable directly or if proxy ownership is insufficient.
-6. Review report-only output through the manual QA checklist, tighten the policy, then enforce production CSP.
-
-Ownership recommendation:
-
-- Next.js owns frontend CSP and frontend browser-document headers.
-- FastAPI owns API CORS, API `nosniff`, and API cache-control for sensitive responses.
-- Nginx/reverse proxy owns HSTS, deployment-wide reinforcement, SSE proxy behavior, and direct-origin protection.
-- Cloudflare owns outer TLS/edge protections only; it should reinforce but not replace app/proxy policy.
-
-The first version should be simple and conservative: document the policy, start CSP in report-only mode, keep accountless collaboration and local-first behavior intact, preserve API + SSE connectivity, and avoid enforcing brittle CSP rules before production-like observation.
-
-## 12. Header Inspection Commands
-
-Use these commands against local, staging, or production URLs. Replace the
-example origins before running. These commands are for inspection only; this
-document does not claim deployed validation has been performed.
-
-Frontend headers:
-
-```bash
-curl -I https://example-roadforge-web.test/
+```text
+http://localhost:7878
+http://127.0.0.1:7878
+ws://localhost:*
+ws://127.0.0.1:*
 ```
 
-Confirm:
+Never copy those development allowances into a production policy.
 
-- `Content-Security-Policy-Report-Only` is present.
-- `Content-Security-Policy` is not present yet.
-- `X-Frame-Options: DENY` is present, or `frame-ancestors 'none'` is visible in report-only CSP.
-- `X-Content-Type-Options: nosniff` is present.
+## API and realtime compatibility
 
-API health headers:
+`connect-src` contains `'self'` plus the origin parsed from `NEXT_PUBLIC_API_URL` when the
+configured value is a valid absolute URL.
 
-```bash
-curl -I https://example-roadforge-api.test/api/health
-```
+This must cover:
 
-Confirm:
+- normal API fetch requests;
+- Bearer-authenticated protected operations;
+- one-time SSE ticket creation;
+- `EventSource` connections to roadmap events.
 
-- `X-Content-Type-Options: nosniff` is present.
-- CSP is not duplicated on JSON API responses.
+CORS and CSP are separate controls: CORS determines which browser origins may read API
+responses, while frontend CSP determines where RoadForge pages may connect. Both must match
+the intended production topology.
 
-Sensitive API headers:
+## Reverse proxy requirements
 
-```bash
-curl -I \
-  -H "Authorization: Bearer <session_token>" \
-  https://example-roadforge-api.test/api/roadmaps/<roadmap_id>
-```
+The maintained `deploy/self-hosted/nginx/roadforge.conf`:
 
-Confirm:
+- does not define a CSP;
+- forwards `X-Forwarded-Proto: https` in the documented HTTPS topology;
+- keeps safe access logging that omits query strings and Referer values;
+- keeps API/SSE routing separate from frontend document routing.
 
-- `Cache-Control: no-store` is present on sensitive roadmap JSON responses.
-- `X-Content-Type-Options: nosniff` is present.
+An external proxy/edge must preserve the application CSP response header and must not cache
+nonce-bearing HTML. If it replaces or adds CSP, treat that as a deployment change requiring
+the same production browser proof.
 
-SSE headers:
+HSTS belongs at the stable HTTPS termination layer, not in local HTTP development.
 
-```bash
-curl -I "https://example-roadforge-api.test/api/roadmaps/<roadmap_id>/events?ticket=<event_ticket>"
-```
+## Automated proof
 
-Confirm the stream remains SSE-friendly. Do not expect the same `no-store`
-behavior as JSON routes; the existing stream uses `Cache-Control: no-cache`.
+`apps/web/e2e/csp.spec.ts` verifies a production standalone build:
 
-Local development can use `http://localhost:3020` and `http://localhost:7878`.
-Production inspection should use the deployed frontend and API origins, including
-the same `NEXT_PUBLIC_API_URL` origin used by the browser.
+- returns an enforced CSP and no report-only duplicate;
+- contains a nonce-bound strict production `script-src`;
+- contains no production script `unsafe-inline`/`unsafe-eval`;
+- assigns the response nonce to executable inline scripts emitted by the application;
+- generates a fresh nonce after reload;
+- blocks an intentionally injected unnonced inline script;
+- emits no unexpected CSP console errors during a normal RoadForge create/edit flow.
+
+`apps/web/playwright.production.config.ts` also runs the core browser smoke and hydration
+specs under enforced production CSP.
+
+The path-scoped `Web CSP Validation` GitHub Actions workflow runs web lint, typecheck, unit
+tests, and the production CSP/core-flow Playwright suite.
+
+A report-only development run is not release evidence for the production policy.
+
+## Manual release proof
+
+Before declaring CSP ready on the actual public deployment, verify:
+
+- landing/create/local persistence;
+- JSON import and export/download;
+- owner/editor/viewer routes in independent contexts;
+- Share and Join/password behavior;
+- API writes and conflict recovery;
+- SSE reconnect/realtime updates;
+- report/problem links;
+- fonts, icons, manifest, images, and dynamic UI styles;
+- no unexpected CSP console errors;
+- no duplicate CSP at the proxy or Cloudflare layer.
+
+MCP is not a browser script surface, but the normal MCP package/documentation gate still
+must pass because this security change must not alter documented collaboration credentials
+or API semantics.
+
+## Change rule
+
+Any future CSP relaxation requires a concrete product dependency and production browser
+evidence. Prefer a specific source, nonce, or hash over a broad exception. Never add
+production script `unsafe-inline`/`unsafe-eval` simply to make a failing build green.
