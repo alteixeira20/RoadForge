@@ -67,20 +67,30 @@ test('production documents enforce a fresh nonce CSP without console violations'
   expect(cspErrors, `Unexpected CSP browser errors:\n${cspErrors.join('\n')}`).toEqual([])
 })
 
-test('production CSP blocks an unnonced inline script probe', async ({ page }) => {
+test('production CSP blocks a parser-injected nonce-free inline script', async ({ page }) => {
+  const cspErrors = captureCspErrors(page)
+  await page.route('**/', async (route) => {
+    const response = await route.fetch()
+    const body = await response.text()
+    const injectedBody = body.replace(
+      '</head>',
+      "<script>window.__roadforgeCspProbe = 'executed'</script></head>",
+    )
+    expect(injectedBody).not.toBe(body)
+    await route.fulfill({ response, body: injectedBody })
+  }, { times: 1 })
+
   const response = await page.goto('/')
   expect(response).not.toBeNull()
   expect(response!.headers()['content-security-policy']).toBeTruthy()
 
   const result = await page.evaluate(() => {
     const target = window as typeof window & { __roadforgeCspProbe?: string }
-    target.__roadforgeCspProbe = 'blocked'
-    const script = document.createElement('script')
-    script.textContent = "window.__roadforgeCspProbe = 'executed'"
-    document.head.appendChild(script)
-    script.remove()
-    return target.__roadforgeCspProbe
+    return target.__roadforgeCspProbe ?? 'blocked'
   })
-
   expect(result).toBe('blocked')
+
+  await expect.poll(() => cspErrors.length).toBeGreaterThan(0)
+  expect(cspErrors.some((error) => /inline script|script-src|content security policy/i.test(error)))
+    .toBe(true)
 })
