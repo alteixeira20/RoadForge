@@ -12,6 +12,7 @@
     "check:cycles": "node tools/check-web-import-cycles.mjs",
     "check:docs": "node tools/check-doc-links.mjs",
     "check:issues": "node tools/check-issue-forms.mjs",
+    "check:release": "node tools/check-release-contract.mjs",
     "lint": "pnpm --dir apps/web lint",
     "typecheck": "pnpm --dir apps/web typecheck",
     "test": "pnpm --dir apps/web test",
