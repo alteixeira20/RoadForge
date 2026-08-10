@@ -1,112 +1,135 @@
-# Dependency Audit Policy
+# Dependency audit policy
 
-See also: [Security documentation index](./README.md) | [SECURITY.md](../../SECURITY.md)
+RoadForge audits JavaScript and Python runtime dependencies on every release candidate.
+Known high-severity findings are release blockers unless a narrowly scoped, documented,
+time-bounded exception exists because no installable fix is available.
 
-## Overview
+## JavaScript audit
 
-RoadForge audits both JS (pnpm workspace) and Python (FastAPI API) runtime dependencies for known vulnerabilities. Audit gates run locally via `make` targets and run in CI as the `js-audit` and `api-audit` jobs.
+**Scope:** production dependencies in the pnpm workspace.  
+**Tool:** `pnpm audit`.  
+**Threshold:** high severity and above.
 
----
-
-## JS Audit
-
-**Scope:** pnpm workspace, production dependencies only (`--prod`).
-
-**Tool:** `pnpm audit`
-
-**Threshold:** High severity and above (`--audit-level high`). Low and moderate findings are visible but do not block.
-
-**Local command:**
 ```bash
 make audit
-# or
-make audit-prod
-# both run: pnpm audit --audit-level high --prod
+# equivalent production audit
+pnpm audit --audit-level high --prod
 ```
 
-**CI status:** Active, and clean as of 2026-07-25. The `js-audit` CI job runs on every push and PR.
+CI runs the same high-severity production gate.
 
-`next` is pinned to `15.5.21`. The earlier `15.5.18` pin went stale and the gate
-failed with twelve advisories, six of them high, all reaching production through
-Next: Server Action denial of service, server-side request forgery in rewrites
-and in Server Actions, cache confusion of response bodies, unbounded Edge
-Server Action payloads, and unauthenticated Server Function disclosure.
+### Transitive overrides
 
-Next still pins `postcss@8.4.31` and `sharp@0.34.5`, which remain vulnerable
-after that upgrade, so the root `package.json` raises both through
-`pnpm.overrides`:
+RoadForge uses pnpm overrides only when a framework pin leaves an installable patched
+transitive version available:
 
 | Override | Reason | Removal condition |
-|---|---|---|
-| `postcss: ^8.5.23` | Arbitrary file read, source-map path traversal, and `</style>` XSS in `<=8.5.17` | Next ships `postcss >= 8.5.18` |
-| `sharp: ^0.35.3` | Inherited libvips CVEs in `<0.35.0`; reachable because `next/image` is used by `Brand` | Next ships `sharp >= 0.35.0` |
+| --- | --- | --- |
+| `postcss: ^8.5.23` | historical PostCSS security fixes above framework-pinned vulnerable ranges | remove when Next's normal graph is at least as safe |
+| `sharp: ^0.35.3` | patched libvips/sharp line used by `next/image` | remove when Next's normal graph is at least as safe |
 
-Overrides are a version floor, not a suppression: the advisory still has to be
-resolved, and each entry is dropped once the upstream pin catches up. Re-check
-both on every Next upgrade.
+An override is **not** an audit suppression. The resulting package graph must still pass
+`pnpm audit` unless an explicit temporary exception below applies.
 
----
+### Current temporary exception
 
-## Python Audit
+As of 2026-08-10:
 
-**Scope:** API runtime dependencies declared in `apps/api/pyproject.toml` under `[project.dependencies]`. Dev, test, and audit extras are excluded.
+| Field | Value |
+| --- | --- |
+| Advisory | `GHSA-2v37-7h3g-55p8` |
+| Package | transitive `nanoid@3.3.16` through PostCSS |
+| Reason | the advisory names `>=3.3.17` as patched, but npm's installable 3.x/legacy line currently stops at `3.3.16` |
+| Owner | `alteixeira20` |
+| Expiry/review | **2026-08-17** |
+| Tracking | GitHub issue #12 |
+| Removal plan | resolve `nanoid >=3.3.17` through the normal dependency graph, remove the GHSA exception, regenerate the lockfile, and require a clean unsuppressed audit |
 
-**Tool:** `pip-audit>=2.7` (declared in the `audit` optional-dependency group).
+The exception is configured by exact GHSA ID in root `pnpm.auditConfig.ignoreGhsas`.
+The audit severity threshold is unchanged and no other nanoid/advisory finding is ignored.
 
-**Threshold:** Any CVE reported by pip-audit against runtime dependencies unless explicitly suppressed (see Suppression Process below).
+Do not silently extend the date. If a patched release is still unavailable at expiry,
+update issue #12 with current upstream evidence and explicitly re-review the exposure.
 
-**Note:** pip-audit audits the installed environment by default, which includes `pip` itself and other installer tooling. The CI job and `make api-audit` use `-r` mode (requirements list) to scope the audit to RoadForge runtime packages only, avoiding noise from installer tool CVEs that do not affect the application.
+## Python audit
 
-**Local command:**
+**Scope:** runtime dependencies from `apps/api/pyproject.toml`; development/test/audit
+tooling is excluded from the production dependency list.  
+**Tool:** `pip-audit`.  
+**Policy:** reported runtime vulnerabilities fail the gate unless an explicitly reviewed
+exception exists.
+
 ```bash
 make api-audit
-# Requires pip-audit to be installed: pip install "apps/api[audit]"
 ```
 
-**CI status:** Active. Runtime dependencies are clean. The `api-audit` CI job runs on every push and PR.
+The CI/API audit builds a runtime dependency list rather than auditing unrelated installer
+tooling in the environment.
 
----
+## Reproducibility
 
-## Lockfile Policy
+### JavaScript
 
-**JS:** `pnpm-lock.yaml` is committed to the repository and must not be modified outside of intentional dependency updates. All CI installs use `--frozen-lockfile` to prevent silent lockfile drift.
+`pnpm-lock.yaml` is committed. CI installs with:
 
-**Python:** No lockfile currently exists for the API. The `pyproject.toml` specifies minimum version bounds (`>=`), which means builds are not fully reproducible across time. A pinned lockfile (e.g., via `uv.lock`) would improve reproducibility and audit accuracy. This is deferred — see Deferred Work below.
+```bash
+pnpm install --frozen-lockfile
+```
 
----
+Never hand-edit a resolved dependency/integrity value to make an audit pass. Dependency
+updates must be intentional and reproducible.
 
-## Suppression Process
+### Python
 
-Suppression is temporary only and requires documented justification.
+RoadForge still needs a committed generated Python dependency lock for full build
+reproducibility. This is tracked separately in issue #7. Until it lands, the audit checks
+the resolved runtime graph for each candidate but does not make two builds of the same
+commit cryptographically identical dependency sets.
 
-**Required fields for any suppression:**
-- CVE or advisory ID (e.g., `GHSA-xxxx-xxxx-xxxx` or `CVE-YYYY-NNNNN`)
-- Affected package and version
-- Reason why the vulnerability does not apply or cannot be fixed immediately (e.g., no fix available, only affects unused feature, upgrade blocked by breaking change)
-- Owner (GitHub username or team)
-- Expiry/review date (maximum 90 days from suppression date)
-- Removal plan (what action resolves the suppression: upgrade to version X, drop dependency Y, etc.)
+## Exception process
 
-**JS:** Use `.npmrc` or `pnpm.auditConfig.ignoreCves` in `package.json` with a comment block following the above fields. Do not suppress entire packages — suppress specific CVE IDs only.
+A dependency-audit exception is allowed only when a normal patched dependency cannot be
+installed safely yet or the vulnerability is demonstrably unreachable and an immediate
+upgrade would create greater verified risk.
 
-**Python:** Use a `pip-audit` ignore file (`--ignore-vuln` flag or `.pip-audit-ignore`) with a comment block following the above fields.
+Every exception must record:
 
-All suppressions must be reviewed when the expiry date passes. Expired suppressions with no owner action are treated as CI failures.
+- GHSA/CVE ID;
+- package and resolved version/path;
+- why an immediate fix is unavailable/inapplicable;
+- owner;
+- expiry/review date, maximum 90 days and normally much shorter;
+- tracking issue;
+- concrete removal plan.
 
----
+JavaScript exceptions must target specific advisory IDs (`ignoreGhsas` / `ignoreCves`),
+never an entire dependency. Python exceptions must likewise target specific vulnerability
+IDs.
 
-## Dependabot / Renovate
+An exception is not permission to stop checking for a fix. The owner should remove it as
+soon as an installable patched graph exists, even before the expiry date.
 
-Automated dependency update PRs (Dependabot, Renovate) are deferred. Both audit CI gates are now active, but automated update tooling will be evaluated after the gates have proven stable over time.
+## Dependency update review
 
----
+For every security-driven update:
 
-## Deferred Work
+1. identify the actual vulnerable path;
+2. prefer the upstream/direct patched graph over a permanent override;
+3. regenerate the lock intentionally;
+4. install with frozen-lock verification;
+5. run the dependency audit;
+6. run relevant build/runtime tests because semver-compatible transitive changes can still break behavior;
+7. remove obsolete overrides/exceptions.
 
-| Item | Condition for action |
-|---|---|
-| ~~Add `js-audit` CI job~~ | Done — job active |
-| Drop the `postcss` and `sharp` overrides | Next ships patched pins for both |
-| ~~Add `api-audit` CI job~~ | Done — job active alongside `js-audit` |
-| Python lockfile (`uv.lock`) | Deferred; evaluate when `uv` is adopted as the Python package manager |
-| Dependabot / Renovate | Deferred until both audit CI gates are proven stable over time |
+Dependabot is configured where supported, but automated update PRs still require the same
+review/evidence as manual dependency changes.
+
+## Release rule
+
+A release may proceed only when:
+
+- production JS/Python audit gates pass; or
+- every remaining blocking finding has an unexpired exact-ID exception satisfying this
+  policy and an explicit release note when material to users/operators.
+
+Expired or undocumented exceptions are release failures.
