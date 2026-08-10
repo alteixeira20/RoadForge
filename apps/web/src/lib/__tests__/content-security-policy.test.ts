@@ -15,6 +15,7 @@ describe('content security policy', () => {
         isProduction: true,
         apiOrigin: 'https://roadforge.example',
         nonce: 'nonce-value',
+        upgradeInsecureRequests: true,
       },
       mode,
     )
@@ -37,6 +38,7 @@ describe('content security policy', () => {
         isProduction: true,
         apiOrigin: null,
         nonce: 'observation-nonce',
+        upgradeInsecureRequests: true,
       },
       mode,
     )
@@ -55,6 +57,7 @@ describe('content security policy', () => {
       isProduction: false,
       apiOrigin: null,
       nonce: 'development-nonce',
+      upgradeInsecureRequests: false,
     })
 
     expect(policy).toContain(
@@ -64,6 +67,18 @@ describe('content security policy', () => {
     expect(policy).toContain('http://localhost:7878')
     expect(policy).toContain('ws://localhost:*')
     expect(policy).not.toContain('upgrade-insecure-requests')
+  })
+
+  it('does not upgrade subresources on a local HTTP production smoke server', () => {
+    const policy = buildContentSecurityPolicy({
+      isProduction: true,
+      apiOrigin: null,
+      nonce: 'local-production-nonce',
+      upgradeInsecureRequests: false,
+    })
+
+    expect(policy).not.toContain('upgrade-insecure-requests')
+    expect(policy).not.toMatch(/script-src[^;]*'unsafe-(?:inline|eval)'/)
   })
 
   it('accepts only valid API origins', () => {
