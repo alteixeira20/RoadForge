@@ -26,17 +26,20 @@ Target environment:
 ## 2. Automated evidence
 
 - [ ] `make release-check` passes.
+- [ ] Release version/toolchain contract passes.
+- [ ] Documentation/copy/issue-form contract passes when contributor/docs paths changed.
 - [ ] Full development Playwright suite passes without unresolved failures.
-- [ ] Production hydration/browser smoke passes.
-- [ ] API PostgreSQL-backed tests pass.
-- [ ] Real-Redis collaboration/revocation tests pass.
-- [ ] Alembic upgrade/schema drift checks pass.
-- [ ] JavaScript dependency audit passes at the configured severity threshold.
-- [ ] Python dependency audit passes at the configured severity threshold.
+- [ ] Production CSP/core-flow browser suite passes with enforcement enabled.
+- [ ] API dependency lock accepts `uv lock --check` and deterministic frozen export.
+- [ ] API PostgreSQL-backed tests pass from the locked Python graph.
+- [ ] Real-Redis collaboration/revocation tests pass from the locked Python graph.
+- [ ] Alembic upgrade/schema drift checks pass from the locked Python graph.
+- [ ] JavaScript dependency audit passes at the configured severity threshold or has only a documented unexpired exact-advisory exception.
+- [ ] Locked Python runtime dependency audit passes at the configured severity threshold.
 - [ ] MCP package/protocol checks pass when the package is included in the release candidate.
 - [ ] Production API and web images build.
 - [ ] Production containers run as non-root users.
-- [ ] Self-hosted Compose configuration validates.
+- [ ] Self-hosted Compose configuration validates, including CSP runtime wiring.
 - [ ] Every required GitHub Actions job is green for the exact candidate SHA.
 
 A retry can demonstrate that a runner failure was transient, but recurring flaky tests
@@ -49,6 +52,7 @@ remain a release-quality problem and should be fixed rather than normalized.
 - [ ] Markdown export is credential-free and remains non-importable.
 - [ ] Hosted/demo copy advises users to keep JSON backups they control.
 - [ ] The Anvilary-hosted instance does not imply managed backup/durability guarantees.
+- [ ] Synced deletion wording distinguishes immediate soft deletion, final live-database purge, and independent backup retention.
 - [ ] Accountless owner/editor/viewer semantics remain accurate.
 - [ ] Roadmap snapshot/tag-registry source-of-truth rules remain accurate.
 - [ ] No current documentation teaches the internal RoadForge roadmap as the starter template.
@@ -80,10 +84,11 @@ smoke testing.
 - [ ] `ROADFORGE_ENVIRONMENT=production` is set.
 - [ ] `ROADFORGE_CORS_ORIGINS` is explicit.
 - [ ] `ROADFORGE_TRUSTED_PROXY_IPS` is narrow and correct.
+- [ ] `ROADFORGE_CSP_MODE` is deliberately set for observation/enforcement rollout.
 - [ ] HTTPS termination is configured.
 - [ ] PostgreSQL and Redis are private/not directly exposed.
 - [ ] Memory realtime is one API process only, or Redis mode is enabled for multi-worker/instance deployment.
-- [ ] A PostgreSQL backup and checksum are created before schema-sensitive migration.
+- [ ] A PostgreSQL backup and checksum are created before schema-sensitive migration or planned retention purge.
 - [ ] Backup restore has been rehearsed against a disposable database.
 
 ## 6. Health contract
@@ -97,15 +102,23 @@ After deployment:
 
 Do not certify a deployment from `/live` alone.
 
-## 7. Security and logging
+## 7. Security, CSP, and logging
 
 - [ ] HTTPS/HSTS behavior is correct at the public edge.
 - [ ] Expected production security headers are present.
-- [ ] Frontend CSP is accurately reported as report-only for `0.1.0` unless the tracked enforced-CSP work has landed and passed its dedicated tests.
+- [ ] CSP report-only observation has been run for the exact candidate when required by the rollout policy.
+- [ ] Final candidate deployment emits one enforced `Content-Security-Policy` header and no conflicting report-only/proxy policy.
+- [ ] Production `script-src` uses a per-response nonce and contains neither `unsafe-inline` nor `unsafe-eval`.
+- [ ] Nonce-bearing HTML is `private, no-store`; page reloads receive fresh nonces.
+- [ ] Create/import/export/share/join/realtime flows produce no unexpected CSP browser violations.
 - [ ] API application logs contain no request query strings, credentials, headers, or bodies.
 - [ ] Maintained proxy access logs omit query strings and `Referer`.
 - [ ] Upstream proxy/tunnel/CDN logging has been reviewed for invite-token exposure.
 - [ ] Session/invite/password/Redis credentials do not appear in exports or release evidence.
+
+If legitimate app behavior is blocked under enforcement, roll the deployment back to
+`ROADFORGE_CSP_MODE=report-only` on the same build while fixing the specific policy issue.
+Do not add broad production script exceptions.
 
 ## 8. Deployed collaboration smoke
 
@@ -119,21 +132,36 @@ Using independent browser contexts:
 - [ ] Stale writes produce explicit conflicts rather than overwrite.
 - [ ] JSON export/import works through the deployed frontend.
 
-## 9. Known-boundary review
+## 9. Retention and recovery
+
+For a deployment that already contains synced data:
+
+- [ ] retention dry-run succeeds before release;
+- [ ] emitted policy/as-of/counts are recorded without roadmap/user/token data;
+- [ ] active and recently deleted roadmaps are not unexpectedly selected;
+- [ ] saturated batch counts are investigated rather than bypassed with unbounded deletion;
+- [ ] no destructive purge is performed merely to prove release readiness;
+- [ ] any planned purge has a current verified PostgreSQL backup first.
+
+Final live-database purge is an operator lifecycle action and remains independent from
+backup expiry. Never imply that a live purge automatically removes historical backup copies.
+
+## 10. Known-boundary review
 
 Before publishing release notes, explicitly review:
 
 - [ ] browser-local storage durability limitations;
 - [ ] hosted-demo/no-managed-backup positioning;
-- [ ] report-only CSP status;
-- [ ] soft-delete/final-retention status;
-- [ ] Python dependency-lock status;
+- [ ] inline CSS remains an explicit CSP compatibility boundary;
+- [ ] nonce-bearing HTML is dynamically rendered/no-store rather than CDN-cacheable;
+- [ ] soft-delete/final-live-purge/backup-retention semantics;
+- [ ] temporary dependency-advisory exceptions are documented and unexpired;
 - [ ] MCP credential/publishing status;
 - [ ] current repository license and whether it is being described accurately.
 
 No known boundary may be omitted merely to make the release appear more complete.
 
-## 10. Release artifacts
+## 11. Release artifacts
 
 - [ ] Version is correct in maintained package/application metadata.
 - [ ] `CHANGELOG.md` is finalized.
@@ -159,19 +187,23 @@ roadmaps as JSON and keep copies you control.
 - <current boundary>
 
 ### Upgrading / self-hosting
-- Back up PostgreSQL before schema-sensitive updates.
+- Back up PostgreSQL before schema-sensitive updates or retention purge.
 - Apply migrations to Alembic head.
 - Application rollback does not automatically reverse migrations.
+- CSP can be returned to report-only on the same build if a legitimate flow is blocked.
 
 ### Verified
 - Candidate SHA: <sha>
 - CI: <result>
 - Browsers: <matrix>
+- CSP report-only observation: <result>
+- CSP enforcement: <result>
+- Retention dry-run: <result>
 - Accessibility smoke: <matrix>
 - Backup/restore: <result>
 ```
 
-## 11. Post-deploy observation
+## 12. Post-deploy observation
 
 For a public deployment, observe at least through the first normal usage window.
 
@@ -179,13 +211,17 @@ For a public deployment, observe at least through the first normal usage window.
 - [ ] no restart loop or sustained 5xx appears;
 - [ ] realtime still propagates;
 - [ ] storage/database usage is sane;
+- [ ] no unexpected CSP enforcement errors appear;
+- [ ] retention dry-run trends are plausible for the deployment;
 - [ ] no credentials appear in logs;
 - [ ] no data-loss/corruption report remains unexplained.
 
 Roll back immediately for credible data corruption/loss, credential exposure,
 unrecoverable save failures, broken primary routes, or sustained dependency failure.
+For a CSP-only compatibility regression, use the documented report-only rollback rather
+than rolling back unrelated database/application changes first.
 
-## 12. Close-out
+## 13. Close-out
 
 - [ ] Final release notes are published.
 - [ ] Verification evidence is retained with credentials/private roadmap data redacted.
