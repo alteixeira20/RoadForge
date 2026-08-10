@@ -36,6 +36,26 @@ jobs:
             docs/contributor-guide.md \
             docs/roadforge-roadmap-generator-template.txt \
             docs/ui-control-inventory.md
+
+          python - <<'PY'
+          from pathlib import Path
+
+          files = [
+              Path('.github/pull_request_template.md'),
+              Path('CONTRIBUTING.md'),
+              Path('GOVERNANCE.md'),
+              Path('docs/README.md'),
+              Path('docs/architecture/partial-roadmap-write-endpoints.md'),
+              Path('docs/architecture/task-partial-write-api.md'),
+              Path('docs/contributor-guide.md'),
+              Path('docs/roadforge-roadmap-generator-template.txt'),
+              Path('docs/ui-control-inventory.md'),
+          ]
+          for path in files:
+              lines = path.read_text().splitlines()
+              path.write_text('\n'.join(line.rstrip() for line in lines) + '\n')
+          PY
+
           rm .github/workflows/replay-contributor-foundation-temp.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
