@@ -43,6 +43,12 @@ jobs:
               exit 1
             fi
             git checkout --theirs docs/security/dependency-audit-policy.md
+            python - <<'PY'
+            from pathlib import Path
+            path = Path('docs/security/dependency-audit-policy.md')
+            lines = path.read_text().splitlines()
+            path.write_text('\n'.join(line.rstrip() for line in lines) + '\n')
+            PY
             git add docs/security/dependency-audit-policy.md
           fi
 
