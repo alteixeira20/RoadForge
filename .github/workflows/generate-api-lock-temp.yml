@@ -22,10 +22,10 @@ jobs:
       - name: Generate lock
         working-directory: apps/api
         run: uv lock --python 3.12
-      - name: Emit compressed lock for maintainer capture
-        working-directory: apps/api
-        shell: bash
-        run: |
-          printf 'UVLOCK_GZIP_BASE64='
-          gzip -9 -c uv.lock | base64 -w0
-          printf '\n'
+      - name: Upload generated lock
+        uses: actions/upload-artifact@v6
+        with:
+          name: roadforge-api-uv-lock
+          path: apps/api/uv.lock
+          if-no-files-found: error
+          retention-days: 1
