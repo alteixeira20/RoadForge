@@ -33,7 +33,13 @@
   },
   "pnpm": {
     "comments": {
-      "overrides": "Next pins vulnerable transitive versions; these raise them to the patched ranges reported by `make audit`. Drop an entry once Next ships it."
+      "overrides": "Next pins vulnerable transitive versions; these raise them to patched ranges reported by `make audit`. Drop an entry once Next ships the patched dependency.",
+      "auditExceptionGHSA-2v37-7h3g-55p8": "TEMPORARY through 2026-08-17. nanoid 3.3.16 is transitive via PostCSS; the advisory names >=3.3.17 as fixed but no 3.3.17 legacy release is available from npm yet. Owner: alteixeira20. Remove immediately when an installable patched 3.x release is available, then regenerate pnpm-lock.yaml and require a clean unsuppressed audit."
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-2v37-7h3g-55p8"
+      ]
     },
     "overrides": {
       "postcss": "^8.5.23",
