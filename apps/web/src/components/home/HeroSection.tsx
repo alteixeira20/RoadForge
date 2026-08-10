@@ -20,7 +20,7 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           your device. Save to a server later when you need to share.
           No account required to start.
         </p>
-        <p className="hero-data-note">
+        <p className="lede hero-data-note">
           <strong>Hosted demo:</strong> try collaboration here, but keep important
           work portable. Export JSON backups and store them somewhere you control.
         </p>
