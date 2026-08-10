@@ -20,6 +20,10 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           your device. Save to a server later when you need to share.
           No account required to start.
         </p>
+        <p className="hero-data-note">
+          <strong>Hosted demo:</strong> try collaboration here, but keep important
+          work portable. Export JSON backups and store them somewhere you control.
+        </p>
         <div className="ctas">
           <button className="btn primary lg" onClick={onCreate}>
             Create roadmap <Icon name="arrow-right" size={16} stroke="#fff" />
@@ -37,15 +41,15 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           <div className="preview">
             <div className="preview-bar">
               <span className="dots"><i /><i /><i /></span>
-              <span className="url">roadforge.anvilary.tools · API Integration Sprint</span>
+              <span className="url">roadforge.anvilary.tools · Local-first product roadmap</span>
             </div>
             <MiniPreview />
           </div>
         </div>
         <div className="meta-row" aria-label="RoadForge highlights">
           <span><Icon name="lock" size={14} /> No account required</span>
-          <span><Icon name="device" size={14} /> Runs locally</span>
-          <span><Icon name="export" size={14} /> Portable exports</span>
+          <span><Icon name="device" size={14} /> Starts on your device</span>
+          <span><Icon name="export" size={14} /> JSON stays portable</span>
           <span><Icon name="shield" size={14} /> Non-commercial source available</span>
         </div>
       </div>
