@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - 'apps/web/**'
-      - 'deploy/self-hosted/nginx/**'
+      - 'deploy/self-hosted/**'
       - 'docs/security/security-headers-policy.md'
       - 'docs/security/README.md'
       - 'docs/self-hosting.md'
@@ -18,7 +18,7 @@ on:
       - dev
     paths:
       - 'apps/web/**'
-      - 'deploy/self-hosted/nginx/**'
+      - 'deploy/self-hosted/**'
       - 'docs/security/security-headers-policy.md'
       - 'docs/security/README.md'
       - 'docs/self-hosting.md'
@@ -66,6 +66,13 @@ jobs:
 
       - name: Run web unit tests
         run: pnpm --dir apps/web test
+
+      - name: Validate self-hosted Compose wiring
+        run: >-
+          docker compose
+          --env-file deploy/self-hosted/.env.example
+          -f deploy/self-hosted/compose.yaml
+          config --quiet
 
       - name: Install Chromium
         run: pnpm --dir apps/web exec playwright install --with-deps chromium
