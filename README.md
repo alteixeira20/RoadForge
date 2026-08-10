@@ -44,9 +44,14 @@ collaboration. Treat it as disposable infrastructure:
 3. Store the JSON in your own filesystem, cloud drive, repository, or backup system.
 4. Re-export periodically while the roadmap changes.
 
-Clearing browser site data can remove local-only roadmaps. Server-side deletion is
-currently soft deletion and final retention/purge behavior is still a tracked release
-hardening item. Do not place secrets in roadmap content or exports.
+Clearing browser site data can remove local-only roadmaps. Deleting a synced roadmap
+removes it from normal RoadForge use through server soft deletion; final live-database
+records are purged later according to the operator retention policy. Independent database
+backups may remain until their own documented expiry. Do not place secrets in roadmap
+content or exports.
+
+See [Server data retention and purge](docs/server-data-retention.md) for the exact hosted/
+self-hosted deletion lifecycle and operator safeguards.
 
 ## Access model
 
@@ -139,10 +144,11 @@ pnpm --dir apps/web typecheck
 pnpm --dir apps/web build
 pnpm --dir packages/roadforge-mcp check
 
-cd apps/api
-python -m pytest -q
-ruff check src/
-alembic check
+make api-lock
+make api-lint
+make api-test
+make api-check
+make api-audit
 ```
 
 ## Architecture
@@ -195,9 +201,8 @@ These are explicit release boundaries, not hidden guarantees:
 
 - browser-local data can be lost when site storage is cleared;
 - the hosted Anvilary instance is a demo/convenience deployment, not a managed backup service;
+- synced roadmap deletion is soft-first; final live-database purge follows the bounded operator retention schedule and backup copies have their own lifecycle;
 - Content Security Policy is report-only pending an enforced nonce-based design;
-- deleted server roadmaps do not yet have the final automated purge policy;
-- the Python dependency graph is audited but still needs a committed generated lock;
 - MCP currently reuses participant credentials and remains experimental;
 - multi-browser/deployed collaboration still requires release-candidate manual validation.
 
@@ -227,6 +232,7 @@ See:
 - [Manual QA](docs/manual-qa.md)
 - [Performance baseline](docs/performance.md)
 - [Security documentation](docs/security/README.md)
+- [Server data retention](docs/server-data-retention.md)
 - [Self-hosting](docs/self-hosting.md)
 - [Support](SUPPORT.md)
 

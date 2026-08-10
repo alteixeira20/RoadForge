@@ -121,7 +121,7 @@ limit rather than silently creating a smaller upstream ceiling.
 ## Backups
 
 PostgreSQL is the durable source for synced roadmaps. Before every schema-sensitive
-release:
+release and before an irreversible retention purge:
 
 1. create a PostgreSQL custom-format dump;
 2. verify the dump is non-empty;
@@ -136,6 +136,36 @@ verify representative domain rows and projection parity, then remove only that d
 
 An untested backup is not a recovery plan.
 
+## Data retention
+
+RoadForge has a bounded operator retention command for durable PostgreSQL data. User-facing
+synced-roadmap deletion is immediate **soft deletion** from normal application use; final
+hard deletion happens later according to the operator retention policy.
+
+Default live-database retention is:
+
+- expired/revoked participant sessions: 7-day cleanup grace;
+- activity on active roadmaps: 180 days;
+- restore points on active roadmaps: 90 days while preserving at least the newest 3;
+- soft-deleted roadmaps: 30 days before final hard purge;
+- maximum work per run: 100 rows per category by default.
+
+Use [Server data retention and purge](server-data-retention.md) as the authoritative
+runbook. It documents conservative code-enforced minimums, dry-run output, reproducible
+`--as-of` cutoffs, explicit `--execute --confirm PURGE`, race-safe execution, stale claim
+cleanup, bounded scheduling, monitoring, and recovery.
+
+A recommended small/demo deployment pattern is scheduled dry-run monitoring plus a
+separate bounded execute after backup verification. Do not run an unconditional destructive
+cron job with unknown counts.
+
+Redis event tickets, edit locks, and rate-limit buckets are volatile TTL state and are not
+part of the PostgreSQL purge command.
+
+Backup retention is independent. Hard-purging live database rows does not remove historical
+backup copies, so any public deletion/privacy wording must state the backup lifecycle
+accurately.
+
 ## Rollback
 
 Application rollback and database rollback are different operations.
@@ -143,6 +173,7 @@ Application rollback and database rollback are different operations.
 - Re-deploying a previous API/web image does not undo an already-applied migration.
 - Alembic downgrade is unsupported unless a specific migration explicitly documents it.
 - For a schema incident, use the pre-migration database backup and a known-good application revision.
+- For an accidental hard purge, recovery likewise requires a pre-purge backup.
 - Test recovery in a disposable environment before modifying the live database whenever possible.
 
 ## Credential-safe logs
@@ -152,6 +183,10 @@ maintained nginx access format omits query strings and `Referer`.
 
 Upstream infrastructure may still retain full request targets. Review proxy/tunnel/CDN
 logging separately because invite tokens can appear in join URLs.
+
+Retention logs should contain only revision/timestamp/policy/count/success information and,
+when appropriate, a backup checksum/reference. Do not log selected roadmap IDs, snapshots,
+participant names, or credentials as purge evidence.
 
 Use service-specific log commands from `deploy/self-hosted/README.md` rather than
 copying private data into public reports.
@@ -179,13 +214,6 @@ Do not enable enforcement by adding broad inline-script exceptions. A future enf
 policy must use a tested nonce/hash strategy compatible with the production Next.js
 runtime.
 
-## Data retention
-
-Roadmap deletion is soft-only until the tracked retention/purge work lands. Operators
-must not promise immediate hard deletion from all server records or backups.
-
-Define backup retention independently and document it for any public deployment.
-
 ## Release verification
 
 Before exposing or updating a public instance:
@@ -198,3 +226,7 @@ Then require green exact-head GitHub Actions and perform the deployed checks in
 [Manual QA](manual-qa.md). In particular verify independent owner/editor/viewer
 contexts, revocation, conflicts, realtime recovery, JSON export/import, and safe proxy
 logging.
+
+For a deployment that already contains synced user data, also run the retention command in
+dry-run mode and verify that the reported policy/counts match the operator's documented
+schedule before declaring the deployment baseline complete.
