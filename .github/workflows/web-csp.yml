@@ -1,0 +1,77 @@
+name: Web CSP Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'deploy/self-hosted/nginx/**'
+      - 'docs/security/security-headers-policy.md'
+      - '.github/workflows/web-csp.yml'
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - 'apps/web/**'
+      - 'deploy/self-hosted/nginx/**'
+      - 'docs/security/security-headers-policy.md'
+      - '.github/workflows/web-csp.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-csp-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production-csp:
+    name: Production Nonce CSP
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint web application
+        run: pnpm --dir apps/web lint
+
+      - name: Typecheck web application
+        run: pnpm --dir apps/web typecheck
+
+      - name: Run web unit tests
+        run: pnpm --dir apps/web test
+
+      - name: Install Chromium
+        run: pnpm --dir apps/web exec playwright install --with-deps chromium
+
+      - name: Run production CSP and core-flow browser suite
+        run: pnpm --dir apps/web test:browser:production
+
+      - name: Upload production browser artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: web-csp-production-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
