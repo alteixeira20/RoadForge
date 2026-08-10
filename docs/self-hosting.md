@@ -1,281 +1,200 @@
-# Self-Hosting RoadForge
+# Self-hosting RoadForge
 
-RoadForge is a pre-release product from Anvilary. Its source is available under
-the PolyForm Noncommercial License 1.0.0. The repository is source-available,
-not open source under the Open Source Definition or an OSI-approved license,
-and commercial hosting or monetized use is not permitted by the repository
-license.
+This is the supported `0.1.0` self-hosting contract. Exact Compose commands and
+environment examples live in [`deploy/self-hosted/README.md`](../deploy/self-hosted/README.md).
+Security requirements live in [Public deployment security](public-deployment-security.md).
 
-## Topology
+The Anvilary-hosted RoadForge instance is a demo/convenience deployment. Self-hosting
+is the option for operators who want to control server persistence, backups, retention,
+and infrastructure. Roadmap users should still keep portable JSON exports of important
+work.
 
-The supported pre-release topology is:
+## Supported topology
 
-- Next.js web app;
+A production-oriented deployment consists of:
+
+- Next.js web application;
 - FastAPI API;
 - PostgreSQL 16;
-- optional Redis for shared realtime, locks, tickets, and rate limits;
-- HTTPS reverse proxy.
+- optional Redis for shared realtime coordination;
+- an HTTPS reverse proxy or trusted edge.
 
-Use `deploy/self-hosted/` as the production-oriented Compose example. It requires
-explicit secrets, origins, database credentials, web URL, and trusted proxy ranges.
+Use the maintained files under `deploy/self-hosted/`. Do not expose development servers,
+PostgreSQL, or Redis directly to the public Internet.
+
+## Before first deployment
+
+Create a deployment `.env` from the maintained example and review every value.
+At minimum, configure:
+
+- production PostgreSQL password/connection;
+- `ROADFORGE_ENVIRONMENT=production`;
+- `ROADFORGE_WEB_BASE_URL`;
+- explicit `ROADFORGE_CORS_ORIGINS`;
+- narrow `ROADFORGE_TRUSTED_PROXY_IPS`;
+- realtime backend and Redis URL when required.
+
+Run the deployment doctor/config validation documented under `deploy/self-hosted` before
+starting the public stack.
 
 ## Deployment sequence
 
-1. Back up PostgreSQL.
-2. Build the release images.
-3. Start PostgreSQL and Redis.
-4. Run `alembic upgrade head`.
-5. Run projection backfill with parity verification.
-6. Start one API worker for memory mode, or enable Redis before multiple workers.
-7. Start the web app and reverse proxy.
-8. Verify health, create/join/share, realtime, import/export, and backup restore.
+Use this order for first deploys and schema-sensitive updates:
 
-Exact commands and environment variables are documented in
-`deploy/self-hosted/README.md` and `docs/public-deployment-security.md`.
+1. Back up PostgreSQL if an existing deployment is being changed.
+2. Build/pull the exact candidate revision.
+3. Start PostgreSQL and Redis, when Redis is configured.
+4. Apply `alembic upgrade head` through the maintained migration command.
+5. Verify/backfill relational projections when required by the release.
+6. Start the API.
+7. Start the web application and HTTPS proxy.
+8. Verify health endpoints.
+9. Exercise create, save, share, join, realtime, import/export, and conflict recovery.
 
-## Authentication modes
-
-The current product has no accounts or OAuth. Access uses role-scoped invite links, optional
-roadmap passwords, and participant session tokens.
-
-- Owner and editor join URLs are credentials that grant their named role. Do not
-  expose them in logs, screenshots, analytics, issue reports, or support messages.
-- The viewer URL is intentionally public-capable but still grants access to the
-  roadmap. Treat it as a read-only credential and rotate or disable it when the
-  audience should change.
-- Invite links do not expire on a timer. They remain valid until the owner rotates
-  or revokes that role's link. Rotation/revocation blocks future joins but does not
-  revoke sessions that already joined through the old link.
-- Participant sessions use a 30-day sliding expiry. An authenticated request renews
-  an active session when its presence timestamp is stale. Owners revoke an existing
-  participant separately from rotating or revoking an invite.
-- Session tokens are Bearer credentials stored in browser `localStorage`. Never put
-  them in URLs or operator commands that may be retained in shell history.
-
-The FastAPI application does not log headers, bodies, query strings, or full request
-URLs. Its access log contains only method, path, and status. The self-hosted stack nginx
-template also omits query strings and `Referer` from its access log. Proxy error
-logs and infrastructure outside this repository can still contain full request
-targets; operators must review and restrict those logs.
-
-## Backups and updates
-
-Back up PostgreSQL before every migration. On the deployment host, run:
+The maintained update path is:
 
 ```bash
 cd /opt/stacks/roadforge/src
-umask 077
-mkdir -p /opt/data/apps/roadforge/backups
-BACKUP="/opt/data/apps/roadforge/backups/roadforge-$(date -u +%Y%m%dT%H%M%SZ).dump"
-
-docker compose \
-  --env-file /opt/stacks/roadforge/.env \
-  -f deploy/self-hosted/compose.yaml \
-  --project-name roadforge \
-  exec -T roadforge-postgres \
-  pg_dump -U roadforge -d roadforge --format=custom --no-owner --no-acl \
-  > "$BACKUP"
-
-test -s "$BACKUP"
-docker compose \
-  --env-file /opt/stacks/roadforge/.env \
-  -f deploy/self-hosted/compose.yaml \
-  --project-name roadforge \
-  exec -T roadforge-postgres pg_restore --list < "$BACKUP" > /dev/null
-sha256sum "$BACKUP" > "$BACKUP.sha256"
-echo "Backup written to $BACKUP"
+make update
 ```
 
-Keep the dump and checksum outside the repository and PostgreSQL data directory.
-Copy them to storage with an independent retention policy.
+Do not replace `alembic upgrade head` with a release-specific migration filename.
 
-### Disposable restore drill
+## Health checks
 
-Restore only into a uniquely named disposable database. Never use `roadforge` as
-`DRILL_DB`.
+Use the endpoints according to their actual runtime semantics:
 
-```bash
-cd /opt/stacks/roadforge/src
-BACKUP=/opt/data/apps/roadforge/backups/roadforge-YYYYmmddTHHMMSSZ.dump
-DRILL_DB="roadforge_restore_$(date -u +%Y%m%dT%H%M%SZ)"
-test "$DRILL_DB" != roadforge
-test -s "$BACKUP"
-sha256sum -c "$BACKUP.sha256"
-
-docker compose \
-  --env-file /opt/stacks/roadforge/.env \
-  -f deploy/self-hosted/compose.yaml \
-  --project-name roadforge \
-  exec -T roadforge-postgres createdb -U roadforge "$DRILL_DB"
-
-docker compose \
-  --env-file /opt/stacks/roadforge/.env \
-  -f deploy/self-hosted/compose.yaml \
-  --project-name roadforge \
-  exec -T roadforge-postgres \
-  pg_restore -U roadforge -d "$DRILL_DB" --no-owner --no-acl --exit-on-error \
-  < "$BACKUP"
+```text
+/api/health/live   process liveness only
+/api/health/ready  PostgreSQL + configured Redis readiness
+/api/health        backward-compatible readiness alias
 ```
 
-Verify the required domain data and projection relationships:
+For normal deployment readiness checks, use `/api/health/ready` or `/api/health`.
+A `503` means a required dependency is unavailable even if the API process itself is
+still running.
 
-```bash
-docker compose \
-  --env-file /opt/stacks/roadforge/.env \
-  -f deploy/self-hosted/compose.yaml \
-  --project-name roadforge \
-  exec -T roadforge-postgres \
-  psql -U roadforge -d "$DRILL_DB" -v ON_ERROR_STOP=1 <<'SQL'
-SELECT 'roadmaps' AS item, count(*) AS rows FROM roadmaps
-UNION ALL SELECT 'participants', count(*) FROM participants
-UNION ALL SELECT 'versions', count(*) FROM roadmap_versions
-UNION ALL SELECT 'activity', count(*) FROM activity_logs
-UNION ALL SELECT 'projection_phases', count(*) FROM roadmap_phases
-UNION ALL SELECT 'projection_tasks', count(*) FROM roadmap_tasks;
+## Realtime modes
 
-SELECT id, name, created_at, updated_at
-FROM roadmaps
-ORDER BY updated_at DESC
-LIMIT 10;
+### Memory
 
-SELECT count(*) AS orphan_projection_phases
-FROM roadmap_phases p
-LEFT JOIN roadmaps r ON r.id = p.roadmap_id
-WHERE r.id IS NULL;
-
-SELECT count(*) AS orphan_projection_tasks
-FROM roadmap_tasks t
-LEFT JOIN roadmaps r ON r.id = t.roadmap_id
-LEFT JOIN roadmap_phases p ON p.id = t.phase_id
-WHERE r.id IS NULL OR p.id IS NULL;
-SQL
-
-docker compose \
-  --env-file /opt/stacks/roadforge/.env \
-  -f deploy/self-hosted/compose.yaml \
-  --project-name roadforge \
-  run --rm --no-deps -T \
-  -e RESTORE_DB="$DRILL_DB" \
-  roadforge-api sh -lc \
-  'export DATABASE_URL="${DATABASE_URL%/*}/${RESTORE_DB}"; python -m api.scripts.backfill_projection --verify-only'
+```sh
+ROADFORGE_REALTIME_BACKEND=memory
+ROADFORGE_API_WORKERS=1
 ```
 
-Check that representative roadmap names and expected counts match the
-source environment, both orphan counts are zero, and projection parity reports no
-drift. If `--verify-only` reports drift, record the restore as preserving source
-data but not yet passing projection verification. Do not repair the live database
-as part of the restore drill. Because `snapshot_json` is canonical, you may prove
-projection recovery only in the disposable database:
+Memory mode is a **single-process** topology. Do not run multiple independent API
+instances in this mode merely because each has one worker.
 
-```bash
-docker compose \
-  --env-file /opt/stacks/roadforge/.env \
-  -f deploy/self-hosted/compose.yaml \
-  --project-name roadforge \
-  run --rm --no-deps -T \
-  -e RESTORE_DB="$DRILL_DB" \
-  roadforge-api sh -lc \
-  'export DATABASE_URL="${DATABASE_URL%/*}/${RESTORE_DB}"; python -m api.scripts.backfill_projection --verify'
+### Redis
+
+Use Redis for multiple API workers or instances:
+
+```sh
+ROADFORGE_REALTIME_BACKEND=redis
+REDIS_URL=redis://...
 ```
 
-Investigate source-environment drift through the normal projection backfill
-runbook before release. Then remove only the disposable database:
+Redis coordinates SSE publication, edit locks, one-time event tickets, revocation
+state, and rate limits. Keep Redis private and do not log its connection URL when it
+contains credentials.
 
-```bash
-test "$DRILL_DB" != roadforge
-docker compose \
-  --env-file /opt/stacks/roadforge/.env \
-  -f deploy/self-hosted/compose.yaml \
-  --project-name roadforge \
-  exec -T roadforge-postgres dropdb -U roadforge --if-exists --force "$DRILL_DB"
-unset DRILL_DB BACKUP
-```
+## Access and credentials
 
-- Export important roadmaps from the browser as an additional portable copy.
-- Treat Alembic downgrades as unsupported unless a migration explicitly documents one.
-- Review `CHANGELOG.md`, environment changes, and the release checklist before update.
-- Test restore procedures; an untested backup is not a recovery plan.
+RoadForge has no account/login system. Shared roadmaps use role-scoped invite links,
+optional roadmap passwords, and participant session tokens.
 
-## Down-scenario runbook
+- Owner/editor invite URLs are sensitive credentials.
+- Viewer URLs grant read access and should still be treated as access-bearing links.
+- Invite rotation controls future joins; existing participant sessions are revoked separately.
+- Participant session tokens belong in `Authorization: Bearer ...`, never in URLs.
+- Do not paste invite/session tokens into shell commands, tickets, public issues, screenshots, or logs.
 
-Work through these checks in order when RoadForge is unreachable or misbehaving.
-Each step names what to inspect and the command to inspect it with.
+## Request size
 
-1. **Health endpoint.** `curl -fsS https://<host>/api/health` (or
-   `http://localhost:7878/api/health` on the API host directly, bypassing the
-   proxy). A non-200 response or connection failure means the API process
-   itself is down or unreachable; a 200 here but failures from the public host
-   point at the reverse proxy or TLS instead. `/api/health` is liveness only —
-   it does not check PostgreSQL or Redis.
-2. **Container status.** `docker compose --env-file /opt/stacks/roadforge/.env
-   -f deploy/self-hosted/compose.yaml --project-name roadforge ps`. Confirm
-   `roadforge-web`, `roadforge-api`, `roadforge-postgres`, and (if enabled)
-   `roadforge-redis` are all `running`/`healthy`. A restarting or exited
-   container is the fastest signal of which layer failed.
-3. **Reverse proxy / tunnel / TLS.** Check the proxy's own health (nginx
-   `systemctl status`, container status, or tunnel process) and certificate
-   validity (`openssl s_client -connect <host>:443 -servername <host> </dev/null
-   2>&1 | openssl x509 -noout -dates`). A proxy that is up but returning
-   502/504 usually means it cannot reach `roadforge-web` or `roadforge-api` on
-   the internal network.
-4. **Redis mode.** If `ROADFORGE_REALTIME_BACKEND=redis`, confirm
-   `roadforge-redis` is healthy and reachable from the API container
-   (`docker compose ... exec roadforge-api redis-cli -h roadforge-redis ping`).
-   Redis backs shared realtime, locks, tickets, and rate limits across workers;
-   if it is down, restart it before assuming an application bug. Memory-mode
-   deployments (no `ROADFORGE_REALTIME_BACKEND=redis`) do not depend on Redis
-   and can skip this step.
-5. **Database connectivity.** `docker compose ... exec roadforge-postgres
-   pg_isready -U roadforge` and, if that passes but requests still fail,
-   `docker compose ... exec roadforge-api python -m api.scripts.backfill_projection
-   --verify-only` to check for projection drift. See
-   [Database migrations and deployment ordering](public-deployment-security.md#database-migrations-and-deployment-ordering)
-   if the API was recently redeployed — an API container running ahead of
-   pending migrations returns 500s on any route touching a new/changed table.
-6. **Logs.** `docker compose ... logs --tail=100 roadforge-api` and
-   `... logs --tail=100 roadforge-web` first; add `roadforge-postgres` or
-   `roadforge-redis` if those layers are implicated. FastAPI access logs
-   contain only method, path, and status — no bodies, headers, or query
-   strings — so application logs will not leak share-link tokens or session
-   tokens. Proxy logs and upstream providers are outside this repository and
-   need separate review; see
-   [credential-safe log commands](../deploy/self-hosted/README.md#credential-safe-log-review).
-7. **Restart / update path.** For a stuck container, restart just that
-   service: `docker compose ... restart roadforge-api`. For a full update,
-   follow the [Deployment sequence](#deployment-sequence) above — back up
-   first, rebuild images, then bring the stack back up in order (Postgres and
-   Redis, then run pending migrations, then the API, then the web app and
-   proxy).
-8. **Backup/restore sanity.** Confirm the most recent backup exists and is
-   non-empty: `test -s <backup>.dump && sha256sum -c <backup>.dump.sha256`.
-   Do not restore into the live `roadforge` database to test this — use the
-   [disposable restore drill](#disposable-restore-drill) against a scratch
-   database name.
-9. **Rollback.** Alembic downgrades are unsupported unless a specific
-   migration documents one — do not attempt `alembic downgrade` as a recovery
-   step. To roll back, redeploy the previous known-good API/web image tags
-   and, if the incident followed a migration, restore PostgreSQL from the
-   pre-migration backup into a fresh database rather than downgrading the
-   schema in place. Treat an untested backup as no backup; validate the
-   restore drill on this data before relying on it during an incident.
+The maintained browser, API, and nginx roadmap payload limit is **5 MiB**. The API
+constant is defined in `apps/api/src/api/schemas/limits.py`.
+
+If an operator changes proxy limits, they must remain compatible with the application
+limit rather than silently creating a smaller upstream ceiling.
+
+## Backups
+
+PostgreSQL is the durable source for synced roadmaps. Before every schema-sensitive
+release:
+
+1. create a PostgreSQL custom-format dump;
+2. verify the dump is non-empty;
+3. record a checksum;
+4. copy the backup outside the repository and database volume;
+5. periodically perform a disposable restore drill.
+
+The complete command sequence is maintained in
+[`deploy/self-hosted/README.md`](../deploy/self-hosted/README.md). Do not duplicate a
+live database merely to test restore. Restore into a uniquely named disposable database,
+verify representative domain rows and projection parity, then remove only that database.
+
+An untested backup is not a recovery plan.
+
+## Rollback
+
+Application rollback and database rollback are different operations.
+
+- Re-deploying a previous API/web image does not undo an already-applied migration.
+- Alembic downgrade is unsupported unless a specific migration explicitly documents it.
+- For a schema incident, use the pre-migration database backup and a known-good application revision.
+- Test recovery in a disposable environment before modifying the live database whenever possible.
+
+## Credential-safe logs
+
+RoadForge application access logs omit query strings, headers, and request bodies. The
+maintained nginx access format omits query strings and `Referer`.
+
+Upstream infrastructure may still retain full request targets. Review proxy/tunnel/CDN
+logging separately because invite tokens can appear in join URLs.
+
+Use service-specific log commands from `deploy/self-hosted/README.md` rather than
+copying private data into public reports.
+
+## Incident triage
+
+When the deployment is unavailable, check in this order:
+
+1. `/api/health/live` — is the API process responding?
+2. `/api/health/ready` — are PostgreSQL and configured Redis ready?
+3. `docker compose ... ps` — which service is unhealthy/restarting?
+4. reverse proxy/TLS/tunnel status;
+5. Redis connectivity when Redis mode is enabled;
+6. PostgreSQL connectivity and migration state;
+7. API/web/database/Redis logs as appropriate;
+8. last known-good backup and rollback candidate.
+
+Do not treat a readiness failure as proof that the API process is dead, and do not
+repair projection drift by modifying canonical roadmap snapshots manually.
 
 ## Content Security Policy
 
-The production CSP remains `Content-Security-Policy-Report-Only` during pre-release.
-Enforcement is deferred because the repository has no CSP report collector and no
-recorded production-build browser run proving that Next.js bootstrap scripts,
-styled JSX/inline React styles, Markdown rendering, API requests, and SSE work
-without violations. The policy deliberately avoids adding production
-`script-src 'unsafe-inline'` merely to make enforcement appear ready.
+RoadForge `0.1.0` ships a report-only frontend CSP. This is a known security boundary.
+Do not enable enforcement by adding broad inline-script exceptions. A future enforced
+policy must use a tested nonce/hash strategy compatible with the production Next.js
+runtime.
 
-Before changing the header to `Content-Security-Policy`, run a production build in
-staging, exercise every route and the create/save/share/join/import/export/realtime
-flows, and capture a clean browser console plus Network response headers. Any
-required exception must be narrow and documented. Report-only is observability,
-not blocking protection.
+## Data retention
 
-## Operations
+Roadmap deletion is soft-only until the tracked retention/purge work lands. Operators
+must not promise immediate hard deletion from all server records or backups.
 
-Use HTTPS, narrow trusted proxy CIDRs, non-default secrets, private database/Redis
-networks, log retention controls, and dependency monitoring. The project has no uptime,
-support, or hosted-data recovery guarantee.
+Define backup retention independently and document it for any public deployment.
+
+## Release verification
+
+Before exposing or updating a public instance:
+
+```bash
+make release-check
+```
+
+Then require green exact-head GitHub Actions and perform the deployed checks in
+[Manual QA](manual-qa.md). In particular verify independent owner/editor/viewer
+contexts, revocation, conflicts, realtime recovery, JSON export/import, and safe proxy
+logging.
