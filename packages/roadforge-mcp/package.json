@@ -1,6 +1,6 @@
 {
   "name": "@anvilary/roadforge-mcp",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0",
   "description": "Token-efficient MCP server for RoadForge roadmaps.",
   "type": "module",
   "private": false,
