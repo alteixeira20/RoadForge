@@ -1,135 +1,196 @@
-# Dependency audit policy
+# Dependency audit and lock policy
 
-RoadForge audits JavaScript and Python runtime dependencies on every release candidate.
-Known high-severity findings are release blockers unless a narrowly scoped, documented,
-time-bounded exception exists because no installable fix is available.
+RoadForge treats dependency reproducibility and vulnerability scanning as separate release
+controls: a lock determines *which* artifacts a commit resolves, while an audit checks the
+known security state of that locked graph at a point in time.
 
-## JavaScript audit
+## JavaScript
 
-**Scope:** production dependencies in the pnpm workspace.  
-**Tool:** `pnpm audit`.  
-**Threshold:** high severity and above.
+Production JavaScript dependencies are installed from committed `pnpm-lock.yaml` with:
 
 ```bash
-make audit
-# equivalent production audit
+pnpm install --frozen-lockfile
 pnpm audit --audit-level high --prod
 ```
 
-CI runs the same high-severity production gate.
+The high-severity threshold remains a release gate. Transitive overrides may raise an
+upstream framework pin to an installable patched release, but an override is not an audit
+suppression.
 
-### Transitive overrides
+As of 2026-08-10, `GHSA-2v37-7h3g-55p8` against transitive `nanoid@3.3.16` has a narrowly
+scoped temporary exception on the release-baseline work because the advisory names
+`>=3.3.17` as fixed while an installable legacy 3.x release is not yet available. The
+exception expires/reviews on **2026-08-17**, is tracked by issue #12, and must be removed as
+soon as a patched graph can be installed. The audit severity threshold is not lowered.
 
-RoadForge uses pnpm overrides only when a framework pin leaves an installable patched
-transitive version available:
+## Python authoritative files
 
-| Override | Reason | Removal condition |
-| --- | --- | --- |
-| `postcss: ^8.5.23` | historical PostCSS security fixes above framework-pinned vulnerable ranges | remove when Next's normal graph is at least as safe |
-| `sharp: ^0.35.3` | patched libvips/sharp line used by `next/image` | remove when Next's normal graph is at least as safe |
+The API dependency contract is:
 
-An override is **not** an audit suppression. The resulting package graph must still pass
-`pnpm audit` unless an explicit temporary exception below applies.
+```text
+apps/api/pyproject.toml   declared direct dependencies and optional dev/test/audit groups
+apps/api/uv.lock          generated complete resolution
+apps/api/UV_VERSION       uv version used to maintain/validate the lock
+```
 
-### Current temporary exception
+`uv.lock` is generated data. Never hand-edit resolved versions, hashes, or package records.
 
-As of 2026-08-10:
+The lock is maintained with the exact uv version in `UV_VERSION` so local, CI, and Docker
+use the same lock semantics.
 
-| Field | Value |
-| --- | --- |
-| Advisory | `GHSA-2v37-7h3g-55p8` |
-| Package | transitive `nanoid@3.3.16` through PostCSS |
-| Reason | the advisory names `>=3.3.17` as patched, but npm's installable 3.x/legacy line currently stops at `3.3.16` |
-| Owner | `alteixeira20` |
-| Expiry/review | **2026-08-17** |
-| Tracking | GitHub issue #12 |
-| Removal plan | resolve `nanoid >=3.3.17` through the normal dependency graph, remove the GHSA exception, regenerate the lockfile, and require a clean unsuppressed audit |
+## Python lock validation
 
-The exception is configured by exact GHSA ID in root `pnpm.auditConfig.ignoreGhsas`.
-The audit severity threshold is unchanged and no other nanoid/advisory finding is ignored.
+Run:
 
-Do not silently extend the date. If a patched release is still unavailable at expiry,
-update issue #12 with current upstream evidence and explicitly re-review the exposure.
+```bash
+make api-lock
+```
 
-## Python audit
+or directly:
 
-**Scope:** runtime dependencies from `apps/api/pyproject.toml`; development/test/audit
-tooling is excluded from the production dependency list.  
-**Tool:** `pip-audit`.  
-**Policy:** reported runtime vulnerabilities fail the gate unless an explicitly reviewed
-exception exists.
+```bash
+cd apps/api
+bash scripts/check-lock.sh
+```
+
+The check:
+
+1. installs the pinned uv tool version;
+2. runs `uv lock --check`, failing when `pyproject.toml` and `uv.lock` disagree;
+3. exports the runtime dependency set twice from the existing lock in offline/frozen mode;
+4. requires the two exports to be byte-identical.
+
+CI runs the same contract as the dedicated **API Dependency Lock** job.
+
+## Locked environments
+
+`apps/api/scripts/sync-locked-env.sh` is the shared environment bootstrap.
+
+Runtime only:
+
+```bash
+cd apps/api
+bash scripts/sync-locked-env.sh
+```
+
+Development lint tooling:
+
+```bash
+bash scripts/sync-locked-env.sh dev
+```
+
+Tests:
+
+```bash
+bash scripts/sync-locked-env.sh test
+```
+
+Audit tooling:
+
+```bash
+bash scripts/sync-locked-env.sh audit
+```
+
+Each path first verifies lock drift, then uses `uv sync --frozen`; it does not silently
+re-resolve dependencies.
+
+The CI lint, migration, test, real-Redis, and audit jobs use those locked environments.
+The production API Docker image also installs its runtime graph from `uv.lock` and verifies
+the lock before installing RoadForge itself non-editably.
+
+## Python runtime audit
+
+Run:
 
 ```bash
 make api-audit
 ```
 
-The CI/API audit builds a runtime dependency list rather than auditing unrelated installer
-tooling in the environment.
+The audit does **not** ask pip to independently solve the minimum bounds from
+`pyproject.toml`. Instead it exports the runtime-only set from `uv.lock` and passes that
+exact requirements set to `pip-audit`.
 
-## Reproducibility
+This excludes development/test/audit-only packages from the production application audit
+while ensuring the scanned versions are the versions the release lock actually selected.
 
-### JavaScript
+## Updating Python dependencies
 
-`pnpm-lock.yaml` is committed. CI installs with:
+When adding, removing, or intentionally upgrading a Python dependency:
 
 ```bash
-pnpm install --frozen-lockfile
+cd apps/api
+python -m pip install --disable-pip-version-check "uv==$(cat UV_VERSION)"
+uv lock --python 3.12
+uv lock --check
+cd ../..
 ```
 
-Never hand-edit a resolved dependency/integrity value to make an audit pass. Dependency
-updates must be intentional and reproducible.
+Then review the generated `apps/api/uv.lock` diff. A dependency PR should explain material
+version changes rather than treating the generated diff as opaque.
 
-### Python
+Before opening/merging the PR, run at minimum:
 
-RoadForge still needs a committed generated Python dependency lock for full build
-reproducibility. This is tracked separately in issue #7. Until it lands, the audit checks
-the resolved runtime graph for each candidate but does not make two builds of the same
-commit cryptographically identical dependency sets.
+```bash
+make api-lock
+make api-audit
+make api-lint
+make api-test
+make api-check
+```
 
-## Exception process
+For a release candidate, also require the complete container/release CI because the
+production API image consumes the lock.
 
-A dependency-audit exception is allowed only when a normal patched dependency cannot be
-installed safely yet or the vulnerability is demonstrably unreachable and an immediate
-upgrade would create greater verified risk.
+Do not use `uv sync` without `--frozen` in validation/production paths merely to make a
+stale lock pass. Regeneration is an intentional dependency update and belongs in the diff.
+
+## Updating uv itself
+
+Changing `apps/api/UV_VERSION` is a dependency-tooling change. In the same PR:
+
+1. update `UV_VERSION`;
+2. regenerate `uv.lock` with the new uv version;
+3. run `make api-lock`;
+4. compare the lock diff for unexpected resolver changes;
+5. run API audit/tests/migrations/container validation.
+
+Do not float to whatever uv version happens to be preinstalled on a contributor or CI
+runner.
+
+## Suppression process
+
+Vulnerability suppression is temporary and exact-ID only.
 
 Every exception must record:
 
 - GHSA/CVE ID;
 - package and resolved version/path;
-- why an immediate fix is unavailable/inapplicable;
+- why an immediate patched graph cannot be used;
 - owner;
-- expiry/review date, maximum 90 days and normally much shorter;
+- expiry/review date (maximum 90 days, normally much shorter);
 - tracking issue;
 - concrete removal plan.
 
-JavaScript exceptions must target specific advisory IDs (`ignoreGhsas` / `ignoreCves`),
-never an entire dependency. Python exceptions must likewise target specific vulnerability
-IDs.
+Do not suppress an entire package when a single advisory is the exception. Do not silently
+extend an expiry date. An expired undocumented exception is a release failure.
 
-An exception is not permission to stop checking for a fix. The owner should remove it as
-soon as an installable patched graph exists, even before the expiry date.
+## Automated dependency updates
 
-## Dependency update review
+Automated update tooling may propose changes, but generated PRs do not bypass review. A
+dependency bot must update the authoritative manifest/lock pair supported by the ecosystem
+and still pass the same audit, test, migration, and production-image gates.
 
-For every security-driven update:
-
-1. identify the actual vulnerable path;
-2. prefer the upstream/direct patched graph over a permanent override;
-3. regenerate the lock intentionally;
-4. install with frozen-lock verification;
-5. run the dependency audit;
-6. run relevant build/runtime tests because semver-compatible transitive changes can still break behavior;
-7. remove obsolete overrides/exceptions.
-
-Dependabot is configured where supported, but automated update PRs still require the same
-review/evidence as manual dependency changes.
+If an updater cannot safely maintain `uv.lock`, keep Python updates manual rather than
+accepting manifest-only drift.
 
 ## Release rule
 
-A release may proceed only when:
+A RoadForge release candidate must have:
 
-- production JS/Python audit gates pass; or
-- every remaining blocking finding has an unexpired exact-ID exception satisfying this
-  policy and an explicit release note when material to users/operators.
+- a frozen `pnpm-lock.yaml` accepted by `pnpm install --frozen-lockfile`;
+- a `uv.lock` accepted by `uv lock --check`;
+- JavaScript and locked Python runtime audits passing, except for documented unexpired
+  exact-advisory exceptions;
+- tests/migrations/container builds executed against the locked graphs.
 
-Expired or undocumented exceptions are release failures.
+A green audit from a different dependency resolution is not evidence for the candidate.
