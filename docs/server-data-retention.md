@@ -1,7 +1,8 @@
 # Server data retention and purge
 
 RoadForge `0.1.0` distinguishes browser deletion, server soft deletion, and final server
-purge. This document is the operator contract for final cleanup of server-side data.
+purge. This document is the operator contract for final cleanup of server-side data and
+the implementation contract for the retention gap tracked in GitHub issue #9.
 
 The Anvilary-hosted instance is a demo/convenience deployment. Users should keep JSON
 exports of important roadmaps they control; server history is not a substitute for a
