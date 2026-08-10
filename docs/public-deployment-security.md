@@ -120,7 +120,7 @@ The health endpoints have one authoritative meaning:
 | --- | --- |
 | `GET /api/health/live` | Process liveness only; no external dependency checks |
 | `GET /api/health/ready` | PostgreSQL and configured Redis readiness |
-| `GET /api/health` | Backward-compatible alias for readiness |
+| `GET /api/health` | backward-compatible alias for readiness |
 
 A `503` from `/api/health` or `/api/health/ready` means a required dependency is not
 ready; it does not by itself prove that the API process is dead.
