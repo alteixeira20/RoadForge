@@ -18,7 +18,10 @@ export default defineConfig({
   ],
   use: {
     baseURL,
-    viewport: { width: 1280, height: 800 },
+    // Keep the general desktop fixture tall enough that pointer-drag tests do
+    // not start with their destination just outside the viewport. Responsive
+    // and 200%-reflow coverage sets its own explicit viewports in the specs.
+    viewport: { width: 1280, height: 900 },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
