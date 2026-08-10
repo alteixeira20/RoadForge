@@ -1,9 +1,9 @@
 name: Temporary API Lock Generator
 
 on:
-  push:
+  pull_request:
     branches:
-      - foundation/python-lock
+      - dev
 
 permissions:
   contents: read
