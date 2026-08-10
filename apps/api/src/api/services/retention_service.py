@@ -17,7 +17,6 @@ from api.models.roadmap import (
 )
 from api.services.roadmap_helpers import _patch_task_claim_snapshot
 
-
 MIN_SESSION_GRACE_DAYS = 1
 MIN_ACTIVITY_DAYS = 30
 MIN_VERSION_DAYS = 30
