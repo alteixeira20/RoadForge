@@ -25,9 +25,14 @@ shares rate-limit and realtime coordination state across workers/instances.
 
 ## Browser headers and CSP
 
-[Security Headers Policy](./security-headers-policy.md) records current browser/proxy header
-behavior and the Content Security Policy boundary. The `0.1.0` release baseline keeps CSP
-report-only until the tracked nonce-based enforcement design is implemented and validated.
+[Security Headers and Content Security Policy](./security-headers-policy.md) defines the
+per-response nonce strategy, production enforcement, report-only observation/rollback mode,
+`connect-src` API/SSE compatibility, no-store requirement for nonce-bearing HTML, reverse
+proxy responsibilities, sanitized incident evidence, and automated browser proof.
+
+Production `script-src` does not use `unsafe-inline` or `unsafe-eval`. Inline CSS remains a
+documented separate compatibility boundary because the current UI uses dynamic style
+attributes.
 
 ## Public deployments
 
@@ -64,5 +69,5 @@ lock used by locked validation.
 
 Security-sensitive changes should include negative/failure-path tests, not only successful
 owner paths. Never put invite/session tokens, passwords, private roadmap exports, database
-credentials, Redis credentials, or unredacted private logs in public issues or release
-evidence.
+credentials, Redis credentials, full token-bearing join URLs, or unredacted private logs in
+public issues or release evidence.
