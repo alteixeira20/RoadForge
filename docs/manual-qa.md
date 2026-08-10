@@ -12,7 +12,8 @@ From a clean checkout of the candidate:
 make release-check
 ```
 
-Then require the exact candidate's GitHub Actions jobs to be green.
+Then require the exact candidate's GitHub Actions jobs to be green, including the locked
+API and production CSP gates when their paths are relevant.
 
 For a disposable local QA database, you may start from a reset:
 
@@ -252,22 +253,66 @@ On the public Anvilary deployment:
 - [ ] users can tell the deployment is a demo/convenience service;
 - [ ] the UI/docs advise exporting important work as JSON;
 - [ ] nothing implies managed backup, guaranteed durability, or account recovery;
+- [ ] synced deletion wording distinguishes soft deletion, final live-database purge, and backup retention;
 - [ ] self-hosting and source links are discoverable.
 
-## 17. Deployment smoke
+## 17. Production CSP rollout and deployment smoke
 
-Against the real candidate deployment:
+For a new public deployment or meaningful Next.js/frontend runtime upgrade, first deploy
+the **exact candidate revision** with:
+
+```text
+ROADFORGE_CSP_MODE=report-only
+```
+
+During the bounded observation period:
 
 - [ ] HTTPS is valid.
 - [ ] `/api/health/live` is 200.
 - [ ] `/api/health/ready` is 200.
 - [ ] `/api/health` behaves as the readiness alias.
-- [ ] expected security headers are present.
-- [ ] CSP is accurately report-only for `0.1.0`.
-- [ ] access logs do not contain invite query strings or `Referer` values.
+- [ ] baseline security headers are present.
+- [ ] the frontend emits exactly one `Content-Security-Policy-Report-Only` header and no conflicting proxy/Cloudflare CSP.
+- [ ] the report-only `script-src` contains a per-response nonce and contains neither `unsafe-inline` nor production `unsafe-eval`.
+- [ ] document HTML is `private, no-store` while static assets remain cacheable normally.
 - [ ] create/share/join/revoke/conflict/realtime/import/export flows work through the actual proxy/tunnel.
+- [ ] owner/editor/viewer contexts produce no unexpected CSP console reports.
+- [ ] fonts, icons, images, manifest, downloads, dynamic colors/styles, API fetches, and SSE remain functional.
+- [ ] access logs do not contain invite query strings or `Referer` values.
 
-## 18. Backup and restore proof
+After the observation result is clean, change only the deployment mode to:
+
+```text
+ROADFORGE_CSP_MODE=enforce
+```
+
+Then verify again:
+
+- [ ] the frontend now emits exactly one enforced `Content-Security-Policy` header and no report-only duplicate;
+- [ ] page reloads produce different nonce values;
+- [ ] production `script-src` still contains no `unsafe-inline` or `unsafe-eval`;
+- [ ] the critical local/create/import/export/share/join/realtime flows still work;
+- [ ] browser console contains no unexpected CSP violations.
+
+If a legitimate RoadForge flow is reproducibly blocked, return the deployment to
+`report-only` on the same build while fixing the specific directive/source. Do not add a
+broad production script exception merely to pass QA.
+
+## 18. Retention dry run
+
+Against any candidate deployment that already contains synced data, run the retention
+command in dry-run mode before release:
+
+- [ ] record the emitted UTC `as_of` value and policy thresholds;
+- [ ] counts are plausible for the deployment and contain no roadmap/user/token content;
+- [ ] active/newly deleted roadmaps are not selected;
+- [ ] no category unexpectedly saturates the configured batch limit without investigation;
+- [ ] a current database backup exists before any planned destructive purge.
+
+Do not run `--execute --confirm PURGE` merely as a release smoke test. Destructive retention
+is an operator lifecycle action, not a mandatory release-candidate mutation.
+
+## 19. Backup and restore proof
 
 For a schema-sensitive release:
 
@@ -279,7 +324,7 @@ For a schema-sensitive release:
 
 Never test restore by overwriting the live RoadForge database.
 
-## 19. Release record
+## 20. Release record
 
 Record:
 
@@ -290,6 +335,9 @@ Date:
 Automated CI: PASS / FAIL
 Manual local QA: PASS / FAIL
 Deployed QA: PASS / FAIL / NOT RUN
+CSP report-only observation: PASS / FAIL / NOT RUN
+CSP enforcement verification: PASS / FAIL / NOT RUN
+Retention dry-run: PASS / FAIL / NOT RUN
 Screen-reader smoke:
 Backup/restore proof:
 Known accepted limitations:

@@ -32,7 +32,8 @@ At minimum, configure:
 - `ROADFORGE_WEB_BASE_URL`;
 - explicit `ROADFORGE_CORS_ORIGINS`;
 - narrow `ROADFORGE_TRUSTED_PROXY_IPS`;
-- realtime backend and Redis URL when required.
+- realtime backend and Redis URL when required;
+- `ROADFORGE_CSP_MODE` during CSP observation/enforcement rollout.
 
 Run the deployment doctor/config validation documented under `deploy/self-hosted` before
 starting the public stack.
@@ -209,10 +210,39 @@ repair projection drift by modifying canonical roadmap snapshots manually.
 
 ## Content Security Policy
 
-RoadForge `0.1.0` ships a report-only frontend CSP. This is a known security boundary.
-Do not enable enforcement by adding broad inline-script exceptions. A future enforced
-policy must use a tested nonce/hash strategy compatible with the production Next.js
-runtime.
+Production RoadForge uses an enforced per-response nonce CSP by default. The application,
+not nginx, is the authoritative CSP owner for frontend document responses.
+
+For a first public deployment or after a meaningful Next.js/frontend-runtime upgrade, run a
+bounded observation period first:
+
+```sh
+ROADFORGE_CSP_MODE=report-only
+```
+
+Exercise the deployed manual QA matrix and inspect browser CSP reports. After the same exact
+revision is clean, switch to:
+
+```sh
+ROADFORGE_CSP_MODE=enforce
+```
+
+Production defaults to `enforce` when the variable is unset or invalid. Switching a broken
+legitimate deployment back to `report-only` is the immediate CSP rollback; do not add broad
+production script `unsafe-inline` or `unsafe-eval` exemptions.
+
+Nonce-bearing document responses are `private, no-store`. Do not configure nginx,
+Cloudflare, or another CDN to cache frontend HTML. Static Next.js/public assets remain
+outside nonce middleware and retain normal caching.
+
+The maintained nginx config forwards `X-Forwarded-Proto: https`, which lets the application
+add `upgrade-insecure-requests` only for externally HTTPS traffic. Do not inject a second
+CSP at nginx/Cloudflare unless you deliberately replace application CSP ownership and rerun
+the production browser proof.
+
+See [Security headers and Content Security Policy](security/security-headers-policy.md) for
+the policy, observation procedure, rollback criteria, sanitized incident evidence, and
+automated test contract.
 
 ## Release verification
 
@@ -224,8 +254,8 @@ make release-check
 
 Then require green exact-head GitHub Actions and perform the deployed checks in
 [Manual QA](manual-qa.md). In particular verify independent owner/editor/viewer
-contexts, revocation, conflicts, realtime recovery, JSON export/import, and safe proxy
-logging.
+contexts, revocation, conflicts, realtime recovery, JSON export/import, CSP console state,
+and safe proxy logging.
 
 For a deployment that already contains synced user data, also run the retention command in
 dry-run mode and verify that the reported policy/counts match the operator's documented

@@ -133,7 +133,7 @@ make release-check
 ```
 
 The complete exact-head release evidence additionally runs in GitHub Actions, including
-browser, Redis, dependency, container, deployment, and MCP checks.
+browser, Redis, dependency, container, deployment, CSP, and MCP checks.
 
 Focused commands:
 
@@ -142,6 +142,7 @@ pnpm --dir apps/web test
 pnpm --dir apps/web lint
 pnpm --dir apps/web typecheck
 pnpm --dir apps/web build
+pnpm --dir apps/web test:browser:production
 pnpm --dir packages/roadforge-mcp check
 
 make api-lock
@@ -182,8 +183,8 @@ Start with:
 ## Health and operations
 
 Public deployments must terminate HTTPS at a trusted edge, configure explicit CORS
-origins, restrict trusted proxy addresses, and keep credentials/query strings out of
-retained logs.
+origins, restrict trusted proxy addresses, preserve the app-owned CSP, and keep
+credentials/query strings out of retained logs.
 
 Health endpoints have one contract:
 
@@ -202,7 +203,8 @@ These are explicit release boundaries, not hidden guarantees:
 - browser-local data can be lost when site storage is cleared;
 - the hosted Anvilary instance is a demo/convenience deployment, not a managed backup service;
 - synced roadmap deletion is soft-first; final live-database purge follows the bounded operator retention schedule and backup copies have their own lifecycle;
-- Content Security Policy is report-only pending an enforced nonce-based design;
+- production scripts are protected by enforced nonce CSP, while inline CSS remains an explicit compatibility boundary;
+- nonce-bearing HTML is dynamically rendered and intentionally not CDN-cacheable;
 - MCP currently reuses participant credentials and remains experimental;
 - multi-browser/deployed collaboration still requires release-candidate manual validation.
 

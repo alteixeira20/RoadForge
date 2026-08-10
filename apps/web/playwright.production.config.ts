@@ -5,7 +5,11 @@ const baseURL = `http://127.0.0.1:${port}`
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: '**/hydration.spec.ts',
+  testMatch: [
+    '**/csp.spec.ts',
+    '**/clean-beta-smoke.spec.ts',
+    '**/hydration.spec.ts',
+  ],
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -19,7 +23,11 @@ export default defineConfig({
   },
   webServer: {
     command: 'corepack pnpm build && node scripts/serve-standalone.mjs',
-    env: { PORT: String(port), HOSTNAME: '127.0.0.1' },
+    env: {
+      PORT: String(port),
+      HOSTNAME: '127.0.0.1',
+      ROADFORGE_CSP_MODE: 'enforce',
+    },
     url: baseURL,
     reuseExistingServer: false,
     timeout: 180_000,
