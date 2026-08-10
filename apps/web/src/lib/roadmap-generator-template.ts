@@ -1,10 +1,9 @@
 export const ROADMAP_GENERATOR_TEMPLATE = `# RoadForge Roadmap Generator Template
 
-Create a RoadForge JSON file that can be imported into RoadForge.
+Create a RoadForge JSON file that can be imported into the current RoadForge application.
+Use this template with a planning/text-generation tool, then return a final \`.json\` file.
 
-Use this template with a text-generation or planning tool, then produce a final .json file for RoadForge.
-
-## Fill in
+## Project input
 
 Project name:
 
@@ -12,7 +11,7 @@ Product goal:
 
 Existing completed work:
 
-Pending features:
+Pending work:
 
 Deployment target:
 
@@ -22,11 +21,11 @@ Preferred phases:
 
 Priority rules:
 
-## Valid schema example
+## Current import schema example
 
 \`\`\`json
 {
-  "schema": "anvilary.roadmap.import",
+  "schema": "roadforge.roadmap.import",
   "version": 1,
   "roadmap": {
     "name": "Example Roadmap"
@@ -50,7 +49,7 @@ Priority rules:
       "tasks": [
         {
           "id": "RF-101",
-          "title": "Define MVP scope",
+          "title": "Define the first release scope",
           "done": true,
           "next": false,
           "est": "1 day",
@@ -61,14 +60,14 @@ Priority rules:
         },
         {
           "id": "RF-102",
-          "title": "Draft implementation plan",
+          "title": "Draft the implementation plan",
           "done": false,
           "next": true,
           "est": "2 days",
           "tags": ["planning"],
           "assignees": ["Alex", "Sam"],
           "deps": ["RF-101"],
-          "desc": "Convert scope into sequenced work and link to [supporting context](https://example.com).",
+          "desc": "Convert the scope into sequenced work and link supporting context where useful.",
           "parentId": "RF-101"
         }
       ]
@@ -79,19 +78,24 @@ Priority rules:
 
 ## RoadForge constraints
 
-- Status values: done, active, next, future.
-- Progress must be a number from 0 to 100.
-- Task IDs should be stable and readable, for example RF-101.
-- Dependencies use task IDs in deps.
-- Subtasks use parentId set to another task ID.
-- Top-level tagRegistry entries define stable tag IDs, labels, and optional #rrggbb colors.
-- Task tags reference tagRegistry IDs. Task assignees are names in an assignees array.
-- desc supports Markdown paragraphs, bold, italic, inline code, links, lists, and checkboxes, up to 5000 characters.
-- Optional task fields: next, est, tags, assignees, deps, desc, parentId.
-- Use double quotes and do not include trailing commas.
-- Do not include session tokens, invite tokens, passwords, auth cache, or browser storage data.
+- Use \`schema: "roadforge.roadmap.import"\` for newly generated import files.
+- \`version\` is currently \`1\`.
+- Phase \`status\` values are \`done\`, \`active\`, \`next\`, or \`future\`.
+- Phase \`progress\` is a number from 0 to 100 and should reflect task completion.
+- Task IDs must be unique and stable within the roadmap.
+- Dependencies reference task IDs through \`deps\`.
+- Subtasks use \`parentId\` referencing another task ID in the roadmap.
+- \`tagRegistry\` defines stable tag IDs; task \`tags\` reference those IDs.
+- Task \`assignees\` are planning labels and do not grant collaboration access.
+- \`desc\` supports the Markdown subset accepted by RoadForge and is limited by the current parser/API contract.
+- Optional task fields include \`next\`, \`est\`, \`tags\`, \`assignees\`, \`deps\`, \`desc\`, \`parentId\`, and supported credential-free external links.
+- Never include participant sessions, invite tokens, passwords, browser auth/cache metadata, database credentials, or private secrets.
+- Use valid JSON with double quotes and no comments/trailing commas.
+
+RoadForge remains backward-compatible with supported legacy \`anvilary.*\` schema IDs, but
+new generator output should use the current \`roadforge.*\` identifier.
 
 ## Final output instruction
 
-Return only the final JSON. Do not wrap it in Markdown. Do not include comments.
+Return only the final JSON. Do not wrap it in Markdown. Do not include comments or prose.
 `
