@@ -17,7 +17,7 @@
     "test": "pnpm --dir apps/web test",
     "test:web": "pnpm --dir apps/web test"
   },
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0",
   "description": "Local-first, accountless roadmap planning for individuals and small teams.",
   "license": "PolyForm-Noncommercial-1.0.0",
   "homepage": "https://roadforge.anvilary.tools",
