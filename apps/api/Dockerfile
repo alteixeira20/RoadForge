@@ -2,16 +2,22 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    ROADFORGE_API_WORKERS=1
+    ROADFORGE_API_WORKERS=1 \
+    PATH="/app/.venv/bin:${PATH}"
 
 WORKDIR /app
 
-# The local package declares src/api as its wheel content, so source must be
-# present before installation. Copying only pyproject.toml made clean builds
-# attempt to install a package that did not exist in the image yet.
-COPY pyproject.toml ./
+# Pin the lock-maintenance tool independently from the application dependency
+# graph. The first sync installs only third-party runtime dependencies so Docker
+# can cache that layer; the second sync validates the lock against the complete
+# project and installs RoadForge non-editably into the same virtual environment.
+COPY UV_VERSION pyproject.toml uv.lock ./
+RUN python -m pip install --no-cache-dir --disable-pip-version-check "uv==$(cat UV_VERSION)" \
+    && uv lock --check \
+    && uv sync --frozen --no-dev --no-install-project
+
 COPY src/ ./src/
-RUN python -m pip install --no-cache-dir --disable-pip-version-check .
+RUN uv sync --locked --no-dev --no-editable
 
 COPY alembic.ini ./
 COPY alembic/ ./alembic/

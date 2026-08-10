@@ -1,0 +1,166 @@
+name: API Locked Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/api/**'
+      - 'Makefile'
+      - 'docs/security/dependency-audit-policy.md'
+      - '.github/workflows/api-locked.yml'
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - 'apps/api/**'
+      - 'Makefile'
+      - 'docs/security/dependency-audit-policy.md'
+      - '.github/workflows/api-locked.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-locked-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lock-lint-audit:
+    name: Lock, Lint & Runtime Audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Verify lock drift and deterministic export
+        working-directory: apps/api
+        run: bash scripts/check-lock.sh
+
+      - name: Sync locked development environment
+        working-directory: apps/api
+        run: bash scripts/sync-locked-env.sh dev
+
+      - name: Run ruff from the locked environment
+        working-directory: apps/api
+        run: uv run --no-sync ruff check src/
+
+      - name: Audit the locked runtime dependency set
+        working-directory: apps/api
+        run: bash scripts/audit-locked-runtime.sh
+
+  migration-drift:
+    name: Locked Migration / Schema Drift
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: roadforge
+          POSTGRES_PASSWORD: roadforge
+          POSTGRES_DB: roadforge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U roadforge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Sync locked runtime environment
+        working-directory: apps/api
+        run: bash scripts/sync-locked-env.sh
+
+      - name: Run migrations
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge
+        run: uv run --no-sync alembic upgrade head
+
+      - name: Check ORM/migration drift
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge
+        run: uv run --no-sync alembic check
+
+  tests:
+    name: Locked PostgreSQL & Redis Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: roadforge
+          POSTGRES_PASSWORD: roadforge
+          POSTGRES_DB: roadforge_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U roadforge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Sync locked test environment
+        working-directory: apps/api
+        run: bash scripts/sync-locked-env.sh test
+
+      - name: Run API test suite
+        working-directory: apps/api
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge_test
+        run: uv run --no-sync python -m pytest -q --junitxml=pytest-report.xml
+
+      - name: Run real-Redis revocation suite
+        working-directory: apps/api
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge_test
+          REAL_REDIS_TEST_URL: redis://localhost:6379/0
+        run: uv run --no-sync python -m pytest -q tests/test_realtime_revocation.py
+
+      - name: Upload API test report
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: api-locked-pytest-report
+          path: apps/api/pytest-report.xml
+          if-no-files-found: ignore
+          retention-days: 7
