@@ -1,199 +1,218 @@
 # Contributor guide
 
-This guide is the shortest path from a fresh clone to a safe, reviewable
-RoadForge change. The repository is the source of truth; roadmap descriptions
-are plans and evidence, not proof that code exists.
+This guide is the shortest path from a fresh clone to a safe RoadForge change. Read
+[`docs/README.md`](README.md) first if you need to understand which documents are current
+contracts versus design/history records.
 
-RoadForge is source-available under the PolyForm Noncommercial License 1.0.0.
-Contributions do not grant commercial-use rights, and the project is not
-OSI-approved open source.
+## Reference toolchain
 
-## Fresh-clone walkthrough
+- Git
+- Node.js **24** (`.nvmrc`)
+- pnpm **9.15.9** (root `packageManager`)
+- Python **3.12**
+- `uv` for a direct Python development environment
+- Docker + Docker Compose for the standard PostgreSQL/Redis-backed paths
 
-Prerequisites:
+The JavaScript manifests currently accept Node `>=22 <27`; Node 24 is the reference
+version used for development/CI and the version contributors should use unless they are
+explicitly testing compatibility.
 
-- Git;
-- Node.js 20 or newer with Corepack;
-- pnpm 9;
-- Python 3.12 and `uv`;
-- Docker with Docker Compose for PostgreSQL-backed API tests.
-
-From a new clone:
+## Fresh clone
 
 ```bash
 git clone https://github.com/alteixeira20/RoadForge.git
 cd RoadForge
-COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack enable
-COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm install --frozen-lockfile
+corepack enable
+pnpm install --frozen-lockfile
+```
+
+For direct API development:
+
+```bash
 cd apps/api
 uv venv --python 3.12
 uv pip install --python .venv/bin/python3 -e ".[dev,test,audit]"
 cd ../..
 ```
 
-Start the application:
+Start the normal local stack:
 
 ```bash
 make start
 make status
 ```
 
-The web application uses `http://localhost:3020`; the API health endpoint uses
-`http://localhost:7878/api/health`. Stop the stack with `make stop`. Never use
-`make reset` unless deleting the local development database is intentional.
+RoadForge runs at `http://localhost:3020`; the local API is
+`http://localhost:7878`. Stop it with `make stop`.
 
-Run the complete pre-PR gate:
+`make reset` destroys the local development database before starting the stack. Do not
+use it merely to fix an application problem you have not understood.
+
+## Pre-PR gate
+
+Run:
 
 ```bash
 make release-check
 ```
 
-That target runs web tests and builds, API lint/tests, migration drift checks,
-and `git diff --check`. It may start the local PostgreSQL container. A
-database-free API unit run is:
+Use focused tests while iterating, but do not replace the final applicable gate with a
+narrow test that happens to pass.
 
-```bash
-cd apps/api
-uv run --no-sync python3 -m pytest -q unit_tests
-```
+The exact release candidate additionally relies on GitHub Actions for browser, Redis,
+dependency, container, deployment, and MCP evidence.
 
-## Architecture and module ownership
+## Architecture in one page
 
 RoadForge has two valid operating modes:
 
 ```text
 local roadmap
-  browser state → scoped localStorage → portable JSON export
+  browser state -> scoped localStorage -> portable JSON export
 
 synced roadmap
-  browser cache → typed web service → FastAPI router/service
-                → PostgreSQL canonical snapshot + history/activity
-                → relational projections (derived)
-                → SSE/Redis coordination (volatile)
+  browser cache -> typed web service -> FastAPI router/service
+                -> PostgreSQL canonical snapshot + history/activity
+                -> derivative relational projections
+                -> memory/Redis realtime coordination
 ```
 
-| Area | Primary owner | Change boundary |
-| --- | --- | --- |
-| Routes and page composition | `apps/web/src/app/` | Route entry points and server/client page boundaries |
-| Workspace and feature UI | `apps/web/src/components/` | Rendering, accessible interaction, and feature composition |
-| Client state transitions | `apps/web/src/hooks/` and `apps/web/src/context/` | Hydration, mutations, autosync, locks, claims, realtime, and modal lifecycle |
-| Portable data rules | `apps/web/src/types/roadmap.ts`, `apps/web/src/lib/roadmap-validation.ts`, `roadmap-upgrade.ts`, and import/export helpers | Types, validation, repair, compatibility, merge, and export |
-| Browser persistence | `apps/web/src/lib/storage.ts` | Roadmap-scoped `localStorage`, runtime metadata, and recovery cache |
-| Browser/API contracts | `apps/web/src/services/` | HTTP, collaboration, lock, sharing, and realtime boundaries |
-| API transport | `apps/api/src/api/routers/` and `schemas/` | Role checks at entry points and validated request/response contracts |
-| API domain behavior | `apps/api/src/api/services/` | Authorization, roadmap writes, versions, sharing, locks, events, and projections |
-| Database mapping | `apps/api/src/api/models/` | SQLAlchemy persistence model; schema changes require Alembic |
-| Database evolution | `apps/api/alembic/versions/` | Forward migrations and compatibility with existing stored roadmaps |
-| Deployment | `deploy/`, `docker-compose.yml`, and `docs/self-hosting.md` | Containers, proxy, backup/restore, update, and rollback operations |
-| Canonical bundled template | `docs/roadforge-roadmap.json` | Parser-valid first-run template and current roadmap evidence |
+Important consequences:
 
-`Workspace` is the browser composition root. Keep state ownership in focused
-hooks/components rather than moving unrelated behavior into it. API routers
-should remain thin; domain and authorization behavior belongs in services.
-Do not bypass services from a new route merely to shorten a change.
+- local-only roadmaps must remain useful without the API;
+- for synced roadmaps, PostgreSQL roadmap snapshot/tag-registry data is canonical;
+- phase/task relational rows are derivative and rebuildable;
+- realtime events/locks/tickets are coordination state, not roadmap truth;
+- optimistic writes use exact server revisions and must not silently overwrite conflicts;
+- portable JSON contains roadmap planning data, never participant credentials or runtime state.
 
 Start architectural work with:
 
-- [Architecture overview](architecture/overview.md);
-- [Frontend foundation](frontend-foundation.md);
-- [Backend API](backend-api.md);
-- [Source-of-truth rules](architecture/source-of-truth-rules.md).
+- [`architecture/overview.md`](architecture/overview.md)
+- [`architecture/source-of-truth-rules.md`](architecture/source-of-truth-rules.md)
+- [`../docs/access-model.md`](access-model.md)
+- [`frontend-foundation.md`](frontend-foundation.md)
+- [`backend-api.md`](backend-api.md)
 
-## Roadmap schema and compatibility
+## Module ownership
 
-The actual import contract is implemented by
-`apps/web/src/lib/roadmap-validation.ts`, with historical normalization in
-`apps/web/src/lib/roadmap-upgrade.ts`. TypeScript interfaces alone do not prove
-that imported data is accepted.
+| Area | Primary implementation boundary |
+| --- | --- |
+| Route/page composition | `apps/web/src/app/` |
+| Workspace/feature UI | `apps/web/src/components/` |
+| Client state and mutation orchestration | `apps/web/src/hooks/`, `apps/web/src/context/` |
+| Portable roadmap parsing/repair | `apps/web/src/lib/roadmap-validation.ts`, `roadmap-upgrade.ts` |
+| Browser persistence | `apps/web/src/lib/storage.ts` |
+| Browser/API calls | `apps/web/src/services/` |
+| API transport and schemas | `apps/api/src/api/routers/`, `schemas/` |
+| API domain/authorization behavior | `apps/api/src/api/services/` |
+| Database mapping | `apps/api/src/api/models/` |
+| Schema evolution | `apps/api/alembic/versions/` |
+| Production/self-hosting | `deploy/`, `docker-compose.yml`, operational docs |
+| First-run starter example | `apps/web/src/data/roadforge-template.ts` |
+| RoadForge project-planning snapshot | `docs/roadforge-roadmap.json` — planning only, **not** the starter template |
 
-The portable document contains a roadmap name, phase list, and tag registry.
-Phases own ordered tasks; task dependency IDs resolve within the roadmap.
-Progress is derived from completion state. Exactly one eligible task may be
-marked `next`. Runtime credentials, participant sessions, edit locks, conflict
-state, and other volatile collaboration metadata are not portable data.
+Keep API routers thin. Keep unrelated behavior out of `Workspace`. Components/hooks
+should consume service modules rather than creating ad-hoc fetch calls.
 
-When changing the contract:
+## Roadmap data contract
 
-1. update the owned TypeScript type and the real parser/repair path;
-2. preserve historical input behavior or add an explicit upgrade;
-3. update maximal and historical compatibility fixtures;
-4. update merge, replace, export, checkpoint, and restore tests;
-5. update API schemas only when the synced contract changes;
-6. validate `docs/roadforge-roadmap.json` through the real parser.
+The real browser import contract is owned by:
 
-Do not weaken validation to make a fixture pass. Do not add a second hard-coded
-template. Preserve unknown database data and persisted contracts unless an
-explicit, tested migration owns the change.
+```text
+apps/web/src/lib/roadmap-validation.ts
+```
 
-## Storage and source-of-truth boundaries
+with historical normalization/upgrade behavior in the relevant upgrade helpers and
+compatibility tests.
 
-| Data | Source of truth | Safety rule |
-| --- | --- | --- |
-| Local-only roadmap | Browser roadmap cache | Must remain useful without API access and export portably |
-| Synced phases/tasks/tags | PostgreSQL roadmap snapshot | Browser cache is an optimistic working/recovery copy |
-| Relational phase/task rows | PostgreSQL projections | Derived; parity/backfill guards must pass before relying on them |
-| Versions and activity | PostgreSQL | Recovery/audit records; activity must not duplicate autosync actions |
-| Locks, event tickets, rate limits | Memory for one worker or Redis for multi-worker | Volatile coordination, never portable roadmap content |
-| Invite/session tokens and passwords | Sharing/session boundary | Never log, export, place in task text, or put into non-invite URLs |
-| GitHub issues, PRs, commits, checks | GitHub | References do not automatically mutate RoadForge task state |
+When changing portable roadmap data:
 
-Read [source-of-truth rules](architecture/source-of-truth-rules.md) before
-changing import/export, partial writes, storage, or external links.
+1. update the actual parser/repair path, not only TypeScript types;
+2. preserve accepted historical inputs or add an explicit upgrade path;
+3. update compatibility/maximal fixtures and round-trip tests;
+4. update import merge/replace behavior;
+5. update API schemas when the synced contract changes;
+6. prove exports contain no runtime credentials.
 
-## Security boundaries
+Do not weaken validation only to make a sample file pass.
 
-RoadForge is accountless. Owner/editor/viewer access, invite tokens, optional
-roadmap passwords, participant sessions, lock ownership, and claim override
-rules are security boundaries—not UI hints.
+## Browser persistence
 
-- Enforce permissions in the API even when the web UI hides an action.
-- Keep bearer credentials out of logs, exports, issue reports, analytics, URLs
-  other than purpose-built invite links, and error messages.
-- Preserve local drafts when sessions expire or access changes.
-- Require Redis before enabling multiple API workers.
-- Treat imports and user-authored Markdown/links as untrusted input.
-- Do not add accounts, OAuth/OIDC, personal access tokens, a generic public API
-  v1, webhooks, service accounts, billing, or automatic GitHub task mutation.
-- MCP changes must remain roadmap-scoped, use existing participant permissions,
-  read credentials from the host environment, and preserve optimistic concurrency.
+All browser persistence must go through the storage boundary rather than direct component
+`localStorage` writes for roadmap/auth state.
 
-Review [Access model](access-model.md), [Security documentation](security/README.md),
-and [Public deployment security](public-deployment-security.md) for relevant
-changes. Vulnerabilities must follow [SECURITY.md](../SECURITY.md).
+Storage failures are product-visible because local-only roadmap durability depends on the
+browser. A failed write must not be represented as a successful save.
 
-## Tests and migrations
+Display-only preferences may have separate storage only when their value justifies a new
+persistence contract; avoid creating local preference systems for trivial presentation
+choices.
 
-Frontend:
+## Authorization and security
+
+RoadForge is accountless, but protected server operations are authenticated and
+role-scoped.
+
+Preserve these rules:
+
+- enforce owner/editor/viewer permissions in the API;
+- never log/export raw invite tokens, participant session tokens, passwords, or Redis/database credentials;
+- keep participant credentials out of normal URLs;
+- preserve local drafts when access expires/revokes or server writes fail;
+- use Redis before multiple API processes/instances share realtime state;
+- treat imports, Markdown, and external links as untrusted input;
+- do not smuggle accounts/OAuth/global API keys into an unrelated feature.
+
+Security-sensitive changes require negative authorization tests, not only successful
+owner-path coverage.
+
+## Tests
+
+Frontend unit/static checks:
 
 ```bash
-COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm --dir apps/web test
-COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm lint
-COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm typecheck
-COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm build
+pnpm --dir apps/web test
+pnpm --dir apps/web lint
+pnpm --dir apps/web typecheck
+pnpm --dir apps/web build
+```
+
+Browser tests:
+
+```bash
+pnpm --dir apps/web test:browser
+pnpm --dir apps/web test:browser:production
 ```
 
 API:
 
 ```bash
-cd apps/api
-uv run --no-sync ruff check src
-uv run --no-sync python3 -m pytest -q
-cd ../..
+make api-lint
+make api-test
+make api-check
 ```
 
-Use focused tests first. Database-backed API tests require PostgreSQL; do not
-convert a connection failure into a passing skip.
-
-Changes to hydration, filtering, import/export, or autosync payloads should also
-run the scale benchmark and compare against the budgets in
-[performance.md](performance.md):
+MCP:
 
 ```bash
-COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm --dir apps/web benchmark:roadmap
+pnpm --dir packages/roadforge-mcp check
 ```
 
-For a persistence change, add a new file under `apps/api/alembic/versions/`.
-Never rewrite an applied migration. Run:
+Performance-sensitive roadmap/import/filter/hydration changes should also run:
+
+```bash
+pnpm --dir apps/web benchmark:roadmap
+```
+
+Use [performance.md](performance.md) for the budget contract.
+
+## Database migrations
+
+Persisted schema changes require a new Alembic revision. Never rewrite an applied
+migration.
+
+Run:
 
 ```bash
 make api-migrate
@@ -201,53 +220,40 @@ make api-check
 make api-test
 ```
 
-Inspect the migration for existing-data safety and take a backup before any
-production migration. Alembic downgrades are not a substitute for a tested
-restore/rollback plan.
+Review existing-data safety. A migration downgrade is not a generic production rollback
+plan; production rollback may require the pre-migration PostgreSQL backup.
 
-## Pull requests
+## Pull-request shape
 
-Use `.github/pull_request_template.md`. A reviewable PR:
+A reviewable PR should:
 
-- solves one stated user or maintenance outcome;
-- names data, API, storage, security, migration, and compatibility effects;
-- includes focused regression tests and exact validation results;
-- updates current documentation without rewriting historical records;
-- contains no credentials, roadmap exports, private logs, generated caches, or
-  unrelated cleanup.
+- solve one stated user/maintenance outcome;
+- name data/API/security/deployment compatibility effects;
+- add focused regression coverage;
+- update current docs when a contract changed;
+- leave historical design records clearly classified rather than pretending old plans are current;
+- contain no secrets/private roadmap data/generated local artifacts;
+- state anything important that was not tested.
 
-The author owns a focused self-review of the diff. Reviewers prioritize
-correctness, security, data integrity, compatibility, and missing tests over
-style preferences.
+Reviewers prioritize data integrity, authorization, compatibility/recovery, and missing
+tests before stylistic preference.
 
-## Labels and triage
+## Good first issues
 
-Issue forms apply these intake labels:
+Use `good first issue` only for work that already has:
 
-| Label | Use |
-| --- | --- |
-| `bug` | Reproducible behavior defect |
-| `usability` | Confusing, difficult, or error-prone workflow |
-| `enhancement` | Focused feature outcome |
-| `documentation` | Missing or inaccurate guidance |
-| `self-hosting` | Installation, upgrade, recovery, or runtime operations |
-| `accessibility` | Keyboard, assistive technology, semantics, reflow, contrast, motion, or touch barrier |
+- a bounded user outcome;
+- reproducible evidence or clear acceptance criteria;
+- a likely implementation area;
+- a likely validation path;
+- no unresolved product/security architecture decision.
 
-Maintainers confirm reproduction and scope, remove misapplied labels, add a
-priority/milestone only after evidence, and close duplicates with a link to the
-canonical report. Public issues containing secrets are treated as an incident:
-minimize further exposure, rotate/revoke affected credentials, and move
-security discussion to the private channel.
+Do not assign first-time contributors migrations, access-control redesign, realtime state
+machines, import compatibility ownership, or production incident responsibility merely
+because the code change looks small.
 
-`good first issue` is reserved for bounded, reproducible work with:
+## Documentation rule
 
-- a clear user outcome and acceptance criteria;
-- named implementation area and likely tests;
-- no ambiguous product decision;
-- no migration, authentication/authorization, lock/realtime state machine,
-  import/export compatibility, or deployment-security ownership;
-- enough maintainer context for a contributor to work without private data.
-
-Add `help wanted` only when maintainers can review the area and the issue is
-ready for implementation. Never use a newcomer label to delegate undefined
-architecture or release responsibility.
+If you add or change documentation, classify it according to [`docs/README.md`](README.md).
+Current contracts should remain concise and code-backed; implementation-history files
+should state when they are implemented/superseded.
