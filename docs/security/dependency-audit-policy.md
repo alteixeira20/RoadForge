@@ -60,7 +60,8 @@ The check:
 3. exports the runtime dependency set twice from the existing lock in offline/frozen mode;
 4. requires the two exports to be byte-identical.
 
-CI runs the same contract as the dedicated **API Dependency Lock** job.
+The path-scoped **API Locked Validation** workflow runs the same contract on relevant pull
+requests and on API-related pushes to `main` or `dev`.
 
 ## Locked environments
 
@@ -94,9 +95,15 @@ bash scripts/sync-locked-env.sh audit
 Each path first verifies lock drift, then uses `uv sync --frozen`; it does not silently
 re-resolve dependencies.
 
-The CI lint, migration, test, real-Redis, and audit jobs use those locked environments.
-The production API Docker image also installs its runtime graph from `uv.lock` and verifies
-the lock before installing RoadForge itself non-editably.
+The **API Locked Validation** workflow exercises lint, migration/schema drift, the full API
+test suite, the real-Redis revocation suite, and runtime auditing from those locked
+environments. The production API Docker image also installs its runtime graph from
+`uv.lock` and verifies the lock before installing RoadForge itself non-editably.
+
+The repository's broader CI remains responsible for cross-project quality, web/browser,
+container, deployment, MCP, and complementary API checks. The locked workflow is the
+reproducibility proof for Python dependency resolution; a green floating resolution is not
+a substitute for it.
 
 ## Python runtime audit
 
@@ -191,6 +198,8 @@ A RoadForge release candidate must have:
 - a `uv.lock` accepted by `uv lock --check`;
 - JavaScript and locked Python runtime audits passing, except for documented unexpired
   exact-advisory exceptions;
-- tests/migrations/container builds executed against the locked graphs.
+- API tests and migration/schema-drift checks executed from the locked Python graph;
+- the production API container built from the locked runtime graph.
 
-A green audit from a different dependency resolution is not evidence for the candidate.
+A green audit, test run, or container build from a different Python dependency resolution is
+not evidence for the candidate.
