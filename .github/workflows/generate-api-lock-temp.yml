@@ -6,14 +6,19 @@ on:
       - dev
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  generate-lock:
+  generate-and-commit-lock:
+    if: >-
+      github.head_ref == 'foundation/python-lock' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -22,10 +27,17 @@ jobs:
       - name: Generate lock
         working-directory: apps/api
         run: uv lock --python 3.12
-      - name: Upload generated lock
-        uses: actions/upload-artifact@v6
-        with:
-          name: roadforge-api-uv-lock
-          path: apps/api/uv.lock
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit lock and remove this temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/generate-api-lock-temp.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/api/uv.lock .github/workflows/generate-api-lock-temp.yml
+          git diff --cached --exit-code && {
+            echo 'Expected generated lock/workflow changes were not present.' >&2
+            exit 1
+          }
+          git commit -m 'chore(api): commit generated uv dependency lock'
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
