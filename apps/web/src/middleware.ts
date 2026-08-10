@@ -10,6 +10,16 @@ function createNonce(): string {
   return btoa(crypto.randomUUID())
 }
 
+function isExternallyHttps(request: NextRequest): boolean {
+  const forwardedProto = request.headers.get('x-forwarded-proto')
+  if (forwardedProto) {
+    return forwardedProto
+      .split(',')
+      .some((value) => value.trim().toLowerCase() === 'https')
+  }
+  return request.nextUrl.protocol === 'https:'
+}
+
 export function middleware(request: NextRequest) {
   const isProduction = process.env.NODE_ENV === 'production'
   const nonce = createNonce()
@@ -19,6 +29,7 @@ export function middleware(request: NextRequest) {
       isProduction,
       apiOrigin: resolveApiOrigin(process.env.NEXT_PUBLIC_API_URL),
       nonce,
+      upgradeInsecureRequests: isExternallyHttps(request),
     },
     mode,
   )
