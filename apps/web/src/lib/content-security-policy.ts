@@ -4,6 +4,7 @@ interface ContentSecurityPolicyOptions {
   isProduction: boolean
   apiOrigin: string | null
   nonce: string
+  upgradeInsecureRequests: boolean
 }
 
 export interface ContentSecurityPolicyHeader {
@@ -38,6 +39,7 @@ export function buildContentSecurityPolicy({
   isProduction,
   apiOrigin,
   nonce,
+  upgradeInsecureRequests,
 }: ContentSecurityPolicyOptions): string {
   const connectSrc = new Set<string>(["'self'"])
   if (apiOrigin) connectSrc.add(apiOrigin)
@@ -69,7 +71,9 @@ export function buildContentSecurityPolicy({
     "manifest-src 'self'",
     "worker-src 'self' blob:",
   ]
-  if (isProduction) directives.push('upgrade-insecure-requests')
+  if (isProduction && upgradeInsecureRequests) {
+    directives.push('upgrade-insecure-requests')
+  }
   return directives.join('; ')
 }
 
