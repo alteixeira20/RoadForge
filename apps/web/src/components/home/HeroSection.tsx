@@ -17,12 +17,9 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
         </h1>
         <p className="lede">
           Plan in phases, track tasks and dependencies, and work entirely on
-          your device. Save to a server later when you need to share.
-          No account required to start.
-        </p>
-        <p className="lede hero-data-note">
-          <strong>Hosted demo:</strong> try collaboration here, but keep important
-          work portable. Export JSON backups and store them somewhere you control.
+          your device. Save to a server later when you need to share. No account
+          required to start. <strong>Hosted demo:</strong> Export JSON backups of
+          important work and store them somewhere you control.
         </p>
         <div className="ctas">
           <button className="btn primary lg" onClick={onCreate}>
