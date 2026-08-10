@@ -81,7 +81,7 @@ const STARTER_TEMPLATE: RoadForgeTemplate = {
     {
       id: 'starter-launch',
       num: '03',
-      name: 'Launch and learn',
+      name: 'Release and learn',
       color: '#a78bfa',
       colorMode: 'auto',
       status: 'future',

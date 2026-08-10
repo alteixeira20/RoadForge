@@ -1,259 +1,193 @@
-# Beta Candidate Release Checklist
+# RoadForge release checklist
 
-Two gates, run in order against one frozen candidate.
-
-- **Part A — Candidate freeze and stabilization.** Prove the candidate is
-  releasable. Nothing is published.
-- **Part B — Release and deployment.** Publish, deploy, smoke, and monitor.
-
-Do not begin Part B until every Part A item is checked or explicitly excepted.
-
-Each item is labelled with what settles it:
-
-| Label | Meaning |
-|---|---|
-| **[auto]** | A repository command decides it |
-| **[local]** | A person runs it on a developer machine against disposable data |
-| **[deployed]** | Requires the running candidate; cannot be inferred locally |
-| **[decision]** | A person accepts or rejects a risk |
-| **[release]** | Only meaningful at publish time |
-
-Exact commands, expected output, and pass/fail criteria for the security,
-backup, and deployment items live in the
-[operational proof gate](../docs/security/operational-proof-gate.md).
-
----
+Use this checklist for `0.1.0` and later releases. Run it against one frozen candidate
+revision. If the candidate changes, rerun every gate affected by the change.
 
 ## Candidate record
 
-Fill this in before running anything, and do not edit it afterwards. If the
-revision changes, the candidate is new and Part A restarts.
-
-```
-Candidate revision : <full 40-character SHA>
-Branch / tag       : <branch, and tag name once Part B creates it>
-Frozen at          : <UTC timestamp>
-Release manager    : <name>
-Rollback operator  : <name>
-Rollback revision  : <full 40-character SHA of the currently deployed release>
-Target environment : <staging | production>
+```text
+Version:
+Candidate SHA:
+Branch:
+Frozen at (UTC):
+Release manager:
+Rollback revision:
+Target environment:
 ```
 
----
+## 1. Freeze
 
-# Part A — Candidate freeze and stabilization
+- [ ] Feature work is frozen for the candidate.
+- [ ] Only release blockers/regression fixes are accepted after the freeze.
+- [ ] `git status --short` is clean.
+- [ ] The recorded candidate SHA matches `git rev-parse HEAD`.
+- [ ] Version and changelog describe the candidate accurately.
 
-## A1. Freeze rules
+## 2. Automated evidence
 
-- [ ] **[decision]** Feature freeze is declared and communicated. From this
-  point the candidate accepts only fixes for release blockers and regressions.
-- [ ] **[decision]** Anything else — new features, refactors, dependency bumps
-  that are not security fixes, copy changes, roadmap edits — waits for the next
-  cycle.
-- [ ] **[decision]** Every accepted fix restarts the gates it invalidates. A fix
-  touching the web app restarts A2 and A4; a fix touching the API restarts A2
-  and A5; a fix touching deployment restarts Part B.
-- [ ] **[auto]** `git status --short` is clean and the candidate revision above
-  matches `git rev-parse HEAD`.
+- [ ] `make release-check` passes.
+- [ ] Full development Playwright suite passes without unresolved failures.
+- [ ] Production hydration/browser smoke passes.
+- [ ] API PostgreSQL-backed tests pass.
+- [ ] Real-Redis collaboration/revocation tests pass.
+- [ ] Alembic upgrade/schema drift checks pass.
+- [ ] JavaScript dependency audit passes at the configured severity threshold.
+- [ ] Python dependency audit passes at the configured severity threshold.
+- [ ] MCP package/protocol checks pass when the package is included in the release candidate.
+- [ ] Production API and web images build.
+- [ ] Production containers run as non-root users.
+- [ ] Self-hosted Compose configuration validates.
+- [ ] Every required GitHub Actions job is green for the exact candidate SHA.
 
-## A2. Automated gate
+A retry can demonstrate that a runner failure was transient, but recurring flaky tests
+remain a release-quality problem and should be fixed rather than normalized.
 
-- [ ] **[auto]** `make release-check` passes with no skipped steps. This runs
-  web tests, the copy/cycles/docs/issues checks, lint, typecheck, production
-  build, API lint, API tests against PostgreSQL, and migration drift.
-- [ ] **[auto]** `corepack pnpm --dir apps/web test:browser` passes with no
-  retries and no skips.
-- [ ] **[auto]** `corepack pnpm --dir apps/web test:browser:production` passes
-  the production-build hydration regression with no hydration or page errors.
-- [ ] **[auto]** `corepack pnpm --dir apps/web benchmark:roadmap` passes every
-  budget in [performance.md](../docs/performance.md).
-- [ ] **[auto]** `make audit` and `make api-audit` both report no known
-  vulnerabilities.
-- [ ] **[auto]** The secret, tracked-artifact, and `NEXT_PUBLIC_*` scans in
-  [proof gate section 1](../docs/security/operational-proof-gate.md#1-automated--settled-by-repository-commands)
-  are clean.
-- [ ] **[auto]** CI is green for the candidate revision on every job.
-- [ ] **[decision]** Dependency-audit results are reviewed; any suppression has
-  an owner and an expiry under the
-  [dependency audit policy](../docs/security/dependency-audit-policy.md).
-- [ ] **[decision]** Version, changelog, release-state wording, license
-  terminology, and demo data are reviewed.
+## 3. Product and data contract
 
-## A3. Local operational rehearsal
+- [ ] Local-first creation works without the API.
+- [ ] JSON export/import round-trip preserves meaningful roadmap data.
+- [ ] Markdown export is credential-free and remains non-importable.
+- [ ] Hosted/demo copy advises users to keep JSON backups they control.
+- [ ] The Anvilary-hosted instance does not imply managed backup/durability guarantees.
+- [ ] Accountless owner/editor/viewer semantics remain accurate.
+- [ ] Roadmap snapshot/tag-registry source-of-truth rules remain accurate.
+- [ ] No current documentation teaches the internal RoadForge roadmap as the starter template.
+- [ ] No current documentation reintroduces historical 512 KiB request limits.
 
-- [ ] **[local]** The backup and disposable restore drill in
-  [proof gate section 2.1](../docs/security/operational-proof-gate.md#21-backup-and-restore-drill)
-  completes and its verification counts match the source.
-- [ ] **[local]** The deployable standalone artifact boots and serves, per
-  [proof gate section 2.2](../docs/security/operational-proof-gate.md#22-deployable-artifact-boot).
+## 4. Local manual QA
 
-## A4. Browser and accessibility QA
+Complete [docs/manual-qa.md](../docs/manual-qa.md) against the candidate, including:
 
-- [ ] **[local]** [Owner/editor/viewer setup and role checks](../docs/manual-qa.md#setup)
-  through sharing, joining, read-only enforcement, and two-session realtime.
-- [ ] **[local]** [Task creation/editing/PATCH](../docs/manual-qa.md#11--task-creation--editing--done-state),
-  [lock and idle draft preservation](../docs/manual-qa.md#12--task-edit-locks),
-  and [409 recovery](../docs/manual-qa.md#25--409-conflict-recovery).
-- [ ] **[local]** JSON and Markdown export plus replace-current import; the
-  checkpoint, roadmap identity, tags, dependencies, subtasks, claims,
-  descriptions, estimates, assignees, and done/next state all survive.
-- [ ] **[local]** [Version read and restore](../docs/manual-qa.md#22--version-history):
-  owner restores, editor reads but cannot restore, viewer cannot read versions.
-- [ ] **[local]** Task external links can be added, opened, removed, exported,
-  and imported with no credentials and no fetched provider metadata.
-- [ ] **[local]** [Mobile layout at 375px](../docs/manual-qa.md#26--mobile-layout-at-375px)
-  and 200% zoom show no horizontal overflow on any primary route.
-- [ ] **[local]** [Modal keyboard accessibility](../docs/manual-qa.md#32--modal-keyboard-accessibility-focus-trap).
-- [ ] **[local]** [Assistive-technology Beta smoke](../docs/manual-qa.md#33--assistive-technology-beta-smoke)
-  with NVDA plus Firefox or Chrome, and VoiceOver plus Safari. Record browser,
-  assistive-technology version, and operating system.
+- [ ] local-only creation/persistence;
+- [ ] starter template;
+- [ ] promotion to server sync;
+- [ ] owner/editor/viewer join and authorization;
+- [ ] share-link rotation/revocation and participant revocation;
+- [ ] realtime propagation and reconnect;
+- [ ] optimistic-concurrency conflict recovery;
+- [ ] activity/checkpoint/version restore;
+- [ ] import safety and historical compatibility;
+- [ ] keyboard/responsive/accessibility smoke;
+- [ ] browser storage failure behavior;
+- [ ] 5 MiB payload boundary behavior.
 
-## A5. Two-session and multi-worker matrix
+Record the browser and assistive-technology combinations used for manual accessibility
+smoke testing.
 
-- [ ] **[local]** [RF-023 two-session collaboration evidence](../docs/manual-qa.md#25b--rf-023-two-session-collaboration-evidence).
-- [ ] **[deployed]** Confirm `ROADFORGE_API_WORKERS=1` for memory mode. For
-  multiple workers or API instances, confirm
-  `ROADFORGE_REALTIME_BACKEND=redis`, Redis connectivity, and the
-  [RF-886 regression checklist](../docs/manual-qa.md#30b--rf-886-multi-worker-realtime-regression-checklist).
+## 5. Deployment preflight
 
-## A6. Issue intake
+- [ ] Production PostgreSQL credentials are non-development values.
+- [ ] `ROADFORGE_ENVIRONMENT=production` is set.
+- [ ] `ROADFORGE_CORS_ORIGINS` is explicit.
+- [ ] `ROADFORGE_TRUSTED_PROXY_IPS` is narrow and correct.
+- [ ] HTTPS termination is configured.
+- [ ] PostgreSQL and Redis are private/not directly exposed.
+- [ ] Memory realtime is one API process only, or Redis mode is enabled for multi-worker/instance deployment.
+- [ ] A PostgreSQL backup and checksum are created before schema-sensitive migration.
+- [ ] Backup restore has been rehearsed against a disposable database.
 
-- [ ] **[deployed]** The published GitHub chooser renders all six public forms,
-  blank issues are disabled, and vulnerabilities route to the private Security
-  Advisory form.
-- [ ] **[deployed]** The six configured labels exist in the repository and apply
-  correctly.
+## 6. Health contract
 
-## A7. Candidate decision
+After deployment:
 
-- [ ] **[decision]** Blockers are zero, judged against the
-  [blocker criteria](../docs/manual-qa.md#blocker-criteria).
-- [ ] **[decision]** Non-blocking defects are recorded with owner and
-  disposition.
-- [ ] **[decision]** The [known acceptable limitations](../docs/manual-qa.md#known-acceptable-limitations)
-  are reviewed and still accurate.
-- [ ] **[decision]** Part A is signed off by the release manager, with the
-  candidate revision unchanged since the freeze.
+- [ ] `/api/health/live` returns 200 for process liveness.
+- [ ] `/api/health/ready` returns 200 with PostgreSQL/configured Redis ready.
+- [ ] `/api/health` behaves as the backward-compatible readiness alias.
+- [ ] Dependency failure produces readiness failure without exposing connection details.
 
----
+Do not certify a deployment from `/live` alone.
 
-# Part B — Release and deployment
+## 7. Security and logging
 
-## B1. Release artifacts
+- [ ] HTTPS/HSTS behavior is correct at the public edge.
+- [ ] Expected production security headers are present.
+- [ ] Frontend CSP is accurately reported as report-only for `0.1.0` unless the tracked enforced-CSP work has landed and passed its dedicated tests.
+- [ ] API application logs contain no request query strings, credentials, headers, or bodies.
+- [ ] Maintained proxy access logs omit query strings and `Referer`.
+- [ ] Upstream proxy/tunnel/CDN logging has been reviewed for invite-token exposure.
+- [ ] Session/invite/password/Redis credentials do not appear in exports or release evidence.
 
-- [ ] **[release]** Version bumped and changelog updated for the candidate.
-- [ ] **[release]** Tag created on the exact candidate revision.
-- [ ] **[release]** Release notes drafted from the template below.
+## 8. Deployed collaboration smoke
 
-### Release note template
+Using independent browser contexts:
+
+- [ ] Owner creates/saves a roadmap.
+- [ ] Editor joins and edits.
+- [ ] Viewer joins and remains read-only.
+- [ ] Cross-context changes propagate through realtime.
+- [ ] Participant revocation terminates access.
+- [ ] Stale writes produce explicit conflicts rather than overwrite.
+- [ ] JSON export/import works through the deployed frontend.
+
+## 9. Known-boundary review
+
+Before publishing release notes, explicitly review:
+
+- [ ] browser-local storage durability limitations;
+- [ ] hosted-demo/no-managed-backup positioning;
+- [ ] report-only CSP status;
+- [ ] soft-delete/final-retention status;
+- [ ] Python dependency-lock status;
+- [ ] MCP credential/publishing status;
+- [ ] current repository license and whether it is being described accurately.
+
+No known boundary may be omitted merely to make the release appear more complete.
+
+## 10. Release artifacts
+
+- [ ] Version is correct in maintained package/application metadata.
+- [ ] `CHANGELOG.md` is finalized.
+- [ ] Release notes include major capabilities, upgrade notes, known boundaries, and verification evidence.
+- [ ] Tag is created on the exact frozen candidate SHA.
+- [ ] Published artifacts, if any, match the tagged source.
+
+Suggested release-note structure:
 
 ```markdown
 ## RoadForge <version>
 
-<One paragraph: what this release is for and who it is for.>
+<What this release establishes and who it is for.>
 
 ### Included
-- <user-visible change>
+- <user-visible capability>
 
-### Known limitations
-<Copy the current list from docs/manual-qa.md#known-acceptable-limitations.>
+### Data ownership
+The hosted Anvilary instance is a demo/convenience deployment. Export important
+roadmaps as JSON and keep copies you control.
 
-### Upgrading
-- Take a PostgreSQL backup before upgrading; see docs/self-hosting.md.
-- Migrations run on deploy. Application rollback does not reverse migrations.
-- Export roadmaps you care about before upgrading.
+### Known boundaries
+- <current boundary>
 
-### Verified on
-- Automated: <gate results>
-- Browsers: <browser and version list>
-- Assistive technology: <NVDA/VoiceOver versions and platforms>
+### Upgrading / self-hosting
+- Back up PostgreSQL before schema-sensitive updates.
+- Apply migrations to Alembic head.
+- Application rollback does not automatically reverse migrations.
 
-### Not verified
-<Anything a reader should not assume was tested.>
+### Verified
+- Candidate SHA: <sha>
+- CI: <result>
+- Browsers: <matrix>
+- Accessibility smoke: <matrix>
+- Backup/restore: <result>
 ```
 
-- [ ] **[decision]** Release notes advise users to export important roadmaps and
-  state the known limitations.
+## 11. Post-deploy observation
 
-## B2. Deploy preflight
+For a public deployment, observe at least through the first normal usage window.
 
-- [ ] **[deployed]** [Self-hosted stack deployment preflight](../deploy/self-hosted/README.md#validation):
-  production secrets, URLs, trusted proxies, HTTPS, and health checks are valid.
-- [ ] **[deployed]** PostgreSQL backup taken from the target environment, with
-  its checksum, immediately before deploying. A missing backup blocks the
-  migration outright.
-- [ ] **[deployed]** Migration upgrade, drift check, and projection
-  backfill/parity complete; `roadmaps.snapshot_json` remains canonical and
-  projections remain derivative.
-- [ ] **[decision]** Staging candidate is approved before production.
+- [ ] health/readiness remains stable;
+- [ ] no restart loop or sustained 5xx appears;
+- [ ] realtime still propagates;
+- [ ] storage/database usage is sane;
+- [ ] no credentials appear in logs;
+- [ ] no data-loss/corruption report remains unexplained.
 
-## B3. Deployed security evidence
+Roll back immediately for credible data corruption/loss, credential exposure,
+unrecoverable save failures, broken primary routes, or sustained dependency failure.
 
-Run [proof gate section 3](../docs/security/operational-proof-gate.md#3-deployed-manual--requires-a-running-candidate)
-in full. Each row there carries its own pass/fail criterion.
+## 12. Close-out
 
-- [ ] **[deployed]** Health, headers, CORS, HTTPS/HSTS, and trusted-proxy client
-  IPs (3.1–3.4).
-- [ ] **[deployed]** Credential-safe proxy and application
-  [log review](../deploy/self-hosted/README.md#credential-safe-log-review).
-  Record the reviewed time range and upstream providers; never paste matching
-  credentials into the release ticket.
-- [ ] **[deployed]** Share-link and session revocation, and rate limiting under
-  the real proxy (3.6–3.7).
-- [ ] **[deployed]** Worker and realtime mode confirmed (3.10).
-
-## B4. Post-deploy smoke
-
-- [ ] **[deployed]** `/api/health` returns 200, and PostgreSQL plus the
-  configured realtime backend are confirmed separately. The liveness response
-  alone does not prove dependency or cross-worker health.
-- [ ] **[deployed]** Every primary route loads with no console error: `/`,
-  `/workspace`, `/shared`, `/join`, `/help`.
-- [ ] **[deployed]** Owner creates, saves, and shares a roadmap.
-- [ ] **[deployed]** Editor joins and edits; changes propagate to the owner
-  within 5 seconds.
-- [ ] **[deployed]** Viewer is read-only.
-- [ ] **[deployed]** Export produces a file containing no session token, invite
-  token, or password.
-
-## B5. Monitoring window
-
-Watch for **at least 24 hours** after the production deploy, or until the first
-working day passes, whichever is longer.
-
-- [ ] **[deployed]** Health endpoint checked at the start, after one hour, and
-  at the end of the window.
-- [ ] **[deployed]** API and proxy error rates reviewed; no sustained 5xx.
-- [ ] **[deployed]** Realtime propagation still works at the end of the window.
-- [ ] **[deployed]** Container restart count is stable; no restart loop.
-- [ ] **[deployed]** Database connection count and disk usage are stable.
-- [ ] **[deployed]** No credential appears in logs during the window.
-
-### Roll back immediately if
-
-- The health endpoint is non-200 for more than five minutes.
-- Any primary route fails to load or throws a JS error.
-- Save to server fails with an unrecoverable error that is not a 409.
-- Realtime events stop firing within 5 seconds under normal conditions.
-- Data loss or corruption is observed or credibly reported.
-- A credential appears in logs or in an export.
-
-### Rollback
-
-- [ ] **[deployed]** Redeploy the rollback revision recorded in the candidate
-  block, following [rollback notes](../deploy/self-hosted/README.md#rollback-notes).
-- [ ] **[deployed]** Application rollback does not reverse migrations. If the
-  schema moved, restore PostgreSQL from the pre-deploy backup into a fresh
-  database rather than downgrading in place.
-- [ ] **[deployed]** Confirm health and one owner create/save cycle after
-  rolling back.
-- [ ] **[decision]** Record what failed, the evidence, and the owner of the fix.
-
-## B6. Close out
-
-- [ ] **[release]** Release notes published with the final verified/not-verified
-  lists.
-- [ ] **[decision]** Evidence from
-  [proof gate "evidence to retain"](../docs/security/operational-proof-gate.md#evidence-to-retain)
-  is stored beside the release ticket, with credentials redacted.
-- [ ] **[decision]** Defects found during the window are filed with owners.
+- [ ] Final release notes are published.
+- [ ] Verification evidence is retained with credentials/private roadmap data redacted.
+- [ ] New defects discovered during release/deployment are filed with a clear owner/disposition.
+- [ ] Feature work reopens only after the `0.1.0` baseline is frozen and documented.

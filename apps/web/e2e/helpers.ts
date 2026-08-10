@@ -15,11 +15,19 @@ export async function createRoadmap(
   const wizard = page.getByRole('dialog', { name: 'Create your roadmap' })
   await expect(wizard).toBeVisible()
 
+  // CreateWizard deliberately moves initial focus to the display-name field on
+  // a short timer. Wait for that lifecycle to settle before interacting;
+  // otherwise a fast CI runner can start filling the title and then have the
+  // pending focus callback move focus back to the first field mid-action.
+  // This follows the same focus state a real keyboard user sees without adding
+  // an arbitrary sleep or retry.
+  const displayNameInput = wizard.getByLabel('Your display name', { exact: true })
+  const roadmapTitleInput = wizard.getByLabel('Roadmap title', { exact: true })
+  await expect(displayNameInput).toBeFocused()
+
   // Step 1: both identity and roadmap title are required before the wizard
   // advances. Keep this helper coupled to the visible product contract rather
   // than the removed five-step implementation.
-  const displayNameInput = wizard.getByLabel('Your display name', { exact: true })
-  const roadmapTitleInput = wizard.getByLabel('Roadmap title', { exact: true })
   await displayNameInput.fill('Browser Tester')
   await expect(displayNameInput).toHaveValue('Browser Tester')
   await roadmapTitleInput.fill(title)
