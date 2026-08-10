@@ -7,6 +7,10 @@ on:
       - 'apps/web/**'
       - 'deploy/self-hosted/nginx/**'
       - 'docs/security/security-headers-policy.md'
+      - 'docs/security/README.md'
+      - 'docs/self-hosting.md'
+      - 'docs/manual-qa.md'
+      - 'README.md'
       - '.github/workflows/web-csp.yml'
   push:
     branches:
@@ -16,6 +20,10 @@ on:
       - 'apps/web/**'
       - 'deploy/self-hosted/nginx/**'
       - 'docs/security/security-headers-policy.md'
+      - 'docs/security/README.md'
+      - 'docs/self-hosting.md'
+      - 'docs/manual-qa.md'
+      - 'README.md'
       - '.github/workflows/web-csp.yml'
 
 permissions:
