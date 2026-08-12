@@ -4,10 +4,12 @@ import {
   BROWSER_SESSION_TOKEN,
   establishBrowserSession,
   requestJson,
+  resolveBrowserSessionToken,
 } from '@/services/roadmap-http'
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 describe('browser session HTTP transport', () => {
@@ -39,5 +41,30 @@ describe('browser session HTTP transport', () => {
     expect((init.headers as Record<string, string>).Authorization).toBe(
       'Bearer raw-session-token',
     )
+  })
+
+  it('returns the non-secret marker after a successful exchange', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      resolveBrowserSessionToken('rm_test', 'raw-session-token'),
+    ).resolves.toBe(BROWSER_SESSION_TOKEN)
+  })
+
+  it('retains the scoped Bearer only when the exchange fails', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ detail: 'temporary failure' }),
+      {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    ))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await expect(
+      resolveBrowserSessionToken('rm_test', 'raw-session-token'),
+    ).resolves.toBe('raw-session-token')
   })
 })
