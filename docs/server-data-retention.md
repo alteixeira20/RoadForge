@@ -3,9 +3,15 @@
 RoadForge `0.1.0` distinguishes browser deletion, server soft deletion, and final server
 purge. This document is the operator contract for final cleanup of server-side data.
 
-The Anvilary-hosted instance is a demo/convenience deployment. Users should keep JSON
+The Anvilary-hosted instance is a **demo/reference deployment**. Users should keep JSON
 exports of important roadmaps they control; server history is not a substitute for a
-portable backup.
+portable backup. Teams that self-host—especially larger or operationally important teams—
+should choose, document, monitor, and test their own retention and backup lifecycles rather
+than treating the demo operator's defaults as a service guarantee.
+
+See [Hosted demo and self-hosting](hosted-demo-and-self-hosting.md) for the deployment
+positioning. The retention defaults below are conservative maintained defaults, not an SLA or
+recovery objective for arbitrary forks.
 
 ## What deletion means
 
@@ -55,6 +61,10 @@ The service refuses thresholds below conservative minimums:
 - maximum batch size is 1,000 per category.
 
 These minimums are enforced in the service layer, not only by CLI documentation.
+
+Self-hosted operators may select longer retention where appropriate, but should not assume
+that longer retention alone equals recoverability. Recovery objectives also depend on backup
+frequency, restore testing, storage durability, and incident procedures.
 
 ## Volatile realtime data
 
@@ -168,6 +178,9 @@ python -m api.scripts.purge_retention \
 Use the same policy arguments for dry-run and execute. Never shorten retention merely to
 make a large backlog disappear quickly; use repeated bounded batches instead.
 
+For organization-managed deployments, document why the chosen values match the team's data
+and recovery policy. Do not copy the demo's settings blindly into a larger deployment.
+
 ## Transaction and restart safety
 
 Each execution builds or receives one bounded plan, revalidates the exact candidates, and
@@ -187,6 +200,10 @@ counted as an independent expired-session purge; the roadmap cascade owns those 
 
 For a small public/demo deployment, run dry-run daily or weekly and execute final purge on
 a documented maintenance schedule, for example weekly after a successful backup.
+
+For a larger or operationally important self-hosted deployment, scheduling should be tied to
+operator monitoring, backup/restore objectives, deletion volume, legal policy where
+applicable, and capacity planning rather than copied directly from the demo example.
 
 Do **not** schedule an unconditional destructive command without monitoring dry-run counts.
 A safer automation pattern is:
@@ -233,14 +250,18 @@ retention accurately.
 
 Public/help/privacy copy should say, in substance:
 
+- `roadforge.anvilary.tools` is a hosted demo/reference deployment, not a managed production
+  team service or durable backup commitment;
 - local roadmaps live in browser storage and users should keep JSON exports;
 - deleting a synced roadmap removes it from normal RoadForge use immediately through soft
   deletion;
 - final live-database records are purged according to the operator retention schedule;
-- independent database backups may remain until their documented backup-retention expiry.
+- independent database backups may remain until their documented backup-retention expiry;
+- sustained or larger-team use should run on a fork/controlled clone whose operator owns
+  retention, backups, monitoring, and recovery.
 
-Do not claim immediate cryptographic erasure, guaranteed hosted recovery, or that RoadForge
-can recover a local-only roadmap after browser storage is lost.
+Do not claim immediate cryptographic erasure, guaranteed hosted recovery, a hosted team SLA,
+or that RoadForge can recover a local-only roadmap after browser storage is lost.
 
 ## Verification
 
