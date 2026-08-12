@@ -4,6 +4,11 @@
 
 import type { RoadmapConflictMetadata } from '@/types/roadmap'
 
+// Non-secret marker persisted by the web client after a raw Bearer session has
+// been exchanged for a path-scoped HttpOnly cookie. It must never be serialized
+// into an Authorization header.
+export const BROWSER_SESSION_TOKEN = '__roadforge_http_only_session__'
+
 // ─── API configuration ─────────────────────────────────────────────────────────
 
 export const API_BASE_URL = (
@@ -80,13 +85,14 @@ export async function requestJson<T>(
   if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json'
   }
-  if (sessionToken) {
+  if (sessionToken && sessionToken !== BROWSER_SESSION_TOKEN) {
     headers['Authorization'] = `Bearer ${sessionToken}`
   }
   let res: Response
   try {
     res = await fetch(API_BASE_URL + path, {
       ...options,
+      credentials: 'include',
       headers: { ...headers, ...(options.headers as Record<string, string> | undefined) },
     })
   } catch {
@@ -125,4 +131,15 @@ export async function requestJson<T>(
     throw new ApiError(res.status, detail, code, conflict, validationErrors)
   }
   return res.json() as Promise<T>
+}
+
+export async function establishBrowserSession(
+  roadmapId: string,
+  bearerToken: string,
+): Promise<void> {
+  await requestJson<void>(
+    `/api/roadmaps/${roadmapId}/session/cookie`,
+    { method: 'POST' },
+    bearerToken,
+  )
 }
