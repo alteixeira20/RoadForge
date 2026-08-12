@@ -9,6 +9,7 @@ Changes after the `0.1.0` baseline belong here.
 
 ### Security hardening
 
+- Follow up the Internet-facing audit with HTTPS-only production frontend origins, bounded concurrent SSE streams and slow-consumer queues, per-invite active-session ceilings, a total server roadmap-record ceiling, bounded activity/version-history storage, and terminal SSE authorization on roadmap deletion/session expiry.
 - Consolidate the 2026-08-12 Internet-facing threat model, findings, residual risks, and deployment proof requirements in `docs/security/internet-facing-audit-2026-08-12.md`.
 - Move newly generated invite credentials from query strings to fragment URLs and scrub them from the active history entry after join bootstrap; retain query-token parsing only for migration compatibility.
 - Move single-use SSE ticket transport from the EventSource query string to a 30-second, roadmap/participant-scoped, path-scoped HttpOnly cookie.

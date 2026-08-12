@@ -40,6 +40,24 @@ class Settings(BaseSettings):
         alias="ROADFORGE_REDIS_SOCKET_TIMEOUT_SECONDS",
     )
     api_workers: int = Field(default=1, gt=0, alias="ROADFORGE_API_WORKERS")
+    max_server_roadmaps: int = Field(
+        default=500, ge=1, le=100_000, alias="ROADFORGE_MAX_SERVER_ROADMAPS"
+    )
+    max_active_sessions_per_share_link: int = Field(
+        default=128, ge=1, le=10_000, alias="ROADFORGE_MAX_ACTIVE_SESSIONS_PER_SHARE_LINK"
+    )
+    max_realtime_streams_per_participant: int = Field(
+        default=3, ge=1, le=20, alias="ROADFORGE_MAX_REALTIME_STREAMS_PER_PARTICIPANT"
+    )
+    max_activity_logs_per_roadmap: int = Field(
+        default=2_000, ge=100, le=100_000, alias="ROADFORGE_MAX_ACTIVITY_LOGS_PER_ROADMAP"
+    )
+    max_version_history_bytes_per_roadmap: int = Field(
+        default=32 * 1024 * 1024,
+        ge=16 * 1024 * 1024,
+        le=2 * 1024 * 1024 * 1024,
+        alias="ROADFORGE_MAX_VERSION_HISTORY_BYTES_PER_ROADMAP",
+    )
     cors_origins: Union[list[str], str] = Field(
         default=["http://localhost:3020", "http://127.0.0.1:3020", "http://localhost:3000"],
         alias="ROADFORGE_CORS_ORIGINS",
@@ -106,6 +124,7 @@ class Settings(BaseSettings):
             allow_local=self.allow_local_database_in_production,
         )
         _validate_production_cors_origins(self.cors_origins)
+        _validate_production_web_base_url(self.web_base_url, self.cors_origins)
 
     def validate_startup_realtime(self) -> None:
         if self.realtime_backend == "memory" and self.api_workers != 1:
@@ -147,11 +166,48 @@ def _validate_production_cors_origins(cors_origins: list[str]) -> None:
                 "scheme://host[:port] origins instead."
             )
         parsed = urlparse(origin)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.path:
+        if (
+            parsed.scheme != "https"
+            or not parsed.netloc
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path
+            or parsed.params
+            or parsed.query
+            or parsed.fragment
+        ):
             raise RuntimeError(
-                f"ROADFORGE_CORS_ORIGINS entry {origin!r} is not a valid "
-                "scheme://host[:port] origin."
+                f"ROADFORGE_CORS_ORIGINS entry {origin!r} must be an explicit "
+                "HTTPS scheme://host[:port] origin in production."
             )
+
+
+def _validate_production_web_base_url(
+    web_base_url: str, cors_origins: list[str]
+) -> None:
+    """Invite credentials must only be delivered through the canonical HTTPS frontend."""
+    base_url = web_base_url.strip()
+    parsed = urlparse(base_url)
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path not in {"", "/"}
+        or parsed.params
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise RuntimeError(
+            "ROADFORGE_WEB_BASE_URL must be an HTTPS origin without credentials, "
+            "path, query, or fragment in production."
+        )
+    canonical = base_url.rstrip("/")
+    allowed = {origin.strip().rstrip("/") for origin in cors_origins}
+    if canonical not in allowed:
+        raise RuntimeError(
+            "ROADFORGE_WEB_BASE_URL must also appear in ROADFORGE_CORS_ORIGINS."
+        )
 
 
 def _validate_production_database_url(database_url: str, *, allow_local: bool) -> None:

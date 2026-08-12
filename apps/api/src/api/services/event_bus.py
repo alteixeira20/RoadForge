@@ -13,6 +13,8 @@ from api.config import get_settings
 
 logger = logging.getLogger(__name__)
 _HEARTBEAT_INTERVAL_SECONDS = 25.0
+_MEMORY_SUBSCRIPTION_QUEUE_MAX = 256
+_OVERFLOW_SENTINEL = object()
 
 AuthorizationCheck = Callable[[], Awaitable[bool]]
 
@@ -32,6 +34,10 @@ class Event:
     def to_sse(self) -> str:
         data = json.dumps(self.payload)
         return f"event: {self.action}\ndata: {data}\n\n"
+
+
+class SubscriptionOverflowError(RuntimeError):
+    """Raised when a slow in-memory SSE consumer exceeds its bounded queue."""
 
 
 def _is_own_revocation(event: Event, participant_id: str | None) -> bool:
@@ -138,7 +144,11 @@ async def forward_subscription(
             if next_reauth_at is not None:
                 timeout = min(timeout, max(next_reauth_at - time.time(), 0.0))
 
-            event = await subscription.get_event(timeout)
+            try:
+                event = await subscription.get_event(timeout)
+            except SubscriptionOverflowError:
+                logger.warning("Closed slow realtime consumer after queue overflow")
+                break
 
             if close_at is not None and time.time() >= close_at:
                 break
@@ -153,6 +163,13 @@ async def forward_subscription(
                 continue
 
             if _is_own_revocation(event, participant_id):
+                yield event.to_sse()
+                break
+
+            if event.action == "roadmap.deleted":
+                # Deletion invalidates every participant session, but the
+                # terminal event is still delivered so clients can explain
+                # why the stream ended.
                 yield event.to_sse()
                 break
 
@@ -188,9 +205,12 @@ class MemorySubscription:
 
     async def get_event(self, timeout: float) -> Event | None:
         try:
-            return await asyncio.wait_for(self._queue.get(), timeout=timeout)
+            item = await asyncio.wait_for(self._queue.get(), timeout=timeout)
         except asyncio.TimeoutError:
             return None
+        if item is _OVERFLOW_SENTINEL:
+            raise SubscriptionOverflowError
+        return item
 
     async def close(self) -> None:
         await self._bus.unsubscribe(self._roadmap_id, self._queue)
@@ -276,7 +296,7 @@ class MemoryEventBus:
         self.revocations = MemoryRevocationRegistry()
 
     async def subscribe(self, roadmap_id: str) -> asyncio.Queue:
-        queue: asyncio.Queue = asyncio.Queue()
+        queue: asyncio.Queue = asyncio.Queue(maxsize=_MEMORY_SUBSCRIPTION_QUEUE_MAX)
         async with self._lock:
             if roadmap_id not in self._subscribers:
                 self._subscribers[roadmap_id] = set()
@@ -298,7 +318,16 @@ class MemoryEventBus:
             return
 
         for queue in queues:
-            await queue.put(event)
+            try:
+                queue.put_nowait(event)
+            except asyncio.QueueFull:
+                await self.unsubscribe(event.roadmap_id, queue)
+                while not queue.empty():
+                    try:
+                        queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        break
+                queue.put_nowait(_OVERFLOW_SENTINEL)
 
     async def open_subscription(self, roadmap_id: str) -> MemorySubscription:
         queue = await self.subscribe(roadmap_id)

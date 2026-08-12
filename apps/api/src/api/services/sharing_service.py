@@ -18,6 +18,7 @@ from api.schemas.roadmap import (
     ShareLinkResponse,
     ShareRole,
 )
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.auth_service import is_participant_revoked
 from api.services.event_bus import (
     Event,
@@ -169,6 +170,7 @@ async def rotate_share_link(
         )
     )
 
+    await enforce_activity_log_cap(db, roadmap_id)
     await db.commit()
     await db.refresh(share_link)
 
@@ -176,7 +178,7 @@ async def rotate_share_link(
         id=share_link.id,
         role=share_link.role,  # type: ignore[arg-type]
         token_prefix=share_link.token_prefix,
-        url=f"{web_base_url}/join#token={raw_token}",
+        url=f"{web_base_url.rstrip('/')}/join#token={raw_token}",
         is_active=True,
         created_at=share_link.created_at,
         rotated_at=share_link.rotated_at,
@@ -216,6 +218,7 @@ async def revoke_share_link(
         )
     )
 
+    await enforce_activity_log_cap(db, roadmap_id)
     await db.commit()
 
 
@@ -389,6 +392,7 @@ async def _commit_revocation(
         ) from exc
 
     try:
+        await enforce_activity_log_cap(db, roadmap_id)
         await db.commit()
     except Exception:
         await _log_failure(

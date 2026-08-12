@@ -21,6 +21,7 @@ from api.schemas.roadmap import (
     RoadmapResponse,
     TagDefinitionDTO,
 )
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.roadmap_concurrency import ensure_roadmap_is_current
@@ -97,6 +98,7 @@ async def patch_task(
     ))
 
     await sync_task_projection_best_effort(db, roadmap, task_id, "task.updated")
+    await enforce_activity_log_cap(db, roadmap_id)
     await db.commit()
     await db.refresh(roadmap)
 
@@ -157,6 +159,7 @@ async def patch_task_done(
     ))
 
     await sync_task_projection_best_effort(db, roadmap, task_id, action)
+    await enforce_activity_log_cap(db, roadmap_id)
     await db.commit()
     await db.refresh(roadmap)
 
@@ -236,6 +239,7 @@ async def patch_task_claim(
     ))
 
     await sync_task_projection_best_effort(db, roadmap, task_id, "task.claimed")
+    await enforce_activity_log_cap(db, roadmap_id)
     await db.commit()
     await db.refresh(roadmap)
 
@@ -314,6 +318,7 @@ async def delete_task_claim(
     ))
 
     await sync_task_projection_best_effort(db, roadmap, task_id, "task.unclaimed")
+    await enforce_activity_log_cap(db, roadmap_id)
     await db.commit()
     await db.refresh(roadmap)
 

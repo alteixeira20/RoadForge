@@ -22,6 +22,7 @@ from api.schemas.roadmap import (
     TagResponse,
     UpdateTagRequest,
 )
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.roadmap_concurrency import ensure_roadmap_is_current
@@ -110,6 +111,7 @@ async def _commit_tag_mutation(
         before_json=before_json,
         after_json=after_json,
     ))
+    await enforce_activity_log_cap(db, roadmap.id)
     await db.commit()
     await db.refresh(roadmap)
     await event_bus.publish(Event(

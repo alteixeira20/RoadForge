@@ -45,6 +45,8 @@ async def test_access_log_excludes_query_credentials(client, caplog):
 def test_docs_are_disabled_outside_development(monkeypatch):
     monkeypatch.setenv("ROADFORGE_ENVIRONMENT", "production")
     monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://user:pass@db.example.com/roadforge")
+    monkeypatch.setenv("ROADFORGE_CORS_ORIGINS", "https://app.example.com")
+    monkeypatch.setenv("ROADFORGE_WEB_BASE_URL", "https://app.example.com")
     get_settings.cache_clear()
 
     app = create_app()
@@ -95,6 +97,7 @@ def test_production_accepts_explicit_cors_origins():
         environment="production",
         database_url="postgresql+asyncpg://user:pass@db.example.com/roadforge",
         cors_origins=["https://app.example.com", "https://admin.example.com:8443"],
+        web_base_url="https://app.example.com",
     )
 
     settings.validate_startup_security()

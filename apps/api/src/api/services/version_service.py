@@ -4,10 +4,12 @@ import logging
 from copy import deepcopy
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.config import get_settings
 from api.models.roadmap import ActivityLog, Participant, Roadmap, RoadmapVersion
 from api.schemas.roadmap import (
     PhaseDTO,
@@ -15,6 +17,7 @@ from api.schemas.roadmap import (
     RoadmapVersionDetailResponse,
     RoadmapVersionSummaryResponse,
 )
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
@@ -70,13 +73,28 @@ def _roadmap_snapshot_from_version(snapshot_json: dict) -> dict:
 
 
 async def _trim_old_versions(db: AsyncSession, roadmap_id: str) -> None:
-    old_ids_result = await db.execute(
-        select(RoadmapVersion.id)
+    rows_result = await db.execute(
+        select(
+            RoadmapVersion.id,
+            sa.func.pg_column_size(RoadmapVersion.snapshot_json),
+        )
         .where(RoadmapVersion.roadmap_id == roadmap_id)
         .order_by(RoadmapVersion.version_number.desc())
-        .offset(_MAX_ROADMAP_VERSIONS)
     )
-    old_ids = old_ids_result.scalars().all()
+    rows = rows_result.all()
+    byte_cap = get_settings().max_version_history_bytes_per_roadmap
+    total_bytes = 0
+    old_ids: list[str] = []
+    for index, (version_id, stored_bytes) in enumerate(rows):
+        size = int(stored_bytes or 0)
+        preserve = index < 3
+        if (
+            index >= _MAX_ROADMAP_VERSIONS
+            or (not preserve and total_bytes + size > byte_cap)
+        ):
+            old_ids.extend(row[0] for row in rows[index:])
+            break
+        total_bytes += size
     if old_ids:
         await db.execute(delete(RoadmapVersion).where(RoadmapVersion.id.in_(old_ids)))
 
@@ -298,6 +316,7 @@ async def restore_roadmap_version(
     )
     await sync_roadmap_projection_best_effort(db, roadmap, "restore")
 
+    await enforce_activity_log_cap(db, roadmap_id)
     await db.commit()
     await db.refresh(roadmap)
 
@@ -370,6 +389,7 @@ async def create_roadmap_checkpoint(
     await db.flush()
     await _trim_old_versions(db, roadmap_id)
 
+    await enforce_activity_log_cap(db, roadmap_id)
     await db.commit()
     await db.refresh(new_version)
 
