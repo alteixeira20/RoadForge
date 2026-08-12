@@ -80,7 +80,10 @@ async def join_roadmap(
 
     # Serialize joins for this invite before applying the active-session cap.
     locked_result = await db.execute(
-        select(ShareLink).where(ShareLink.id == share_link.id).with_for_update()
+        select(ShareLink)
+        .where(ShareLink.id == share_link.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     locked_share_link = locked_result.scalar_one_or_none()
     if (

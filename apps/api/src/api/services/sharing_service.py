@@ -393,7 +393,7 @@ async def _commit_revocation(
 
     try:
         await enforce_activity_log_cap(db, roadmap_id)
-    await db.commit()
+        await db.commit()
     except Exception:
         await _log_failure(
             event_bus.revocations.clear(roadmap_id, participant_id),

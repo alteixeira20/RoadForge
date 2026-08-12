@@ -33,10 +33,12 @@ async def is_participant_revoked(
     roadmap_id: str,
     participant_id: str,
 ) -> bool:
-    """Fail closed: a missing participant is treated as revoked.
+    """Fail closed for SSE authorization.
 
-    Used by the SSE stream, which authenticates via a single-use ticket
-    (no Authorization header) rather than `require_participant`.
+    Missing/revoked/expired participants and soft-deleted roadmaps are all
+    treated as unauthorized. The SSE route authenticates with a single-use
+    ticket rather than `require_participant`, so this must enforce the same
+    lifecycle boundary as normal API requests.
     """
     result = await db.execute(
         select(Participant, Roadmap)
