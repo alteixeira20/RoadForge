@@ -3,8 +3,16 @@
 This document describes the current RoadForge runtime security contract. It is an operator
 reference, not a future design document.
 
-The Anvilary-hosted instance remains a demo/convenience deployment rather than a managed
-backup service. Users should keep portable JSON exports of important roadmaps.
+The Anvilary-hosted instance at `roadforge.anvilary.tools` is the official **demo/reference
+deployment**, not a managed production team service or backup service. Users should keep
+portable JSON exports of important roadmaps. Teams that depend on RoadForge operationally—
+especially larger teams—should fork the repository or maintain a controlled clone and run a
+self-hosted deployment whose security, capacity, persistence, backups, monitoring, and
+recovery they control.
+
+See [Hosted demo and self-hosting](hosted-demo-and-self-hosting.md) for the product boundary.
+The controls below are requirements for public self-hosting; satisfying them does not create
+a large-team SLA or capacity guarantee.
 
 ## Production mode
 
@@ -89,7 +97,7 @@ changes, but enforced production browser CI remains the release baseline.
 ## Request-body and input limits
 
 The browser import path, API body middleware, and maintained nginx configuration share a
-5 MiB roadmap payload ceiling. The API body limiter counts actual streamed bytes, so a
+**5 MiB** roadmap payload ceiling. The API body limiter counts actual streamed bytes, so a
 missing or dishonest `Content-Length` does not bypass the limit.
 
 Pydantic/domain validation imposes additional field/count limits. Task external links are
@@ -121,6 +129,27 @@ the Python process is dead.
 - Redis is required for multiple workers/instances.
 - Redis and PostgreSQL remain private/internal services.
 - Realtime state is not the roadmap source of truth; PostgreSQL remains authoritative.
+
+## Larger-team and sustained-use capacity
+
+The maintained topology provides the components needed to run more than one API worker, but
+RoadForge does **not** publish an arbitrary user-count/concurrency guarantee. Larger-team
+operators must validate the complete deployment under representative load rather than treating
+Redis or multiple workers as a capacity certificate.
+
+At minimum evaluate:
+
+- API/web CPU and memory headroom;
+- PostgreSQL connection, storage, query, and backup/restore behavior;
+- Redis availability and coordination latency when enabled;
+- SSE connection counts and reconnect behavior;
+- reverse-proxy connection/timeouts/limits;
+- expected roadmap size and simultaneous edit patterns;
+- monitoring, alerting, restart, rollback, and incident procedures.
+
+Capacity findings belong to the self-hosting operator because hardware, topology, team usage,
+and organization-specific forks vary. The public Anvilary demo is not a benchmark for a
+large-team deployment.
 
 ## Database migrations
 
@@ -162,12 +191,17 @@ Roadmap deletion and final purge/backup retention are separate lifecycle stages.
 retention tooling and policy define when live soft-deleted records may be permanently purged;
 backup copies remain governed by their independent expiry schedule.
 
+A self-hosting operator should choose and document retention appropriate to its organization.
+The demo operator's policy is not an implied policy or recovery commitment for forks.
+
 ## Release proof
 
 A public deployment requires exact-candidate CI plus deployed checks for create/save,
 owner/editor/viewer joins, browser-session migration, participant revocation, invite rotation,
 realtime, conflicts, import/export, enforced CSP/no duplicate edge CSP, safe logging, and
-backup/rollback readiness.
+backup/rollback readiness. Sustained/larger-team deployments additionally require
+representative capacity testing and external monitoring before operational reliance.
 
-See [Self-hosting](../deploy/self-hosted/README.md), [Manual QA](manual-qa.md),
+See [Self-hosting](../deploy/self-hosted/README.md),
+[Hosted demo and self-hosting](hosted-demo-and-self-hosting.md), [Manual QA](manual-qa.md),
 [Access model](access-model.md), and [Security documentation](security/README.md).
