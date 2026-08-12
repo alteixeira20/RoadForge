@@ -42,4 +42,10 @@ replace(
     '    validate_roadmap_domain(payload.phases, payload.tag_registry)\n',
 )
 '''
-path.write_text(text[:start] + replacement + text[end:])
+text = text[:start] + replacement + text[end:]
+old = "    '            url=f\"{web_base_url}/join#token={raw}\",\\n',\n    '            url=f\"{web_base_url.rstrip(\\\'/\\\')}/join#token={raw}\",\\n',"
+new = "    '            url=f\"{web_base_url}/join#token={raw_tokens[share_link.role]}\",\\n',\n    '            url=f\"{web_base_url.rstrip(\\\'/\\\')}/join#token={raw_tokens[share_link.role]}\",\\n',"
+if text.count(old) != 1:
+    raise SystemExit(f"invite URL applicator target count={text.count(old)}")
+text = text.replace(old, new)
+path.write_text(text)
