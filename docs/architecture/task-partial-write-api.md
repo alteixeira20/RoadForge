@@ -32,8 +32,8 @@ source of truth:
 ## Why a focused endpoint
 
 The aggregate roadmap save remains useful for structural changes, but it is unnecessarily
-broad for changing one task's title, description, estimate, assignees, tags, or supported
-links.
+broad for changing one task's title, description, estimate, complexity, assignees, tags,
+or supported links.
 
 A focused endpoint narrows:
 

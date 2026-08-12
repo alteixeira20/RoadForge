@@ -1,9 +1,11 @@
 import { getTaskAssignees, getVisibleTaskTags } from '@/lib/task-assignment'
-import type { Task } from '@/types/roadmap'
+import { getTaskComplexity } from '@/lib/task-complexity'
+import type { Task, TaskComplexity } from '@/types/roadmap'
 
 export interface TaskEditDraft {
   title: string
   est: string
+  complexity: TaskComplexity
   desc: string
   assignees: string[]
   tags: string[]
@@ -13,6 +15,7 @@ export function createTaskEditDraft(task: Task): TaskEditDraft {
   return {
     title: task.title,
     est: task.est ?? '',
+    complexity: getTaskComplexity(task),
     desc: task.desc ?? '',
     assignees: getTaskAssignees(task),
     tags: getVisibleTaskTags(task),
@@ -28,6 +31,7 @@ export function isTaskEditDraftDirty(draft: TaskEditDraft, task: Task): boolean 
   const initial = createTaskEditDraft(task)
   return draft.title !== initial.title
     || draft.est !== initial.est
+    || draft.complexity !== initial.complexity
     || draft.desc !== initial.desc
     || !itemsMatch(draft.assignees, initial.assignees)
     || !itemsMatch(draft.tags, initial.tags)

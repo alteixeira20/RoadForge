@@ -481,6 +481,7 @@ describe('Accessibility Unit Tests', () => {
         <TaskEditForm
           task={task}
           isNested={false}
+          directSubtaskCount={0}
           availableAssignees={['User A']}
           onSave={vi.fn()}
           onCancel={vi.fn()}
@@ -493,6 +494,12 @@ describe('Accessibility Unit Tests', () => {
     const titleInput = container.querySelector('input[id="edit-title-t1"]')
     expect(titleLabel).not.toBeNull()
     expect(titleInput).not.toBeNull()
+
+    // Check Complexity association
+    const complexityLabel = container.querySelector('label[for="edit-complexity-t1"]')
+    const complexityInput = container.querySelector('select[id="edit-complexity-t1"]')
+    expect(complexityLabel).not.toBeNull()
+    expect(complexityInput).not.toBeNull()
 
     // Check Estimate association
     const estLabel = container.querySelector('label[for="edit-est-t1"]')

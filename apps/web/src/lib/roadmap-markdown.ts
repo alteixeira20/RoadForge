@@ -1,4 +1,5 @@
 import { computeTaskDisplayNumbers } from '@/lib/task-display'
+import { getTaskComplexityLabel } from '@/lib/task-complexity'
 import type {
   Phase,
   TagDefinition,
@@ -87,6 +88,7 @@ function formatTask(
   const metadata: string[] = []
 
   if (task.next === true) metadata.push('recommended')
+  metadata.push(`complexity:${getTaskComplexityLabel(task)}`)
   if (task.parentId) metadata.push(`parent:${formatInlineCode(displayRef(task.parentId, taskNumbers))}`)
   if (task.est) metadata.push(`est:${escapeInlineMarkdown(task.est)}`)
   if (task.assignees?.length) {

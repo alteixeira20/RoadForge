@@ -190,7 +190,7 @@ export interface PatchTaskDoneParams {
 
 export type PatchTaskUpdates = Partial<Pick<
   Task,
-  'title' | 'desc' | 'est' | 'assignees' | 'tags' | 'links'
+  'title' | 'desc' | 'est' | 'complexity' | 'assignees' | 'tags' | 'links'
 >>
 
 export interface PatchTaskParams {

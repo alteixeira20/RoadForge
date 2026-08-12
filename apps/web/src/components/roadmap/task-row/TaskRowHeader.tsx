@@ -7,6 +7,7 @@ import {
   TASK_STATUS_LABELS,
   type DerivedTaskStatus,
 } from '@/lib/task-display'
+import { getTaskComplexityLabel } from '@/lib/task-complexity'
 import type { TagDefinition, Task } from '@/types/roadmap'
 
 interface TaskRowHeaderProps {
@@ -107,6 +108,9 @@ export function TaskRowHeader({
       {remainingTagCount > 0 && (
         <span className="meta-pill">+{remainingTagCount}</span>
       )}
+      <span className="meta-pill complexity-pill" title="Task complexity">
+        {getTaskComplexityLabel(task)}
+      </span>
       {lockedByOther && (
         <span className="meta-pill meta-pill-lock">
           <Icon name="shield" size={11} /> {lockHolderName} is editing

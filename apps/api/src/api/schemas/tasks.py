@@ -234,6 +234,7 @@ class TaskDTO(BaseModel):
     done: bool
     next: bool | None = None
     est: str | None = Field(default=None, max_length=TASK_EST_MAX)
+    complexity: Literal["very_low", "low", "medium", "high", "very_high"] = "medium"
     assignees: list[str] | None = Field(default=None, max_length=TASK_ASSIGNEES_MAX)
     tags: list[str] | None = Field(default=None, max_length=TASK_TAGS_MAX)
     deps: list[str] | None = Field(default=None, max_length=TASK_DEPS_MAX)
@@ -349,6 +350,7 @@ class PatchTaskRequest(BaseModel):
     title: str | None = Field(default=None, max_length=TASK_TITLE_MAX)
     desc: str | None = Field(default=None, max_length=TASK_DESC_MAX)
     est: str | None = Field(default=None, max_length=TASK_EST_MAX)
+    complexity: Literal["very_low", "low", "medium", "high", "very_high"] = "medium"
     assignees: list[str] | None = Field(default=None, max_length=TASK_ASSIGNEES_MAX)
     tags: list[str] | None = Field(default=None, max_length=TASK_TAGS_MAX)
     links: list[TaskExternalLinkDTO] | None = Field(default=None, max_length=TASK_LINKS_MAX)
@@ -400,7 +402,7 @@ class PatchTaskRequest(BaseModel):
 
     @model_validator(mode="after")
     def _require_mutable_field(self) -> PatchTaskRequest:
-        mutable_fields = {"title", "desc", "est", "assignees", "tags", "links"}
+        mutable_fields = {"title", "desc", "est", "complexity", "assignees", "tags", "links"}
         if not self.model_fields_set.intersection(mutable_fields):
             raise ValueError("at least one task field must be provided")
         return self

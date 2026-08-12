@@ -221,6 +221,7 @@ function normalizedIdSet(values) {
 function taskFlags(task) {
   const flags = []
   if (task.next) flags.push('next')
+  if (task.complexity) flags.push(`complexity:${task.complexity}`)
   if (task.est) flags.push(`est:${task.est}`)
   if (task.parentId) flags.push(`parent:${task.parentId}`)
   if (task.deps?.length) flags.push(`deps:${task.deps.join(',')}`)

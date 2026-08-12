@@ -1,5 +1,6 @@
 import { computeTaskDisplayNumbers } from '@/lib/task-display'
-import type { Phase, TaskExternalLink } from '@/types/roadmap'
+import { getTaskComplexity } from '@/lib/task-complexity'
+import type { Phase, TaskComplexity, TaskExternalLink } from '@/types/roadmap'
 
 export const PORTABLE_ROADMAP_SCHEMA_VERSION = 2
 
@@ -8,6 +9,7 @@ interface PortableTask {
   done: boolean
   recommended?: boolean
   est?: string
+  complexity: TaskComplexity
   tags?: string[]
   assignees?: string[]
   deps?: string[]
@@ -57,6 +59,7 @@ export function toPortablePhases(phases: Phase[]): PortablePhase[] {
         done: task.done,
         ...(task.next !== undefined ? { recommended: task.next } : {}),
         ...(task.est !== undefined ? { est: task.est } : {}),
+        complexity: getTaskComplexity(task),
         ...(task.tags !== undefined ? { tags: [...task.tags] } : {}),
         ...(task.assignees !== undefined ? { assignees: [...task.assignees] } : {}),
         ...(task.deps !== undefined ? { deps: dependencyRefs ?? [] } : {}),

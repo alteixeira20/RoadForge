@@ -61,8 +61,10 @@ describe('portable roadmap v2', () => {
     expect(foundation).not.toHaveProperty('claimedBy')
     expect(foundation).not.toHaveProperty('claimedById')
     expect(foundation).not.toHaveProperty('claimedAt')
+    expect(foundation.complexity).toBe('medium')
     expect(build).toMatchObject({
       title: 'Build task',
+      complexity: 'medium',
       recommended: true,
       deps: ['1.1'],
     })

@@ -3,6 +3,7 @@
 import { Icon } from '@/components/ui/Icon'
 import { useTaskTagDisplayPreferences } from '@/hooks/useTaskTagDisplayPreferences'
 import { resolveTagDisplay } from '@/lib/tag-registry'
+import { getTaskComplexityLabel } from '@/lib/task-complexity'
 import type { Task, TagDefinition } from '@/types/roadmap'
 import { TagChip } from './TagChip'
 
@@ -31,9 +32,15 @@ export function TaskDetailMeta({
 
   return (
     <dl className="task-meta-stack">
+      <div className="task-meta-group is-complexity">
+        <dt className="task-meta-label">Complexity</dt>
+        <dd className="task-meta-value">
+          <span className="meta-pill complexity-pill">{getTaskComplexityLabel(task)}</span>
+        </dd>
+      </div>
       {!isNested && (
         <div className="task-meta-group is-estimate">
-          <dt className="task-meta-label">Estimate</dt>
+          <dt className="task-meta-label">Time estimate · heuristic</dt>
           <dd className="task-meta-value">
             {task.est
               ? <span className="estimate-chip">{task.est}</span>

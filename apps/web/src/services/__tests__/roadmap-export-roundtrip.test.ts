@@ -28,7 +28,7 @@ const bareUrlLink = allLinks.find((link) => link.id === 'link-spec')!
 // Compile-time canaries ensure changes to internal domain shapes force this
 // portable-format test to be revisited deliberately.
 const _ALL_TASK_FIELDS: Record<keyof Task, true> = {
-  id: true, title: true, done: true, next: true, est: true, assignees: true,
+  id: true, title: true, done: true, next: true, est: true, complexity: true, assignees: true,
   tags: true, deps: true, desc: true, parentId: true, claimedBy: true,
   claimedById: true, claimedAt: true, links: true,
 }
@@ -95,6 +95,7 @@ describe('portable v2 export/import round trip', () => {
     expect(roundTrippedSubtask.done).toBe(maximalSubtask.done)
     expect(roundTrippedSubtask.next).toBe(maximalSubtask.next)
     expect(roundTrippedSubtask.est).toBe(maximalSubtask.est)
+    expect(roundTrippedSubtask.complexity).toBe('medium')
     expect(roundTrippedSubtask.assignees).toEqual(maximalSubtask.assignees)
     expect(roundTrippedSubtask.tags).toEqual(maximalSubtask.tags)
     expect(roundTrippedSubtask.desc).toBe(maximalSubtask.desc)

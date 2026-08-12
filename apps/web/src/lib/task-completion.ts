@@ -1,3 +1,4 @@
+import { getTaskComplexityStructureIssue } from '@/lib/task-complexity'
 import type { Task } from '@/types/roadmap'
 
 /**
@@ -7,6 +8,9 @@ import type { Task } from '@/types/roadmap'
  * Pure function — no side effects, no mutations.
  */
 export function getTaskCompletionBlocker(task: Task, allTasks: Task[]): string | null {
+  const complexityIssue = getTaskComplexityStructureIssue(task, allTasks)
+  if (complexityIssue) return complexityIssue
+
   const subtasks = allTasks.filter((st) => st.parentId === task.id)
   const unfinishedSubtasks = subtasks.filter((st) => !st.done)
 

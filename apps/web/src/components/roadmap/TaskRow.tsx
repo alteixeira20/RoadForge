@@ -384,6 +384,7 @@ export function TaskRow({
             <TaskEditForm
               task={task}
               isNested={isNested}
+              directSubtaskCount={subtasks.length}
               availableAssignees={availableAssignees}
               registry={tagRegistry}
               onSave={async (updates) => {

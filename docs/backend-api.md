@@ -87,7 +87,10 @@ derivative projections.
 | `DELETE` | `/api/roadmaps/{id}/tasks/{task_id}/claim` | owner/editor | release/clear a claim according to role rules |
 
 Focused writes modify the same canonical roadmap document as aggregate saves. They do
-not create a second source of truth.
+not create a second source of truth. Task planning PATCH supports title, description, time
+estimate, complexity, assignees, tags, and supported links. `very_high` complexity is only
+valid for top-level tasks with at least two direct subtasks; the domain validator rejects
+writes that would violate that structure.
 
 ## Tag registry
 

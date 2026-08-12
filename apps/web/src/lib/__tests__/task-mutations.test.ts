@@ -87,6 +87,32 @@ describe('createTaskMutations task updates', () => {
     expect(params.addActivity).not.toHaveBeenCalled()
   })
 
+  it('routes a synced complexity-only change through the focused patch path', async () => {
+    const params = createParams({
+      serverRoadmapId: 'rm_1',
+      sessionToken: 'session-token',
+      updatedAt: '2026-07-04T10:00:00Z',
+    })
+    const mutations = createTaskMutations(params)
+
+    await expect(mutations.handleUpdateTask('RF-303', { complexity: 'high' })).resolves.toBe(true)
+
+    expect(params.patchSyncedTask).toHaveBeenCalledWith({
+      task: phases[0].tasks[0],
+      updates: { complexity: 'high' },
+    })
+    expect(params.setPhases).not.toHaveBeenCalled()
+  })
+
+  it('rejects Very high until a top-level task has two direct subtasks', async () => {
+    const params = createParams()
+    const mutations = createTaskMutations(params)
+
+    await expect(mutations.handleUpdateTask('RF-303', { complexity: 'very_high' })).resolves.toBe(false)
+    expect(params.setPhases).not.toHaveBeenCalled()
+    expect(params.showToast).toHaveBeenCalledWith(expect.stringContaining('at least two direct subtasks'))
+  })
+
   it('updates local links without changing unrelated task fields', async () => {
     const params = createParams()
     const mutations = createTaskMutations(params)

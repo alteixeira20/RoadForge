@@ -52,6 +52,7 @@ Priority rules:
           "done": true,
           "recommended": false,
           "est": "1 day",
+          "complexity": "medium",
           "tags": ["planning"],
           "assignees": ["Alex"],
           "deps": [],
@@ -62,6 +63,7 @@ Priority rules:
           "done": false,
           "recommended": true,
           "est": "2 days",
+          "complexity": "low",
           "tags": ["planning"],
           "assignees": ["Alex", "Sam"],
           "deps": ["1.1"],
@@ -80,6 +82,8 @@ Priority rules:
 - `version` is currently `2`.
 - Phase `status` values are `done`, `active`, `next`, or `future`.
 - Phase `progress` is a number from 0 to 100 and should reflect task completion.
+- Every generated task must include `complexity`: `very_low`, `low`, `medium`, `high`, or `very_high`. Use complexity as the primary planning signal; time estimates are optional heuristics.
+- `very_high` is only valid for top-level tasks and requires at least two direct subtasks. Put actionable recommendations on ready subtasks rather than on an undecomposed parent.
 - Do not create or edit task IDs. Task references are determined by roadmap order: `1.1`, `1.2`, `2.1`, with subtasks such as `1.1.1`.
 - Dependencies reference those order-derived task numbers through `deps`.
 - Subtasks use `parent` with the parent task's order-derived number.
@@ -87,7 +91,7 @@ Priority rules:
 - `tagRegistry` defines stable tag IDs; task `tags` reference those IDs.
 - Task `assignees` are planning labels and do not grant collaboration access.
 - `desc` supports the Markdown subset accepted by RoadForge and is limited by the current parser/API contract.
-- Optional task fields include `recommended`, `est`, `tags`, `assignees`, `deps`, `desc`, `parent`, and supported credential-free external links.
+- Optional task fields include `recommended`, `est`, `tags`, `assignees`, `deps`, `desc`, `parent`, and supported credential-free external links. `complexity` is required for newly generated tasks.
 - Never include participant sessions, invite tokens, passwords, browser auth/cache metadata, database credentials, or private secrets.
 - Use valid JSON with double quotes and no comments/trailing commas.
 
