@@ -152,11 +152,13 @@ class RedisRateLimiter:
                 self._bucket_key(action, key),
                 window_seconds,
             )
-        except RedisError:
-            logger.warning(
-                "Rate limiter Redis check failed; allowing request for action=%s", action
-            )
-            return RateLimitResult(allowed=True, remaining=limit, retry_after=0)
+        except RedisError as exc:
+            logger.exception("Rate limiter Redis check failed for action=%s", action)
+            raise HTTPException(
+                status_code=503,
+                detail="Rate limiter temporarily unavailable",
+                headers={"Retry-After": "1"},
+            ) from exc
 
         count = int(count)
         retry_after = max(1, math.ceil(int(pttl) / 1000)) if int(pttl) > 0 else window_seconds
