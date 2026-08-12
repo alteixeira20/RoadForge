@@ -2,7 +2,7 @@
 // Join roadmap via invite, share-link management, and participant management.
 
 import type { ShareLink, ShareRole, Participant } from '@/types/roadmap'
-import { BROWSER_SESSION_TOKEN, establishBrowserSession, requestJson } from './roadmap-http'
+import { requestJson, resolveBrowserSessionToken } from './roadmap-http'
 
 // ─── Backend response shapes (local to this file) ─────────────────────────────
 
@@ -178,12 +178,15 @@ export async function joinRoadmap(
     method: 'POST',
     body: JSON.stringify(body),
   })
-  await establishBrowserSession(data.roadmap_id, data.session_token)
+  const browserSessionToken = await resolveBrowserSessionToken(
+    data.roadmap_id,
+    data.session_token,
+  )
   return {
     roadmapId: data.roadmap_id,
     roadmapName: data.roadmap_name,
     role: data.role,
-    sessionToken: BROWSER_SESSION_TOKEN,
+    sessionToken: browserSessionToken,
     participantId: data.participant_id,
   }
 }

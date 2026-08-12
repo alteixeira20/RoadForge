@@ -8,7 +8,7 @@ import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { ensureRegistryForTagIds } from '@/lib/tag-registry'
-import { BROWSER_SESSION_TOKEN, establishBrowserSession, requestJson } from './roadmap-http'
+import { requestJson, resolveBrowserSessionToken } from './roadmap-http'
 
 // ─── Backend response shapes (local to this file) ─────────────────────────────
 
@@ -117,11 +117,14 @@ export async function createRoadmap(
     method: 'POST',
     body: JSON.stringify(body),
   })
-  await establishBrowserSession(data.id, data.owner_session_token)
+  const browserSessionToken = await resolveBrowserSessionToken(
+    data.id,
+    data.owner_session_token,
+  )
   return {
     roadmap: toRoadmap(data),
     ownerParticipantId: data.owner_participant_id,
-    ownerSessionToken: BROWSER_SESSION_TOKEN,
+    ownerSessionToken: browserSessionToken,
   }
 }
 
