@@ -23,7 +23,9 @@ jobs:
       - name: Apply task complexity feature
         shell: bash
         run: |
+          python tools/fix-task-complexity-transform.py
           python tools/apply-task-complexity.py
+          rm -f tools/fix-task-complexity-transform.py
           git diff --check
           git status --short
           git config user.name "RoadForge Automation"
