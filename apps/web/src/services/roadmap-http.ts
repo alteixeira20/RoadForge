@@ -150,3 +150,24 @@ export async function establishBrowserSession(
     bearerToken,
   )
 }
+
+/**
+ * Prefer the HttpOnly browser session, but never orphan a newly-created/joined
+ * participant if the exchange endpoint or cookie write is temporarily unavailable.
+ * The raw Bearer fallback remains roadmap-scoped and the hydration path retries the
+ * exchange before replacing persisted auth state with the non-secret marker.
+ */
+export async function resolveBrowserSessionToken(
+  roadmapId: string,
+  bearerToken: string,
+): Promise<string> {
+  try {
+    await establishBrowserSession(roadmapId, bearerToken)
+    return BROWSER_SESSION_TOKEN
+  } catch {
+    console.warn(
+      'Browser session exchange failed; retaining the roadmap-scoped Bearer session until a later hydration can migrate it.',
+    )
+    return bearerToken
+  }
+}
