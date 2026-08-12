@@ -41,6 +41,7 @@ or team-scale SLA.
 | Make a contribution | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) and [`contributor-guide.md`](contributor-guide.md) |
 | Understand architecture | [`architecture/overview.md`](architecture/overview.md) |
 | Understand canonical data ownership | [`architecture/source-of-truth-rules.md`](architecture/source-of-truth-rules.md) |
+| Understand task complexity and decomposition | [`task-complexity.md`](task-complexity.md) |
 | Understand shared access | [`access-model.md`](access-model.md) |
 | Understand the browser application | [`frontend-foundation.md`](frontend-foundation.md) |
 | Understand API semantics | [`backend-api.md`](backend-api.md) |
@@ -60,6 +61,7 @@ their contract changes:
 - `access-model.md`
 - `backend-api.md`
 - `frontend-foundation.md`
+- `task-complexity.md`
 - `performance.md`
 - `architecture/overview.md`
 - `architecture/source-of-truth-rules.md`

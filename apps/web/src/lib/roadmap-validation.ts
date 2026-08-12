@@ -2,6 +2,11 @@ import { isAssignmentTag, assignmentNameFromTag } from '@/lib/task-assignment'
 import { normalizeTaskLinks, validateTaskLinks } from '@/lib/task-link-validation'
 import { normalizePortableRoadmapForImport } from '@/lib/portable-roadmap'
 import {
+  DEFAULT_TASK_COMPLEXITY,
+  getTaskComplexityStructureIssue,
+  isTaskComplexity,
+} from '@/lib/task-complexity'
+import {
   isValidTagId,
   normalizeTagColor,
   normalizeTagLabel,
@@ -44,6 +49,7 @@ export type ImportRepairCode =
   | 'stale_deps_removed'
   | 'tag_registry_repaired'
   | 'task_links_repaired'
+  | 'complexity_normalized'
 
 export interface ImportRepair {
   code: ImportRepairCode
@@ -77,6 +83,8 @@ const REPAIR_MESSAGES: Record<ImportRepairCode, string> = {
     'Invalid or duplicate tag registry definitions were removed or normalized.',
   task_links_repaired:
     'Invalid, duplicate, credential-shaped, or unsupported task links were removed or normalized.',
+  complexity_normalized:
+    'Invalid task complexity values were normalized to Medium.',
 }
 
 // Import files are parsed locally, so this can exceed the API request-body cap.
@@ -171,7 +179,11 @@ function validateTask(value: unknown): Task {
   if (value.next !== undefined && typeof value.next !== 'boolean') {
     throw new Error('task.next must be a boolean')
   }
-  const task: Task = { id, title, done: value.done }
+  const complexity = value.complexity === undefined
+    ? DEFAULT_TASK_COMPLEXITY
+    : value.complexity
+  if (!isTaskComplexity(complexity)) throw new Error('task.complexity is invalid')
+  const task: Task = { id, title, done: value.done, complexity }
   if (value.next !== undefined) task.next = value.next as boolean
   const est = cleanOptionalText(value.est, 'task.est', TASK_EST_MAX)
   if (est !== undefined) task.est = est
@@ -247,7 +259,7 @@ const KNOWN_PHASE_KEYS = new Set([
   'id', 'num', 'name', 'color', 'colorMode', 'status', 'progress', 'tasks',
 ])
 const KNOWN_TASK_KEYS = new Set([
-  'id', 'title', 'done', 'next', 'recommended', 'est', 'tags', 'assignees', 'deps', 'desc',
+  'id', 'title', 'done', 'next', 'recommended', 'est', 'complexity', 'tags', 'assignees', 'deps', 'desc',
   'parentId', 'parent', 'claimedBy', 'claimedById', 'claimedAt', 'links',
 ])
 
@@ -407,6 +419,14 @@ function repairTaskRaw(
       bump(counts, 'coerced_boolean')
       t.next = Boolean(t.next)
     }
+  }
+
+  // complexity: missing defaults silently for backward compatibility; invalid explicit values repair.
+  if (t.complexity === undefined) {
+    t.complexity = DEFAULT_TASK_COMPLEXITY
+  } else if (!isTaskComplexity(t.complexity)) {
+    bump(counts, 'complexity_normalized')
+    t.complexity = DEFAULT_TASK_COMPLEXITY
   }
 
   // est: optional string — null → remove
@@ -781,7 +801,13 @@ export function validateImportedPhases(value: unknown): Phase[] {
   }
   if (!Array.isArray(raw)) throw new Error('phases must be an array')
   if (raw.length > PHASES_MAX) throw new Error(`Too many phases (max ${PHASES_MAX})`)
-  return (raw as unknown[]).map((p) => validatePhase(p))
+  const phases = (raw as unknown[]).map((p) => validatePhase(p))
+  const allTasks = phases.flatMap((phase) => phase.tasks)
+  for (const task of allTasks) {
+    const complexityIssue = getTaskComplexityStructureIssue(task, allTasks)
+    if (complexityIssue) throw new Error(`task ${task.id}: ${complexityIssue}`)
+  }
+  return phases
 }
 
 export function validateImportedRoadmap(value: unknown): ImportedRoadmap {

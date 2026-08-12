@@ -13,11 +13,13 @@ import {
   isTaskEditDraftDirty,
   type TaskEditDraft,
 } from '@/lib/task-edit'
-import type { Task, TagDefinition } from '@/types/roadmap'
+import { TASK_COMPLEXITY_LEVELS, getTaskComplexityOption } from '@/lib/task-complexity'
+import type { Task, TaskComplexity, TagDefinition } from '@/types/roadmap'
 
 interface TaskEditFormProps {
   task: Task
   isNested: boolean
+  directSubtaskCount: number
   availableAssignees: string[]
   registry?: TagDefinition[]
   onSave: (updates: Partial<Task>) => void | Promise<void>
@@ -29,6 +31,7 @@ interface TaskEditFormProps {
 export function TaskEditForm({
   task,
   isNested,
+  directSubtaskCount,
   availableAssignees,
   registry = [],
   onSave,
@@ -42,17 +45,24 @@ export function TaskEditForm({
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
 
   const isDirty = isTaskEditDraftDirty(draft, task)
+  const complexityOption = getTaskComplexityOption(draft.complexity)
+  const invalidNestedComplexity = isNested && draft.complexity === 'very_high'
+  const missingBreakdown = !isNested
+    && draft.complexity === 'very_high'
+    && directSubtaskCount < 2
+  const complexityInvalid = invalidNestedComplexity || missingBreakdown
 
   useEffect(() => {
     onDirtyChange?.(isDirty)
   }, [isDirty, onDirtyChange])
 
   const handleSave = () => {
-    if (!canCommit || !draft.title.trim()) return
+    if (!canCommit || !draft.title.trim() || complexityInvalid) return
     const assignees = dedupeNames(draft.assignees)
     onSave({
       title: draft.title.trim(),
       est: draft.est,
+      complexity: draft.complexity,
       desc: draft.desc,
       assignees,
       tags: splitAndNormalizeTags(draft.tags),
@@ -131,9 +141,34 @@ export function TaskEditForm({
           placeholder="Task title…"
         />
       </div>
+      <div className="field">
+        <label htmlFor={`edit-complexity-${task.id}`}>Complexity</label>
+        <select
+          id={`edit-complexity-${task.id}`}
+          value={draft.complexity}
+          onChange={(e) => setDraft({ ...draft, complexity: e.target.value as TaskComplexity })}
+        >
+          {TASK_COMPLEXITY_LEVELS.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+              disabled={isNested && option.value === 'very_high'}
+            >
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <small>{complexityOption.description}</small>
+        {missingBreakdown && (
+          <small role="alert">Very high complexity requires at least two direct subtasks.</small>
+        )}
+        {invalidNestedComplexity && (
+          <small role="alert">Nested tasks cannot be Very high because RoadForge supports one subtask level.</small>
+        )}
+      </div>
       {!isNested && (
         <div className="field">
-          <label htmlFor={`edit-est-${task.id}`}>Estimate</label>
+          <label htmlFor={`edit-est-${task.id}`}>Time estimate (optional)</label>
           <input
             id={`edit-est-${task.id}`}
             value={draft.est}
@@ -141,6 +176,7 @@ export function TaskEditForm({
             onKeyDown={handleTitleKeyDown}
             placeholder="e.g. 2d, 5h…"
           />
+          <small>Heuristic only — complexity is the primary planning signal.</small>
         </div>
       )}
       <div className="field full">
@@ -213,7 +249,7 @@ export function TaskEditForm({
         <button
           className="btn sm primary"
           onClick={handleSave}
-          disabled={!draft.title.trim() || !canCommit}
+          disabled={!draft.title.trim() || !canCommit || complexityInvalid}
         >
           Save
         </button>

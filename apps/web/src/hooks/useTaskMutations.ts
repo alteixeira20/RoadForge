@@ -3,6 +3,7 @@
 import type { Phase, Task, ActivityChange } from '@/types/roadmap'
 import { generateTaskId, generateSubtaskId, hasCycle as hasCycleGraph } from '@/lib/task-graph'
 import { getTaskCompletionBlocker } from '@/lib/task-completion'
+import { getTaskComplexity, getTaskComplexityStructureIssue } from '@/lib/task-complexity'
 import { getChangedTaskFields } from '@/lib/activity-changes'
 import {
   buildTaskDoneActivityChanges,
@@ -127,6 +128,7 @@ export function createTaskMutations({
       title,
       done: false,
       next: false,
+      complexity: 'medium',
       tags: ['subtask'],
       deps: [],
       desc: '',
@@ -164,6 +166,12 @@ export function createTaskMutations({
     if (readOnly) return
     const subtask = allTasks.find((t) => t.id === subtaskId)
     if (!subtask?.parentId) return
+    const parent = allTasks.find((t) => t.id === subtask.parentId)
+    const siblingCount = allTasks.filter((t) => t.parentId === subtask.parentId).length
+    if (parent && getTaskComplexity(parent) === 'very_high' && siblingCount <= 2) {
+      showToast('Very high complexity tasks require at least two direct subtasks. Lower complexity before removing this subtask.')
+      return
+    }
     setPhases(
       phases.map((p) => ({
         ...p,
@@ -184,6 +192,7 @@ export function createTaskMutations({
       done: false,
       next: false,
       est: '',
+      complexity: 'medium',
       tags: [],
       deps: [],
       desc: '',
@@ -218,6 +227,11 @@ export function createTaskMutations({
     if (readOnly) return false
     const task = allTasks.find((t) => t.id === id)
     if (!task) return false
+    const complexityIssue = getTaskComplexityStructureIssue({ ...task, ...updates }, allTasks)
+    if (complexityIssue) {
+      showToast(complexityIssue)
+      return false
+    }
     const changedFields = getChangedTaskFields(task, updates)
     if (changedFields.length === 0) return true
 

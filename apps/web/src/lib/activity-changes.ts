@@ -11,6 +11,7 @@ const taskActivityFields: TaskActivityField[] = [
   'title',
   'desc',
   'est',
+  'complexity',
   'assignees',
   'tags',
   'links',
@@ -20,6 +21,7 @@ const taskActivityFieldLabels: Record<TaskActivityField, string> = {
   title: 'title',
   desc: 'description',
   est: 'estimate',
+  complexity: 'complexity',
   assignees: 'assignees',
   tags: 'tags',
   links: 'GitHub links',
@@ -153,7 +155,7 @@ export function getTaskUpdateLabel(metadata: Record<string, unknown> | null): st
   if (fields.length === 1 && fields[0] === 'title') return 'Renamed task'
   if (fields.length === 1 && fields[0] === 'desc') return 'Updated task description'
   if (fields.length > 0 && fields.every((field) => (
-    field === 'est' || field === 'assignees' || field === 'tags' || field === 'links'
+    field === 'est' || field === 'complexity' || field === 'assignees' || field === 'tags' || field === 'links'
   ))) {
     return 'Updated task details'
   }

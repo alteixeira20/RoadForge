@@ -5,6 +5,7 @@ import {
   getVisibleTaskTags,
 } from '@/lib/task-assignment'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
+import { getTaskComplexity } from '@/lib/task-complexity'
 import type { Phase, PhaseStatus, Task } from '@/types/roadmap'
 
 export type RoadmapUpgradeSeverity = 'info' | 'warning'
@@ -115,6 +116,7 @@ function canonicalizeTask(
     title: task.title,
     done: task.done === true,
     next: task.next === true,
+    complexity: getTaskComplexity(task),
     tags,
     assignees,
     deps,
@@ -202,6 +204,7 @@ function addCanonicalNotices(
     const afterTask = afterTasks[index]
     if (!afterTask) return true
     return task.next !== afterTask.next ||
+      getTaskComplexity(task) !== getTaskComplexity(afterTask) ||
       JSON.stringify(task.tags ?? undefined) !== JSON.stringify(afterTask.tags) ||
       JSON.stringify(task.assignees ?? undefined) !== JSON.stringify(afterTask.assignees) ||
       JSON.stringify(task.deps ?? undefined) !== JSON.stringify(afterTask.deps)

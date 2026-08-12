@@ -27,6 +27,7 @@ export type RealtimeConnectionStatus =
   | 'access-lost'
 export type TaskStatusFilter = 'all' | 'open' | 'done'
 export type TaskClaimFilter = 'all' | 'mine' | 'claimed' | 'unclaimed'
+export type TaskComplexity = 'very_low' | 'low' | 'medium' | 'high' | 'very_high'
 export type TaskExternalLinkProvider = 'github' | 'url'
 export type TaskExternalLinkKind =
   | 'issue'
@@ -66,6 +67,7 @@ export interface Task {
   done: boolean
   next?: boolean
   est?: string
+  complexity?: TaskComplexity
   assignees?: string[]
   tags?: string[]
   /** IDs of tasks this task depends on */
@@ -169,6 +171,7 @@ export type TaskActivityField =
   | 'title'
   | 'desc'
   | 'est'
+  | 'complexity'
   | 'assignees'
   | 'tags'
   | 'links'

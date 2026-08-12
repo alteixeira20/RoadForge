@@ -101,6 +101,10 @@ def validate_roadmap_domain(
         for phase in phases
         for task in phase.tasks
     }
+    children_by_parent_id: dict[str, list] = {}
+    for task in all_tasks:
+        if task.parentId:
+            children_by_parent_id.setdefault(task.parentId, []).append(task)
 
     duplicate_task_ids = _duplicates(task.id for task in all_tasks)
     if duplicate_task_ids:
@@ -131,6 +135,21 @@ def validate_roadmap_domain(
 
             if task.done and any((task.claimedBy, task.claimedById, task.claimedAt)):
                 errors.append(f"completed task {task.id!r} must not remain claimed")
+
+            if task.complexity == "very_high":
+                direct_children = children_by_parent_id.get(task.id, [])
+                if task.parentId:
+                    errors.append(
+                        f"very-high complexity task {task.id!r} must be top-level"
+                    )
+                elif len(direct_children) < 2:
+                    errors.append(
+                        f"very-high complexity task {task.id!r} requires at least two direct subtasks"
+                    )
+                elif task.done and any(not child.done for child in direct_children):
+                    errors.append(
+                        f"very-high complexity task {task.id!r} cannot be complete before its subtasks"
+                    )
 
             if task.parentId:
                 if task.parentId == task.id:

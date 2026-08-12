@@ -25,6 +25,7 @@ Changes after the `0.1.0` baseline belong here.
 
 ### Product and visual refinements
 
+- Add an ordered five-level task complexity signal (`Very low` → `Very high`), default legacy tasks to `Medium`, require very-high top-level tasks to have at least two direct subtasks, and make complexity visible in editing, task metadata, portable exports, Markdown, MCP output, and roadmap-generation guidance. Time estimates remain optional heuristics.
 - Introduce portable roadmap schema v2: task identity is no longer editable/exposed in generated JSON and exports. Tasks are addressed by their roadmap-order numbers (`1.1`, `1.2`, `2.1`, `1.1.1`) while RoadForge keeps opaque internal IDs only for dependency, claim, realtime, reorder, and persistence integrity.
 - Keep version 1 ID-based RoadForge/legacy imports compatible while v2 ignores attempted custom task IDs and resolves positional dependencies/subtasks across phase boundaries.
 - Replace user-facing "next task" semantics with non-exclusive task recommendations; multiple tasks may be recommended without RoadForge asserting that one task is the authoritative next action.
