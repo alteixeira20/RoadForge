@@ -144,11 +144,13 @@ def validate_roadmap_domain(
                     )
                 elif len(direct_children) < 2:
                     errors.append(
-                        f"very-high complexity task {task.id!r} requires at least two direct subtasks"
+                        f"very-high complexity task {task.id!r} requires at least "
+                        "two direct subtasks"
                     )
                 elif task.done and any(not child.done for child in direct_children):
                     errors.append(
-                        f"very-high complexity task {task.id!r} cannot be complete before its subtasks"
+                        f"very-high complexity task {task.id!r} cannot be complete "
+                        "before its subtasks"
                     )
 
             if task.parentId:
