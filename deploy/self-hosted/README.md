@@ -1,9 +1,22 @@
 # Self-hosting RoadForge
 
-This deployment targets `roadforge.anvilary.tools` with Docker Compose, PostgreSQL,
-optional Redis-backed realtime, a central nginx proxy, and a Cloudflare Tunnel.
+This deployment is the maintained **reference self-hosted topology** for RoadForge. The
+public Anvilary instance at `roadforge.anvilary.tools` is a hosted demo/reference deployment;
+teams that depend on RoadForge operationally—especially larger teams—should fork the
+repository or maintain a controlled clone and run infrastructure they control.
 
-Expected paths:
+This stack targets `roadforge.anvilary.tools` as the reference hostname with Docker Compose,
+PostgreSQL, optional Redis-backed realtime, a central nginx proxy, and a Cloudflare Tunnel.
+Adapt the hostname, network, capacity, backup, monitoring, and edge configuration to your own
+deployment.
+
+The reference stack is production-oriented, but it is **not** a claim that RoadForge has been
+capacity-certified for an arbitrary team size. Operators are responsible for sizing and
+load-testing their expected concurrency/data volume, defining recovery objectives, and
+monitoring the deployed service. See
+[`docs/hosted-demo-and-self-hosting.md`](../../docs/hosted-demo-and-self-hosting.md).
+
+Expected paths for this reference deployment:
 
 - repository: `/opt/stacks/roadforge/src`
 - private environment file: `/opt/stacks/roadforge/.env`
@@ -12,6 +25,22 @@ Expected paths:
 
 RoadForge is public by default. Invite links provide roadmap-scoped access; Cloudflare
 Access is not part of the standard product flow.
+
+## Before using RoadForge for a team
+
+The public demo is suitable for evaluation and light collaboration. If RoadForge becomes part
+of a team's real workflow, keep the deployment under team control. For a larger or sustained
+deployment, the operator should explicitly own:
+
+- the fork/clone and deployed revision;
+- PostgreSQL durability, backup/restore, and retention;
+- Redis availability when using multiple API workers/instances;
+- CPU, memory, storage, database connection, proxy, and SSE capacity;
+- monitoring, alerting, log retention, incident response, and rollback;
+- representative load testing before depending on the service.
+
+Forking/self-hosting remains subject to the repository's current PolyForm Noncommercial
+License 1.0.0; it does not grant commercial use outside those terms.
 
 ## First deployment
 
@@ -94,7 +123,7 @@ After upgrading:
 Application rollback does **not** reverse database migrations. Create and verify a PostgreSQL
 backup before schema-sensitive updates.
 
-## Realtime mode
+## Realtime and multi-worker mode
 
 The safe default is one API worker with memory-backed realtime:
 
@@ -114,6 +143,10 @@ ROADFORGE_API_WORKERS=2
 Startup rejects multi-worker memory mode. Redis-backed realtime must connect successfully
 and does not silently fall back to memory. Public Redis-backed rate limiting also fails
 closed with `503` when Redis is unavailable rather than permitting unlimited requests.
+
+Multiple workers are a topology feature, not a large-team capacity guarantee. Before
+increasing worker count for a bigger team, measure API/DB/Redis/proxy/SSE behavior under
+representative load and monitor those limits in production.
 
 ## Proxy and credential logging
 
@@ -155,6 +188,9 @@ curl -fsSI https://roadforge.anvilary.tools
 curl -fsS https://roadforge.anvilary.tools/api/health
 ```
 
+Replace the reference hostname above with your own hostname when validating a fork/self-hosted
+instance.
+
 `/api/health` proves configured API readiness, not the complete browser collaboration path.
 After every deployment:
 
@@ -169,6 +205,10 @@ After every deployment:
 8. Revoke a participant and verify subsequent protected requests fail immediately.
 9. Export JSON and re-import it as a separate local roadmap.
 10. Review central nginx/Cloudflare logs for credential leakage using sanitized evidence.
+
+For sustained/larger-team use, also run representative concurrency/load tests before
+operational reliance and establish alerts for resource saturation, database/Redis health,
+realtime connection failures, backup failures, and error-rate changes.
 
 ## Operations
 
@@ -197,8 +237,9 @@ docker compose \
   logs --since 30m --tail=200 roadforge-web roadforge-api roadforge-postgres roadforge-redis
 ```
 
-If cookie-authenticated writes return `403`, confirm the real browser Origin exactly matches
-an entry in `ROADFORGE_CORS_ORIGINS` before changing any security policy.
+Use your own hostname for a non-Anvilary deployment. If cookie-authenticated writes return
+`403`, confirm the real browser Origin exactly matches an entry in `ROADFORGE_CORS_ORIGINS`
+before changing any security policy.
 
 ## Rollback
 
