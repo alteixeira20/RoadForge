@@ -134,8 +134,8 @@ describe('Accessibility Unit Tests', () => {
         <TaskRowHeader
           task={task}
           expanded={false}
-          status="ready"
-          statusTitle="Ready"
+          status="recommended"
+          statusTitle="Recommended"
           visibleTags={[]}
           registry={[]}
           lockedByOther={false}

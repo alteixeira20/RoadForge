@@ -114,7 +114,6 @@ export function TaskRowHeader({
       )}
       {showEstimate && <span className="meta-pill">{task.est}</span>}
       {displayNumber && <span className="task-num">{displayNumber}</span>}
-      <span className="id">{task.id}</span>
       <button
         type="button"
         className="toggle-btn"

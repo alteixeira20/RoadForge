@@ -43,11 +43,6 @@
   color: var(--ink);
 }
 .task.done .title { text-decoration: line-through; color: var(--ink-3); }
-.task-row .id {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink-4);
-}
 .task-row .toggle-btn {
   width: 32px; height: 32px;
   display: grid; place-items: center;
@@ -101,7 +96,7 @@
   background: var(--sage-glow);
   border-color: color-mix(in srgb, var(--sage), transparent 72%);
 }
-.task-status-badge.is-ready {
+.task-status-badge.is-recommended {
   color: var(--ember);
   background: var(--lava-glow);
   border-color: color-mix(in srgb, var(--ember), transparent 72%);

@@ -23,6 +23,15 @@ Changes after the `0.1.0` baseline belong here.
 - Update the MCP client to prefer canonical `#token=` invite URLs while retaining legacy query-token parsing only as a compatibility fallback.
 - Add cross-roadmap, role-change, browser-session/CSRF, invite transport, degraded session recovery, and realtime credential regression coverage.
 
+### Product and visual refinements
+
+- Introduce portable roadmap schema v2: task identity is no longer editable/exposed in generated JSON and exports. Tasks are addressed by their roadmap-order numbers (`1.1`, `1.2`, `2.1`, `1.1.1`) while RoadForge keeps opaque internal IDs only for dependency, claim, realtime, reorder, and persistence integrity.
+- Keep version 1 ID-based RoadForge/legacy imports compatible while v2 ignores attempted custom task IDs and resolves positional dependencies/subtasks across phase boundaries.
+- Replace user-facing "next task" semantics with non-exclusive task recommendations; multiple tasks may be recommended without RoadForge asserting that one task is the authoritative next action.
+- Make Markdown exports use the same order-derived task references and recommendation language instead of exposing opaque internal IDs.
+- Let the forge atmosphere show subtly through phase and primary workspace surfaces while keeping controls, menus, and modal overlays dense enough for readability.
+- Give embers a restrained slow flicker, occasional hot flare, and soft glow while preserving the 30 fps cap and reduced-motion behavior.
+
 ## 0.1.0 - 2026-08-10
 
 First supported RoadForge baseline for deliberate public release preparation.

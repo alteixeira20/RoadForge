@@ -1,3 +1,4 @@
+import { computeTaskDisplayNumbers } from '@/lib/task-display'
 import type {
   Phase,
   TagDefinition,
@@ -13,42 +14,13 @@ interface RoadmapMarkdownInput {
 
 const MAX_FILENAME_STEM_LENGTH = 80
 const WINDOWS_RESERVED_STEMS = new Set([
-  'con',
-  'prn',
-  'aux',
-  'nul',
-  'com1',
-  'com2',
-  'com3',
-  'com4',
-  'com5',
-  'com6',
-  'com7',
-  'com8',
-  'com9',
-  'lpt1',
-  'lpt2',
-  'lpt3',
-  'lpt4',
-  'lpt5',
-  'lpt6',
-  'lpt7',
-  'lpt8',
-  'lpt9',
+  'con', 'prn', 'aux', 'nul',
+  'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
+  'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9',
 ])
 
 const INLINE_MARKDOWN_CHARACTERS = new Set([
-  '\\',
-  '`',
-  '*',
-  '_',
-  '[',
-  ']',
-  '<',
-  '>',
-  '#',
-  '!',
-  '|',
+  '\\', '`', '*', '_', '[', ']', '<', '>', '#', '!', '|',
 ])
 
 const PHASE_STATUS_LABELS: Record<Phase['status'], string> = {
@@ -101,16 +73,21 @@ function indentBlock(value: string, indent: string): string[] {
   return value.split(/\r?\n/).map((line) => `${indent}${line}`)
 }
 
+function displayRef(taskId: string, taskNumbers: ReadonlyMap<string, string>): string {
+  return taskNumbers.get(taskId) ?? '?'
+}
+
 function formatTask(
   task: Task,
   tagLabels: ReadonlyMap<string, string>,
+  taskNumbers: ReadonlyMap<string, string>,
 ): string[] {
   const indent = task.parentId ? '  ' : ''
   const checkbox = task.done ? '[x]' : '[ ]'
   const metadata: string[] = []
 
-  if (task.next === true) metadata.push('next')
-  if (task.parentId) metadata.push(`parent:${formatInlineCode(task.parentId)}`)
+  if (task.next === true) metadata.push('recommended')
+  if (task.parentId) metadata.push(`parent:${formatInlineCode(displayRef(task.parentId, taskNumbers))}`)
   if (task.est) metadata.push(`est:${escapeInlineMarkdown(task.est)}`)
   if (task.assignees?.length) {
     metadata.push(`assignees:${task.assignees.map(escapeInlineMarkdown).join(', ')}`)
@@ -120,12 +97,12 @@ function formatTask(
     metadata.push(`tags:${tags.map(escapeInlineMarkdown).join(', ')}`)
   }
   if (task.deps?.length) {
-    metadata.push(`deps:${task.deps.map(formatInlineCode).join(', ')}`)
+    metadata.push(`deps:${task.deps.map((id) => formatInlineCode(displayRef(id, taskNumbers))).join(', ')}`)
   }
 
   const suffix = metadata.length > 0 ? ` | ${metadata.join('; ')}` : ''
   const lines = [
-    `${indent}- ${checkbox} ${formatInlineCode(task.id)} ${escapeInlineMarkdown(task.title)}${suffix}`,
+    `${indent}- ${checkbox} ${formatInlineCode(displayRef(task.id, taskNumbers))} ${escapeInlineMarkdown(task.title)}${suffix}`,
   ]
   const detailIndent = `${indent}  `
 
@@ -145,6 +122,7 @@ function formatTask(
 function formatPhase(
   phase: Phase,
   tagLabels: ReadonlyMap<string, string>,
+  taskNumbers: ReadonlyMap<string, string>,
 ): string[] {
   const status = PHASE_STATUS_LABELS[phase.status]
   const lines = [
@@ -157,7 +135,7 @@ function formatPhase(
   }
 
   for (const task of phase.tasks) {
-    lines.push(...formatTask(task, tagLabels))
+    lines.push(...formatTask(task, tagLabels, taskNumbers))
   }
   return lines
 }
@@ -169,13 +147,14 @@ export function formatRoadmapMarkdown({
 }: RoadmapMarkdownInput): string {
   const title = roadmapName?.trim() || 'Untitled Roadmap'
   const tagLabels = new Map(tagRegistry.map((tag) => [tag.id, tag.label]))
+  const taskNumbers = computeTaskDisplayNumbers(phases)
   const lines = [`# ${escapeInlineMarkdown(title)}`]
 
   if (phases.length === 0) {
     lines.push('', '_No phases._')
   } else {
     for (const phase of phases) {
-      lines.push('', ...formatPhase(phase, tagLabels))
+      lines.push('', ...formatPhase(phase, tagLabels, taskNumbers))
     }
   }
 

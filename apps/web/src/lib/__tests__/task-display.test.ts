@@ -83,7 +83,7 @@ describe('deriveTaskStatus', () => {
   it('derives each display status from existing task fields', () => {
     expect(deriveTaskStatus(makeTask('done', { done: true }), [])).toBe('done')
     expect(deriveTaskStatus(makeTask('active', { claimedBy: 'Ada' }), [])).toBe('in-progress')
-    expect(deriveTaskStatus(makeTask('ready', { next: true }), [])).toBe('ready')
+    expect(deriveTaskStatus(makeTask('recommended', { next: true }), [])).toBe('recommended')
     expect(deriveTaskStatus(makeTask('planned'), [])).toBe('planned')
   })
 
@@ -94,9 +94,9 @@ describe('deriveTaskStatus', () => {
   })
 
   it('does not block on completed or missing dependencies', () => {
-    const task = makeTask('ready', { deps: ['done', 'missing'], next: true })
+    const task = makeTask('recommended', { deps: ['done', 'missing'], next: true })
     const done = makeTask('done', { done: true })
-    expect(deriveTaskStatus(task, [task, done])).toBe('ready')
+    expect(deriveTaskStatus(task, [task, done])).toBe('recommended')
   })
 
   it('uses status precedence for conflicting source fields', () => {

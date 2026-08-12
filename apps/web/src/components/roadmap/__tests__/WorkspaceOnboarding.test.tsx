@@ -132,7 +132,7 @@ vi.mock('@/hooks/useWorkspaceViewModel', () => ({
   useWorkspaceViewModel: () => ({
     allTasks: [],
     totalDone: 0,
-    nextReadyCount: 0,
+    recommendedCount: 0,
     canViewTeam: false,
     filterState: {
       query: '',
@@ -331,7 +331,7 @@ describe('WorkspaceHead unit tests for Sample Roadmap', () => {
           totalTasks={0}
           phaseCount={0}
           saved={false}
-          nextReadyCount={0}
+          recommendedCount={0}
           isSample={true}
         />
       )
@@ -349,7 +349,7 @@ describe('WorkspaceHead unit tests for Sample Roadmap', () => {
           totalTasks={0}
           phaseCount={0}
           saved={false}
-          nextReadyCount={0}
+          recommendedCount={0}
           isSample={false}
         />
       )

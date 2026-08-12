@@ -1,5 +1,6 @@
 import { isAssignmentTag, assignmentNameFromTag } from '@/lib/task-assignment'
 import { normalizeTaskLinks, validateTaskLinks } from '@/lib/task-link-validation'
+import { normalizePortableRoadmapForImport } from '@/lib/portable-roadmap'
 import {
   isValidTagId,
   normalizeTagColor,
@@ -231,7 +232,7 @@ function validatePhase(value: unknown): Phase {
 
 // ─── Compatibility detection ──────────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 1
+const CURRENT_SCHEMA_VERSION = 2
 const KNOWN_SCHEMAS = new Set([
   'anvilary.roadmap.import',
   'anvilary.roadmap.export',
@@ -246,8 +247,8 @@ const KNOWN_PHASE_KEYS = new Set([
   'id', 'num', 'name', 'color', 'colorMode', 'status', 'progress', 'tasks',
 ])
 const KNOWN_TASK_KEYS = new Set([
-  'id', 'title', 'done', 'next', 'est', 'tags', 'assignees', 'deps', 'desc', 'parentId',
-  'claimedBy', 'claimedById', 'claimedAt', 'links',
+  'id', 'title', 'done', 'next', 'recommended', 'est', 'tags', 'assignees', 'deps', 'desc',
+  'parentId', 'parent', 'claimedBy', 'claimedById', 'claimedAt', 'links',
 ])
 
 function detectCompatibilityWarnings(raw: unknown): CompatibilityWarning[] {
@@ -258,7 +259,7 @@ function detectCompatibilityWarnings(raw: unknown): CompatibilityWarning[] {
   const version = raw.version
   const schemaKnown = typeof schema === 'string' && KNOWN_SCHEMAS.has(schema)
   const versionIsNumber = typeof version === 'number'
-  const versionIsCurrent = versionIsNumber && version === CURRENT_SCHEMA_VERSION
+  const versionIsSupported = versionIsNumber && version >= 1 && version <= CURRENT_SCHEMA_VERSION
 
   // A+B: Schema or version mismatch
   if (versionIsNumber && version > CURRENT_SCHEMA_VERSION) {
@@ -266,7 +267,7 @@ function detectCompatibilityWarnings(raw: unknown): CompatibilityWarning[] {
       code: 'version_future',
       message: `This file was created with a newer version of RoadForge (v${version}). Some data may not be recognized.`,
     })
-  } else if (!schemaKnown || !versionIsCurrent) {
+  } else if (!schemaKnown || !versionIsSupported) {
     warnings.push({
       code: 'schema_unknown',
       message: 'This file was created with an older or different RoadForge format. Some newer metadata may be missing.',
@@ -799,7 +800,8 @@ export function parseImportedRoadmapJson(text: string): ImportedRoadmap {
   try {
     const raw = JSON.parse(trimmed)
     const warnings = detectCompatibilityWarnings(raw)
-    const { repairedRaw, repairs } = repairImportedRoadmap(raw)
+    const normalizedRaw = normalizePortableRoadmapForImport(raw)
+    const { repairedRaw, repairs } = repairImportedRoadmap(normalizedRaw)
     const tagRegistry = tagRegistryFromPayload(raw)
     if (tagRegistry.repaired) {
       repairs.push({
