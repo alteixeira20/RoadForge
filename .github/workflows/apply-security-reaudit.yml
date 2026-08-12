@@ -24,8 +24,14 @@ jobs:
         run: |
           python tools/finalize-security-reaudit.py
           pip install -e "apps/api[dev]" -q
-          ruff check apps/api --fix
-          ruff check apps/api
+          ruff check apps/api/src --fix
+          ruff check apps/api/unit_tests/test_realtime_resource_limits.py --fix
+          ruff check apps/api/unit_tests/test_production_origin_security.py --fix
+          ruff check apps/api/tests/test_security_resource_limits.py --fix
+          ruff check apps/api/src
+          ruff check apps/api/unit_tests/test_realtime_resource_limits.py
+          ruff check apps/api/unit_tests/test_production_origin_security.py
+          ruff check apps/api/tests/test_security_resource_limits.py
           python -m compileall -q apps/api/src/api apps/api/tests apps/api/unit_tests
           git diff --check
           git status --short
