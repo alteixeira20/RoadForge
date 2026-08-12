@@ -12,7 +12,7 @@ export function SiteFooter() {
       <div className="row">
         <Brand />
         <span style={{ color: 'var(--ink-4)' }}>·</span>
-        <span>Pre-release · An Anvilary product</span>
+        <span>Pre-release · Hosted demo · An Anvilary product</span>
         <span className="flex-1" />
         <span>Non-commercial source available</span>
       </div>
@@ -23,7 +23,7 @@ export function SiteFooter() {
         <ProblemReportLink />
         <span className="problem-report-privacy">{PROBLEM_REPORT_PRIVACY_WARNING}</span>
         <span className="flex-1" />
-        <span>Local-first. Portable. Self-hostable.</span>
+        <span>Local-first · Portable · Fork/self-host for team use</span>
       </div>
     </footer>
   )
