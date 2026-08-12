@@ -7,7 +7,7 @@ import './help.css'
 
 export const metadata: Metadata = {
   title: 'Help · RoadForge',
-  description: 'A practical guide to local roadmaps, sharing, backups, and recovery.',
+  description: 'A practical guide to local roadmaps, sharing, backups, self-hosting, and recovery.',
 }
 
 export default function HelpPage() {
@@ -27,7 +27,9 @@ export default function HelpPage() {
           <h1>Plan locally. Share only when you choose.</h1>
           <p>
             Start in this browser, export portable backups, and enable server
-            sync only when you need collaboration.
+            sync only when you need collaboration. This public server is a hosted
+            demo; sustained or larger-team use should run on infrastructure your
+            team controls.
           </p>
         </div>
 
@@ -36,6 +38,7 @@ export default function HelpPage() {
           <a href="#plan">Create phases and tasks</a>
           <a href="#portable">Import and export</a>
           <a href="#collaborate">Save and share</a>
+          <a href="#deployment">Demo or self-host</a>
           <a href="#recover">Resolve conflicts</a>
           <a href="#history">Activity and versions</a>
           <a href="#troubleshoot">Troubleshoot</a>
@@ -66,10 +69,11 @@ export default function HelpPage() {
               dependencies, and links.
             </p>
             <p>
-              RoadForge can highlight one recommended <strong>Next</strong> task.
-              Dependencies mark work as blocked until its prerequisites are done.
-              Search and filters only change the current view; they never remove
-              roadmap data.
+              RoadForge can highlight one or more <strong>Recommended</strong> tasks.
+              Recommendations are guidance, not a decision about what you must do
+              next. Dependencies mark work as blocked until its prerequisites are
+              done. Search and filters only change the current view; they never
+              remove roadmap data.
             </p>
           </section>
 
@@ -92,7 +96,8 @@ export default function HelpPage() {
             <h2>Save and share</h2>
             <p>
               <strong>Save</strong> creates a server-backed copy and enables
-              sharing. Owner and editor links are credentials, so send them
+              sharing. On `roadforge.anvilary.tools`, that server is the public
+              hosted demo. Owner and editor links are credentials, so send them
               privately. Viewer links are read-only.
             </p>
             <ul>
@@ -104,6 +109,29 @@ export default function HelpPage() {
               An edit lock prevents two people from changing the same control at
               once. A task claim communicates who is working on a task; it does
               not assign permanent ownership.
+            </p>
+          </section>
+
+          <section id="deployment">
+            <h2>Use the demo or self-host</h2>
+            <p>
+              The Anvilary-hosted RoadForge instance is for evaluation, examples,
+              and light collaboration. It is not a managed team SaaS, durable
+              backup service, or large-team production service. It has no hosted
+              SLA, reserved per-team capacity, or guaranteed data-recovery service.
+            </p>
+            <p>
+              If RoadForge becomes part of your team&apos;s operating workflow—especially
+              for a larger team or long-running roadmap—fork the repository or
+              maintain a controlled clone and self-host it. Your operator should
+              own PostgreSQL backups and restores, retention, monitoring, capacity,
+              upgrades, security configuration, and incident response. Load-test
+              the expected concurrency before depending on the deployment.
+            </p>
+            <p>
+              Forking and self-hosting remain subject to the repository&apos;s current
+              PolyForm Noncommercial License 1.0.0; the current license does not
+              grant commercial use.
             </p>
           </section>
 
@@ -140,6 +168,7 @@ export default function HelpPage() {
               <li>If sync is offline, keep working locally and retry after the server is reachable.</li>
               <li>If a session expired or was revoked, keep the local copy and rejoin through a current invite link.</li>
               <li>If an import fails, leave the original file unchanged and use the validation message to repair a copy.</li>
+              <li>If a self-hosted team instance is slow or unstable, inspect resource/database/Redis/proxy metrics before adding workers blindly.</li>
             </ul>
             <p>
               Need help?{' '}
@@ -153,6 +182,8 @@ export default function HelpPage() {
             <h2>Known limitations</h2>
             <ul>
               <li>Browser storage is not a substitute for an exported backup.</li>
+              <li>The public hosted instance is a demo/reference deployment with no uptime, capacity, or recovery SLA.</li>
+              <li>RoadForge does not publish an arbitrary large-team concurrency guarantee; self-hosters must validate their expected load.</li>
               <li>Markdown is presentation-only and PDF export is not available.</li>
               <li>Conflicts require a deliberate choice; RoadForge does not silently merge competing edits.</li>
               <li>Accountless sharing identifies access credentials and display names, not verified personal identities.</li>
