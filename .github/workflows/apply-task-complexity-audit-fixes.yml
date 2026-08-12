@@ -20,4 +20,13 @@ jobs:
           ref: feature/task-complexity
           fetch-depth: 0
       - name: Apply fixes
-        run: echo staged
+        shell: bash
+        run: |
+          python tools/apply-task-complexity-audit-fixes.py
+          git diff --check
+          git status --short
+          git config user.name "RoadForge Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(tasks): complete complexity partial-write contract"
+          git push origin HEAD:feature/task-complexity
