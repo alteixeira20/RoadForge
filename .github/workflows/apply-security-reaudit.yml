@@ -19,17 +19,15 @@ jobs:
         with:
           ref: security/post-hardening-audit-2026-08-12
           fetch-depth: 0
-      - name: Apply audited fixes
+      - name: Apply correctness polish
         shell: bash
         run: |
-          python tools/fix-security-reaudit-applicator.py
-          python tools/apply-security-reaudit.py
+          python tools/polish-security-reaudit.py
+          python -m compileall -q apps/api/src/api
           git diff --check
           git status --short
           git config user.name "RoadForge Security Audit"
           git config user.email "actions@users.noreply.github.com"
           git add -A
-          git commit -m "security: bound internet-facing resource abuse paths"
+          git commit -m "fix(security): preserve transaction and auth invariants"
           git push origin HEAD:security/post-hardening-audit-2026-08-12
-      - name: Completed transformation marker
-        run: echo security-re-audit-transformation-complete
