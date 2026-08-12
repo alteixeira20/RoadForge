@@ -19,6 +19,7 @@ const currentSurfaces = [
   'docs/frontend-foundation.md',
   'docs/self-hosting.md',
   'docs/public-deployment-security.md',
+  'docs/server-data-retention.md',
   'docs/architecture/overview.md',
   'docs/architecture/source-of-truth-rules.md',
   'deploy/self-hosted/README.md',
@@ -64,6 +65,11 @@ const requiredStatements = new Map([
     'larger team',
     'self-host',
   ]],
+  ['.github/RELEASE_CHECKLIST.md', [
+    'hosted demo/reference deployment',
+    'larger-team use',
+    'capacity/load testing',
+  ]],
   ['docs/README.md', [
     'hosted demo/reference deployment',
     'larger teams',
@@ -89,6 +95,11 @@ const requiredStatements = new Map([
     'backward-compatible alias for readiness',
     'demo/reference deployment',
     'especially larger teams',
+  ]],
+  ['docs/server-data-retention.md', [
+    'demo/reference deployment',
+    'larger or operationally important teams',
+    'not an SLA',
   ]],
   ['deploy/self-hosted/README.md', [
     'reference self-hosted topology',
