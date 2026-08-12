@@ -5,7 +5,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from api.config import get_settings
 
-_SENSITIVE_ROADMAP_METHODS = {"GET", "POST", "PUT", "DELETE"}
+_SENSITIVE_ROADMAP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 
 
 def _is_sensitive_api_response(scope: Scope) -> bool:
