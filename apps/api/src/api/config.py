@@ -122,8 +122,9 @@ class Settings(BaseSettings):
 def _validate_production_cors_origins(cors_origins: list[str]) -> None:
     """Reject unsafe production CORS configuration.
 
-    The API always sets `allow_credentials=True` (session tokens and SSE
-    tickets are bearer credentials, never cookies), so a wildcard origin
+    The API always sets `allow_credentials=True` because browser realtime
+    bootstrap uses a short-lived HttpOnly cookie and session Bearer tokens
+    may be sent cross-origin from an explicitly allowed frontend. A wildcard origin
     combined with credentials must never reach a production deployment —
     fail fast at startup with a diagnosable error rather than depend on the
     browser to refuse the combination.

@@ -6,5 +6,5 @@ from pydantic import BaseModel
 
 
 class EventTicketResponse(BaseModel):
-    ticket: str
+    # The ticket itself is delivered only in a scoped HttpOnly cookie.
     expires_in: int

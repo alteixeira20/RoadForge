@@ -107,11 +107,9 @@ async def get_share_links(
                 id=sl.id,
                 role=sl.role,  # type: ignore[arg-type]
                 token_prefix=sl.token_prefix,
-                url=(
-                    f"{web_base_url}/join?token={sl.public_token}"
-                    if sl.role == "viewer" and sl.is_active and sl.public_token
-                    else None
-                ),
+                # Raw invite material is reveal-once on create/rotation.
+                # Listing an active link never reconstructs a bearer credential.
+                url=None,
                 is_active=sl.is_active,
                 created_at=sl.created_at,
                 rotated_at=sl.rotated_at,
@@ -146,7 +144,6 @@ async def rotate_share_link(
             roadmap_id=roadmap_id,
             role=role,
             token_hash=hash_token(raw_token),
-            public_token=raw_token if role == "viewer" else None,
             token_prefix=make_token_prefix(raw_token),
             is_active=True,
             rotated_at=now,
@@ -154,7 +151,6 @@ async def rotate_share_link(
         db.add(share_link)
     else:
         share_link.token_hash = hash_token(raw_token)
-        share_link.public_token = raw_token if role == "viewer" else None
         share_link.token_prefix = make_token_prefix(raw_token)
         share_link.is_active = True
         share_link.rotated_at = now
@@ -180,7 +176,7 @@ async def rotate_share_link(
         id=share_link.id,
         role=share_link.role,  # type: ignore[arg-type]
         token_prefix=share_link.token_prefix,
-        url=f"{web_base_url}/join?token={raw_token}",
+        url=f"{web_base_url}/join#token={raw_token}",
         is_active=True,
         created_at=share_link.created_at,
         rotated_at=share_link.rotated_at,
@@ -207,9 +203,6 @@ async def revoke_share_link(
         raise HTTPException(status_code=404, detail="Share link not found")
 
     share_link.is_active = False
-    if role == "viewer":
-        share_link.public_token = None
-
     db.add(
         ActivityLog(
             id=generate_id("al_"),

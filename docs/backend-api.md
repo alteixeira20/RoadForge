@@ -94,9 +94,11 @@ a separate identity/access system.
 | `GET` | `/api/roadmaps/{id}/participants` | owner/editor, role-scoped response |
 | `POST` | `/api/roadmaps/{id}/participants/{participant_id}/revoke` | owner |
 
-Owner/editor raw invite URLs are one-time response material after creation/rotation;
-normal listing does not recover their raw tokens. Viewer links may be intentionally
-stable/copyable read-only access links according to the current sharing contract.
+Raw invite URLs for every role are one-time response material after creation/rotation;
+normal listing never recovers a raw token. Generated links place the invite in the URL
+fragment so it is not sent in the HTTP request target; the join page scrubs it from the
+current history entry after reading it. Active viewer links remain usable until
+rotation/revocation, but must be rotated to reveal a copyable URL again.
 
 Invite rotation affects future joins. Participant revocation affects an existing
 session. They are separate operations.
@@ -125,7 +127,9 @@ writes do not need to create a full restore point.
 | `GET` | `/api/roadmaps/{id}/events` | short-lived event ticket |
 
 Long-lived participant session tokens are not placed in SSE URLs. An authenticated
-client first requests a short-lived, single-use event ticket.
+client first requests a short-lived, single-use event ticket. The API delivers that
+ticket only through a path-scoped HttpOnly cookie; EventSource connects without
+ticket/query credentials.
 
 Memory realtime supports one API process. Redis mode shares events, tickets, locks,
 revocation state, and rate limits across workers/instances.

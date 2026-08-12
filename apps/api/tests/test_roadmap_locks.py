@@ -182,8 +182,8 @@ async def test_all_roles_can_create_realtime_ticket(
     )
 
     assert response.status_code == 200, response.text
-    assert response.json()["expires_in"] == 30
-    assert isinstance(response.json()["ticket"], str)
+    assert response.json() == {"expires_in": 30}
+    assert "HttpOnly" in response.headers["set-cookie"]
     assert (
         await client.get(
             f"/api/roadmaps/{body['id']}/activity",

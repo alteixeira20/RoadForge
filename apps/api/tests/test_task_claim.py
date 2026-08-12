@@ -240,8 +240,10 @@ async def test_owner_can_explicitly_clear_another_participants_claim(client: Asy
 
 async def test_viewer_cannot_claim(client: AsyncClient):
     body = await create_with_phases(client)
-    links = await _share_links(client, body["id"], body["owner_session_token"])
-    viewer = await _join(client, links["viewer"]["url"], "Viewer")
+    viewer_url = await _rotate_link(
+        client, body["id"], body["owner_session_token"], "viewer"
+    )
+    viewer = await _join(client, viewer_url, "Viewer")
 
     resp = await _claim(client, body["id"], viewer["session_token"], "tk_a1")
     assert resp.status_code == 403
@@ -249,8 +251,10 @@ async def test_viewer_cannot_claim(client: AsyncClient):
 
 async def test_viewer_cannot_unclaim(client: AsyncClient):
     body = await create_with_phases(client)
-    links = await _share_links(client, body["id"], body["owner_session_token"])
-    viewer = await _join(client, links["viewer"]["url"], "Viewer")
+    viewer_url = await _rotate_link(
+        client, body["id"], body["owner_session_token"], "viewer"
+    )
+    viewer = await _join(client, viewer_url, "Viewer")
 
     # Owner claims
     await _claim(client, body["id"], body["owner_session_token"], "tk_a1")

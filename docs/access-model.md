@@ -21,7 +21,7 @@ The API enforces authorization. Hiding a UI control is not an authorization mech
 A newly synced roadmap has role-scoped share-link records for owner, editor, and viewer
 access.
 
-Private owner/editor invite tokens:
+Owner/editor/viewer invite tokens:
 
 - are generated with cryptographically random values;
 - are stored hashed rather than raw;
@@ -29,8 +29,9 @@ Private owner/editor invite tokens:
 - cannot be recovered from ordinary share-link listing;
 - stop authorizing future joins when rotated/revoked.
 
-The viewer link is intentionally usable as a stable read-only sharing/demo URL while
-active. It still grants roadmap read access and should be treated as access-bearing.
+The viewer link is intentionally usable as stable read-only sharing/demo access while
+active. Its raw token is reveal-once on create/rotation like the other roles and is
+not persisted for later recovery; rotate it when a copyable URL is needed again.
 
 Invite rotation/revocation controls **future joins**. It does not automatically revoke
 participant sessions that already joined through an older link.
@@ -94,8 +95,9 @@ A roadmap password is not a user account password and has no email recovery mech
 RoadForge uses SSE for collaboration updates.
 
 Long-lived participant session tokens are not placed in SSE query strings. An
-authenticated participant first requests a short-lived single-use event ticket, then
-uses that ticket to establish the event stream.
+authenticated participant first requests a short-lived single-use event ticket. The
+API places it in a path-scoped HttpOnly cookie and EventSource establishes the stream
+without putting the ticket in the request URL.
 
 The event stream remains subject to participant authorization/revocation checks.
 
@@ -147,10 +149,11 @@ requires an explicit architecture/security decision before implementation.
 
 ## Known boundaries
 
-- Invite tokens can appear in join URLs and therefore browser history/upstream logging layers.
+- New invite URLs carry credentials in fragments and the join page scrubs them from the current history entry; legacy query links remain a migration risk until rotated.
 - The maintained application/nginx log formats omit query strings, but operators must review external infrastructure separately.
-- Browser session credentials live in local storage; the frontend CSP remains report-only until the tracked nonce-based enforcement work is complete.
-- Roadmap deletion is soft-only until the tracked retention/purge work lands.
+- Browser participant session credentials still live in local storage; replacing this safely requires a paired durable-cookie/CSRF design.
+- Production CSP uses nonce-based enforcement; deployment evidence still belongs in the operational proof gate.
+- Server retention/purge tooling is implemented, but operators still need to schedule and observe it.
 
 See [Public deployment security](public-deployment-security.md) and
 [Security documentation](security/README.md) for deployment controls.

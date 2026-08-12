@@ -15,7 +15,7 @@ When a roadmap is saved to the backend, the API creates:
 - One share link per role: `owner`, `editor`, and `viewer`.
 - One owner session token returned once as `owner_session_token`.
 
-When someone opens `/join?token=...`, `POST /api/roadmaps/join` resolves the active share link, checks the optional roadmap password, creates a new `Participant`, and returns a one-time `session_token`. The frontend stores that token in scoped local storage under `rf:auth:{roadmapId}` with the server roadmap ID, participant ID, and role. Roadmap content is stored separately under `rf:roadmap:{roadmapId}` so the browser can hydrate from the local cache before or without a server refresh.
+When someone opens `/join#token=...`, the browser reads the fragment credential, removes it from the current history entry, and `POST /api/roadmaps/join` resolves the active share link, checks the optional roadmap password, creates a new `Participant`, and returns a one-time `session_token`. The frontend stores that token in scoped local storage under `rf:auth:{roadmapId}` with the server roadmap ID, participant ID, and role. Roadmap content is stored separately under `rf:roadmap:{roadmapId}` so the browser can hydrate from the local cache before or without a server refresh.
 
 Session tokens are bearer credentials. Protected API calls send `Authorization: Bearer <session_token>`. The backend hashes the raw token and looks up a non-revoked, non-expired participant for the requested roadmap. Successful authenticated requests renew the 30-day sliding expiry and update `Participant.last_seen_at` when the presence timestamp is stale.
 
@@ -101,7 +101,7 @@ Expected behavior:
 - Revoked session response: return `401 Unauthorized` with a stable detail such as `"Session revoked"` when the token maps to a revoked participant.
 - Missing or unknown token response: keep `401 Unauthorized` with `"Missing or invalid session token"`.
 - Role failure: keep `403 Forbidden` with `"Insufficient permissions"` for valid, non-expired sessions whose role is not allowed.
-- SSE ticket request: `POST /events/ticket` should reject expired sessions and should not issue a ticket.
+- SSE ticket request: `POST /events/ticket` rejects expired sessions and places the short-lived single-use ticket only in a path-scoped HttpOnly cookie; it is not returned in JSON or placed in the EventSource URL.
 - Existing SSE stream: a session that expires while already connected will not receive an expiry event unless the server actively checks stream participants. First version can rely on the next ticket refresh, authenticated fetch, lock, or save to discover expiry. Do not add WebSockets.
 - `participant.revoked`: keep broadcasting to the target participant when owner revokes that participant.
 - `roadmap.deleted`: keep broadcasting to all connected participants when the roadmap is deleted.

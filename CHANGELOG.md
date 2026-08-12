@@ -7,6 +7,13 @@ Dates use ISO format.
 
 Changes after the `0.1.0` baseline belong here.
 
+### Security hardening
+
+- Move newly generated invite credentials from query strings to fragment URLs and scrub them from the active history entry after join bootstrap.
+- Move single-use SSE ticket transport from the EventSource query string to a 30-second path-scoped HttpOnly cookie.
+- Make viewer invite credentials reveal-once and remove plaintext viewer tokens from PostgreSQL/backups via migration `0011`.
+- Add explicit cross-roadmap, post-role-change, invite-transport, and realtime-bootstrap security regressions.
+
 ## 0.1.0 - 2026-08-10
 
 First supported RoadForge baseline for deliberate public release preparation.

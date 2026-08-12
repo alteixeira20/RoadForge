@@ -60,8 +60,8 @@ async def test_viewer_cannot_put_roadmap(client: AsyncClient):
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
 
-    links = await _get_share_links(client, roadmap_id, owner_token)
-    join_resp = await _join(client, links["viewer"]["url"])
+    viewer_url = await _rotate_link(client, roadmap_id, owner_token, "viewer")
+    join_resp = await _join(client, viewer_url)
     viewer_token = join_resp.json()["session_token"]
 
     resp = await client.put(
