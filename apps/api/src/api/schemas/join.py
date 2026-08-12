@@ -41,6 +41,7 @@ class JoinRoadmapResponse(BaseModel):
     roadmap_id: str
     roadmap_name: str
     role: ShareRole
-    # Opaque session token the client stores locally to re-authenticate.
+    # Explicit Bearer bootstrap/API credential. The web client immediately exchanges
+    # this value for a path-scoped HttpOnly browser session before persisting auth state.
     session_token: str
     participant_id: str
