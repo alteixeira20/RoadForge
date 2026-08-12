@@ -49,10 +49,10 @@ const requiredStatements = new Map([
     '0.1.0',
     'source-available',
     'PolyForm Noncommercial License 1.0.0',
-    'official demo/reference deployment',
+    'official demo/reference',
     'Export important roadmaps as JSON',
     'especially for a larger team',
-    'fork the repository',
+    'controlled clone and self-host it',
   ]],
   ['CONTRIBUTING.md', [
     'source-available',
