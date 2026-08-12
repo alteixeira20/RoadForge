@@ -1,11 +1,10 @@
 # Public deployment security
 
-This document describes the security contract of the current RoadForge runtime.
-It is an operator reference, not a future design document.
+This document describes the current RoadForge runtime security contract. It is an operator
+reference, not a future design document.
 
-RoadForge `0.1.0` can be self-hosted, but the Anvilary-hosted instance is a demo and
-convenience deployment rather than a managed data-storage service. Users should keep
-portable JSON exports of important roadmaps.
+The Anvilary-hosted instance remains a demo/convenience deployment rather than a managed
+backup service. Users should keep portable JSON exports of important roadmaps.
 
 ## Production mode
 
@@ -15,188 +14,160 @@ Set:
 ROADFORGE_ENVIRONMENT=production
 ```
 
-Production mode disables FastAPI interactive documentation/OpenAPI routes and enables
-the production security-header path. RoadForge intentionally has no generic
-application secret setting: add a secret only when a concrete cryptographic feature
-actually consumes it.
+Production disables FastAPI interactive docs/OpenAPI, enables production security headers,
+requires explicit deployment origins/proxies, and makes browser session/event-ticket cookies
+`Secure`.
+
+RoadForge intentionally has no generic application-secret setting. Add a secret only when a
+concrete cryptographic feature consumes it.
 
 ## Database guard
 
-Production must use an explicit `DATABASE_URL`. Startup rejects the repository's
-local development database configuration and unsafe localhost/default credential
-combinations unless the operator explicitly acknowledges a documented host-local
-production topology with:
+Production must use an explicit `DATABASE_URL`. Startup rejects the repository's local
+development database configuration and unsafe localhost/default credential combinations
+unless the operator explicitly acknowledges the documented host-local topology. Do not use
+that override simply to bypass a failed deployment check.
 
-```sh
-ROADFORGE_ALLOW_LOCAL_DATABASE_IN_PRODUCTION=true
-```
+## Browser origins, cookies, and CSRF
 
-Do not use that override merely to bypass a failed deployment check.
+`ROADFORGE_CORS_ORIGINS` must contain explicit `scheme://host[:port]` origins. Production
+startup rejects empty, malformed, and wildcard origins.
 
-## Cross-origin access
+The browser exchanges a new participant Bearer for a roadmap-path-scoped HttpOnly,
+`SameSite=Strict` session cookie. Cookie-authenticated `POST`, `PUT`, `PATCH`, and `DELETE`
+requests additionally require an `Origin` that exactly matches the configured CORS allow
+list. Explicit API/MCP Bearer requests remain a separate path and are not mixed with ambient
+cookies.
 
-`ROADFORGE_CORS_ORIGINS` must contain explicit `scheme://host[:port]` origins.
-Production startup rejects empty, malformed, and wildcard origins.
+Do not relax SameSite, cookie path scoping, Secure production cookies, or exact-Origin checks
+to accommodate a cross-site topology without an architecture/security review.
 
-RoadForge uses bearer participant credentials rather than authentication cookies.
-That removes cookie-oriented CSRF assumptions; it does not reduce the need to protect
-bearer tokens and restrict origins.
+## Invite and realtime credential transport
+
+Generated owner/editor/viewer invites use `/join#token=...`; fragments are not sent in HTTP
+request targets and the join page removes the credential from the active history entry after
+bootstrap. Legacy `?token=` invite links are migration-only compatibility and should be
+rotated after deployment.
+
+SSE uses a 30-second single-use roadmap/participant-scoped event ticket delivered through a
+path-scoped HttpOnly cookie. The EventSource URL contains no ticket or participant session.
 
 ## Trusted proxies and client addresses
 
-RoadForge ignores `X-Forwarded-For` and `X-Real-IP` unless the immediate peer is
-within `ROADFORGE_TRUSTED_PROXY_IPS`.
+RoadForge ignores forwarded client-address headers unless the immediate peer is inside
+`ROADFORGE_TRUSTED_PROXY_IPS`. Configure the narrowest proxy address/CIDR. Catch-all networks
+such as `0.0.0.0/0` and `::/0` are rejected.
 
-Configure the narrowest proxy address or CIDR and make the proxy replace—not append
-untrusted client-provided forwarding headers. Catch-all networks such as `0.0.0.0/0`
-and `::/0` are rejected.
+The proxy must replace rather than trust arbitrary client-supplied forwarding headers.
 
 ## Credential-safe logging
 
-Owner/editor invite links are credentials. Viewer links grant read access. Participant
-session tokens are bearer credentials.
+The FastAPI access log records method, path, status, duration, and client IP without query
+strings, headers, bodies, cookies, or full URLs. The maintained nginx format logs `$uri`
+rather than `$request_uri` and omits Referer.
 
-The FastAPI access log records method, path, and status without query strings,
-headers, request bodies, or full request URLs. The maintained self-hosted nginx
-configuration also omits query strings and `Referer` from access logs.
+Operators must separately review reverse-proxy error logs, Cloudflare/tunnel/CDN logs, host
+journals, shell history, support attachments, and retained pre-hardening logs. Those systems
+are outside this repository.
 
-Operators must separately review:
-
-- reverse-proxy error logs;
-- tunnel/CDN/provider logs;
-- load balancer logs;
-- shell history;
-- support attachments;
-- retained logs created before safe formats were configured.
-
-Never place participant session tokens in URLs.
+Never log or publish raw invite tokens, participant sessions, event tickets, passwords,
+Authorization headers, cookies, database/Redis credentials, or private roadmap exports.
 
 ## Content Security Policy
 
-The frontend CSP is **report-only** for `0.1.0`. This is an explicit residual risk,
-not an enforcement claim. Participant credentials live in browser storage, so script
-injection remains consequential.
+Production uses an enforced nonce-based CSP. Executable production scripts do not receive
+`unsafe-inline` or `unsafe-eval`; HTML is no-store so nonces are not cached across document
+responses. nginx/Cloudflare must preserve the application CSP and must not inject a
+conflicting second policy.
 
-Do not switch the header to enforcement by adding broad `unsafe-inline` exceptions.
-The enforcement path requires a tested nonce/hash design compatible with Next.js
-hydration and all supported RoadForge flows. This work is tracked separately.
+`style-src 'unsafe-inline'` remains an explicit compatibility boundary for current dynamic
+React style attributes; it does not relax script execution.
 
-## Request-body limits
+A bounded report-only observation window is supported after meaningful runtime/frontend
+changes, but enforced production browser CI remains the release baseline.
 
-The browser import path, API request middleware, and maintained nginx configuration
-use the same roadmap payload ceiling:
+## Request-body and input limits
 
-```text
-5 MiB
-```
+The browser import path, API body middleware, and maintained nginx configuration share a
+5 MiB roadmap payload ceiling. The API body limiter counts actual streamed bytes, so a
+missing or dishonest `Content-Length` does not bypass the limit.
 
-The authoritative API constant is `REQUEST_BODY_MAX_BYTES` in
-`apps/api/src/api/schemas/limits.py`. Documentation must not reintroduce historical
-512 KiB limits.
+Pydantic/domain validation imposes additional field/count limits. Task external links are
+normalized and credential-like query parameters are rejected before persistence.
 
 ## Rate limiting
 
-RoadForge applies action-specific limits to creates, joins/password failures,
-authenticated reads/writes, sharing, versions, participants, event tickets, locks,
-activity, and tag operations.
+RoadForge applies action-specific limits to public and authenticated operations. Memory
+limits are process-local. Multi-worker/multi-instance realtime requires Redis so rate-limit,
+realtime, lock, ticket, and revocation coordination is shared.
 
-Memory-backed limits are process-local. When multiple API workers or instances are
-used, configure:
-
-```sh
-ROADFORGE_REALTIME_BACKEND=redis
-REDIS_URL=redis://...
-```
-
-Redis mode shares event coordination, locks, tickets, revocation state, and rate
-limits. RoadForge refuses multiple configured workers with the memory backend.
-Operators must also avoid running multiple independent one-worker memory instances.
+Redis-backed rate limiting fails closed with `503` when Redis cannot perform the check; it
+does not silently allow the request.
 
 ## Health contract
 
-The health endpoints have one authoritative meaning:
-
 | Endpoint | Meaning |
 | --- | --- |
-| `GET /api/health/live` | Process liveness only; no external dependency checks |
+| `GET /api/health/live` | process liveness only |
 | `GET /api/health/ready` | PostgreSQL and configured Redis readiness |
-| `GET /api/health` | backward-compatible alias for readiness |
+| `GET /api/health` | backward-compatible readiness alias |
 
-A `503` from `/api/health` or `/api/health/ready` means a required dependency is not
-ready; it does not by itself prove that the API process is dead.
-
-Use readiness for Docker/orchestration traffic checks. Use `/live` only when a true
-process-liveness probe is required.
+A readiness `503` means a required dependency is unavailable. It does not necessarily mean
+the Python process is dead.
 
 ## Realtime topology
 
 - `ROADFORGE_REALTIME_BACKEND=memory` supports one API process.
-- `ROADFORGE_REALTIME_BACKEND=redis` is required for multi-worker/multi-instance operation.
-- Redis must remain on private/protected networks and must not be publicly exposed.
-- Redis connection credentials, when present in `REDIS_URL`, must never be logged.
+- Redis is required for multiple workers/instances.
+- Redis and PostgreSQL remain private/internal services.
+- Realtime state is not the roadmap source of truth; PostgreSQL remains authoritative.
 
-Roadmap state remains PostgreSQL-backed; realtime delivery is not the data source of
-truth.
+## Database migrations
 
-## Database migrations and projection
+Every deployment must migrate to current Alembic head through `make migrate` or `make update`.
+Take a verified PostgreSQL backup before schema-sensitive deployment. Application rollback
+does not automatically downgrade schema.
 
-Every deployment must migrate to the current Alembic head:
-
-```sh
-make migrate
-```
-
-or use the maintained update path:
-
-```sh
-make update
-```
-
-Take a PostgreSQL backup before schema-sensitive deployment. Alembic downgrade is not
-the generic rollback plan.
-
-`roadmaps.snapshot_json` remains canonical for the phase/task tree. Relational
-projection reads are optional and disabled by default. Before enabling them, verify
-projection parity from the canonical snapshot.
+The internet-hardening migration `0011` deactivates legacy viewer links whose raw token was
+persisted, clears the old raw material, and drops `share_links.public_token`. Rotate the
+viewer link after upgrade when a new copyable viewer invite is required.
 
 ## Containers and network exposure
 
-The maintained API and web production images run as non-root users. Public deployments
-must:
+Production web/API images run non-root. The maintained Compose file further uses read-only
+root filesystems, capability drops, no-new-privileges, PID ceilings, and narrowly scoped
+tmpfs write areas where compatible. PostgreSQL and Redis retain only the writable runtime
+paths they require.
 
-- terminate HTTPS at a trusted edge;
-- keep PostgreSQL and Redis off public networks;
-- expose the API only through intended proxy/private paths;
-- use non-development database credentials;
-- configure explicit CORS and trusted proxies;
-- retain backups outside the repository and database volume.
+Public deployments must terminate HTTPS at a trusted edge, keep PostgreSQL/Redis off public
+networks, expose the app only through intended proxy paths, use non-development credentials,
+and retain backups outside the repository/database volume.
 
-Do not expose `next dev`, FastAPI development servers, PostgreSQL, or Redis directly to
-the public Internet.
+Do not expose `next dev`, development FastAPI servers, PostgreSQL, or Redis directly to the
+Internet.
+
+## Supply-chain contract
+
+Maintained GitHub Actions are pinned to immutable upstream commit SHAs and workflows use
+read-only repository permissions for normal validation. JavaScript/Python dependency audits,
+production container builds, migration drift checks, MCP checks, and production browser CSP
+checks are release gates.
+
+The repository does not claim that CI alone proves a deployed Cloudflare/nginx host is safe;
+operator edge/runtime validation remains required.
 
 ## Data deletion and retention
 
-Roadmap deletion is currently soft deletion. A final operator-enforced retention and
-hard-purge policy is tracked separately. Until that work lands, do not promise users
-that a delete action immediately removes every server-side historical record or backup.
-
-Public copy should distinguish:
-
-- deleting a browser-local roadmap;
-- soft-deleting a synced roadmap;
-- final server/backup retention.
+Roadmap deletion and final purge/backup retention are separate lifecycle stages. The current
+retention tooling and policy define when live soft-deleted records may be permanently purged;
+backup copies remain governed by their independent expiry schedule.
 
 ## Release proof
 
-A public release/deployment requires more than a green unit-test suite. Require:
+A public deployment requires exact-candidate CI plus deployed checks for create/save,
+owner/editor/viewer joins, browser-session migration, participant revocation, invite rotation,
+realtime, conflicts, import/export, enforced CSP/no duplicate edge CSP, safe logging, and
+backup/rollback readiness.
 
-- exact-candidate CI success;
-- migration and dependency checks;
-- production container validation;
-- independent owner/editor/viewer browser contexts;
-- revoke, conflict, realtime, import/export, and recovery checks;
-- confirmation that proxy logs do not record invite query strings;
-- backup/restore evidence for schema-sensitive releases.
-
-See [Manual QA](manual-qa.md), [Senior readiness audit](senior-readiness-audit.md),
-and [Self-hosting](self-hosting.md).
+See [Self-hosting](../deploy/self-hosted/README.md), [Manual QA](manual-qa.md),
+[Access model](access-model.md), and [Security documentation](security/README.md).
