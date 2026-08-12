@@ -20,6 +20,8 @@ RoadForge treats task complexity as a planning signal separate from time estimat
 
 A `very_high` task must be a top-level task with at least two direct subtasks. RoadForge enforces this in browser mutation/import paths and in the API domain validator. The current workspace supports one subtask level, so nested tasks cannot themselves be `very_high`.
 
+The editor only enables `Very high` after the top-level task already has at least two direct subtasks. This makes decomposition the prerequisite for selecting the terminal complexity tier instead of allowing an invalid state that fails only on save.
+
 A very-high parent cannot be completed while one of its direct subtasks is unfinished. Removing subtasks is also blocked when it would leave a very-high parent below the two-subtask minimum.
 
 ## Roadmap-building guidance
