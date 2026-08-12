@@ -194,8 +194,8 @@ describe('drag-only roadmap ordering controls', () => {
         <TaskRowHeader
           task={task}
           expanded={false}
-          status="ready"
-          statusTitle="Ready"
+          status="recommended"
+          statusTitle="Recommended"
           visibleTags={[]}
           registry={[]}
           lockedByOther={false}
@@ -232,8 +232,8 @@ describe('drag-only roadmap ordering controls', () => {
         <TaskRowHeader
           task={task}
           expanded={false}
-          status="ready"
-          statusTitle="Ready"
+          status="recommended"
+          statusTitle="Recommended"
           visibleTags={[]}
           registry={[]}
           lockedByOther={false}

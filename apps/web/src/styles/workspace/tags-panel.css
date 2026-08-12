@@ -5,7 +5,8 @@
   padding: 22px;
   border: 1px solid var(--border-faint);
   border-radius: 12px;
-  background: var(--bg);
+  background: var(--surface-workspace);
+  backdrop-filter: blur(2px);
 }
 
 .tags-view-head {
@@ -38,7 +39,7 @@
   padding: 18px;
   border: 1px dashed var(--border);
   border-radius: 8px;
-  background: var(--bg-2);
+  background: var(--surface-workspace-soft);
 }
 
 .tags-view-empty strong {
@@ -63,7 +64,7 @@
   padding: 9px 10px;
   border: 1px solid var(--border-faint);
   border-radius: 8px;
-  background: var(--bg-2);
+  background: var(--surface-workspace-soft);
 }
 
 .tag-registry-row > .tag-chip {

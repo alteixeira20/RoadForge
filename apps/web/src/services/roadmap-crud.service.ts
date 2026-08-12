@@ -5,6 +5,7 @@
 
 import type { Roadmap, Phase, ShareRole, TagDefinition, ExportFormat, ChangeSummary, RoadmapVersionDetail, RoadmapVersionSummary, Task } from '@/types/roadmap'
 import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
+import { PORTABLE_ROADMAP_SCHEMA_VERSION, toPortablePhases } from '@/lib/portable-roadmap'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { ensureRegistryForTagIds } from '@/lib/tag-registry'
@@ -385,8 +386,8 @@ function buildRoadmapExport(
     metadata.tagRegistry ?? [],
   )
   return {
-    schema: 'anvilary.roadmap.export',
-    version: 1,
+    schema: 'roadforge.roadmap.export',
+    version: PORTABLE_ROADMAP_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     roadmap: {
       name: metadata.roadmapName || 'Untitled Roadmap',
@@ -403,7 +404,7 @@ function buildRoadmapExport(
       taskCount: phases.reduce((sum, p) => sum + p.tasks.length, 0),
     },
     tagRegistry: exportRegistry,
-    phases,
+    phases: toPortablePhases(phases),
   }
 }
 

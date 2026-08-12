@@ -11,7 +11,7 @@ export function MiniPreview() {
         <div className="meta-line">
           <span>6 of 18 complete</span>
           <span>4 phases</span>
-          <span className="preview-ready">1 ready next</span>
+          <span className="preview-ready">1 recommended</span>
         </div>
       </div>
       <div className="preview-tabs" role="presentation">
@@ -44,7 +44,7 @@ export function MiniPreview() {
         <div className="task-mini">
           <span className="ck" />
           <span className="tt">POST /items create endpoint</span>
-          <span className="task-status recommended">NEXT</span>
+          <span className="task-status recommended">RECOMMENDED</span>
         </div>
         <div className="preview-progress"><span /></div>
       </div>

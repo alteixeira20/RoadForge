@@ -1,12 +1,12 @@
 import type { Phase, Task } from '@/types/roadmap'
 
-export type DerivedTaskStatus = 'done' | 'in-progress' | 'blocked' | 'ready' | 'planned'
+export type DerivedTaskStatus = 'done' | 'in-progress' | 'blocked' | 'recommended' | 'planned'
 
 export const TASK_STATUS_LABELS: Record<DerivedTaskStatus, string> = {
   done: 'Done',
   'in-progress': 'In progress',
   blocked: 'Blocked',
-  ready: 'Ready to start',
+  recommended: 'Recommended',
   planned: 'Planned',
 }
 
@@ -21,7 +21,7 @@ export function deriveTaskStatus(task: Task, allTasks: Task[]): DerivedTaskStatu
   if (task.done) return 'done'
   if (task.claimedBy) return 'in-progress'
   if (getBlockingTasks(task, allTasks).length > 0) return 'blocked'
-  if (task.next) return 'ready'
+  if (task.next) return 'recommended'
   return 'planned'
 }
 

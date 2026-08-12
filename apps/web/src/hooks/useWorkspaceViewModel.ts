@@ -79,7 +79,7 @@ export function useWorkspaceViewModel({
 
   const allTasks = useMemo(() => phases.flatMap((phase) => phase.tasks), [phases])
   const totalDone = allTasks.filter((task) => task.done).length
-  const nextReadyCount = allTasks.filter((task) => task.next && !task.done).length
+  const recommendedCount = allTasks.filter((task) => task.next && !task.done).length
   const canViewTeam = (role === 'owner' || role === 'editor') && Boolean(serverRoadmapId && sessionToken)
 
   useEffect(() => {
@@ -161,7 +161,7 @@ export function useWorkspaceViewModel({
   return {
     allTasks,
     totalDone,
-    nextReadyCount,
+    recommendedCount,
     canViewTeam,
     filterState,
     setFilterField,

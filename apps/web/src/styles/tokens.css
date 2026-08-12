@@ -46,6 +46,8 @@
   /* Surface hierarchy — translucency via color-mix so content stays opaque */
   --surface-translucent: color-mix(in srgb, var(--panel) 58%, transparent);
   --surface-dense: color-mix(in srgb, var(--panel) 92%, transparent);
+  --surface-workspace: color-mix(in srgb, var(--panel) 84%, transparent);
+  --surface-workspace-soft: color-mix(in srgb, var(--bg-2) 76%, transparent);
   --surface-overlay: var(--panel);
 
   /* Forge ambience — reflected heat, not literal flame */

@@ -90,26 +90,29 @@ const phases: Phase[] = [
 describe('formatRoadmapMarkdown', () => {
   it('is deterministic for identical input', () => {
     const input = { roadmapName: 'Public Alpha', phases, tagRegistry }
-
     expect(formatRoadmapMarkdown(input)).toBe(formatRoadmapMarkdown(input))
   })
 
-  it('preserves phase, task, and subtask order', () => {
+  it('uses roadmap-order task numbers and preserves task/subtask order', () => {
     const output = formatRoadmapMarkdown({ roadmapName: 'Public Alpha', phases, tagRegistry })
 
     expect(output.indexOf('## 01 Discovery')).toBeLessThan(output.indexOf('## 02 Implementation'))
-    expect(output.indexOf('`RF-2` Parent task')).toBeLessThan(output.indexOf('`RF-3` Markdown export'))
-    expect(output).toContain('  - [ ] `RF-3` Markdown export')
-    expect(output).toContain('parent:`RF-2`')
+    expect(output.indexOf('`2.1` Parent task')).toBeLessThan(output.indexOf('`2.1.1` Markdown export'))
+    expect(output).toContain('  - [ ] `2.1.1` Markdown export')
+    expect(output).toContain('parent:`2.1`')
+    expect(output).not.toContain('`RF-1`')
+    expect(output).not.toContain('`RF-2`')
+    expect(output).not.toContain('`RF-3`')
   })
 
-  it('keeps phase and task state on compact lines', () => {
+  it('keeps phase and task state on compact lines using recommendation language', () => {
     const output = formatRoadmapMarkdown({ roadmapName: 'Public Alpha', phases, tagRegistry })
 
     expect(output).toContain('## 01 Discovery | done | 100%')
     expect(output).toContain('## 02 Implementation | active | 0%')
-    expect(output).toContain('- [x] `RF-1` Completed dependency | tags:Planning')
-    expect(output).toContain('  - [ ] `RF-3` Markdown export | next;')
+    expect(output).toContain('- [x] `1.1` Completed dependency | tags:Planning')
+    expect(output).toContain('  - [ ] `2.1.1` Markdown export | recommended;')
+    expect(output).not.toContain('| next;')
   })
 
   it('preserves complex user-authored Markdown descriptions as nested task details', () => {
@@ -122,13 +125,13 @@ describe('formatRoadmapMarkdown', () => {
     expect(output).toContain(indentedDescription)
   })
 
-  it('renders planning metadata and links without multi-line labels', () => {
+  it('renders planning metadata and links with positional dependencies', () => {
     const output = formatRoadmapMarkdown({ roadmapName: 'Public Alpha', phases, tagRegistry })
 
     expect(output).toContain('est:2d')
     expect(output).toContain('assignees:Alex, Sam')
     expect(output).toContain('tags:Frontend, unknown-tag')
-    expect(output).toContain('deps:`RF-1`')
+    expect(output).toContain('deps:`1.1`')
     expect(output).toContain('links: Implementation issue <https://github.com/anvilary/roadforge/issues/1005>; External link <https://example.com/spec>')
   })
 
@@ -140,7 +143,7 @@ describe('formatRoadmapMarkdown', () => {
     expect(output).not.toContain('**Dependencies:**')
   })
 
-  it('uses valid code spans for identifiers containing backticks', () => {
+  it('never serializes an opaque internal task id as user-facing identity', () => {
     const specialPhase: Phase = {
       id: 'phase-special',
       num: '03',
@@ -150,24 +153,17 @@ describe('formatRoadmapMarkdown', () => {
       progress: 0,
       tasks: [
         {
-          id: 'RF-`1`',
-          title: 'Escaped identifiers',
+          id: 'RF-`internal-secret-shape`',
+          title: 'Order-addressed task',
           done: false,
-          parentId: 'PARENT-`0`',
-          deps: ['DEP-``-2'],
         },
       ],
     }
 
-    const output = formatRoadmapMarkdown({
-      roadmapName: 'Special',
-      phases: [specialPhase],
-    })
+    const output = formatRoadmapMarkdown({ roadmapName: 'Special', phases: [specialPhase] })
 
-    expect(output).toContain('  - [ ] `` RF-`1` `` Escaped identifiers')
-    expect(output).toContain('parent:`` PARENT-`0` ``')
-    expect(output).toContain('deps:```DEP-``-2```')
-    expect(output).not.toContain('\\`')
+    expect(output).toContain('- [ ] `3.1` Order-addressed task')
+    expect(output).not.toContain('internal-secret-shape')
   })
 
   it('handles empty roadmaps and empty phases', () => {

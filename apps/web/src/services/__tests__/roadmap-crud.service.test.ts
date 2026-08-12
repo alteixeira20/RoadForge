@@ -137,16 +137,48 @@ describe('exportRoadmap', () => {
       roadmapName: 'Public Alpha Compatibility',
       tagRegistry,
     })
-    const exported = JSON.parse(await blob.text()) as { schema: string }
+    const exported = JSON.parse(await blob.text()) as {
+      schema: string
+      version: number
+      phases: Array<{ tasks: Array<Record<string, unknown>> }>
+    }
     const imported = parseImportedRoadmapJson(JSON.stringify(exported))
+    const importedDependency = imported.phases[0].tasks[0]
+    const importedParent = imported.phases[1].tasks[0]
     const importedMaximalTask = imported.phases[1].tasks[1]
+    const exportedMaximalTask = exported.phases[1].tasks[1]
 
-    expect(exported.schema).toBe('anvilary.roadmap.export')
+    expect(exported.schema).toBe('roadforge.roadmap.export')
+    expect(exported.version).toBe(2)
+    expect(exportedMaximalTask).not.toHaveProperty('id')
+    expect(exportedMaximalTask).not.toHaveProperty('next')
+    expect(exportedMaximalTask).not.toHaveProperty('parentId')
+    expect(exportedMaximalTask).not.toHaveProperty('claimedBy')
+    expect(exportedMaximalTask).not.toHaveProperty('claimedById')
+    expect(exportedMaximalTask).not.toHaveProperty('claimedAt')
+    expect(exportedMaximalTask).toMatchObject({
+      recommended: true,
+      parent: '2.1',
+      deps: ['1.1'],
+    })
+
     expect(imported.roadmapName).toBe('Public Alpha Compatibility')
-    expect(imported.phases).toEqual(phases)
-    expect(Object.keys(importedMaximalTask).sort())
-      .toEqual(Object.keys(maximalTask).sort())
-    expect(importedMaximalTask).toEqual(maximalTask)
+    expect(importedMaximalTask.id).not.toBe(maximalTask.id)
+    expect(importedMaximalTask.parentId).toBe(importedParent.id)
+    expect(importedMaximalTask.deps).toEqual([importedDependency.id])
+    expect(importedMaximalTask).toMatchObject({
+      title: maximalTask.title,
+      done: maximalTask.done,
+      next: maximalTask.next,
+      est: maximalTask.est,
+      assignees: maximalTask.assignees,
+      tags: maximalTask.tags,
+      desc: maximalTask.desc,
+      links: maximalTask.links,
+    })
+    expect(importedMaximalTask.claimedBy).toBeUndefined()
+    expect(importedMaximalTask.claimedById).toBeUndefined()
+    expect(importedMaximalTask.claimedAt).toBeUndefined()
     expect(importedMaximalTask.desc).toHaveLength(5_000)
     expect(imported.tagRegistry).toEqual(tagRegistry)
     expect(imported.warnings).toEqual([])

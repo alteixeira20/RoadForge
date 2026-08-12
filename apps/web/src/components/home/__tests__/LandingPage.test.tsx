@@ -177,9 +177,10 @@ describe('landing page refinement', () => {
     expect(preview?.textContent).toContain('Roadmap')
     expect(preview?.textContent).toContain('Activity')
     expect(preview?.textContent).toContain('Search tasks')
+    expect(preview?.textContent).toContain('1 recommended')
     expect(preview?.querySelectorAll('.phase-mini')).toHaveLength(3)
     expect(preview?.querySelectorAll('.task-mini.done')).toHaveLength(3)
-    expect(preview?.querySelector('.task-status.recommended')?.textContent).toBe('NEXT')
+    expect(preview?.querySelector('.task-status.recommended')?.textContent).toBe('RECOMMENDED')
     expect(preview?.querySelector('.preview-progress')).not.toBeNull()
   })
 

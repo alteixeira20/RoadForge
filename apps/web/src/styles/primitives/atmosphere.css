@@ -39,12 +39,12 @@
   pointer-events: none;
 }
 
-/* Restrained variant behind the dense roadmap workspace */
+/* Restrained, but still visibly alive, behind the roadmap workspace. */
 .ember-background--subdued {
-  --forge-glow-opacity: 0.4;
-  --forge-glow-opacity-low: 0.32;
-  --forge-glow-opacity-mobile: 0.3;
-  --forge-glow-opacity-mobile-low: 0.24;
+  --forge-glow-opacity: 0.46;
+  --forge-glow-opacity-low: 0.35;
+  --forge-glow-opacity-mobile: 0.34;
+  --forge-glow-opacity-mobile-low: 0.27;
 }
 
 @keyframes forge-atmosphere-breathe {

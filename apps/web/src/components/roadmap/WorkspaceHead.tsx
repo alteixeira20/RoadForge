@@ -9,7 +9,7 @@ interface WorkspaceHeadProps {
   totalTasks: number
   phaseCount: number
   saved: boolean
-  nextReadyCount: number
+  recommendedCount: number
   canRename?: boolean
   maxNameLength?: number
   onRename?: (name: string) => boolean
@@ -22,7 +22,7 @@ export function WorkspaceHead({
   totalTasks,
   phaseCount,
   saved,
-  nextReadyCount,
+  recommendedCount,
   canRename = false,
   maxNameLength,
   onRename,
@@ -138,10 +138,10 @@ export function WorkspaceHead({
           <Icon name="circle-check" size={14} /> {totalDone} of {totalTasks} done
         </span>
         <span>{phaseCount} phases</span>
-        {nextReadyCount > 0 && (
+        {recommendedCount > 0 && (
           <span className="ember">
-            <Icon name="flame" size={14} stroke="var(--ember)" /> {nextReadyCount}{' '}
-            {nextReadyCount === 1 ? 'task' : 'tasks'} ready next
+            <Icon name="flame" size={14} stroke="var(--ember)" /> {recommendedCount}{' '}
+            {recommendedCount === 1 ? 'task' : 'tasks'} recommended
           </span>
         )}
         {saved && (

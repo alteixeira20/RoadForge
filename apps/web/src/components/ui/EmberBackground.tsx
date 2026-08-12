@@ -16,6 +16,9 @@ interface EmberParticle {
   curveStrength: number
   drag: number
   earlyFade: number
+  flickerFrequency: number
+  flickerPhase: number
+  glowStrength: number
   kind: ParticleKind
   life: number
   previousX: number
@@ -53,7 +56,7 @@ function particleLimit(width: number, subdued: boolean) {
   const base = width <= MOBILE_BREAKPOINT
     ? Math.round(16 + clamp((width - 320) / 320, 0, 1) * 2)
     : Math.round(30 + clamp((width - MOBILE_BREAKPOINT) / 800, 0, 1) * 6)
-  return subdued ? Math.round(base * 0.5) : base
+  return subdued ? Math.round(base * 0.62) : base
 }
 
 function createParticle(width: number, height: number, originX?: number, originY?: number): EmberParticle {
@@ -73,6 +76,9 @@ function createParticle(width: number, height: number, originX?: number, originY
     curveStrength: randomBetween(7, 22) * (Math.random() < 0.5 ? -1 : 1),
     drag: randomBetween(0.035, 0.095),
     earlyFade: Math.random() < 0.26 ? randomBetween(0.56, 0.76) : randomBetween(0.78, 0.94),
+    flickerFrequency: randomBetween(0.72, 1.65),
+    flickerPhase: randomBetween(0, Math.PI * 2),
+    glowStrength: randomBetween(kind === 'ember' ? 0.65 : 0.35, 1),
     kind,
     life,
     previousX: x,
@@ -134,7 +140,15 @@ function drawParticle(
   const fadeIn = clamp(progress / 0.08, 0, 1)
   const fadeOut = clamp((particle.earlyFade - progress) / 0.2, 0, 1)
   const headerFade = clamp((particle.y - height * 0.08) / (height * 0.16), 0, 1)
-  const alpha = fadeIn * fadeOut * headerFade * particle.brightness
+
+  // Real embers breathe rather than flash: a slow sinusoid with a sparse,
+  // rounded hot flare adds life without creating a distracting strobe.
+  const flickerWave = Math.sin(
+    particle.age * particle.flickerFrequency * Math.PI * 2 + particle.flickerPhase,
+  )
+  const hotFlare = Math.pow(Math.max(0, flickerWave), 8)
+  const flicker = 0.9 + flickerWave * 0.055 + hotFlare * 0.12
+  const alpha = fadeIn * fadeOut * headerFade * particle.brightness * flicker
   if (alpha <= 0.01) return
 
   const [red, green, blue] = particleColor(progress)
@@ -158,6 +172,25 @@ function drawParticle(
     context.stroke()
   }
 
+  const glowRadius = particle.size * (4.5 + hotFlare * 2.5) * particle.glowStrength
+  if (glowRadius > 2.2) {
+    const glow = context.createRadialGradient(
+      particle.x,
+      particle.y,
+      0,
+      particle.x,
+      particle.y,
+      glowRadius,
+    )
+    glow.addColorStop(0, `rgba(255, 205, 120, ${alpha * (0.12 + hotFlare * 0.08)})`)
+    glow.addColorStop(0.42, `rgba(${red}, ${green}, ${blue}, ${alpha * 0.075})`)
+    glow.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`)
+    context.fillStyle = glow
+    context.beginPath()
+    context.arc(particle.x, particle.y, glowRadius, 0, Math.PI * 2)
+    context.fill()
+  }
+
   const coreLength = particle.kind === 'ember' ? 1.8 : particle.size
   context.beginPath()
   context.moveTo(
@@ -169,7 +202,7 @@ function drawParticle(
     particle.y + directionY * coreLength * 0.5,
   )
   context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${alpha})`
-  context.lineWidth = particle.size
+  context.lineWidth = particle.size * (1 + hotFlare * 0.08)
   context.lineCap = 'butt'
   context.stroke()
 }

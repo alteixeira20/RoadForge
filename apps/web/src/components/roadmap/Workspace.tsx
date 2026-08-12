@@ -172,7 +172,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   const {
     allTasks,
     totalDone,
-    nextReadyCount,
+    recommendedCount,
     canViewTeam,
     filterState,
     setFilterField,
@@ -514,7 +514,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
           totalTasks={allTasks.length}
           phaseCount={phases.length}
           saved={saved}
-          nextReadyCount={nextReadyCount}
+          recommendedCount={recommendedCount}
           canRename={canRenameRoadmap}
           maxNameLength={ROADMAP_NAME_MAX}
           onRename={handleRenameRoadmap}
