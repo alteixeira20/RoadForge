@@ -1,8 +1,6 @@
 /* ─── Phase card ───────────────────────────────────────────────────────────── */
 .phase {
-  /* Let the forge atmosphere breathe through without reducing task readability.
-     Avoid backdrop-filter here: dnd-kit measures/sorts task rects inside this
-     container and an extra compositing context can distort pointer collision. */
+  /* Let the forge atmosphere breathe through without reducing task readability. */
   background: var(--surface-workspace);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -79,72 +77,263 @@
 }
 .phase-head .count {
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink-4);
-  width: 42px;
+  font-size: 13px;
+  color: var(--ink-3);
+  min-width: 38px;
   text-align: right;
 }
-.phase-head .phase-menu {
-  flex: 0 0 auto;
+
+/* Phase-level lock indicator — mirrors task meta-pill style */
+.phase-head .phase-lock-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
 }
-.phase-head .phase-menu .menu-trigger {
-  width: 32px; height: 32px;
-}
-.phase-head .phase-actions {
+
+/* ─── Phase settings menu ──────────────────────────────────────────────────── */
+.phase-settings-control {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  margin-left: -6px;
 }
-.phase-head .phase-color-btn {
-  width: 32px;
-  height: 32px;
+.phase-settings-trigger {
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   color: var(--ink-3);
-  cursor: pointer;
-}
-.phase-head .phase-color-btn:hover {
-  background: var(--bg-2);
-  color: var(--ink);
-}
-.phase-head .phase-color-btn:disabled {
-  cursor: not-allowed;
   opacity: 0.55;
+  transition: opacity 160ms, background 160ms, border-color 160ms;
 }
-.phase-color-popover {
-  position: absolute;
-  z-index: 35;
-  top: calc(100% - 8px);
-  right: 54px;
-  width: min(300px, calc(100vw - 32px));
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-overlay);
-  box-shadow: var(--shadow-lg);
+.phase:hover .phase-settings-trigger,
+.phase-settings-trigger:focus-visible,
+.phase-settings-trigger.open {
+  opacity: 1;
 }
-
-/* ─── Task list ────────────────────────────────────────────────────────────── */
-.phase-body {
-  padding: 0 18px 18px;
+.phase-settings-trigger:hover,
+.phase-settings-trigger.open {
+  background: var(--bg);
+  border-color: var(--border);
 }
-.task-list {
+.phase-settings-menu {
+  min-width: 148px;
+  padding: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 1px;
 }
-.add-task-row {
-  margin-top: 10px;
+.phase-settings-menu > [role="presentation"] {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.phase-settings-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms, color 120ms;
+}
+.phase-settings-menu button:hover { background: var(--bg-3); color: var(--ink); }
+.phase-settings-menu button.danger { color: var(--danger, #ef4444); }
+.phase-settings-menu button.danger:hover { background: rgba(239,68,68,0.08); }
+.phase-settings-sep {
+  height: 1px;
+  background: var(--border-faint);
+  margin: 3px 0;
+}
+.phase-settings-color-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+  flex-shrink: 0;
 }
 
-@media (max-width: 700px) {
-  .phase-head { gap: 10px; padding: 14px 14px; }
+/* ─── Phase color picker (Auto/Manual mode; preset grid + custom field are
+   the shared .color-picker-* primitives, see primitives/color-picker.css) ── */
+.phase-color-reason > span {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.35);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.18);
+}
+.phase-color-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.phase-color-modes button {
+  min-height: 30px;
+  color: var(--ink-3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.phase-color-modes button.selected {
+  color: var(--ember);
+  background: var(--lava-glow);
+  border-color: rgba(217,116,66,0.28);
+}
+.phase-color-reason {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+/* ─── Phase body / foot ────────────────────────────────────────────────────── */
+.phase-body {
+  border-top: 1px solid var(--border-faint);
+  display: flex; flex-direction: column;
+  animation: phaseExpand 320ms cubic-bezier(.2,.8,.2,1);
+  overflow: hidden;
+}
+
+.empty-phase {
+  padding: 32px 24px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 12px;
+  text-align: center;
+  color: var(--ink-4);
+  font-size: 14px;
+}
+.empty-phase p { margin: 0; }
+
+.phase-foot {
+  padding: 8px;
+  border-top: 1px solid var(--border-faint);
+  display: flex; justify-content: center;
+}
+.add-task-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 36px; padding: 0 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  color: var(--ink-3);
+  transition: all 160ms;
+  cursor: pointer;
+}
+.add-task-btn:hover { color: var(--ink); background: var(--bg-2); border-color: var(--border); }
+
+/* ─── Phase drag handles ───────────────────────────────────────────────────── */
+.phase-drag-handle {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 32px;
+  color: var(--ink-4);
+  cursor: grab;
+  opacity: 0.55;
+  transition: opacity 160ms, color 160ms;
+  touch-action: none;
+  flex-shrink: 0;
+}
+.phase-head:hover .phase-drag-handle,
+.phase-drag-handle:focus-visible { opacity: 1; }
+.phase-drag-handle:hover { color: var(--ember); }
+.phase-drag-handle:active { cursor: grabbing; color: var(--ember); }
+
+/* ─── Phase sortable drag states ───────────────────────────────────────────── */
+.phase-sortable-dragging { opacity: 0.35; }
+
+.phase-sortable-overlay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  cursor: grabbing;
+}
+.phase-overlay-num {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--ink-3);
+}
+.phase-overlay-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-1);
+}
+
+/* ─── Phase name inline editing ────────────────────────────────────────────── */
+.phase-head .name.editable { cursor: text; }
+.phase-head .name.editable:hover {
+  outline: 1px dashed var(--border-strong);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.phase-name-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--ember);
+  border-radius: 0;
+  padding: 0 2px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  outline: none;
+  min-width: 80px;
+}
+
+/* ─── Animations ───────────────────────────────────────────────────────────── */
+@keyframes phaseExpand { from { opacity: 0; } to { opacity: 1; } }
+
+/* ─── Responsive ───────────────────────────────────────────────────────────── */
+
+/* ── 760px — tablet: tighten phase layout ───────────────────────────────── */
+@media (max-width: 760px) {
+  .phase-head { padding: 14px 16px; gap: 10px; }
+  .phase-toggle-btn { gap: 10px; }
+  .phase-settings-trigger { opacity: 1; width: 44px; height: 44px; }
   .phase-head .progress-mini { display: none; }
-  .phase-head .status { display: none; }
-  .phase-body { padding: 0 10px 12px; }
   .phase-head .name { font-size: 17px; }
-  .phase-color-popover { right: 10px; }
+}
+
+@media (hover: none) {
+  .phase-settings-trigger { opacity: 1; width: 44px; height: 44px; }
+}
+
+/* ── 600px — mobile: compact phase layout ───────────────────────────────── */
+@media (max-width: 600px) {
+  .phase-head .status { display: none; }
+  .phase-head .name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .phase-drag-handle { opacity: 1; width: 44px; height: 44px; }
 }
