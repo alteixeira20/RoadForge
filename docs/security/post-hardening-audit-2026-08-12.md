@@ -1,6 +1,6 @@
 # Post-hardening Internet-facing security audit — 2026-08-12
 
-Status: remediation candidate for `security/post-hardening-audit-2026-08-12`
+Status: exact-head validation candidate
 
 This audit re-reviewed RoadForge after the earlier Internet-facing hardening work had already landed on `main`. It covers authentication/session/invite transport, authorization boundaries, SSE/realtime behavior, CORS/Origin/CSP, request limits, logging, persistence/retention, dependency/supply-chain gates, and the self-hosted deployment contract.
 
