@@ -17,7 +17,15 @@ After the package is published, the equivalent command is:
 npx -y @anvilary/roadforge-mcp
 ```
 
-The easiest configuration uses an owner/editor/viewer invite token. RoadForge exchanges it for one in-memory participant session when the MCP process first calls a tool. For an existing session, set `ROADFORGE_SESSION_TOKEN` together with `ROADFORGE_ROADMAP_ID` instead. Password-protected roadmaps also accept `ROADFORGE_PASSWORD`. Never place credentials in an agent prompt, repository file, or tool argument.
+The easiest configuration uses an owner/editor/viewer invite token. You may provide the raw token through `ROADFORGE_INVITE_TOKEN`, or provide the full generated RoadForge link through `ROADFORGE_INVITE_URL`:
+
+```bash
+ROADFORGE_INVITE_URL="https://roadforge.example.com/join#token=ed_..."
+```
+
+Fragment-token links are canonical. Pre-hardening `?token=` invite URLs remain accepted by the MCP client only as a migration fallback and should be rotated rather than copied into new configuration.
+
+RoadForge exchanges the invite for one in-memory participant session when the MCP process first calls a tool. For an existing session, set `ROADFORGE_SESSION_TOKEN` together with `ROADFORGE_ROADMAP_ID` instead. Password-protected roadmaps also accept `ROADFORGE_PASSWORD`. Never place credentials in an agent prompt, repository file, tool argument, shell history, or committed environment file.
 
 ## Exposed tools
 
