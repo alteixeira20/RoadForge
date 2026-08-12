@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
+            value: 'no-referrer',
           },
           {
             key: 'Permissions-Policy',
