@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import math
 import secrets
 import time
 from dataclasses import dataclass

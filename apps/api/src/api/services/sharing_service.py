@@ -12,6 +12,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant, ShareLink
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.schemas.roadmap import (
     ParticipantResponse,
     ParticipantSummaryResponse,
@@ -169,6 +170,7 @@ async def rotate_share_link(
         )
     )
 
+    await enforce_activity_log_cap(db, roadmap_id)
     await db.commit()
     await db.refresh(share_link)
 
@@ -176,7 +178,7 @@ async def rotate_share_link(
         id=share_link.id,
         role=share_link.role,  # type: ignore[arg-type]
         token_prefix=share_link.token_prefix,
-        url=f"{web_base_url}/join#token={raw_token}",
+        url=f"{web_base_url.rstrip('/')}/join#token={raw_token}",
         is_active=True,
         created_at=share_link.created_at,
         rotated_at=share_link.rotated_at,
@@ -216,6 +218,7 @@ async def revoke_share_link(
         )
     )
 
+    await enforce_activity_log_cap(db, roadmap_id)
     await db.commit()
 
 
@@ -389,7 +392,8 @@ async def _commit_revocation(
         ) from exc
 
     try:
-        await db.commit()
+        await enforce_activity_log_cap(db, roadmap_id)
+    await db.commit()
     except Exception:
         await _log_failure(
             event_bus.revocations.clear(roadmap_id, participant_id),

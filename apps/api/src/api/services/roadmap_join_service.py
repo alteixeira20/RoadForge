@@ -12,10 +12,12 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.config import get_settings
 from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.schemas.roadmap import JoinRoadmapRequest, JoinRoadmapResponse
 from api.services.id_service import generate_id
 from api.services.password_service import verify_password
@@ -76,7 +78,35 @@ async def join_roadmap(
             )
             raise HTTPException(status_code=401, detail="Invalid invite token or password")
 
+    # Serialize joins for this invite before applying the active-session cap.
+    locked_result = await db.execute(
+        select(ShareLink).where(ShareLink.id == share_link.id).with_for_update()
+    )
+    locked_share_link = locked_result.scalar_one_or_none()
+    if (
+        locked_share_link is None
+        or not locked_share_link.is_active
+        or locked_share_link.token_hash != token_hash
+    ):
+        raise HTTPException(status_code=401, detail="Invalid or expired invite token")
+    share_link = locked_share_link
+
     now = datetime.now(timezone.utc)
+    active_sessions = await db.scalar(
+        select(func.count(Participant.id)).where(
+            Participant.share_link_id == share_link.id,
+            Participant.revoked_at.is_(None),
+            or_(
+                Participant.session_expires_at.is_(None),
+                Participant.session_expires_at > now,
+            ),
+        )
+    )
+    if int(active_sessions or 0) >= get_settings().max_active_sessions_per_share_link:
+        raise HTTPException(
+            status_code=429,
+            detail="Active session limit reached for this invite",
+        )
     share_link.last_used_at = now
 
     _role_defaults = {"owner": "Guest Owner", "editor": "Guest Editor", "viewer": "Guest Viewer"}
@@ -106,6 +136,7 @@ async def join_roadmap(
         metadata_json={"role": share_link.role},
     ))
 
+    await enforce_activity_log_cap(db, roadmap.id)
     await db.commit()
 
     return JoinRoadmapResponse(

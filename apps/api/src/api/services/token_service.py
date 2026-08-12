@@ -3,9 +3,8 @@ Token utilities for invite links and participant sessions.
 
 Design:
 - Raw tokens are generated with secrets.token_urlsafe(32) — 256 bits of entropy.
-- Private owner/editor tokens and session tokens are stored only as SHA-256
-  hex digests; public viewer/demo tokens may be stored by the roadmap service
-  so owners can re-copy read-only links.
+- Invite tokens for every role and participant session tokens are stored only
+  as SHA-256 hex digests. Raw invite credentials are reveal-once on create/rotate.
 - token_prefix is a short non-secret display string (first 8 chars of the raw
   token) used in the ShareModal UI and logs for identification without exposing
   the secret.

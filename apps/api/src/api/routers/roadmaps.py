@@ -42,6 +42,10 @@ from api.services.event_bus import (
 )
 from api.services.lock_service import lock_service
 from api.services.rate_limit_service import rate_limiter
+from api.services.realtime_stream_limit import (
+    RealtimeStreamLimitUnavailableError,
+    realtime_stream_registry,
+)
 from api.services.roadmap_join_service import join_roadmap
 from api.services.roadmap_service import (
     RoadmapConflictError,
@@ -105,7 +109,9 @@ async def post_roadmap(
         "roadmap.create.ip", extract_client_ip(request), limit=10, window_seconds=3600
     )
     settings = get_settings()
-    return await create_roadmap(db, payload, settings.web_base_url)
+    return await create_roadmap(
+        db, payload, settings.web_base_url, settings.max_server_roadmaps
+    )
 
 
 @router.post("/join", response_model=JoinRoadmapResponse)
@@ -520,20 +526,39 @@ async def get_events(
     if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
         raise HTTPException(status_code=401, detail="Session revoked")
 
+    # Bound active streams before allocating a backend subscription. A leaked
+    # participant credential must not be able to accumulate long-lived Redis
+    # pubsub connections or in-process subscriber state indefinitely.
+    try:
+        stream_lease = await realtime_stream_registry.acquire(
+            roadmap_id, event_ticket.participant_id
+        )
+    except RealtimeStreamLimitUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Realtime stream limit temporarily unavailable",
+        ) from exc
+    if stream_lease is None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many active realtime streams for this participant",
+        )
+
     # Revocation can still land between the check above and the point the
-    # stream actually starts receiving events. Close that window by
-    # subscribing first — any `participant.revoked` publish from this point
-    # on is guaranteed to reach this subscription — and only then rechecking
-    # authorization. Because `revoke_participant` commits the revocation
-    # before publishing it, a revoke that races with this subscribe is
-    # necessarily visible to the recheck below even on the rare path where
-    # the queued event itself would otherwise be missed.
-    subscription = await event_bus.open_subscription(roadmap_id)
+    # stream actually starts receiving events. Subscribe first, then recheck.
+    try:
+        subscription = await event_bus.open_subscription(roadmap_id)
+    except Exception:
+        await stream_lease.release()
+        raise
     if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
         await subscription.close()
+        await stream_lease.release()
         raise HTTPException(status_code=401, detail="Session revoked")
 
     async def _is_still_authorized() -> bool:
+        if not await stream_lease.refresh():
+            return False
         async with async_session_factory() as session:
             return not await is_participant_revoked(
                 session, roadmap_id, event_ticket.participant_id
@@ -544,14 +569,21 @@ async def get_events(
             async_session_factory, roadmap_id, event_ticket.participant_id
         )
 
+    async def _bounded_stream():
+        try:
+            async for chunk in forward_subscription(
+                subscription,
+                participant_id=event_ticket.participant_id,
+                close_at=event_ticket.session_expires_at,
+                is_still_authorized=_is_still_authorized,
+                is_participant_revoked_now=_is_revoked_fast,
+            ):
+                yield chunk
+        finally:
+            await stream_lease.release()
+
     stream_response = StreamingResponse(
-        forward_subscription(
-            subscription,
-            participant_id=event_ticket.participant_id,
-            close_at=event_ticket.session_expires_at,
-            is_still_authorized=_is_still_authorized,
-            is_participant_revoked_now=_is_revoked_fast,
-        ),
+        _bounded_stream(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache, no-store",

@@ -15,6 +15,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant, Roadmap
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.schemas.limits import TAG_REGISTRY_MAX
 from api.schemas.roadmap import (
     CreateTagRequest,
@@ -110,6 +111,7 @@ async def _commit_tag_mutation(
         before_json=before_json,
         after_json=after_json,
     ))
+    await enforce_activity_log_cap(db, roadmap.id)
     await db.commit()
     await db.refresh(roadmap)
     await event_bus.publish(Event(

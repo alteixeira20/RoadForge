@@ -1,10 +1,14 @@
 import logging
+
+import sqlalchemy as sa
+from fastapi import HTTPException
 from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.schemas.roadmap import (
     ActivityLogListResponse,
     ActivityLogResponse,
@@ -49,6 +53,7 @@ from api.services.version_service import (  # noqa: F401
 )
 
 logger = logging.getLogger(__name__)
+_SERVER_ROADMAP_CAPACITY_LOCK = 0x52464F52
 
 
 def _stored_tag_registry(roadmap: Roadmap) -> list[TagDefinitionDTO] | None:
@@ -61,6 +66,7 @@ async def create_roadmap(
     db: AsyncSession,
     payload: CreateRoadmapRequest,
     web_base_url: str,
+    max_server_roadmaps: int,
 ) -> CreateRoadmapResponse:
     """Persist a new roadmap from a local frontend snapshot.
 
@@ -69,6 +75,18 @@ async def create_roadmap(
     raw invite tokens are held only in local variables and returned in the response.
     No role's raw invite credential is persisted server-side.
     """
+    # PostgreSQL advisory lock makes the global record cap exact even when
+    # many anonymous create requests arrive concurrently. Soft-deleted rows
+    # deliberately continue to count until retention hard-purges them.
+    await db.execute(
+        sa.select(sa.func.pg_advisory_xact_lock(_SERVER_ROADMAP_CAPACITY_LOCK))
+    )
+    roadmap_count = await db.scalar(sa.select(sa.func.count(Roadmap.id)))
+    if int(roadmap_count or 0) >= max_server_roadmaps:
+        raise HTTPException(
+            status_code=503,
+            detail="Server roadmap capacity is temporarily unavailable",
+        )
     validate_roadmap_domain(payload.phases, payload.tag_registry)
     now = datetime.now(timezone.utc)
     roadmap_id = generate_id("rm_")
@@ -137,6 +155,7 @@ async def create_roadmap(
     # backfill is required before projection reads can be enabled.
     await sync_roadmap_projection_best_effort(db, roadmap, "create")
 
+    await enforce_activity_log_cap(db, roadmap.id)
     await db.commit()
     await db.refresh(roadmap)
 
@@ -145,7 +164,7 @@ async def create_roadmap(
             id=share_link.id,
             role=share_link.role,  # type: ignore[arg-type]
             token_prefix=share_link.token_prefix,
-            url=f"{web_base_url}/join#token={raw_tokens[share_link.role]}",
+            url=f"{web_base_url.rstrip('/')}/join#token={raw_tokens[share_link.role]}",
             is_active=True,
             created_at=now,
         )
@@ -244,6 +263,7 @@ async def update_roadmap(
     # task writes use the incremental path in roadmap_task_service instead.
     if payload.phases is not None:
         await sync_roadmap_projection_best_effort(db, roadmap, "roadmap.updated")
+    await enforce_activity_log_cap(db, roadmap.id)
     await db.commit()
     await db.refresh(roadmap)
 
@@ -289,6 +309,7 @@ async def delete_roadmap(
     ))
 
     roadmap.deleted_at = now
+    await enforce_activity_log_cap(db, roadmap.id)
     await db.commit()
 
     await event_bus.publish(Event(
