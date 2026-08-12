@@ -25,7 +25,13 @@ function inviteToken(env) {
   if (!raw) return null
   if (!raw.includes('://')) return raw
   try {
-    return new URL(raw).searchParams.get('token')
+    const inviteUrl = new URL(raw)
+    const fragment = inviteUrl.hash.startsWith('#') ? inviteUrl.hash.slice(1) : inviteUrl.hash
+    const fragmentToken = new URLSearchParams(fragment).get('token')?.trim()
+    if (fragmentToken) return fragmentToken
+    // Compatibility only: pre-hardening RoadForge links used ?token= and may
+    // still exist in operator configuration until their invite is rotated.
+    return inviteUrl.searchParams.get('token')?.trim() || null
   } catch {
     throw new RoadForgeApiError('ROADFORGE_INVITE_URL is not a valid URL')
   }
