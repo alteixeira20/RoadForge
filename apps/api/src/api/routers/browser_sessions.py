@@ -34,5 +34,5 @@ async def establish_browser_session(
 
     set_browser_session_cookie(response, roadmap_id, raw_token)
     response.status_code = status.HTTP_204_NO_CONTENT
-    response.headers["Cache-Control"] = "no-store"
+    # Cache-Control is added by the centralized sensitive-roadmap response middleware.
     return response
