@@ -1,0 +1,180 @@
+name: Execute Phase 2 application hardening v3
+
+on:
+  push:
+    branches:
+      - security/internet-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags origin refs/heads/security/internet-hardening
+          git checkout -B security/internet-hardening FETCH_HEAD
+
+      - name: Execute reviewed transformation
+        run: |
+          python - <<'PYEXTRACT'
+          from pathlib import Path
+
+          source = Path('.github/workflows/apply-phase2-security.yml').read_text()
+          start_marker = "          python - <<'PY'\n"
+          end_marker = "          PY\n\n          python -m compileall"
+          if source.count(start_marker) != 1 or source.count(end_marker) != 1:
+              raise SystemExit('Could not locate Phase 2 transform block exactly once')
+          block = source.split(start_marker, 1)[1].split(end_marker, 1)[0]
+          lines = []
+          for line in block.splitlines():
+              if line.startswith('          '):
+                  line = line[10:]
+              lines.append(line)
+          script = '\n'.join(lines) + '\n'
+
+          stale = '''old = '        ticket = ticket_resp.json()["ticket"]\\n'\nif text.count(old) != 2:\n    raise SystemExit(f'test_realtime_revocation.py expected 2 raw-ticket extracts, got {text.count(old)}')\ntext = text.replace(old, '')\ntext = text.replace('params={"ticket": ticket},\\n', '', 2)'''
+          fixed = '''old = '    ticket = ticket_resp.json()["ticket"]\\n'\nif text.count(old) != 2:\n    raise SystemExit(f'test_realtime_revocation.py expected 2 raw-ticket extracts, got {text.count(old)}')\nquery = ', params={"ticket": ticket}'\nif text.count(query) != 2:\n    raise SystemExit(f'test_realtime_revocation.py expected 2 raw-ticket query uses, got {text.count(query)}')\ntext = text.replace(old, '')\ntext = text.replace(query, '', 2)'''
+          if script.count(stale) != 1:
+              raise SystemExit(f'Expected one stale-test transform block, found {script.count(stale)}')
+          Path('/tmp/apply_phase2.py').write_text(script.replace(stale, fixed))
+          PYEXTRACT
+          python -m py_compile /tmp/apply_phase2.py
+          python /tmp/apply_phase2.py
+
+          cat > apps/api/src/api/services/browser_session.py <<'PYFILE'
+          from __future__ import annotations
+
+          from fastapi import Request, Response
+
+          from api.config import get_settings
+          from api.services.session_policy import SESSION_LIFETIME_DAYS
+
+          BROWSER_SESSION_COOKIE_NAME = "roadforge_session"
+          BROWSER_SESSION_MODE_HEADER = "x-roadforge-session-mode"
+          BROWSER_SESSION_MODE_COOKIE = "cookie"
+          BROWSER_SESSION_MAX_AGE_SECONDS = SESSION_LIFETIME_DAYS * 24 * 60 * 60
+
+
+          def browser_session_cookie_path(roadmap_id: str) -> str:
+              return f"/api/roadmaps/{roadmap_id}"
+
+
+          def wants_browser_session(request: Request) -> bool:
+              return (
+                  request.headers.get(BROWSER_SESSION_MODE_HEADER, "").lower()
+                  == BROWSER_SESSION_MODE_COOKIE
+              )
+
+
+          def set_browser_session_cookie(
+              response: Response, roadmap_id: str, raw_token: str
+          ) -> None:
+              response.set_cookie(
+                  BROWSER_SESSION_COOKIE_NAME,
+                  raw_token,
+                  max_age=BROWSER_SESSION_MAX_AGE_SECONDS,
+                  path=browser_session_cookie_path(roadmap_id),
+                  secure=get_settings().is_production_like,
+                  httponly=True,
+                  samesite="strict",
+              )
+          PYFILE
+          sed -i 's/^          //' apps/api/src/api/services/browser_session.py
+
+          cat > apps/api/src/api/middleware/browser_session.py <<'PYFILE'
+          from __future__ import annotations
+
+          import re
+
+          from fastapi import FastAPI
+          from starlette.requests import Request
+          from starlette.responses import JSONResponse
+          from starlette.types import ASGIApp, Receive, Scope, Send
+
+          from api.config import get_settings
+          from api.services.browser_session import BROWSER_SESSION_COOKIE_NAME
+
+          _ROADMAP_PATH = re.compile(r"^/api/roadmaps/([^/]+)(?:/|$)")
+          _UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+          class BrowserSessionAuthMiddleware:
+              """Translate path-scoped HttpOnly browser sessions into internal Bearer auth."""
+
+              def __init__(self, app: ASGIApp) -> None:
+                  self.app = app
+                  self._allowed_origins = {
+                      origin.rstrip("/") for origin in get_settings().cors_origins
+                  }
+
+              async def __call__(
+                  self, scope: Scope, receive: Receive, send: Send
+              ) -> None:
+                  if scope.get("type") != "http":
+                      await self.app(scope, receive, send)
+                      return
+
+                  path = str(scope.get("path") or "")
+                  match = _ROADMAP_PATH.match(path)
+                  if match is None or match.group(1) == "join":
+                      await self.app(scope, receive, send)
+                      return
+
+                  headers = list(scope.get("headers", []))
+                  if any(name.lower() == b"authorization" for name, _ in headers):
+                      await self.app(scope, receive, send)
+                      return
+
+                  request = Request(scope)
+                  token = request.cookies.get(BROWSER_SESSION_COOKIE_NAME)
+                  if not token:
+                      await self.app(scope, receive, send)
+                      return
+
+                  method = str(scope.get("method") or "GET").upper()
+                  if method in _UNSAFE_METHODS:
+                      origin = request.headers.get("origin", "").rstrip("/")
+                      if not origin or origin not in self._allowed_origins:
+                          response = JSONResponse(
+                              status_code=403,
+                              content={"detail": "Invalid request origin"},
+                          )
+                          await response(scope, receive, send)
+                          return
+
+                  next_scope = dict(scope)
+                  next_scope["headers"] = headers + [
+                      (b"authorization", f"Bearer {token}".encode("latin-1"))
+                  ]
+                  await self.app(next_scope, receive, send)
+
+
+          def add_browser_session_auth(app: FastAPI) -> None:
+              app.add_middleware(BrowserSessionAuthMiddleware)
+          PYFILE
+          sed -i 's/^          //' apps/api/src/api/middleware/browser_session.py
+
+          python -m compileall -q apps/api/src/api apps/api/tests/test_browser_session_security.py
+          git diff --check
+
+      - name: Commit hardened application layer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -f \
+            .github/workflows/apply-phase2-security.yml \
+            .github/workflows/retry-phase2-security.yml \
+            .github/workflows/retry-phase2-security-v2.yml \
+            .github/workflows/retry-phase2-security-v3.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "security: harden browser sessions and rate limits"
+          git push origin HEAD:refs/heads/security/internet-hardening
