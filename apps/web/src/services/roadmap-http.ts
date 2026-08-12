@@ -88,11 +88,18 @@ export async function requestJson<T>(
   if (sessionToken && sessionToken !== BROWSER_SESSION_TOKEN) {
     headers['Authorization'] = `Bearer ${sessionToken}`
   }
+
+  // Only cookie-authenticated browser requests opt into ambient credentials.
+  // Explicit Bearer requests remain isolated from cookies.
+  const credentials = sessionToken === BROWSER_SESSION_TOKEN
+    ? 'include'
+    : options.credentials
+
   let res: Response
   try {
     res = await fetch(API_BASE_URL + path, {
       ...options,
-      credentials: 'include',
+      ...(credentials ? { credentials } : {}),
       headers: { ...headers, ...(options.headers as Record<string, string> | undefined) },
     })
   } catch {
@@ -139,7 +146,7 @@ export async function establishBrowserSession(
 ): Promise<void> {
   await requestJson<void>(
     `/api/roadmaps/${roadmapId}/session/cookie`,
-    { method: 'POST' },
+    { method: 'POST', credentials: 'include' },
     bearerToken,
   )
 }
