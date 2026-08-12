@@ -33,5 +33,6 @@ async def establish_browser_session(
         raise HTTPException(status_code=401, detail="Missing or invalid session token")
 
     set_browser_session_cookie(response, roadmap_id, raw_token)
+    response.status_code = status.HTTP_204_NO_CONTENT
     response.headers["Cache-Control"] = "no-store"
     return response
