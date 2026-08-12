@@ -17,11 +17,27 @@ A roadmap task marked complete is not implementation evidence by itself. A histo
 record is not an API contract. A TypeScript interface is not sufficient proof that imported
 JSON is accepted; the real parser and its tests own that boundary.
 
+## Deployment positioning
+
+The public Anvilary instance at `roadforge.anvilary.tools` is the official **hosted
+demo/reference deployment**. It is for evaluation and light collaboration, not a managed
+team SaaS or large-team production service.
+
+Teams that depend on RoadForge operationally—especially larger teams—should fork the
+repository or maintain a controlled clone and self-host under the applicable license. Those
+operators own persistence, backups, retention, monitoring, capacity/load testing, upgrades,
+and deployment security.
+
+The authoritative positioning is [Hosted demo and self-hosting](hosted-demo-and-self-hosting.md).
+Do not describe the Anvilary demo elsewhere as a hosted production service, durable backup,
+or team-scale SLA.
+
 ## Start here
 
 | Need | Read |
 | --- | --- |
 | Understand RoadForge quickly | [`../README.md`](../README.md) |
+| Understand hosted demo vs self-hosting | [`hosted-demo-and-self-hosting.md`](hosted-demo-and-self-hosting.md) |
 | Make a contribution | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) and [`contributor-guide.md`](contributor-guide.md) |
 | Understand architecture | [`architecture/overview.md`](architecture/overview.md) |
 | Understand canonical data ownership | [`architecture/source-of-truth-rules.md`](architecture/source-of-truth-rules.md) |
@@ -40,6 +56,7 @@ JSON is accepted; the real parser and its tests own that boundary.
 These files are expected to describe the current implementation and must be updated when
 their contract changes:
 
+- `hosted-demo-and-self-hosting.md`
 - `access-model.md`
 - `backend-api.md`
 - `frontend-foundation.md`
@@ -66,6 +83,10 @@ historical interest:
 Operational truth should prefer one maintained command/constant over repeating values in
 many files. For example, roadmap request-size limits are owned by application code and
 verified by tests; prose should point at that contract rather than invent a second value.
+
+Operational docs may describe how to scale a deployment, but must not turn the maintained
+example into an untested capacity promise. Larger teams are expected to own sizing, load
+testing, monitoring, and recovery on their fork/clone.
 
 ## Architecture and design records
 
@@ -128,7 +149,8 @@ A documentation PR should state:
 - whether the file describes current behavior or historical reasoning;
 - which code/test owns the underlying contract;
 - whether commands were actually exercised when the document is operational;
-- whether another document becomes obsolete because of the change.
+- whether another document becomes obsolete because of the change;
+- whether hosted-demo/self-hosting positioning is affected.
 
 ## Documentation quality gate
 

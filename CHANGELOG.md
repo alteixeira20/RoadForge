@@ -32,6 +32,15 @@ Changes after the `0.1.0` baseline belong here.
 - Let the forge atmosphere show subtly through phase and primary workspace surfaces while keeping controls, menus, and modal overlays dense enough for readability.
 - Give embers a restrained slow flicker, occasional hot flare, and soft glow while preserving the 30 fps cap and reduced-motion behavior.
 
+### Hosted demo and self-hosting positioning
+
+- Define `roadforge.anvilary.tools` as the official hosted demo/reference deployment for evaluation, examples, and light collaboration rather than a managed production-team or large-team SaaS.
+- Make portable JSON backups the explicit user-controlled safety path for important work on the demo.
+- Direct sustained, operational, or larger-team use to a fork/controlled clone on self-hosted infrastructure under the applicable repository license.
+- Document operator ownership of persistence, backups/restores, retention, monitoring, capacity/load testing, upgrades, security configuration, and incident response.
+- Clarify that the maintained Compose/Redis multi-worker topology is a production-oriented reference, not an arbitrary team-size or concurrency certification.
+- Align README, docs map, self-hosting/security/deployment/support docs, help content, and landing-page copy around the same deployment boundary and add copy-contract tests against future drift.
+
 ## 0.1.0 - 2026-08-10
 
 First supported RoadForge baseline for deliberate public release preparation.

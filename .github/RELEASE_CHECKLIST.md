@@ -50,8 +50,11 @@ remain a release-quality problem and should be fixed rather than normalized.
 - [ ] Local-first creation works without the API.
 - [ ] JSON export/import round-trip preserves meaningful roadmap data.
 - [ ] Markdown export is credential-free and remains non-importable.
-- [ ] Hosted/demo copy advises users to keep JSON backups they control.
-- [ ] The Anvilary-hosted instance does not imply managed backup/durability guarantees.
+- [ ] Hosted-demo copy advises users to keep JSON backups they control.
+- [ ] `roadforge.anvilary.tools` is described as the hosted demo/reference deployment, not a managed production-team service.
+- [ ] Public copy does not imply an uptime, capacity, large-team, or hosted-data recovery SLA.
+- [ ] Sustained or larger-team use is directed to a fork/controlled clone and self-hosting under the applicable license.
+- [ ] Self-hosting copy makes the operator responsible for persistence, backups, retention, monitoring, capacity/load testing, upgrades, and security configuration.
 - [ ] Synced deletion wording distinguishes immediate soft deletion, final live-database purge, and independent backup retention.
 - [ ] Accountless owner/editor/viewer semantics remain accurate.
 - [ ] Roadmap snapshot/tag-registry source-of-truth rules remain accurate.
@@ -90,6 +93,7 @@ smoke testing.
 - [ ] Memory realtime is one API process only, or Redis mode is enabled for multi-worker/instance deployment.
 - [ ] A PostgreSQL backup and checksum are created before schema-sensitive migration or planned retention purge.
 - [ ] Backup restore has been rehearsed against a disposable database.
+- [ ] Operational/larger-team deployments have explicit resource sizing, monitoring, and representative load-test evidence rather than relying on the public demo as a benchmark.
 
 ## 6. Health contract
 
@@ -145,13 +149,17 @@ For a deployment that already contains synced data:
 
 Final live-database purge is an operator lifecycle action and remains independent from
 backup expiry. Never imply that a live purge automatically removes historical backup copies.
+Self-hosting operators should document retention/recovery objectives appropriate to their own
+organization instead of inheriting the demo operator's defaults as an SLA.
 
 ## 10. Known-boundary review
 
 Before publishing release notes, explicitly review:
 
 - [ ] browser-local storage durability limitations;
-- [ ] hosted-demo/no-managed-backup positioning;
+- [ ] hosted-demo/reference-deployment positioning;
+- [ ] no managed production-team, arbitrary large-team capacity, uptime, or recovery SLA is implied;
+- [ ] sustained/larger-team users are directed to fork/self-host and own operational capacity/recovery;
 - [ ] inline CSS remains an explicit CSP compatibility boundary;
 - [ ] nonce-bearing HTML is dynamically rendered/no-store rather than CDN-cacheable;
 - [ ] soft-delete/final-live-purge/backup-retention semantics;
@@ -176,12 +184,11 @@ Suggested release-note structure:
 
 <What this release establishes and who it is for.>
 
-### Included
-- <user-visible capability>
-
-### Data ownership
-The hosted Anvilary instance is a demo/convenience deployment. Export important
-roadmaps as JSON and keep copies you control.
+### Hosted demo and data ownership
+`roadforge.anvilary.tools` is the hosted demo/reference deployment for evaluation and light
+collaboration. Export important roadmaps as JSON and keep copies you control. For sustained
+or larger-team use, fork/maintain a controlled clone and self-host under the applicable
+license; the operator owns capacity, backups, retention, monitoring, upgrades, and recovery.
 
 ### Known boundaries
 - <current boundary>
@@ -191,6 +198,7 @@ roadmaps as JSON and keep copies you control.
 - Apply migrations to Alembic head.
 - Application rollback does not automatically reverse migrations.
 - CSP can be returned to report-only on the same build if a legitimate flow is blocked.
+- Validate representative concurrency/capacity before operational reliance for a larger team.
 
 ### Verified
 - Candidate SHA: <sha>
@@ -201,6 +209,7 @@ roadmaps as JSON and keep copies you control.
 - Retention dry-run: <result>
 - Accessibility smoke: <matrix>
 - Backup/restore: <result>
+- Capacity/load test (when applicable): <result>
 ```
 
 ## 12. Post-deploy observation
@@ -214,16 +223,8 @@ For a public deployment, observe at least through the first normal usage window.
 - [ ] no unexpected CSP enforcement errors appear;
 - [ ] retention dry-run trends are plausible for the deployment;
 - [ ] no credentials appear in logs;
-- [ ] no data-loss/corruption report remains unexplained.
+- [ ] no data-loss/corruption report remains unexplained;
+- [ ] larger-team/self-hosted deployments remain inside the capacity thresholds established before release.
 
 Roll back immediately for credible data corruption/loss, credential exposure,
 unrecoverable save failures, broken primary routes, or sustained dependency failure.
-For a CSP-only compatibility regression, use the documented report-only rollback rather
-than rolling back unrelated database/application changes first.
-
-## 13. Close-out
-
-- [ ] Final release notes are published.
-- [ ] Verification evidence is retained with credentials/private roadmap data redacted.
-- [ ] New defects discovered during release/deployment are filed with a clear owner/disposition.
-- [ ] Feature work reopens only after the `0.1.0` baseline is frozen and documented.

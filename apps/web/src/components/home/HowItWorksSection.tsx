@@ -24,25 +24,25 @@ export function HowItWorksSection() {
           <h3>Plan in phases.</h3>
           <p>
             Group work into phases. Add tasks and note what depends on what.
-            RoadForge surfaces the recommended next task automatically.
+            RoadForge can surface recommended tasks without choosing your next action.
           </p>
         </div>
         <div className="step-card">
           <div className="step-ic"><Icon name="users" size={17} /></div>
           <span className="num">STEP 03</span>
-          <h3>Share when ready.</h3>
+          <h3>Share on your terms.</h3>
           <p>
-            Save to an RoadForge server — yours or self-hosted — to get activity
-            logs, participant tracking, and signed invite links.
+            Use the hosted demo for evaluation and light collaboration, or fork and
+            self-host RoadForge when your team needs an instance it controls.
           </p>
         </div>
       </div>
       <div className="flow-strip" aria-hidden="true">
-        <span>Local file</span>
+        <span>Local roadmap</span>
         <span className="flow-sep">→</span>
         <span>Portable JSON</span>
         <span className="flow-sep">→</span>
-        <span>Optional server sync</span>
+        <span>Demo or self-hosted sync</span>
       </div>
     </LandingSectionFrame>
   )
