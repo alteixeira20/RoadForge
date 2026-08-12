@@ -16,15 +16,31 @@ All application endpoints are under `/api`.
 
 RoadForge is accountless, not unauthenticated.
 
-A shared roadmap participant receives an opaque session token and sends it as:
+A shared roadmap participant receives an opaque roadmap-scoped session token. Non-browser
+clients such as MCP authenticate with:
 
 ```http
-Authorization: Bearer sess_<token>
+Authorization: Bearer <participant-session-token>
 ```
 
-Session tokens are roadmap-scoped bearer credentials, stored hashed at rest and never
-returned by list/read endpoints. The browser keeps the active credential in scoped
-local storage. Do not put session tokens in URLs.
+Raw participant tokens are stored hashed at rest and are never returned by list/read
+endpoints. Do not put participant sessions in URLs.
+
+The web client does not persist newly issued raw Bearer tokens. Immediately after roadmap
+creation or invite join it exchanges the raw token through:
+
+```text
+POST /api/roadmaps/{id}/session/cookie
+```
+
+The exchange requires the valid Bearer session in `Authorization` and returns `204` with a
+path-scoped HttpOnly `roadforge_session` cookie. Browser code then uses a non-secret auth
+marker while fetch requests use the cookie. Pre-hardening browser Bearer sessions are
+migrated through the same endpoint on the next successful hydration.
+
+Cookie-authenticated unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`) require an `Origin`
+that exactly matches the configured CORS origins. Explicit Bearer API/MCP calls remain a
+separate authentication path and do not depend on browser cookies or `Origin`.
 
 Roles:
 
@@ -52,6 +68,7 @@ dependency is unavailable.
 | --- | --- | --- | --- |
 | `POST` | `/api/roadmaps` | public | create a synced roadmap, owner session, and initial share links |
 | `POST` | `/api/roadmaps/join` | public invite | exchange an invite/password for a participant session |
+| `POST` | `/api/roadmaps/{id}/session/cookie` | valid Bearer participant | exchange the browser bootstrap Bearer for an HttpOnly session cookie |
 | `GET` | `/api/roadmaps/{id}` | owner/editor/viewer | read current roadmap |
 | `PUT` | `/api/roadmaps/{id}` | owner/editor | aggregate roadmap save |
 | `DELETE` | `/api/roadmaps/{id}` | owner | soft-delete roadmap |
@@ -75,7 +92,7 @@ not create a second source of truth.
 ## Tag registry
 
 | Method | Path | Access |
-| --- | --- | --- |
+| --- | --- |
 | `GET` | `/api/roadmaps/{id}/tags` | owner/editor/viewer |
 | `POST` | `/api/roadmaps/{id}/tags` | owner/editor |
 | `PUT` | `/api/roadmaps/{id}/tags/{tag_id}` | owner/editor |
@@ -87,7 +104,7 @@ a separate identity/access system.
 ## Sharing and participants
 
 | Method | Path | Access |
-| --- | --- | --- |
+| --- | --- |
 | `GET` | `/api/roadmaps/{id}/share-links` | owner |
 | `POST` | `/api/roadmaps/{id}/share-links/{role}/rotate` | owner |
 | `DELETE` | `/api/roadmaps/{id}/share-links/{role}` | owner |
@@ -96,17 +113,22 @@ a separate identity/access system.
 
 Raw invite URLs for every role are one-time response material after creation/rotation;
 normal listing never recovers a raw token. Generated links place the invite in the URL
-fragment so it is not sent in the HTTP request target; the join page scrubs it from the
-current history entry after reading it. Active viewer links remain usable until
-rotation/revocation, but must be rotated to reveal a copyable URL again.
+fragment (`/join#token=...`) so the credential is not sent in the HTTP request target. The
+join page removes it from the current history entry after reading it.
 
-Invite rotation affects future joins. Participant revocation affects an existing
-session. They are separate operations.
+Legacy query-token invite links are accepted only for migration compatibility. Operators
+should rotate any pre-hardening owner/editor invite that may have been distributed. Migration
+`0011` revokes legacy viewer links whose raw token had been persisted and removes the old
+`public_token` column; rotate the viewer link once after upgrade when a fresh copyable link
+is required.
+
+Invite rotation affects future joins. Participant revocation affects an existing session.
+They are separate operations.
 
 ## Versions and activity
 
 | Method | Path | Access |
-| --- | --- | --- |
+| --- | --- |
 | `GET` | `/api/roadmaps/{id}/versions` | owner/editor |
 | `POST` | `/api/roadmaps/{id}/versions/checkpoint` | owner/editor |
 | `GET` | `/api/roadmaps/{id}/versions/{version_id}` | owner/editor |
@@ -119,20 +141,22 @@ writes do not need to create a full restore point.
 ## Locks and realtime
 
 | Method | Path | Access |
-| --- | --- | --- |
+| --- | --- |
 | `GET` | `/api/roadmaps/{id}/locks` | owner/editor/viewer |
 | `POST` | `/api/roadmaps/{id}/locks` | owner/editor |
 | `DELETE` | `/api/roadmaps/{id}/locks/{target}` | eligible lock owner/role |
 | `POST` | `/api/roadmaps/{id}/events/ticket` | owner/editor/viewer |
-| `GET` | `/api/roadmaps/{id}/events` | short-lived event ticket |
+| `GET` | `/api/roadmaps/{id}/events` | short-lived event ticket cookie |
 
-Long-lived participant session tokens are not placed in SSE URLs. An authenticated
-client first requests a short-lived, single-use event ticket. The API delivers that
-ticket only through a path-scoped HttpOnly cookie; EventSource connects without
-ticket/query credentials.
+Long-lived participant sessions are not placed in SSE URLs. An authenticated participant
+requests a cryptographically random, 30-second, roadmap/participant-scoped, single-use event
+ticket. The API delivers the ticket only through the path-scoped HttpOnly
+`roadforge_event_ticket` cookie. EventSource connects without ticket/query credentials; the
+server consumes the ticket once and expires the browser cookie in the response.
 
 Memory realtime supports one API process. Redis mode shares events, tickets, locks,
-revocation state, and rate limits across workers/instances.
+revocation state, and rate limits across workers/instances. In Redis mode, a Redis error in
+the public rate limiter fails closed with `503` rather than silently permitting requests.
 
 ## Optimistic concurrency
 
@@ -146,6 +170,12 @@ work and present an explicit resolution path.
 
 Clients and MCP tools must not silently retry a conflicting write as an overwrite.
 
+## Caching and sensitive responses
+
+Sensitive roadmap API responses use `Cache-Control: no-store`, including `PATCH` responses.
+The browser-session exchange and event-ticket bootstrap also use `no-store`. SSE streaming
+uses its dedicated no-cache/no-store behavior.
+
 ## Common status codes
 
 | Code | Meaning |
@@ -155,13 +185,13 @@ Clients and MCP tools must not silently retry a conflicting write as an overwrit
 | `204` | successful request with no body |
 | `400` | invalid operation semantics |
 | `401` | missing/invalid/expired/revoked credential |
-| `403` | valid credential with insufficient role |
+| `403` | insufficient role or rejected cookie-authenticated request origin |
 | `404` | active roadmap/entity not found |
 | `409` | optimistic-concurrency or ownership conflict |
 | `413` | request body exceeds the supported payload ceiling |
 | `422` | schema/field validation failure |
 | `429` | rate limit exceeded |
-| `503` | required readiness dependency unavailable |
+| `503` | required dependency/rate-limiter availability failure |
 
 ## Payload and field limits
 
@@ -172,7 +202,8 @@ apps/api/src/api/schemas/limits.py
 ```
 
 The supported roadmap request ceiling is **5 MiB** and is aligned with the maintained
-browser import and nginx limits. Do not copy historical 512 KiB limits into new docs.
+browser import and nginx limits. The ASGI body limiter counts actual streamed bytes, so a
+missing or dishonest `Content-Length` cannot bypass the limit.
 
 Frontend import validation mirrors the relevant roadmap shape limits in
 `apps/web/src/lib/roadmap-validation.ts`. When changing a shared limit, update both
@@ -186,9 +217,9 @@ RoadForge uses FastAPI-style JSON errors for ordinary failures:
 {"detail":"Human-readable error message"}
 ```
 
-Conflict responses add structured conflict metadata. Error responses must never echo
-raw invite tokens, participant session tokens, passwords, Redis credentials, or private
-request bodies.
+Conflict responses add structured conflict metadata. Error responses must never echo raw
+invite/session/event-ticket tokens, passwords, Redis credentials, database credentials, or
+private request bodies.
 
 ## API change checklist
 
@@ -202,5 +233,4 @@ When changing an endpoint contract:
 6. update this document only when client-visible semantics change;
 7. run API tests, migration drift checks, and the relevant browser tests.
 
-The source code and tests remain authoritative over examples in historical design
-records.
+The source code and tests remain authoritative over examples in historical design records.
