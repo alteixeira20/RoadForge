@@ -9,17 +9,19 @@ Changes after the `0.1.0` baseline belong here.
 
 ### Security hardening
 
+- Consolidate the 2026-08-12 Internet-facing threat model, findings, residual risks, and deployment proof requirements in `docs/security/internet-facing-audit-2026-08-12.md`.
 - Move newly generated invite credentials from query strings to fragment URLs and scrub them from the active history entry after join bootstrap; retain query-token parsing only for migration compatibility.
 - Move single-use SSE ticket transport from the EventSource query string to a 30-second, roadmap/participant-scoped, path-scoped HttpOnly cookie.
 - Make viewer invite credentials reveal-once and remove plaintext viewer tokens from the live database through migration `0011`, which revokes legacy persisted viewer links before dropping `share_links.public_token`.
 - Exchange browser participant Bearer sessions for roadmap-path-scoped `HttpOnly`, `SameSite=Strict`, production-`Secure` cookies before new credentials enter persistent browser state; automatically migrate legacy persisted browser Bearers after successful hydration.
+- Preserve the roadmap-scoped Bearer only as a degraded recovery credential when the one-time browser cookie exchange fails, preventing newly created/joined server access from being orphaned while allowing later automatic migration.
 - Require an explicitly configured Origin for unsafe cookie-authenticated roadmap requests while preserving the explicit Bearer API/MCP contract.
 - Fail Redis-backed public rate limiting closed with `503` when Redis cannot perform the check instead of silently allowing the request.
 - Mark sensitive roadmap `PATCH` responses `Cache-Control: no-store`.
 - Align application and nginx baseline referrer/security headers and add compatible Compose runtime confinement: read-only web/API roots, capability drops, no-new-privileges, PID ceilings, and narrowly scoped tmpfs write paths.
 - Pin maintained GitHub Actions to immutable upstream commit SHAs while retaining read-only validation permissions.
 - Update the MCP client to prefer canonical `#token=` invite URLs while retaining legacy query-token parsing only as a compatibility fallback.
-- Add cross-roadmap, role-change, browser-session/CSRF, invite transport, and realtime credential regression coverage.
+- Add cross-roadmap, role-change, browser-session/CSRF, invite transport, degraded session recovery, and realtime credential regression coverage.
 
 ## 0.1.0 - 2026-08-10
 

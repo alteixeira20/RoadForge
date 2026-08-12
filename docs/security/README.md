@@ -1,73 +1,27 @@
-# Security documentation
+# RoadForge security documentation
 
-See also [SECURITY.md](../../SECURITY.md) for responsible vulnerability disclosure.
+This directory contains the maintained security contracts and release evidence requirements for RoadForge.
 
-RoadForge is accountless and local-first. Security work focuses on protecting roadmap-scoped
-bearer credentials, validating untrusted roadmap content, limiting public-endpoint abuse,
-controlling browser attack surface, preserving data integrity, bounding retained server
-data, and keeping production dependencies/recovery operations auditable.
+Start here:
 
-Current implementation is authoritative over historical design notes.
+- [Internet-facing security audit — 2026-08-12](./internet-facing-audit-2026-08-12.md) — consolidated threat model, findings, remediations, residual risks, and deployment actions for the current hardening candidate.
+- [Session expiry and revocation policy](./session-expiry-and-revocation-policy.md) — participant sessions, HttpOnly browser cookies, legacy migration, revocation, and realtime credential handling.
+- [Rate limiting policy](./rate-limiting-policy.md) — action-specific limits, trusted client IPs, Redis coordination, and fail-closed behavior.
+- [Security headers and CSP](./security-headers-policy.md) — nonce CSP, header ownership, browser compatibility boundaries, and observation/rollback rules.
+- [Dependency audit policy](./dependency-audit-policy.md) — JavaScript/Python audit gates and the narrow exception process.
+- [Operational proof gate](./operational-proof-gate.md) — exact-candidate CI plus deployed/manual evidence required before public release.
 
-## Session and authorization
+Broader deployment/access references:
 
-[Session Expiry and Revocation Policy](./session-expiry-and-revocation-policy.md)
-documents participant sessions, sliding expiry, owner revocation, invite-link vs participant
-revocation, and preservation of local work when server access changes.
+- [Public deployment security](../public-deployment-security.md)
+- [Self-hosting](../self-hosting.md)
+- [Access model](../access-model.md)
+- [Backend API reference](../backend-api.md)
+- [Manual QA](../manual-qa.md)
+- [Repository security policy](../../SECURITY.md)
 
-[Access Model](../access-model.md) is the higher-level owner/editor/viewer product contract.
+## Maintenance rule
 
-## Rate limiting and realtime coordination
+Security documentation must describe implemented behavior, not aspirational design. When an authentication, credential-transport, CSP, rate-limit, dependency, proxy, or deployment contract changes, update the relevant policy and focused regression tests in the same candidate.
 
-[Rate Limiting Policy](./rate-limiting-policy.md) covers create/join/password/authenticated
-operation limits and their key dimensions. Memory mode is process-local; Redis-backed mode
-shares rate-limit and realtime coordination state across workers/instances.
-
-## Browser headers and CSP
-
-[Security Headers and Content Security Policy](./security-headers-policy.md) defines the
-per-response nonce strategy, production enforcement, report-only observation/rollback mode,
-`connect-src` API/SSE compatibility, no-store requirement for nonce-bearing HTML, reverse
-proxy responsibilities, sanitized incident evidence, and automated browser proof.
-
-Production `script-src` does not use `unsafe-inline` or `unsafe-eval`. Inline CSS remains a
-documented separate compatibility boundary because the current UI uses dynamic style
-attributes.
-
-## Public deployments
-
-[Public Deployment Security](../public-deployment-security.md) documents production mode,
-CORS, trusted proxies, credential-safe logging, health/readiness semantics, payload limits,
-Redis topology, migrations, and public-network expectations.
-
-## Server data retention
-
-[Server Data Retention and Purge](../server-data-retention.md) defines browser deletion,
-server soft deletion, and final hard purge. The operator command is dry-run by default,
-uses conservative minimum ages and bounded batches, revalidates destructive candidates at
-execution time, clears stale task claims before session deletion, and requires explicit
-confirmation for irreversible work.
-
-Final hard purge is an operator action. Backups have their own retention lifecycle and are
-not erased by deleting live database rows.
-
-## Release proof
-
-[Operational Proof Gate](./operational-proof-gate.md) separates repository-automated evidence
-from deployed/manual checks and documents release verification expectations.
-
-[Manual QA](../manual-qa.md) owns the current end-to-end release checklist.
-
-## Dependency reproducibility and audits
-
-[Dependency Audit Policy](./dependency-audit-policy.md) defines JavaScript audit thresholds,
-Python `uv.lock` reproducibility, locked API validation, runtime-only Python auditing, and
-temporary exception rules. The production API image consumes the same committed Python
-lock used by locked validation.
-
-## Review rule
-
-Security-sensitive changes should include negative/failure-path tests, not only successful
-owner paths. Never put invite/session tokens, passwords, private roadmap exports, database
-credentials, Redis credentials, full token-bearing join URLs, or unredacted private logs in
-public issues or release evidence.
+Do not publish raw invite/session/event-ticket credentials, passwords, Authorization/cookie values, private roadmap contents, or unredacted browser/network logs as security evidence.
