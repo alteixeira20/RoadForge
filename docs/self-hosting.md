@@ -4,9 +4,34 @@ This is the supported `0.1.0` self-hosting contract. Exact Compose commands and 
 examples live in [`deploy/self-hosted/README.md`](../deploy/self-hosted/README.md). Security
 requirements live in [Public deployment security](public-deployment-security.md).
 
-The Anvilary-hosted instance is a demo/convenience deployment. Self-hosting gives operators
-control over server persistence, backups, retention, and infrastructure, but roadmap users
-should still keep portable JSON exports of important work.
+The Anvilary-hosted instance is a **demo/convenience deployment**. It is intended for
+evaluation, examples, and light collaboration rather than as a managed team SaaS. Self-hosting
+gives operators control over server persistence, backups, retention, monitoring, capacity,
+and infrastructure. Roadmap users should still keep **portable JSON exports** of important
+work.
+
+If RoadForge becomes part of a real team workflow—especially for a larger team, long-running
+roadmap, regulated environment, or workload that needs predictable recovery—fork the
+repository or maintain a controlled clone and run an instance the team owns. See
+[Hosted demo and self-hosting](hosted-demo-and-self-hosting.md).
+
+## Deployment responsibility
+
+The maintained deployment is a production-oriented reference topology, not a hosted-service
+promise or arbitrary team-size certification. A self-hosting operator is responsible for:
+
+- pinning/reviewing the revision being deployed and planning upgrades;
+- PostgreSQL durability, backups, restore drills, and retention;
+- Redis/multi-worker topology when required;
+- TLS, proxy, CORS/origin, CSP, trusted-proxy, and secret configuration;
+- capacity planning for CPU, memory, database connections, storage, and expected concurrency;
+- external monitoring, alerting, log retention, and incident response;
+- load-testing the actual expected team size and usage pattern;
+- maintaining organization-specific changes in a fork and deciding when/how to rebase them.
+
+RoadForge does not currently publish a large-team concurrency SLA or capacity number. Do not
+infer one from the public demo or from the fact that the reference stack supports Redis and
+multiple API workers.
 
 ## Supported topology
 
@@ -83,7 +108,7 @@ intended proxy routes.
 A readiness `503` means a required dependency is unavailable; it does not by itself prove
 the API process is dead.
 
-## Realtime modes
+## Realtime and larger deployments
 
 Memory mode requires exactly one API process:
 
@@ -101,6 +126,10 @@ REDIS_URL=redis://...
 
 Redis coordinates SSE publication, edit locks, one-time event tickets, revocation state, and
 rate limits. Redis-backed public rate limiting fails closed when Redis is unavailable.
+
+For a larger team, switching to Redis/multiple workers is only one part of capacity planning.
+The operator must also validate PostgreSQL connections/storage, proxy limits, browser/realtime
+concurrency, backup duration, and failure/restore behavior under representative load.
 
 ## Access and credential transport
 
@@ -138,6 +167,10 @@ Live-database retention and backup retention are separate lifecycles. Use
 [Server data retention and purge](server-data-retention.md) as the authoritative operator
 runbook. Hard-purging live rows does not remove historical backups.
 
+The public demo's retention behavior is not a substitute for a team's own recovery policy.
+Teams that self-host should deliberately choose and document retention/backup lifecycles that
+match their operational and legal requirements.
+
 ## Credential-safe logs
 
 RoadForge API logs omit query strings, headers, bodies, cookies, and full URLs. The
@@ -150,7 +183,7 @@ Cloudflare/tunnel/CDN/proxy error logs and pre-hardening retained logs.
 ## Content Security Policy
 
 Production RoadForge uses enforced per-response nonce CSP by default. The application—not
-nginx—is authoritative for frontend CSP. nonce-bearing HTML is private/no-store and must not
+nginx—is authoritative for frontend CSP. Nonce-bearing HTML is private/no-store and must not
 be cached at the edge.
 
 A bounded `report-only` observation window may be used for the same candidate after a
@@ -160,7 +193,7 @@ failure by adding production script `unsafe-inline` or `unsafe-eval`.
 `style-src 'unsafe-inline'` remains an explicit compatibility boundary for current dynamic
 style attributes; executable scripts remain nonce-restricted.
 
-## Release verification
+## Release and capacity verification
 
 Before exposing/updating a public instance, require exact-head CI and then validate the
 actual deployment:
@@ -174,7 +207,10 @@ actual deployment:
 7. verify conflict handling and JSON export/import;
 8. inspect application and external edge logs for credential leakage using sanitized
    evidence only;
-9. confirm backup/rollback readiness for schema-sensitive releases.
+9. confirm backup/rollback readiness for schema-sensitive releases;
+10. for operational/larger-team use, run representative concurrency/capacity tests and set
+    monitoring thresholds before depending on the deployment.
 
 See [Manual QA](manual-qa.md), [Session policy](security/session-expiry-and-revocation-policy.md),
-and [`deploy/self-hosted/README.md`](../deploy/self-hosted/README.md).
+[Hosted demo and self-hosting](hosted-demo-and-self-hosting.md), and
+[`deploy/self-hosted/README.md`](../deploy/self-hosted/README.md).
