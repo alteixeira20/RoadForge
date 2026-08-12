@@ -1,164 +1,136 @@
 # Operational Proof Gate
 
-See also: [Security documentation index](./README.md) |
-[Release checklist](../../.github/RELEASE_CHECKLIST.md) |
-[Self-hosting](../self-hosting.md)
+See also: [Security documentation index](./README.md),
+[Release checklist](../../.github/RELEASE_CHECKLIST.md), and
+[Self-hosting](../self-hosting.md).
 
-Code and policy documents cannot prove operational safety. This document is the
-procedure that produces that proof for a release candidate, and it records which
-parts a local machine can already settle.
+Repository CI proves source-level invariants. It cannot prove that a particular Cloudflare,
+nginx, TLS, backup, or host deployment preserves those invariants. A public release therefore
+needs both exact-candidate automated evidence and deployed operator evidence.
 
-Every step below states its prerequisites, exact command, expected output, and
-pass/fail criterion. Record the result beside the release ticket with the
-candidate revision and the operator name.
+Record the candidate revision, date, and operator beside the release record. Never retain
+credentials or private roadmap contents as proof artifacts.
 
-## Evidence classes
+## 1. Exact-candidate automated gate
 
-| Class | Meaning |
-|---|---|
-| **Automated** | A repository command decides it. No judgement required. |
-| **Local manual** | A person runs it on a developer machine against disposable data. |
-| **Deployed manual** | Requires a running candidate deployment. Cannot be inferred locally. |
-| **Decision** | A person accepts or rejects a risk; no command can settle it. |
+The normal PR/release evidence must be green on one exact candidate head:
 
----
+- **CI** — `make check`, MCP package checks, API lint/syntax/tests, migration drift, real-Redis
+  revocation tests, dependency audits, production container builds, Compose validation, web
+  unit tests, development browser tests, and production browser smoke;
+- **API Locked Validation** — lock drift/export, locked runtime audit, migration drift, full API
+  tests, and real-Redis revocation tests;
+- **Web CSP Validation** — lint, typecheck, unit tests, Compose validation, and enforced
+  production nonce-CSP/browser tests;
+- **Documentation Contract** — local links, product copy, issue forms, and patch whitespace;
+- **Release Contract** — version/toolchain/release invariants.
 
-## 1. Automated — settled by repository commands
+A green run from an older commit is not evidence for a newer candidate.
 
-Run from the repository root on the candidate revision.
+### Security properties covered by repository tests
 
-```bash
-make release-check
-corepack pnpm --dir apps/web test:browser
-corepack pnpm --dir apps/web benchmark:roadmap
-make audit
-make api-audit
-```
+The exact source/tests should prove at least:
 
-**Expected:** every command exits zero. `make audit` prints
-`No known vulnerabilities found`. `make api-audit` prints
-`No known vulnerabilities found`.
+- every protected API path revalidates roadmap scope, role, expiry, and revocation;
+- cross-roadmap participant credentials cannot read/write/share/bootstrap realtime for another
+  roadmap;
+- role downgrades/revocation take effect on subsequent requests;
+- generated invites use fragment credentials and ordinary share-link listing cannot recover
+  raw invite tokens;
+- migration `0011` removes plaintext viewer invite storage;
+- browser sessions exchange to path-scoped HttpOnly cookies and cookie-authenticated unsafe
+  requests require an allowed Origin;
+- explicit API/MCP Bearer requests remain separate from ambient cookie authentication;
+- EventSource URLs contain no ticket/session credential and tickets remain short-lived,
+  roadmap/participant-scoped, and single-use;
+- sensitive roadmap responses, including `PATCH`, are non-cacheable;
+- request-body limits count streamed bytes;
+- Redis-backed rate-limit checks fail closed;
+- production API docs are disabled;
+- forwarded client addresses are trusted only from configured proxies;
+- multi-worker memory realtime is rejected;
+- production web scripts use nonce CSP without script `unsafe-inline`/`unsafe-eval`;
+- production images run non-root and the maintained Compose file validates;
+- maintained GitHub Actions are immutable-pinned and normal validation permissions are
+  read-only;
+- dependency audits satisfy the documented release policy.
 
-**Pass/fail:** any non-zero exit blocks the release. A new high-severity
-advisory blocks the release until upgraded or formally suppressed under the
-[dependency audit policy](./dependency-audit-policy.md).
+### Repository secret/artifact check
 
-The following are covered by that automated run and need no separate manual
-check. Do not re-verify them by hand:
+Before a public release, review tracked files and CI output for credentials and generated
+artifacts. At minimum verify that no real `.env`, private key, credential file, database dump,
+browser report, build output, or token-bearing diagnostic was committed.
 
-| Property | Where it is proven |
-|---|---|
-| Minimal health response with security headers | `tests/test_security_hardening.py` |
-| Access logs exclude query-string credentials | `tests/test_security_hardening.py` |
-| OpenAPI docs disabled outside development | `tests/test_security_hardening.py` |
-| Production rejects a default secret key | `tests/test_security_hardening.py` |
-| Production rejects a default database URL | `tests/test_security_hardening.py` |
-| Memory realtime refuses multiple workers | `tests/test_security_hardening.py` |
-| Redis realtime requires a URL and pings on startup | `tests/test_security_hardening.py` |
-| Forwarded client IP trusted only from configured proxies | `tests/test_security_hardening.py` |
-| Wildcard trusted-proxy networks rejected | `tests/test_security_hardening.py` |
-| Request body size limits | `tests/test_body_limit.py` |
-| Rate limits per action and identity | `tests/test_rate_limits.py` |
-| Role enforcement, share links, session expiry | `tests/test_auth_and_share_links.py` |
-| Exports exclude sessions, tokens, and server-only state | web parser and export suites |
-| Report links carry no roadmap or session state | `ProblemReportLink` suite |
-| Frontend CSP composition | `src/lib/__tests__/content-security-policy.test.ts` |
-| ORM/migration drift | `make api-check` |
+Everything under `NEXT_PUBLIC_*` is browser-visible by definition. The maintained public
+browser configuration should contain only non-secret values such as the API origin.
 
-### Secret and artifact scan
+## 2. Local operator proof
 
-```bash
-git ls-files | grep -Ei '\.env($|\.)|\.pem$|\.key$|id_rsa|credentials'
-git ls-files | grep -E '(^|/)(\.next|node_modules|playwright-report|test-results|__pycache__|\.venv|dist|build|coverage)(/|$)'
-grep -rn 'NEXT_PUBLIC_' apps/web/src apps/web/next.config.ts deploy
-```
+### Backup/restore drill
 
-**Expected:** the first prints only `.env.example` and
-`deploy/self-hosted/.env.example`; the second prints nothing; the third shows
-only `NEXT_PUBLIC_API_URL`.
+Before a schema-sensitive deployment, produce a PostgreSQL backup outside the repository and
+database volume, verify it is non-empty and readable by `pg_restore --list`, record a
+checksum, and periodically restore it into a disposable database with `--exit-on-error`.
+Compare representative roadmap/participant/version/activity counts with the source.
 
-**Pass/fail:** any real credential file, tracked build output, or secret-bearing
-`NEXT_PUBLIC_*` variable blocks the release. Everything under `NEXT_PUBLIC_` is
-compiled into client bundles and is public by definition.
+An untested backup is not a recovery plan. Never run the drill against the production
+database name.
 
----
+### Deployable artifact boot
 
-## 2. Local manual — disposable data on a developer machine
+Run the maintained production browser/build path rather than only a development server. The
+CI production container/browser jobs are the normal automated evidence; a local operator may
+repeat them before a sensitive deployment.
 
-### 2.1 Backup and restore drill
+## 3. Deployed manual gate
 
-**Prerequisites:** Docker running, `make api-up` completed, a migrated local
-database.
+These checks require the exact candidate behind the real reverse proxy/TLS stack. Repository
+CI cannot substitute for them.
 
-Follow [backups and updates](../self-hosting.md#backups-and-updates) to write the
-dump, then the [disposable restore drill](../self-hosting.md#disposable-restore-drill)
-to restore it. On a developer machine substitute the local compose service
-(`docker compose exec -T postgres`) and a scratch backup directory.
+| Check | Expected | Blocker if |
+| --- | --- | --- |
+| Readiness | `/api/health` and `/api/health/ready` report configured dependencies ready | required dependency is unavailable |
+| HTTPS/HSTS | public app is HTTPS and stable edge emits HSTS | app is served over plaintext or HSTS is absent at intended edge |
+| CORS | allowed Origin works; disallowed Origin is not granted CORS access | wildcard/incorrect credentialed CORS is exposed |
+| Cookie write Origin | normal browser owner/editor writes succeed; disallowed/missing Origin cookie write is rejected | ambient-cookie write bypasses Origin policy |
+| Browser session storage | after create/join/migration, localStorage contains only the non-secret browser-session marker | raw participant Bearer remains after successful exchange |
+| Invite transport | newly rotated owner/editor/viewer links use `#token=` | new product link emits `?token=` |
+| Legacy invite cleanup | migrated viewer link is inactive; old distributed owner/editor query links are rotated as needed | known leaked/pre-hardening credential remains intentionally active |
+| Realtime | EventSource request URL contains no `ticket`/session query credential; owner/editor changes propagate and viewer is read-only | secret appears in URL or authz/realtime behavior is wrong |
+| Revocation | revoked invite cannot create future joins; revoked participant loses protected access immediately | revoked credential/session still authorizes |
+| Rate limiting | documented public limits produce `429`; Redis limiter outage in Redis mode produces `503` rather than unbounded access | limiter is bypassed or keyed on one proxy address unexpectedly |
+| Trusted proxy | effective client IP is the real client only through the configured trusted chain | arbitrary forwarding headers are trusted or all clients collapse to proxy IP |
+| CSP | one compatible enforced application CSP is present; nonce scripts work; unexpected injected script is blocked | conflicting edge CSP or executable production `unsafe-inline`/`unsafe-eval` is introduced |
+| Logging | maintained application/proxy logs and external edge logs contain no invite/session/ticket/password credential | any credential is retained/logged |
+| Container confinement | web/API still boot under non-root/read-only/cap-drop/no-new-privileges configuration | workaround requires broad privilege/filesystem relaxation without review |
+| Migration | verified backup exists, `alembic upgrade head` succeeds, schema drift check is clean | migration is unbacked or drift remains |
+| Rollback | previous known-good application revision and database recovery procedure are identified/rehearsed | rollback depends on an untested destructive step |
 
-**Expected:** the dump is non-empty, `pg_restore --list` reads its catalog, the
-checksum verifies, the drill database is created and restored with
-`--exit-on-error`, and the verification query returns the same roadmap,
-participant, version, and activity counts as the source.
+For the internet-hardening migration specifically, rotate the viewer link once after migration
+when a fresh copyable viewer link is required. Rotate pre-hardening owner/editor query links
+that may have been distributed or logged.
 
-**Pass/fail:** any failed step means the documented procedure is wrong and the
-release is blocked. An untested backup is not a recovery plan.
+## 4. Evidence handling
 
-**Afterwards:** drop the drill database and delete the local dump. Never restore
-into `roadforge` itself, and never point this drill at production.
+Retain only sanitized evidence:
 
-### 2.2 Deployable artifact boot
+- exact candidate SHA and workflow conclusions;
+- operator/date/environment;
+- backup filename/checksum and restore result, not database contents;
+- pass/fail notes for deployed checks;
+- aggregate credential-log scan counts, not matching credential-bearing lines;
+- explicit residual-risk decisions and rollback revision.
 
-```bash
-corepack pnpm --dir apps/web benchmark:roadmap:browser
-```
+Do **not** retain raw invite links, participant sessions, event tickets, passwords,
+Authorization/cookie values, private exports, or unredacted browser/network logs in GitHub
+issues, PR comments, screenshots, or release evidence.
 
-**Expected:** passes. The browser stage builds and serves the same
-`output: 'standalone'` artifact the Dockerfile ships, so a pass also proves the
-deployable server boots and serves the workspace.
+## 5. Release decision
 
----
+A source candidate is repository-ready only when every maintained exact-head gate is green.
+A public deployment is security-ready only after the deployed-manual gate is also completed
+on that same candidate/environment.
 
-## 3. Deployed manual — requires a running candidate
-
-These cannot be settled locally at any effort. Each needs the candidate
-deployed behind its real reverse proxy and TLS.
-
-| # | Check | Expected | Pass/fail |
-|---|---|---|---|
-| 3.1 | `curl -sS https://<host>/api/health` | `{"status":"ok",...}` plus `x-content-type-options`, `x-frame-options`, `referrer-policy`, `permissions-policy` | Missing header or non-200 blocks release. Liveness alone does not prove dependency health — confirm PostgreSQL and the realtime backend separately |
-| 3.2 | Preflight from an allowed and a disallowed origin | Allowed origin echoed in `access-control-allow-origin`; disallowed origin rejected with no such header | A wildcard origin alongside `access-control-allow-credentials` blocks release |
-| 3.3 | HTTPS and HSTS at the edge | Redirect to HTTPS; `strict-transport-security` present | Plain HTTP serving the app blocks release |
-| 3.4 | Trusted proxy handling | Client IPs in logs are real client addresses, not the proxy | Rate limiting keyed on the proxy address blocks release |
-| 3.5 | Credential-safe log review, per [proxy and application log review](../../deploy/self-hosted/README.md#credential-safe-log-review) | No session token, invite token, or roadmap password in proxy or application logs | Any credential in logs blocks release. Record the reviewed time range only — never paste matching lines into the ticket |
-| 3.6 | Share-link and session revocation | Revoked invite cannot join; revoked participant loses access on next request | Continued access after revocation blocks release |
-| 3.7 | Rate limiting under the real proxy | Documented limits return the documented error shape | Limits not applying at the edge blocks release |
-| 3.8 | Pre-migration backup taken, then `alembic upgrade head` and `alembic check` | Upgrade applies; drift check reports no new operations | Missing backup blocks the migration outright |
-| 3.9 | Projection backfill and parity, per [self-hosting](../self-hosting.md) | Parity verified; `roadmaps.snapshot_json` remains canonical | Parity drift is a decision, not an automatic pass |
-| 3.10 | Worker and realtime mode | `ROADFORGE_API_WORKERS=1` for memory mode, or `ROADFORGE_REALTIME_BACKEND=redis` with reachable Redis for more, per [RF-886 checklist](../manual-qa.md#30b--rf-886-multi-worker-realtime-regression-checklist) | Multiple workers in memory mode blocks release |
-| 3.11 | Two-session collaboration over the deployment | Owner and editor changes propagate; viewer stays read-only | Lost or misattributed updates block release |
-| 3.12 | Rollback rehearsal | Previous revision redeploys and serves | An unrehearsed rollback blocks release. Application rollback does not reverse migrations; restore PostgreSQL when the schema moved |
-
----
-
-## 4. Decisions — recorded, not computed
-
-- Accept or reject each non-blocking defect, with an owner and a disposition.
-- Accept the [known acceptable limitations](../manual-qa.md#known-acceptable-limitations)
-  as release-note content.
-- Name the rollback operator and the rollback revision before deploying.
-- Approve the staging candidate before production.
-
----
-
-## Evidence to retain
-
-For each release, keep beside the ticket:
-
-- candidate revision and operator name;
-- command output or exit status for section 1;
-- backup filename, checksum, and drill verification counts for section 2.1;
-- observed values for each section 3 row, with credentials redacted;
-- every decision from section 4 with its owner.
-
-Retain nothing that contains a session token, invite token, roadmap password, or
-customer roadmap content.
+Known non-blocking limitations must be listed explicitly with an owner/disposition. A Critical
+or High unresolved security issue, credential leak, authorization bypass, unsafe migration,
+or failed exact-head security gate blocks release.
