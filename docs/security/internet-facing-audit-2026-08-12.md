@@ -51,7 +51,8 @@ operator evidence.
 - anonymous Internet user;
 - holder of a leaked invite URL/token;
 - malicious, downgraded, expired, or revoked collaborator;
-- attacker with XSS/page-script execution, malicious extension, or compromised browser profile;
+- attacker with XSS/page-script execution, malicious extension, or compromised browser
+  profile;
 - attacker with access to database/backups/logs;
 - compromised/misconfigured proxy/container/dependency/CI action.
 
@@ -71,7 +72,7 @@ operator evidence.
 | SEC-010 | Medium | MCP parsed only query-token invite URLs, encouraging legacy credential-in-query transport. | **Fixed.** MCP prefers fragment tokens and accepts query tokens only as compatibility fallback, with regression coverage. |
 | SEC-R01 | Low | Optional roadmap password creation minimum remains six characters. | **Accepted residual.** Password is an optional second factor behind a high-entropy invite, guessing is rate-limited, and hashes use salted PBKDF2-SHA256. Raising the UX/policy floor should be a deliberate product change. |
 | SEC-R02 | Low | Production CSP retains `style-src 'unsafe-inline'` for dynamic React style attributes. | **Accepted residual.** Executable scripts remain nonce-restricted without production script `unsafe-inline`/`unsafe-eval`. |
-| SEC-R03 | Medium architecture | MCP/API clients use full participant Bearer sessions rather than narrower machine credentials. | **Deferred architecture hardening.** Scoped machine credentials remain a separate design project. |
+| SEC-R03 | Medium architecture | MCP/API clients use full participant Bearer sessions rather than narrower machine credentials. | **Deferred architecture hardening.** Browser storage is no longer the reason to weaken this contract; scoped machine credentials remain a separate design project (tracked separately). |
 | SEC-R04 | Operational | Repository CI cannot prove live Cloudflare/nginx/host/log/backup configuration. | **Requires deployment proof.** Follow the operational proof gate on the exact deployed candidate. |
 
 No Critical vulnerability was confirmed during the repository audit.
@@ -106,9 +107,9 @@ Normal browser create/join flow:
 
 If the one-time cookie exchange itself fails after create/join succeeded, the client retains
 the roadmap-scoped Bearer as a degraded recovery credential rather than orphaning access.
-Hydration retries the exchange later. Successful normal bootstrap removes persistent
-JavaScript-readable credentials, while temporary API/version/cookie failures do not destroy
-the user's only access path.
+Hydration retries the exchange later. This fallback is intentional: successful normal
+bootstrap removes persistent JavaScript-readable credentials, while temporary API/version/
+cookie failures do not destroy the user's only access path.
 
 Pre-hardening localStorage Bearers follow the same migration rule: only after a successful
 exchange is the raw value replaced by the non-secret marker. This preserves local-first
@@ -174,8 +175,8 @@ omits Referer. External Cloudflare/Tunnel/host logging must still be inspected s
 
 ## Supply-chain conclusions
 
-Maintained workflows use immutable action SHAs for checkout, setup-node, setup-python, pnpm
-setup, and artifact upload. Standard validation permissions are `contents: read`.
+Maintained workflows use immutable action SHAs for checkout, setup-node, setup-python,
+pnpm setup, and artifact upload. Standard validation permissions are `contents: read`.
 
 Release validation retains JavaScript and locked-Python runtime audits, lock-drift checking,
 migration/schema drift, API tests, real Redis tests, MCP checks, container builds, Compose
