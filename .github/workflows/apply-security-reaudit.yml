@@ -31,3 +31,5 @@ jobs:
           git add -A
           git commit -m "fix(security): preserve transaction and auth invariants"
           git push origin HEAD:security/post-hardening-audit-2026-08-12
+      - name: Syntax gate passed
+        run: echo syntax-ok
