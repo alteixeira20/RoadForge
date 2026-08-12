@@ -31,3 +31,5 @@ jobs:
           git add -A
           git commit -m "security: bound internet-facing resource abuse paths"
           git push origin HEAD:security/post-hardening-audit-2026-08-12
+      - name: Completed transformation marker
+        run: echo security-re-audit-transformation-complete
