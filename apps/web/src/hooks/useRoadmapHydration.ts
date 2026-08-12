@@ -13,7 +13,12 @@ import {
 } from '@/lib/roadmap-upgrade'
 import { buildRegistryFromPhases } from '@/lib/tag-registry'
 import { getRoadmap } from '@/services/roadmap-crud.service'
-import { isApiConnectionError, isSessionExpiredError } from '@/services/roadmap-http'
+import {
+  BROWSER_SESSION_TOKEN,
+  establishBrowserSession,
+  isApiConnectionError,
+  isSessionExpiredError,
+} from '@/services/roadmap-http'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,7 +55,6 @@ interface HydrationLifecycleStateSetters {
   setRoadmapUpgradeNotice: Dispatch<SetStateAction<RoadmapUpgradeState | null>>
 }
 
-// Grouped raw state setters passed in from RoadmapContext.
 export interface HydrationSetters {
   roadmapState: HydrationRoadmapStateSetters
   sessionState: HydrationSessionStateSetters
@@ -149,8 +153,6 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
   const [backendUnavailableRoadmapId, setBackendUnavailableRoadmapId] = useState<string | null>(null)
   const [sessionExpiredRoadmapId, setSessionExpiredRoadmapId] = useState<string | null>(null)
   const shownUpgradeNoticeSignaturesRef = useRef<Set<string>>(new Set())
-  // Tracks the most recent loadRoadmapIntoState call so a superseded one
-  // (e.g. from switching roadmaps quickly) can never apply its response.
   const currentLoadTokenRef = useRef<{ value: boolean } | null>(null)
 
   const showUpgradeNoticeOnce = useCallback((
@@ -212,9 +214,6 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
   ])
 
   const loadRoadmapIntoState = useCallback((targetId: string, cancelled: { value: boolean }) => {
-    // Supersede any previous in-flight load, regardless of the cancellation
-    // token the caller passed in, so an earlier roadmap can never hydrate
-    // over a later one.
     if (currentLoadTokenRef.current) currentLoadTokenRef.current.value = true
     const loadToken = { value: false }
     currentLoadTokenRef.current = loadToken
@@ -270,7 +269,20 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
       setRoleState(ac.role)
       setIsHydratingServer(true)
 
-      getRoadmap(ac.serverRoadmapId, ac.sessionToken)
+      const hydrateServerRoadmap = async () => {
+        let authToken = ac.sessionToken
+        if (authToken !== BROWSER_SESSION_TOKEN) {
+          await establishBrowserSession(ac.serverRoadmapId, authToken)
+          authToken = BROWSER_SESSION_TOKEN
+          storage.setAuthCache(targetId, { ...ac, sessionToken: BROWSER_SESSION_TOKEN })
+          if (!cancelled.value && !loadToken.value) {
+            setSessionTokenState(BROWSER_SESSION_TOKEN)
+          }
+        }
+        return getRoadmap(ac.serverRoadmapId, authToken)
+      }
+
+      hydrateServerRoadmap()
         .then((loaded) => {
           if (cancelled.value || loadToken.value) return
           setIsHydratingServer(false)
@@ -368,14 +380,12 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     setIsSampleState,
   ])
 
-  // Mount-time hydration effect
   useEffect(() => {
     const cancelled = { value: false }
 
     const storedDisplayName = storage.getDisplayName()
     if (storedDisplayName !== null) setDisplayNameState(storedDisplayName)
 
-    // Migration: move legacy flat keys to scoped per-roadmap keys
     storage.migrateLegacyStorageIfNeeded()
 
     const urlRoadmapId = getRoadmapIdFromUrl()
@@ -386,7 +396,6 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
       targetId = storage.getLastRoadmapId()
     }
     if (!targetId || !storage.getRoadmapCache(targetId)) {
-      // No known roadmap — seed sample
       targetId = storage.createLocalDraftId()
       const cache = buildSampleCache()
       storage.setActiveRoadmapId(targetId)
@@ -452,7 +461,6 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
     storage.setLastRoadmapId(newId)
     storage.setRoadmapCache(newId, cache)
     storage.setAuthCache(newId, null)
-    // Note: We intentionally don't wipe other roadmap caches.
     resetAllState(cache)
     setLocks({})
   }, [
