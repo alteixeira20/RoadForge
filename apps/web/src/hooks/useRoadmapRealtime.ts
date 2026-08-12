@@ -405,9 +405,9 @@ export function useRoadmapRealtime({
         setLocks(lockMap)
 
         // Every attempt - first connect or retry - gets a fresh single-use ticket.
-        const { ticket } = await getEventTicket(serverRoadmapId, sessionToken)
+        await getEventTicket(serverRoadmapId, sessionToken)
         if (!isCurrentAttempt(attempt)) { connecting = false; return }
-        attempt.unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, ticket, {
+        attempt.unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, {
           onOpen: () => {
             if (!isCurrentAttempt(attempt)) return
             connecting = false

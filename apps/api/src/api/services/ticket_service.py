@@ -10,7 +10,12 @@ from redis.exceptions import RedisError, ResponseError
 
 from api.config import get_settings
 
-_TICKET_TTL_SECONDS = 30
+EVENT_TICKET_TTL_SECONDS = 30
+EVENT_TICKET_COOKIE_NAME = "roadforge_event_ticket"
+
+
+def event_ticket_cookie_path(roadmap_id: str) -> str:
+    return f"/api/roadmaps/{roadmap_id}/events"
 _GETDEL_FALLBACK_SCRIPT = """
 local value = redis.call("GET", KEYS[1])
 if value then
@@ -40,7 +45,7 @@ class EventTicketStore(Protocol):
 
 
 class MemoryTicketService:
-    def __init__(self, ttl: int = _TICKET_TTL_SECONDS):
+    def __init__(self, ttl: int = EVENT_TICKET_TTL_SECONDS):
         self._tickets: dict[str, Ticket] = {}
         self._ttl = ttl
 
@@ -87,7 +92,7 @@ class RedisTicketService:
         key_prefix: str,
         connect_timeout_seconds: float,
         socket_timeout_seconds: float,
-        ttl: int = _TICKET_TTL_SECONDS,
+        ttl: int = EVENT_TICKET_TTL_SECONDS,
     ):
         if not redis_url:
             raise RuntimeError(

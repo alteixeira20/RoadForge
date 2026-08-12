@@ -66,8 +66,8 @@ async def create_roadmap(
 
     Writes one Roadmap, one owner Participant, three ShareLinks (owner/editor/
     viewer), and one ActivityLog row in a single transaction. Owner/editor
-    raw tokens are held only in local variables and returned in the response.
-    Viewer raw tokens may be persisted because they are public read-only demo links.
+    raw invite tokens are held only in local variables and returned in the response.
+    No role's raw invite credential is persisted server-side.
     """
     validate_roadmap_domain(payload.phases, payload.tag_registry)
     now = datetime.now(timezone.utc)
@@ -107,7 +107,6 @@ async def create_roadmap(
             roadmap_id=roadmap_id,
             role=role,
             token_hash=hash_token(raw),
-            public_token=raw if role == "viewer" else None,
             token_prefix=make_token_prefix(raw),
         )
         db.add(share_link)
@@ -146,7 +145,7 @@ async def create_roadmap(
             id=share_link.id,
             role=share_link.role,  # type: ignore[arg-type]
             token_prefix=share_link.token_prefix,
-            url=f"{web_base_url}/join?token={raw_tokens[share_link.role]}",
+            url=f"{web_base_url}/join#token={raw_tokens[share_link.role]}",
             is_active=True,
             created_at=now,
         )

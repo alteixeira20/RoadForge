@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Brand } from '@/components/ui/Brand'
 import { Icon } from '@/components/ui/Icon'
 import { EmberBackground } from '@/components/ui/EmberBackground'
 import { useRoadmap } from '@/context/RoadmapContext'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { persistJoinResult } from '@/lib/join-flow'
+import { readInviteToken, scrubInviteTokenFromAddressBar } from '@/lib/invite-token'
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import { joinRoadmap } from '@/services/roadmap-sharing.service'
 import { storage } from '@/lib/storage'
@@ -15,8 +16,16 @@ import type { ShareRole } from '@/types/roadmap'
 
 export function JoinPage() {
   const router = useRouter()
-  const params = useSearchParams()
-  const token = params.get('token')
+  const [token, setToken] = useState<string | null | undefined>(undefined)
+
+  useEffect(() => {
+    const inviteToken = readInviteToken({
+      hash: window.location.hash,
+      search: window.location.search,
+    })
+    setToken(inviteToken)
+    if (inviteToken) scrubInviteTokenFromAddressBar()
+  }, [])
 
   const {
     setDisplayName,
@@ -35,6 +44,8 @@ export function JoinPage() {
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [needsPassword, setNeedsPassword] = useState(false)
+
+  if (token === undefined) return null
 
   if (!token) {
     return (

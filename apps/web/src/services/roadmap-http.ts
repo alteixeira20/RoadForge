@@ -4,6 +4,11 @@
 
 import type { RoadmapConflictMetadata } from '@/types/roadmap'
 
+// Non-secret marker persisted by the web client after a raw Bearer session has
+// been exchanged for a path-scoped HttpOnly cookie. It must never be serialized
+// into an Authorization header.
+export const BROWSER_SESSION_TOKEN = '__roadforge_http_only_session__'
+
 // ─── API configuration ─────────────────────────────────────────────────────────
 
 export const API_BASE_URL = (
@@ -80,13 +85,21 @@ export async function requestJson<T>(
   if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json'
   }
-  if (sessionToken) {
+  if (sessionToken && sessionToken !== BROWSER_SESSION_TOKEN) {
     headers['Authorization'] = `Bearer ${sessionToken}`
   }
+
+  // Only cookie-authenticated browser requests opt into ambient credentials.
+  // Explicit Bearer requests remain isolated from cookies.
+  const credentials = sessionToken === BROWSER_SESSION_TOKEN
+    ? 'include'
+    : options.credentials
+
   let res: Response
   try {
     res = await fetch(API_BASE_URL + path, {
       ...options,
+      ...(credentials ? { credentials } : {}),
       headers: { ...headers, ...(options.headers as Record<string, string> | undefined) },
     })
   } catch {
@@ -125,4 +138,36 @@ export async function requestJson<T>(
     throw new ApiError(res.status, detail, code, conflict, validationErrors)
   }
   return res.json() as Promise<T>
+}
+
+export async function establishBrowserSession(
+  roadmapId: string,
+  bearerToken: string,
+): Promise<void> {
+  await requestJson<void>(
+    `/api/roadmaps/${roadmapId}/session/cookie`,
+    { method: 'POST', credentials: 'include' },
+    bearerToken,
+  )
+}
+
+/**
+ * Prefer the HttpOnly browser session, but never orphan a newly-created/joined
+ * participant if the exchange endpoint or cookie write is temporarily unavailable.
+ * The raw Bearer fallback remains roadmap-scoped and the hydration path retries the
+ * exchange before replacing persisted auth state with the non-secret marker.
+ */
+export async function resolveBrowserSessionToken(
+  roadmapId: string,
+  bearerToken: string,
+): Promise<string> {
+  try {
+    await establishBrowserSession(roadmapId, bearerToken)
+    return BROWSER_SESSION_TOKEN
+  } catch {
+    console.warn(
+      'Browser session exchange failed; retaining the roadmap-scoped Bearer session until a later hydration can migrate it.',
+    )
+    return bearerToken
+  }
 }

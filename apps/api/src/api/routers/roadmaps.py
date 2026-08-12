@@ -72,7 +72,12 @@ from api.services.sharing_service import (
     revoke_share_link,
     rotate_share_link,
 )
-from api.services.ticket_service import ticket_service
+from api.services.ticket_service import (
+    EVENT_TICKET_COOKIE_NAME,
+    EVENT_TICKET_TTL_SECONDS,
+    event_ticket_cookie_path,
+    ticket_service,
+)
 from api.services.version_service import (
     create_roadmap_checkpoint,
     get_roadmap_version,
@@ -454,11 +459,15 @@ async def post_revoke_participant(
 @router.post("/{roadmap_id}/events/ticket", response_model=EventTicketResponse)
 async def post_event_ticket(
     request: Request,
+    response: Response,
     roadmap_id: str,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> EventTicketResponse:
-    # All roles (owner, editor, viewer) can subscribe to events.
+    # All roles (owner, editor, viewer) can subscribe to events. Native
+    # EventSource cannot attach an Authorization header, so bootstrap the
+    # existing single-use ticket into an HttpOnly cookie scoped only to this
+    # roadmap's event endpoint instead of exposing it in a URL.
     participant = await require_participant(
         db, roadmap_id, authorization, {"owner", "editor", "viewer"}
     )
@@ -477,16 +486,32 @@ async def post_event_ticket(
     ticket = await ticket_service.create_ticket(
         roadmap_id, participant.id, participant.session_expires_at
     )
-    return EventTicketResponse(ticket=ticket, expires_in=30)
+    settings = get_settings()
+    response.set_cookie(
+        EVENT_TICKET_COOKIE_NAME,
+        ticket,
+        max_age=EVENT_TICKET_TTL_SECONDS,
+        path=event_ticket_cookie_path(roadmap_id),
+        secure=settings.is_production_like,
+        httponly=True,
+        samesite="strict",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return EventTicketResponse(expires_in=EVENT_TICKET_TTL_SECONDS)
 
 
 @router.get("/{roadmap_id}/events")
 async def get_events(
+    request: Request,
     roadmap_id: str,
-    ticket: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
-    event_ticket = await ticket_service.consume_ticket(ticket, roadmap_id)
+    ticket = request.cookies.get(EVENT_TICKET_COOKIE_NAME)
+    event_ticket = (
+        await ticket_service.consume_ticket(ticket, roadmap_id)
+        if ticket
+        else None
+    )
     if not event_ticket:
         raise HTTPException(status_code=401, detail="Invalid or expired event ticket")
 
@@ -519,7 +544,7 @@ async def get_events(
             async_session_factory, roadmap_id, event_ticket.participant_id
         )
 
-    return StreamingResponse(
+    stream_response = StreamingResponse(
         forward_subscription(
             subscription,
             participant_id=event_ticket.participant_id,
@@ -529,11 +554,22 @@ async def get_events(
         ),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-store",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable buffering for Nginx
         },
     )
+    # Expire the browser copy as soon as the stream accepts it. The backing
+    # store already consumed the credential atomically, so refresh/replay must
+    # bootstrap a fresh ticket.
+    stream_response.delete_cookie(
+        EVENT_TICKET_COOKIE_NAME,
+        path=event_ticket_cookie_path(roadmap_id),
+        secure=get_settings().is_production_like,
+        httponly=True,
+        samesite="strict",
+    )
+    return stream_response
 
 
 @router.post("/{roadmap_id}/locks", response_model=LockResponse)

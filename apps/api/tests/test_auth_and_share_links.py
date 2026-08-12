@@ -121,13 +121,8 @@ async def test_invite_link_returns_correct_role(client: AsyncClient, role: str):
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
 
-    # Editor URLs are only returned on rotate (raw token never exposed in list).
-    # Viewer URL is available via the list endpoint (public_token stored in DB).
-    if role == "editor":
-        join_url = await _rotate_link(client, roadmap_id, owner_token, role)
-    else:
-        links = await _get_share_links(client, roadmap_id, owner_token)
-        join_url = links[role]["url"]
+    # Raw invite material is reveal-once for every role.
+    join_url = await _rotate_link(client, roadmap_id, owner_token, role)
 
     resp = await _join(client, join_url, display_name=f"{role}_user")
 
@@ -177,8 +172,8 @@ async def test_viewer_token_can_get_roadmap(client: AsyncClient):
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
 
-    links = await _get_share_links(client, roadmap_id, owner_token)
-    join_resp = await _join(client, links["viewer"]["url"])
+    viewer_url = await _rotate_link(client, roadmap_id, owner_token, "viewer")
+    join_resp = await _join(client, viewer_url)
     viewer_token = join_resp.json()["session_token"]
 
     resp = await client.get(f"/api/roadmaps/{roadmap_id}", headers=_auth(viewer_token))
@@ -193,8 +188,8 @@ async def test_viewer_cannot_rotate_share_links(client: AsyncClient):
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
 
-    links = await _get_share_links(client, roadmap_id, owner_token)
-    join_resp = await _join(client, links["viewer"]["url"])
+    viewer_url = await _rotate_link(client, roadmap_id, owner_token, "viewer")
+    join_resp = await _join(client, viewer_url)
     viewer_token = join_resp.json()["session_token"]
 
     resp = await client.post(
@@ -256,8 +251,7 @@ async def test_revoked_viewer_link_cannot_join(client: AsyncClient):
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
 
-    links = await _get_share_links(client, roadmap_id, owner_token)
-    viewer_url = links["viewer"]["url"]
+    viewer_url = await _rotate_link(client, roadmap_id, owner_token, "viewer")
 
     # Revoke the viewer link
     resp = await client.delete(
@@ -275,8 +269,8 @@ async def test_revoking_invite_does_not_revoke_existing_session(client: AsyncCli
     body = await create_roadmap(client)
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
-    links = await _get_share_links(client, roadmap_id, owner_token)
-    join_resp = await _join(client, links["viewer"]["url"], display_name="ActiveViewer")
+    viewer_url = await _rotate_link(client, roadmap_id, owner_token, "viewer")
+    join_resp = await _join(client, viewer_url, display_name="ActiveViewer")
     viewer_token = join_resp.json()["session_token"]
 
     revoke_resp = await client.delete(
@@ -471,8 +465,8 @@ async def test_viewer_cannot_read_participants(client: AsyncClient):
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
 
-    links = await _get_share_links(client, roadmap_id, owner_token)
-    join_resp = await _join(client, links["viewer"]["url"])
+    viewer_url = await _rotate_link(client, roadmap_id, owner_token, "viewer")
+    join_resp = await _join(client, viewer_url)
     viewer_token = join_resp.json()["session_token"]
 
     resp = await client.get(

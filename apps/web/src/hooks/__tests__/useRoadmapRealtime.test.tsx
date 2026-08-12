@@ -137,7 +137,7 @@ function createDeferred<T>() {
 // EventSource/handler set, so distinguishing them is the whole point.
 function captureSubscriptions() {
   const calls: { handlers: RealtimeHandlers; unsubscribe: ReturnType<typeof vi.fn> }[] = []
-  mockedSubscribe.mockReset().mockImplementation((_id, _ticket, nextHandlers) => {
+  mockedSubscribe.mockReset().mockImplementation((_id, nextHandlers) => {
     const unsub = vi.fn()
     calls.push({ handlers: nextHandlers, unsubscribe: unsub })
     return unsub
@@ -166,10 +166,9 @@ describe('useRoadmapRealtime', () => {
       expires_at: '2026-07-25T18:00:00Z',
     }])
     mockedGetEventTicket.mockReset().mockResolvedValue({
-      ticket: 'event-ticket',
       expires_in: 30,
     })
-    mockedSubscribe.mockReset().mockImplementation((_id, _ticket, nextHandlers) => {
+    mockedSubscribe.mockReset().mockImplementation((_id, nextHandlers) => {
       handlers = nextHandlers
       return unsubscribe
     })
@@ -206,7 +205,6 @@ describe('useRoadmapRealtime', () => {
     })
     expect(mockedSubscribe).toHaveBeenCalledWith(
       'rm_1',
-      'event-ticket',
       expect.any(Object),
     )
 
@@ -223,8 +221,8 @@ describe('useRoadmapRealtime', () => {
     vi.useFakeTimers()
     try {
       mockedGetEventTicket
-        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
-        .mockResolvedValueOnce({ ticket: 'ticket-2', expires_in: 30 })
+        .mockResolvedValueOnce({ expires_in: 30 })
+        .mockResolvedValueOnce({ expires_in: 30 })
 
       const { params } = createParams()
       render(params)
@@ -242,7 +240,7 @@ describe('useRoadmapRealtime', () => {
       })
 
       expect(mockedGetEventTicket).toHaveBeenCalledTimes(2)
-      expect(mockedSubscribe).toHaveBeenLastCalledWith('rm_1', 'ticket-2', expect.any(Object))
+      expect(mockedSubscribe).toHaveBeenLastCalledWith('rm_1', expect.any(Object))
     } finally {
       vi.useRealTimers()
     }
@@ -303,7 +301,7 @@ describe('useRoadmapRealtime', () => {
       mockedGetLocks.mockReset().mockRejectedValueOnce(new ApiConnectionError())
       mockedGetLocks.mockResolvedValue([])
       mockedGetEventTicket.mockReset()
-        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
+        .mockResolvedValueOnce({ expires_in: 30 })
 
       const { params } = createParams()
       render(params)
@@ -336,7 +334,7 @@ describe('useRoadmapRealtime', () => {
     try {
       mockedGetEventTicket.mockReset()
         .mockRejectedValueOnce(new ApiConnectionError())
-        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
+        .mockResolvedValueOnce({ expires_in: 30 })
 
       const { params } = createParams()
       render(params)
@@ -401,7 +399,7 @@ describe('useRoadmapRealtime', () => {
     try {
       mockedGetEventTicket.mockReset()
         .mockRejectedValueOnce(new ApiConnectionError())
-        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
+        .mockResolvedValueOnce({ expires_in: 30 })
 
       const { params } = createParams()
       render(params)
@@ -994,8 +992,8 @@ describe('useRoadmapRealtime', () => {
     async function setUpTwoLiveGenerations() {
       const calls = captureSubscriptions()
       mockedGetEventTicket.mockReset()
-        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
-        .mockResolvedValueOnce({ ticket: 'ticket-2', expires_in: 30 })
+        .mockResolvedValueOnce({ expires_in: 30 })
+        .mockResolvedValueOnce({ expires_in: 30 })
 
       const { params } = createParams()
       render(params)
@@ -1087,8 +1085,8 @@ describe('useRoadmapRealtime', () => {
     it('does not let a stale onOpen start a resync that could restore live', async () => {
       const calls = captureSubscriptions()
       mockedGetEventTicket.mockReset()
-        .mockResolvedValueOnce({ ticket: 'ticket-1', expires_in: 30 })
-        .mockResolvedValueOnce({ ticket: 'ticket-2', expires_in: 30 })
+        .mockResolvedValueOnce({ expires_in: 30 })
+        .mockResolvedValueOnce({ expires_in: 30 })
 
       const { params } = createParams()
       render(params)

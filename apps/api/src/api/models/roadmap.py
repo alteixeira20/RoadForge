@@ -72,8 +72,6 @@ class ShareLink(Base):
     # Uniqueness enforced by uq_share_links_token_hash in __table_args__ below
     # (no column-level unique=True).
     token_hash: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    # Raw token is persisted only for public read-only viewer/demo links so owners can re-copy them.
-    public_token: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     # Non-secret short prefix shown in UI for identification (e.g. "ed_2bD7").
     token_prefix: Mapped[str] = mapped_column(sa.String(16), nullable=False)
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())

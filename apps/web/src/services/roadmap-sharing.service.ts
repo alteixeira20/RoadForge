@@ -2,7 +2,7 @@
 // Join roadmap via invite, share-link management, and participant management.
 
 import type { ShareLink, ShareRole, Participant } from '@/types/roadmap'
-import { requestJson } from './roadmap-http'
+import { requestJson, resolveBrowserSessionToken } from './roadmap-http'
 
 // ─── Backend response shapes (local to this file) ─────────────────────────────
 
@@ -43,7 +43,6 @@ interface ApiJoinResponse {
 
 // ─── Mappers ───────────────────────────────────────────────────────────────────
 
-// Shared presentation metadata for share-link API responses.
 const _LINK_META: Record<string, { icon: string; desc: string; recommended?: true }> = {
   owner:  { icon: 'shield', desc: 'Full control — manage settings, links, and members.' },
   editor: { icon: 'users',  desc: 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.', recommended: true },
@@ -164,9 +163,8 @@ export async function revokeParticipant(
 // ─── Invite / join ─────────────────────────────────────────────────────────────
 
 /**
- * Accept a share-link invite and join the roadmap.
- * display_name is optional — backend assigns a role-based default if omitted.
- * password is required when the roadmap has password protection enabled.
+ * Accept a share-link invite and join the roadmap. The raw Bearer session is
+ * exchanged for a path-scoped HttpOnly cookie before this function resolves.
  */
 export async function joinRoadmap(
   token: string,
@@ -180,11 +178,15 @@ export async function joinRoadmap(
     method: 'POST',
     body: JSON.stringify(body),
   })
+  const browserSessionToken = await resolveBrowserSessionToken(
+    data.roadmap_id,
+    data.session_token,
+  )
   return {
     roadmapId: data.roadmap_id,
     roadmapName: data.roadmap_name,
     role: data.role,
-    sessionToken: data.session_token,
+    sessionToken: browserSessionToken,
     participantId: data.participant_id,
   }
 }

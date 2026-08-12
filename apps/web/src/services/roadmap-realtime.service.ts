@@ -24,10 +24,10 @@ export interface RealtimeHandlers {
 export async function getEventTicket(
   roadmapId: string,
   sessionToken: string,
-): Promise<{ ticket: string; expires_in: number }> {
-  return await requestJson<{ ticket: string; expires_in: number }>(
+): Promise<{ expires_in: number }> {
+  return await requestJson<{ expires_in: number }>(
     `/api/roadmaps/${roadmapId}/events/ticket`,
-    { method: 'POST' },
+    { method: 'POST', credentials: 'include' },
     sessionToken,
   )
 }
@@ -40,11 +40,10 @@ export async function getEventTicket(
  */
 export function subscribeToRoadmapEvents(
   roadmapId: string,
-  ticket: string,
   handlers: RealtimeHandlers,
 ): () => void {
-  const url = `${API_BASE_URL}/api/roadmaps/${roadmapId}/events?ticket=${ticket}`
-  const es = new EventSource(url)
+  const url = `${API_BASE_URL}/api/roadmaps/${encodeURIComponent(roadmapId)}/events`
+  const es = new EventSource(url, { withCredentials: true })
 
   es.onopen = () => {
     handlers.onOpen?.()

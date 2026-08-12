@@ -113,8 +113,10 @@ async def test_editor_can_mark_task_done(client: AsyncClient):
 
 async def test_viewer_cannot_patch_task_done(client: AsyncClient):
     body = await create_with_phases(client)
-    links = await _share_links(client, body["id"], body["owner_session_token"])
-    viewer = await _join(client, links["viewer"]["url"], "Viewer")
+    viewer_url = await _rotate_link(
+        client, body["id"], body["owner_session_token"], "viewer"
+    )
+    viewer = await _join(client, viewer_url, "Viewer")
 
     resp = await _patch_done(
         client,

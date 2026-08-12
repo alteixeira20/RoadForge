@@ -1012,7 +1012,6 @@ async def test_ticket_issued_before_revocation_cannot_open_stream_after(
         headers=_auth(editor_token),
     )
     assert ticket_resp.status_code == 200
-    ticket = ticket_resp.json()["ticket"]
 
     revoke_resp = await client.post(
         f"/api/roadmaps/{roadmap_id}/participants/{editor_pid}/revoke",
@@ -1021,7 +1020,7 @@ async def test_ticket_issued_before_revocation_cannot_open_stream_after(
     assert revoke_resp.status_code == 204
 
     stream_resp = await client.get(
-        f"/api/roadmaps/{roadmap_id}/events", params={"ticket": ticket}
+        f"/api/roadmaps/{roadmap_id}/events"
     )
     assert stream_resp.status_code == 401
 
@@ -1051,7 +1050,6 @@ async def test_revocation_during_stream_startup_is_caught_by_post_subscribe_rech
         headers=_auth(editor_token),
     )
     assert ticket_resp.status_code == 200
-    ticket = ticket_resp.json()["ticket"]
 
     real_open_subscription = event_bus_module.event_bus.open_subscription
 
@@ -1071,7 +1069,7 @@ async def test_revocation_during_stream_startup_is_caught_by_post_subscribe_rech
     )
 
     stream_resp = await client.get(
-        f"/api/roadmaps/{roadmap_id}/events", params={"ticket": ticket}
+        f"/api/roadmaps/{roadmap_id}/events"
     )
     assert stream_resp.status_code == 401
 

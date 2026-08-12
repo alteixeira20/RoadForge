@@ -8,7 +8,7 @@ import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { ensureRegistryForTagIds } from '@/lib/tag-registry'
-import { requestJson } from './roadmap-http'
+import { requestJson, resolveBrowserSessionToken } from './roadmap-http'
 
 // ─── Backend response shapes (local to this file) ─────────────────────────────
 
@@ -94,7 +94,8 @@ function toRoadmapVersionDetail(r: ApiRoadmapVersionDetailResponse): RoadmapVers
 // ─── Roadmap CRUD ──────────────────────────────────────────────────────────────
 
 /**
- * Create a new roadmap on the server.
+ * Create a new roadmap on the server. The web client exchanges the raw owner
+ * Bearer token for a path-scoped HttpOnly cookie before returning to callers.
  */
 export async function createRoadmap(
   name: string,
@@ -116,10 +117,14 @@ export async function createRoadmap(
     method: 'POST',
     body: JSON.stringify(body),
   })
+  const browserSessionToken = await resolveBrowserSessionToken(
+    data.id,
+    data.owner_session_token,
+  )
   return {
     roadmap: toRoadmap(data),
     ownerParticipantId: data.owner_participant_id,
-    ownerSessionToken: data.owner_session_token,
+    ownerSessionToken: browserSessionToken,
   }
 }
 
