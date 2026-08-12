@@ -110,7 +110,7 @@ does not silently allow the request.
 | --- | --- |
 | `GET /api/health/live` | process liveness only |
 | `GET /api/health/ready` | PostgreSQL and configured Redis readiness |
-| `GET /api/health` | backward-compatible readiness alias |
+| `GET /api/health` | backward-compatible alias for readiness |
 
 A readiness `503` means a required dependency is unavailable. It does not necessarily mean
 the Python process is dead.
