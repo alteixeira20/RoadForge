@@ -12,13 +12,13 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant, ShareLink
-from api.services.activity_log_limit import enforce_activity_log_cap
 from api.schemas.roadmap import (
     ParticipantResponse,
     ParticipantSummaryResponse,
     ShareLinkResponse,
     ShareRole,
 )
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.auth_service import is_participant_revoked
 from api.services.event_bus import (
     Event,

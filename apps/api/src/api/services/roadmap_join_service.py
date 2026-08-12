@@ -17,8 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
 from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
-from api.services.activity_log_limit import enforce_activity_log_cap
 from api.schemas.roadmap import JoinRoadmapRequest, JoinRoadmapResponse
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.id_service import generate_id
 from api.services.password_service import verify_password
 from api.services.rate_limit_service import rate_limiter

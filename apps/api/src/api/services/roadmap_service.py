@@ -1,14 +1,12 @@
 import logging
+from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from fastapi import HTTPException
-from datetime import datetime, timezone
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
-from api.services.activity_log_limit import enforce_activity_log_cap
 from api.schemas.roadmap import (
     ActivityLogListResponse,
     ActivityLogResponse,
@@ -19,6 +17,7 @@ from api.schemas.roadmap import (
     TagDefinitionDTO,
     UpdateRoadmapRequest,
 )
+from api.services.activity_log_limit import enforce_activity_log_cap
 
 # PatchTaskClaimRequest is intentionally omitted — the claim endpoint has no body.
 from api.services.event_bus import Event, event_bus

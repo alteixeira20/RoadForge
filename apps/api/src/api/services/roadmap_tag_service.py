@@ -15,7 +15,6 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Participant, Roadmap
-from api.services.activity_log_limit import enforce_activity_log_cap
 from api.schemas.limits import TAG_REGISTRY_MAX
 from api.schemas.roadmap import (
     CreateTagRequest,
@@ -23,6 +22,7 @@ from api.schemas.roadmap import (
     TagResponse,
     UpdateTagRequest,
 )
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.roadmap_concurrency import ensure_roadmap_is_current

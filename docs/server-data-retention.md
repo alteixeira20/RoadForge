@@ -62,6 +62,25 @@ The service refuses thresholds below conservative minimums:
 
 These minimums are enforced in the service layer, not only by CLI documentation.
 
+## Active resource ceilings
+
+Age-based retention is not the only storage bound. Internet-facing writes also enforce
+hard configurable ceilings so a valid anonymous or invite-bearing client cannot grow
+server state indefinitely between purge runs. Maintained defaults are:
+
+| Resource | Default | Behavior at limit |
+| --- | ---: | --- |
+| total server roadmap records | 500 | new roadmap creation returns `503`; soft-deleted rows continue to count until hard purge |
+| active sessions per share link | 128 | further joins through that invite return `429` until sessions expire/revoke |
+| concurrent SSE streams per participant | 3 | further event streams return `429` |
+| activity rows per roadmap | 2,000 | oldest rows are trimmed transactionally on subsequent writes |
+| restore-history bytes per roadmap | 32 MiB | oldest restore points are trimmed while always preserving the newest three |
+
+The existing 100-version count ceiling remains in force alongside the byte ceiling.
+These values are admission/resource-safety defaults, not product capacity claims.
+Self-hosted operators may raise them after measuring storage/concurrency and establishing
+equivalent monitoring, backup and abuse controls.
+
 Self-hosted operators may select longer retention where appropriate, but should not assume
 that longer retention alone equals recoverability. Recovery objectives also depend on backup
 frequency, restore testing, storage durability, and incident procedures.

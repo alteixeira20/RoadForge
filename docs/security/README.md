@@ -4,7 +4,8 @@ This directory contains the maintained security contracts and release evidence r
 
 Start here:
 
-- [Internet-facing security audit — 2026-08-12](./internet-facing-audit-2026-08-12.md) — consolidated threat model, findings, remediations, residual risks, and deployment actions for the current hardening candidate.
+- [Internet-facing security audit — 2026-08-12](./internet-facing-audit-2026-08-12.md) — consolidated threat model and first Internet-facing hardening pass.
+- [Post-hardening Internet-facing audit — 2026-08-12](./post-hardening-audit-2026-08-12.md) — follow-up resource-exhaustion, production-origin and SSE lifecycle findings/remediations.
 - [Session expiry and revocation policy](./session-expiry-and-revocation-policy.md) — participant sessions, HttpOnly browser cookies, legacy migration, revocation, and realtime credential handling.
 - [Rate limiting policy](./rate-limiting-policy.md) — action-specific limits, trusted client IPs, Redis coordination, and fail-closed behavior.
 - [Security headers and CSP](./security-headers-policy.md) — nonce CSP, header ownership, browser compatibility boundaries, and observation/rollback rules.

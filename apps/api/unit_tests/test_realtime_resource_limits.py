@@ -1,10 +1,10 @@
 import pytest
 
 from api.services.event_bus import (
+    _MEMORY_SUBSCRIPTION_QUEUE_MAX,
     Event,
     MemoryEventBus,
     SubscriptionOverflowError,
-    _MEMORY_SUBSCRIPTION_QUEUE_MAX,
     forward_subscription,
 )
 from api.services.realtime_stream_limit import MemoryRealtimeStreamRegistry

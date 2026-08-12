@@ -1,24 +1,23 @@
 """Roadmap version checkpoint, list, detail, and restore logic."""
 
 import logging
-
-import sqlalchemy as sa
 from copy import deepcopy
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
 from api.models.roadmap import ActivityLog, Participant, Roadmap, RoadmapVersion
-from api.services.activity_log_limit import enforce_activity_log_cap
 from api.schemas.roadmap import (
     PhaseDTO,
     RoadmapResponse,
     RoadmapVersionDetailResponse,
     RoadmapVersionSummaryResponse,
 )
+from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
