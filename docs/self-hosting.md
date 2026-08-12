@@ -1,56 +1,46 @@
 # Self-hosting RoadForge
 
-This is the supported `0.1.0` self-hosting contract. Exact Compose commands and
-environment examples live in [`deploy/self-hosted/README.md`](../deploy/self-hosted/README.md).
-Security requirements live in [Public deployment security](public-deployment-security.md).
+This is the supported `0.1.0` self-hosting contract. Exact Compose commands and environment
+examples live in [`deploy/self-hosted/README.md`](../deploy/self-hosted/README.md). Security
+requirements live in [Public deployment security](public-deployment-security.md).
 
-The Anvilary-hosted RoadForge instance is a demo/convenience deployment. Self-hosting
-is the option for operators who want to control server persistence, backups, retention,
-and infrastructure. Roadmap users should still keep portable JSON exports of important
-work.
+The Anvilary-hosted instance is a demo/convenience deployment. Self-hosting gives operators
+control over server persistence, backups, retention, and infrastructure, but roadmap users
+should still keep portable JSON exports of important work.
 
 ## Supported topology
 
-A production-oriented deployment consists of:
-
-- Next.js web application;
-- FastAPI API;
-- PostgreSQL 16;
-- optional Redis for shared realtime coordination;
-- an HTTPS reverse proxy or trusted edge.
-
+A production-oriented deployment consists of Next.js, FastAPI, PostgreSQL 16, optional
+Redis for shared realtime/rate-limit coordination, and a trusted HTTPS reverse proxy/edge.
 Use the maintained files under `deploy/self-hosted/`. Do not expose development servers,
-PostgreSQL, or Redis directly to the public Internet.
+PostgreSQL, or Redis directly to the Internet.
 
-## Before first deployment
+## Required configuration
 
-Create a deployment `.env` from the maintained example and review every value.
-At minimum, configure:
+At minimum configure:
 
-- production PostgreSQL password/connection;
+- a production PostgreSQL password/connection;
 - `ROADFORGE_ENVIRONMENT=production`;
 - `ROADFORGE_WEB_BASE_URL`;
 - explicit `ROADFORGE_CORS_ORIGINS`;
 - narrow `ROADFORGE_TRUSTED_PROXY_IPS`;
-- realtime backend and Redis URL when required;
-- `ROADFORGE_CSP_MODE` during CSP observation/enforcement rollout.
+- the appropriate realtime backend/Redis URL;
+- `ROADFORGE_CSP_MODE` when deliberately using the bounded CSP observation path.
 
-Run the deployment doctor/config validation documented under `deploy/self-hosted` before
-starting the public stack.
+The public browser Origin must exactly match `ROADFORGE_CORS_ORIGINS`. Those origins govern
+both CORS and the defense-in-depth Origin check for unsafe cookie-authenticated roadmap
+requests.
 
-## Deployment sequence
+## Deployment and updates
 
-Use this order for first deploys and schema-sensitive updates:
+For first deploys and schema-sensitive updates:
 
-1. Back up PostgreSQL if an existing deployment is being changed.
+1. Create and verify a PostgreSQL backup when existing data is present.
 2. Build/pull the exact candidate revision.
-3. Start PostgreSQL and Redis, when Redis is configured.
+3. Start required data services.
 4. Apply `alembic upgrade head` through the maintained migration command.
-5. Verify/backfill relational projections when required by the release.
-6. Start the API.
-7. Start the web application and HTTPS proxy.
-8. Verify health endpoints.
-9. Exercise create, save, share, join, realtime, import/export, and conflict recovery.
+5. Start/validate API and web services plus the trusted edge.
+6. Run exact-head repository gates and the deployed collaboration/security checks.
 
 The maintained update path is:
 
@@ -59,11 +49,30 @@ cd /opt/stacks/roadforge/src
 make update
 ```
 
-Do not replace `alembic upgrade head` with a release-specific migration filename.
+Application rollback does not undo an applied migration. Do not substitute a
+release-specific migration filename for `alembic upgrade head`.
+
+### Internet-hardening migration
+
+Migration `0011_remove_public_viewer_tokens.py` deactivates legacy viewer links whose raw
+credential had been stored, clears that material, and drops `share_links.public_token`.
+After upgrading, rotate the viewer link once when a new copyable viewer URL is needed.
+Rotate any pre-hardening owner/editor invite that may have been distributed as `?token=`.
+
+Existing pre-hardening browser participant Bearers are exchanged automatically for the new
+HttpOnly session cookie on the next successful roadmap hydration.
+
+## Runtime confinement
+
+The web/API production images run as non-root users. Maintained Compose additionally uses
+read-only web/API root filesystems, capability drops, `no-new-privileges`, PID ceilings, and
+narrowly scoped tmpfs write paths. PostgreSQL/Redis retain the writable runtime paths they
+actually require.
+
+Keep PostgreSQL and Redis on the internal Docker network and expose the application only via
+intended proxy routes.
 
 ## Health checks
-
-Use the endpoints according to their actual runtime semantics:
 
 ```text
 /api/health/live   process liveness only
@@ -71,192 +80,101 @@ Use the endpoints according to their actual runtime semantics:
 /api/health        backward-compatible readiness alias
 ```
 
-For normal deployment readiness checks, use `/api/health/ready` or `/api/health`.
-A `503` means a required dependency is unavailable even if the API process itself is
-still running.
+A readiness `503` means a required dependency is unavailable; it does not by itself prove
+the API process is dead.
 
 ## Realtime modes
 
-### Memory
+Memory mode requires exactly one API process:
 
 ```sh
 ROADFORGE_REALTIME_BACKEND=memory
 ROADFORGE_API_WORKERS=1
 ```
 
-Memory mode is a **single-process** topology. Do not run multiple independent API
-instances in this mode merely because each has one worker.
-
-### Redis
-
-Use Redis for multiple API workers or instances:
+Multiple workers/instances require Redis:
 
 ```sh
 ROADFORGE_REALTIME_BACKEND=redis
 REDIS_URL=redis://...
 ```
 
-Redis coordinates SSE publication, edit locks, one-time event tickets, revocation
-state, and rate limits. Keep Redis private and do not log its connection URL when it
-contains credentials.
+Redis coordinates SSE publication, edit locks, one-time event tickets, revocation state, and
+rate limits. Redis-backed public rate limiting fails closed when Redis is unavailable.
 
-## Access and credentials
+## Access and credential transport
 
-RoadForge has no account/login system. Shared roadmaps use role-scoped invite links,
-optional roadmap passwords, and participant session tokens.
+RoadForge has no account/login system. Shared roadmaps use role-scoped invites, optional
+roadmap passwords, and participant sessions.
 
-- Owner/editor invite URLs are sensitive credentials.
-- Viewer URLs grant read access and should still be treated as access-bearing links.
-- Invite rotation controls future joins; existing participant sessions are revoked separately.
-- Participant session tokens belong in `Authorization: Bearer ...`, never in URLs.
-- Do not paste invite/session tokens into shell commands, tickets, public issues, screenshots, or logs.
+- Generated invites use `/join#token=...`; legacy query-token links are migration-only.
+- Owner/editor/viewer raw invite credentials are reveal-once and hashed at rest.
+- The web client exchanges a newly issued participant Bearer for a path-scoped HttpOnly,
+  `SameSite=Strict`, production-`Secure` session cookie before persisting auth state.
+- Cookie-authenticated unsafe requests require an exact configured Origin.
+- API/MCP clients intentionally retain explicit `Authorization: Bearer ...` sessions.
+- SSE uses a 30-second single-use event-ticket cookie; EventSource URLs contain no secret.
 
-## Request size
+Never paste invite/session/ticket credentials into shell commands, tickets, public issues,
+screenshots, analytics, or logs.
 
-The maintained browser, API, and nginx roadmap payload limit is **5 MiB**. The API
-constant is defined in `apps/api/src/api/schemas/limits.py`.
+## Request limits and untrusted content
 
-If an operator changes proxy limits, they must remain compatible with the application
-limit rather than silently creating a smaller upstream ceiling.
+The browser, API, and nginx roadmap payload ceiling is **5 MiB**. The API counts actual
+streamed bytes rather than trusting only `Content-Length`.
 
-## Backups
+Roadmap/import content and external links are untrusted input. Do not bypass the maintained
+Pydantic/browser validators to support malformed data. Task external links reject
+credential-like query parameters and are normalized before storage/rendering.
 
-PostgreSQL is the durable source for synced roadmaps. Before every schema-sensitive
-release and before an irreversible retention purge:
+## Backups and retention
 
-1. create a PostgreSQL custom-format dump;
-2. verify the dump is non-empty;
-3. record a checksum;
-4. copy the backup outside the repository and database volume;
-5. periodically perform a disposable restore drill.
+PostgreSQL is durable storage for synced roadmaps. Before schema-sensitive releases and
+irreversible purge operations, create a custom-format backup, verify it is non-empty, record
+a checksum, store it outside the repository/database volume, and periodically perform a
+disposable restore drill.
 
-The complete command sequence is maintained in
-[`deploy/self-hosted/README.md`](../deploy/self-hosted/README.md). Do not duplicate a
-live database merely to test restore. Restore into a uniquely named disposable database,
-verify representative domain rows and projection parity, then remove only that database.
-
-An untested backup is not a recovery plan.
-
-## Data retention
-
-RoadForge has a bounded operator retention command for durable PostgreSQL data. User-facing
-synced-roadmap deletion is immediate **soft deletion** from normal application use; final
-hard deletion happens later according to the operator retention policy.
-
-Default live-database retention is:
-
-- expired/revoked participant sessions: 7-day cleanup grace;
-- activity on active roadmaps: 180 days;
-- restore points on active roadmaps: 90 days while preserving at least the newest 3;
-- soft-deleted roadmaps: 30 days before final hard purge;
-- maximum work per run: 100 rows per category by default.
-
-Use [Server data retention and purge](server-data-retention.md) as the authoritative
-runbook. It documents conservative code-enforced minimums, dry-run output, reproducible
-`--as-of` cutoffs, explicit `--execute --confirm PURGE`, race-safe execution, stale claim
-cleanup, bounded scheduling, monitoring, and recovery.
-
-A recommended small/demo deployment pattern is scheduled dry-run monitoring plus a
-separate bounded execute after backup verification. Do not run an unconditional destructive
-cron job with unknown counts.
-
-Redis event tickets, edit locks, and rate-limit buckets are volatile TTL state and are not
-part of the PostgreSQL purge command.
-
-Backup retention is independent. Hard-purging live database rows does not remove historical
-backup copies, so any public deletion/privacy wording must state the backup lifecycle
-accurately.
-
-## Rollback
-
-Application rollback and database rollback are different operations.
-
-- Re-deploying a previous API/web image does not undo an already-applied migration.
-- Alembic downgrade is unsupported unless a specific migration explicitly documents it.
-- For a schema incident, use the pre-migration database backup and a known-good application revision.
-- For an accidental hard purge, recovery likewise requires a pre-purge backup.
-- Test recovery in a disposable environment before modifying the live database whenever possible.
+Live-database retention and backup retention are separate lifecycles. Use
+[Server data retention and purge](server-data-retention.md) as the authoritative operator
+runbook. Hard-purging live rows does not remove historical backups.
 
 ## Credential-safe logs
 
-RoadForge application access logs omit query strings, headers, and request bodies. The
-maintained nginx access format omits query strings and `Referer`.
+RoadForge API logs omit query strings, headers, bodies, cookies, and full URLs. The
+maintained nginx format logs `$uri` rather than `$request_uri` and omits Referer.
 
-Upstream infrastructure may still retain full request targets. Review proxy/tunnel/CDN
-logging separately because invite tokens can appear in join URLs.
-
-Retention logs should contain only revision/timestamp/policy/count/success information and,
-when appropriate, a backup checksum/reference. Do not log selected roadmap IDs, snapshots,
-participant names, or credentials as purge evidence.
-
-Use service-specific log commands from `deploy/self-hosted/README.md` rather than
-copying private data into public reports.
-
-## Incident triage
-
-When the deployment is unavailable, check in this order:
-
-1. `/api/health/live` — is the API process responding?
-2. `/api/health/ready` — are PostgreSQL and configured Redis ready?
-3. `docker compose ... ps` — which service is unhealthy/restarting?
-4. reverse proxy/TLS/tunnel status;
-5. Redis connectivity when Redis mode is enabled;
-6. PostgreSQL connectivity and migration state;
-7. API/web/database/Redis logs as appropriate;
-8. last known-good backup and rollback candidate.
-
-Do not treat a readiness failure as proof that the API process is dead, and do not
-repair projection drift by modifying canonical roadmap snapshots manually.
+New invite fragments are not sent upstream and SSE tickets are not URL parameters. Legacy
+query-token links can still reach external infrastructure until rotated, so separately review
+Cloudflare/tunnel/CDN/proxy error logs and pre-hardening retained logs.
 
 ## Content Security Policy
 
-Production RoadForge uses an enforced per-response nonce CSP by default. The application,
-not nginx, is the authoritative CSP owner for frontend document responses.
+Production RoadForge uses enforced per-response nonce CSP by default. The application—not
+nginx—is authoritative for frontend CSP. nonce-bearing HTML is private/no-store and must not
+be cached at the edge.
 
-For a first public deployment or after a meaningful Next.js/frontend-runtime upgrade, run a
-bounded observation period first:
+A bounded `report-only` observation window may be used for the same candidate after a
+meaningful frontend/runtime change, but production defaults to `enforce`. Never “fix” a CSP
+failure by adding production script `unsafe-inline` or `unsafe-eval`.
 
-```sh
-ROADFORGE_CSP_MODE=report-only
-```
-
-Exercise the deployed manual QA matrix and inspect browser CSP reports. After the same exact
-revision is clean, switch to:
-
-```sh
-ROADFORGE_CSP_MODE=enforce
-```
-
-Production defaults to `enforce` when the variable is unset or invalid. Switching a broken
-legitimate deployment back to `report-only` is the immediate CSP rollback; do not add broad
-production script `unsafe-inline` or `unsafe-eval` exemptions.
-
-Nonce-bearing document responses are `private, no-store`. Do not configure nginx,
-Cloudflare, or another CDN to cache frontend HTML. Static Next.js/public assets remain
-outside nonce middleware and retain normal caching.
-
-The maintained nginx config forwards `X-Forwarded-Proto: https`, which lets the application
-add `upgrade-insecure-requests` only for externally HTTPS traffic. Do not inject a second
-CSP at nginx/Cloudflare unless you deliberately replace application CSP ownership and rerun
-the production browser proof.
-
-See [Security headers and Content Security Policy](security/security-headers-policy.md) for
-the policy, observation procedure, rollback criteria, sanitized incident evidence, and
-automated test contract.
+`style-src 'unsafe-inline'` remains an explicit compatibility boundary for current dynamic
+style attributes; executable scripts remain nonce-restricted.
 
 ## Release verification
 
-Before exposing or updating a public instance:
+Before exposing/updating a public instance, require exact-head CI and then validate the
+actual deployment:
 
-```bash
-make release-check
-```
+1. production CSP is enforced and no conflicting edge CSP exists;
+2. create/save a roadmap;
+3. generate a fragment editor invite and join in a separate private context;
+4. confirm raw participant Bearers are absent from browser localStorage after bootstrap;
+5. exercise cookie-authenticated writes and realtime sync;
+6. verify invite rotation and participant revocation independently;
+7. verify conflict handling and JSON export/import;
+8. inspect application and external edge logs for credential leakage using sanitized
+   evidence only;
+9. confirm backup/rollback readiness for schema-sensitive releases.
 
-Then require green exact-head GitHub Actions and perform the deployed checks in
-[Manual QA](manual-qa.md). In particular verify independent owner/editor/viewer
-contexts, revocation, conflicts, realtime recovery, JSON export/import, CSP console state,
-and safe proxy logging.
-
-For a deployment that already contains synced user data, also run the retention command in
-dry-run mode and verify that the reported policy/counts match the operator's documented
-schedule before declaring the deployment baseline complete.
+See [Manual QA](manual-qa.md), [Session policy](security/session-expiry-and-revocation-policy.md),
+and [`deploy/self-hosted/README.md`](../deploy/self-hosted/README.md).
