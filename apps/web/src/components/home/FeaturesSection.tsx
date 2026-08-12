@@ -7,7 +7,7 @@ export function FeaturesSection() {
       id="features"
       className="features-section"
       title="Built for solo builders and small teams."
-      lede="A focused set of features, sized to fit how real planning works."
+      lede="A focused set of features, sized to fit how real planning works. The public instance is a demo; teams can run RoadForge on infrastructure they control."
     >
       <div className="features">
         <div className="feature">
@@ -37,7 +37,7 @@ export function FeaturesSection() {
           </div>
           <p>
             Organize phases and tasks, track dependencies and progress, and let
-            RoadForge surface the recommended next task.
+            RoadForge surface recommended tasks without deciding your workflow for you.
           </p>
         </div>
         <div className="feature">
@@ -57,17 +57,18 @@ export function FeaturesSection() {
           </div>
           <p>
             Work locally first; add server sync only for participants, share
-            links, and activity history.
+            links, activity history, and realtime collaboration.
           </p>
         </div>
         <div className="feature">
           <div className="feature-head">
             <div className="ic"><Icon name="shield" size={20} /></div>
-            <h3>Self-hostable source</h3>
+            <h3>Fork and self-host</h3>
           </div>
           <p>
-            Run RoadForge on your own infrastructure under the repository&apos;s
-            non-commercial source-available license.
+            Use the hosted demo to evaluate RoadForge. For sustained or larger-team
+            use, run a fork or controlled clone on infrastructure you operate under
+            the repository&apos;s non-commercial source-available license.
           </p>
         </div>
       </div>
