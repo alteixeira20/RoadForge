@@ -19,17 +19,18 @@ jobs:
         with:
           ref: security/post-hardening-audit-2026-08-12
           fetch-depth: 0
-      - name: Apply correctness polish
+      - name: Finalize candidate
         shell: bash
         run: |
-          python tools/polish-security-reaudit.py
-          python -m compileall -q apps/api/src/api
+          python tools/finalize-security-reaudit.py
+          pip install -e "apps/api[dev]" -q
+          ruff check apps/api --fix
+          ruff check apps/api
+          python -m compileall -q apps/api/src/api apps/api/tests apps/api/unit_tests
           git diff --check
           git status --short
           git config user.name "RoadForge Security Audit"
           git config user.email "actions@users.noreply.github.com"
           git add -A
-          git commit -m "fix(security): preserve transaction and auth invariants"
+          git commit -m "test(security): lock post-hardening audit contract"
           git push origin HEAD:security/post-hardening-audit-2026-08-12
-      - name: Syntax gate passed
-        run: echo syntax-ok
