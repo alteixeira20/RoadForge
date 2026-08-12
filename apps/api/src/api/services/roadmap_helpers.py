@@ -33,7 +33,7 @@ from api.services.roadmap_projection_service import (
 
 logger = logging.getLogger(__name__)
 
-_TASK_PATCH_FIELDS = ("title", "desc", "est", "assignees", "tags", "links")
+_TASK_PATCH_FIELDS = ("title", "desc", "est", "complexity", "assignees", "tags", "links")
 
 
 # ---------------------------------------------------------------------------

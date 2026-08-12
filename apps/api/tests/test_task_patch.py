@@ -49,6 +49,7 @@ def _patched_task(result) -> dict:
         ({"title": "Updated title"}, "title", "Updated title"),
         ({"desc": "Updated description"}, "desc", "Updated description"),
         ({"est": "5d"}, "est", "5d"),
+        ({"complexity": "high"}, "complexity", "high"),
         ({"assignees": ["Carol", "Dan"]}, "assignees", ["Carol", "Dan"]),
         ({"tags": ["backend", "api"]}, "tags", ["backend", "api"]),
         ({
@@ -93,6 +94,7 @@ def test_snapshot_helper_applies_multiple_fields_in_stable_order():
         tags=["api"],
         assignees=["Carol"],
         est="3d",
+        complexity="high",
         desc="New description",
         title="New title",
     )
@@ -100,11 +102,12 @@ def test_snapshot_helper_applies_multiple_fields_in_stable_order():
     result = _patch_task_fields_in_snapshot(_snapshot(), "tk_a1", updates)
 
     assert result is not None
-    assert result.changed_fields == ["title", "desc", "est", "assignees", "tags"]
+    assert result.changed_fields == ["title", "desc", "est", "complexity", "assignees", "tags"]
     task = _patched_task(result)
     assert task["title"] == "New title"
     assert task["desc"] == "New description"
     assert task["est"] == "3d"
+    assert task["complexity"] == "high"
     assert task["assignees"] == ["Carol"]
     assert task["tags"] == ["api"]
 
@@ -180,6 +183,7 @@ def test_snapshot_helper_preserves_unrelated_fields_and_inputs():
         "done",
         "next",
         "est",
+        "complexity",
         "desc",
         "tags",
         "assignees",
@@ -222,6 +226,7 @@ def test_snapshot_helper_clears_links_without_removing_unrelated_fields():
         {"title": "x" * 161},
         {"desc": "x" * 5_001},
         {"est": "x" * 65},
+        {"complexity": "impossible"},
         {"assignees": ["x"] * 21},
         {"assignees": ["x" * 129]},
         {"tags": ["x"] * 21},

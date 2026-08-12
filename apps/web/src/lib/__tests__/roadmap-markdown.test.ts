@@ -110,7 +110,7 @@ describe('formatRoadmapMarkdown', () => {
 
     expect(output).toContain('## 01 Discovery | done | 100%')
     expect(output).toContain('## 02 Implementation | active | 0%')
-    expect(output).toContain('- [x] `1.1` Completed dependency | tags:Planning')
+    expect(output).toContain('- [x] `1.1` Completed dependency | complexity:Medium; tags:Planning')
     expect(output).toContain('  - [ ] `2.1.1` Markdown export | recommended;')
     expect(output).not.toContain('| next;')
   })
@@ -128,6 +128,7 @@ describe('formatRoadmapMarkdown', () => {
   it('renders planning metadata and links with positional dependencies', () => {
     const output = formatRoadmapMarkdown({ roadmapName: 'Public Alpha', phases, tagRegistry })
 
+    expect(output).toContain('complexity:Medium')
     expect(output).toContain('est:2d')
     expect(output).toContain('assignees:Alex, Sam')
     expect(output).toContain('tags:Frontend, unknown-tag')

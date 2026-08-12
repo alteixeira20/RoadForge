@@ -57,6 +57,7 @@ describe('exportRoadmap', () => {
       done: false,
       next: true,
       est: '3d',
+      complexity: 'high',
       assignees: ['Alex', 'Sam'],
       tags: ['delivery', 'frontend'],
       deps: ['RF-1'],
@@ -171,6 +172,7 @@ describe('exportRoadmap', () => {
       done: maximalTask.done,
       next: maximalTask.next,
       est: maximalTask.est,
+      complexity: maximalTask.complexity,
       assignees: maximalTask.assignees,
       tags: maximalTask.tags,
       desc: maximalTask.desc,
@@ -375,6 +377,7 @@ describe('patchTask', () => {
       taskId: 'tk_1',
       updates: {
         est: '2d',
+        complexity: 'high',
         assignees: ['Alex'],
         tags: ['frontend'],
       },
@@ -388,6 +391,7 @@ describe('patchTask', () => {
         method: 'PATCH',
         body: JSON.stringify({
           est: '2d',
+          complexity: 'high',
           assignees: ['Alex'],
           tags: ['frontend'],
           last_updated_at: '2026-05-29T10:00:00Z',

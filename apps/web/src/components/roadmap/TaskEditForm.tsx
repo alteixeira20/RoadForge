@@ -152,13 +152,16 @@ export function TaskEditForm({
             <option
               key={option.value}
               value={option.value}
-              disabled={isNested && option.value === 'very_high'}
+              disabled={option.value === 'very_high' && (isNested || directSubtaskCount < 2)}
             >
               {option.label}
             </option>
           ))}
         </select>
         <small>{complexityOption.description}</small>
+        {!isNested && directSubtaskCount < 2 && draft.complexity !== 'very_high' && (
+          <small>Very high unlocks after this task has at least two direct subtasks.</small>
+        )}
         {missingBreakdown && (
           <small role="alert">Very high complexity requires at least two direct subtasks.</small>
         )}

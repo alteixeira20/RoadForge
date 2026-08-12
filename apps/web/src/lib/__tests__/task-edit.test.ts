@@ -20,6 +20,7 @@ describe('createTaskEditDraft', () => {
     expect(createTaskEditDraft(makeTask())).toEqual({
       title: 'Task',
       est: '',
+      complexity: 'medium',
       desc: '',
       assignees: [],
       tags: [],
@@ -51,6 +52,7 @@ describe('isTaskEditDraftDirty', () => {
 
   it.each([
     ['estimate', { est: '3d' }],
+    ['complexity', { complexity: 'high' as const }],
     ['description', { desc: 'Updated details' }],
     ['assignees', { assignees: ['Alice', 'Bob'] }],
     ['tags', { tags: ['frontend', 'urgent'] }],

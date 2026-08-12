@@ -402,7 +402,7 @@ class PatchTaskRequest(BaseModel):
 
     @model_validator(mode="after")
     def _require_mutable_field(self) -> PatchTaskRequest:
-        mutable_fields = {"title", "desc", "est", "assignees", "tags", "links"}
+        mutable_fields = {"title", "desc", "est", "complexity", "assignees", "tags", "links"}
         if not self.model_fields_set.intersection(mutable_fields):
             raise ValueError("at least one task field must be provided")
         return self
