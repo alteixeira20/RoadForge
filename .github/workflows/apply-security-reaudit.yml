@@ -22,6 +22,7 @@ jobs:
       - name: Apply audited fixes
         shell: bash
         run: |
+          python tools/fix-security-reaudit-applicator.py
           python tools/apply-security-reaudit.py
           git diff --check
           git status --short
