@@ -11,13 +11,13 @@ import api.routers.roadmaps as roadmaps_router
 import api.services.activity_log_limit as activity_log_limit
 import api.services.roadmap_join_service as roadmap_join_service
 import api.services.version_service as version_service
-from api.database import async_session_factory
+from api.database import get_db
 from api.main import create_app
 from api.models.roadmap import ActivityLog, Participant, Roadmap, RoadmapVersion
 from api.services.auth_service import is_participant_revoked
 from api.services.id_service import generate_id
 from api.services.rate_limit_service import MemoryRateLimiter
-from tests.conftest import create_roadmap
+from tests.conftest import _test_session_factory, create_roadmap
 
 pytestmark = pytest.mark.asyncio
 
@@ -28,11 +28,20 @@ def _auth(token: str) -> dict[str, str]:
 
 @asynccontextmanager
 async def _committing_client():
-    """Use the application's real DB dependency so concurrent requests get separate transactions."""
+    """Use separate loop-safe PostgreSQL sessions that commit like the real DB dependency."""
+
+    async def _override_get_db():
+        async with _test_session_factory() as session:
+            yield session
+
     app = create_app()
+    app.dependency_overrides[get_db] = _override_get_db
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            yield client
+    finally:
+        app.dependency_overrides.clear()
 
 
 def _synchronize_calls(func, parties: int = 2):
@@ -56,7 +65,7 @@ def _synchronize_calls(func, parties: int = 2):
 async def _delete_committed_roadmaps(roadmap_names: list[str]) -> None:
     if not roadmap_names:
         return
-    async with async_session_factory() as db:
+    async with _test_session_factory() as db:
         await db.execute(delete(Roadmap).where(Roadmap.name.in_(roadmap_names)))
         await db.commit()
 
@@ -91,7 +100,7 @@ async def test_global_server_roadmap_capacity_blocks_further_anonymous_creation(
 async def test_global_server_roadmap_capacity_is_exact_under_concurrent_requests(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async with async_session_factory() as db:
+    async with _test_session_factory() as db:
         baseline = int(await db.scalar(select(func.count(Roadmap.id))) or 0)
 
     roadmap_names = ["Concurrent capacity A", "Concurrent capacity B"]
@@ -141,7 +150,7 @@ async def test_global_server_roadmap_capacity_is_exact_under_concurrent_requests
         ]
         assert len(created_ids) == 1
 
-        async with async_session_factory() as db:
+        async with _test_session_factory() as db:
             final_count = int(await db.scalar(select(func.count(Roadmap.id))) or 0)
         assert final_count == baseline + 1
     finally:
@@ -229,7 +238,7 @@ async def test_share_link_active_session_cap_is_exact_under_concurrent_joins(
         rejected = next(response for response in responses if response.status_code == 429)
         assert rejected.json()["detail"] == "Active session limit reached for this invite"
 
-        async with async_session_factory() as db:
+        async with _test_session_factory() as db:
             participant_count = int(
                 await db.scalar(
                     select(func.count(Participant.id)).where(
