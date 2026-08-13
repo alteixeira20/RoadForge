@@ -124,7 +124,7 @@ export function ShareRoleSection({
             </div>
             {targetRole === 'viewer' && link.isActive && link.url && (
               <div className="share-role-note neutral">
-                Anyone with this link can view this roadmap read-only. It is suitable for a README, portfolio, or live demo.
+                Anyone who receives this invite can join the roadmap read-only. Treat it as an access credential; it is not a public publishing URL.
               </div>
             )}
             {!link.isActive && roleParticipants.length > 0 && (
