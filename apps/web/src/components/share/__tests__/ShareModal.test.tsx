@@ -7,7 +7,11 @@ import { ShareModal } from '@/components/share/ShareModal'
 
 vi.mock('@/context/RoadmapContext', () => ({
   useRoadmapData: () => ({ isPasswordEnabled: false }),
-  useRoadmapSession: () => ({ serverRoadmapId: null, sessionToken: null, role: 'owner' }),
+  useRoadmapSession: () => ({
+    serverRoadmapId: null,
+    sessionToken: null,
+    role: 'owner',
+  }),
 }))
 
 vi.mock('@/services/roadmap-sharing.service', () => ({
