@@ -34,7 +34,9 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 from sqlalchemy.pool import NullPool  # noqa: E402
 
-import api.routers.roadmaps as _roadmaps_module  # noqa: E402
+import api.routers.roadmap_activity as _roadmap_activity_module  # noqa: E402
+import api.routers.roadmap_versions as _roadmap_versions_module  # noqa: E402
+import api.routers.roadmaps_legacy as _roadmaps_module  # noqa: E402
 from api.database import get_db  # noqa: E402
 from api.main import create_app  # noqa: E402
 from api.models.base import Base  # noqa: E402
@@ -86,8 +88,12 @@ async def client(db_session: AsyncSession):
     app = create_app()
     app.dependency_overrides[get_db] = _override_get_db
 
-    # Reset rate limiter so tests don't bleed into each other
-    _roadmaps_module.rate_limiter = MemoryRateLimiter()
+    # All roadmap route modules share one fresh limiter per test so endpoint
+    # budgets preserve the pre-decomposition behavior without cross-test bleed.
+    limiter = MemoryRateLimiter()
+    _roadmaps_module.rate_limiter = limiter
+    _roadmap_activity_module.rate_limiter = limiter
+    _roadmap_versions_module.rate_limiter = limiter
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
