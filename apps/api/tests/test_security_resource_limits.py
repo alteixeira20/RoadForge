@@ -1,24 +1,73 @@
+import asyncio
+from contextlib import asynccontextmanager
 from types import SimpleNamespace
 
 import pytest
-from httpx import AsyncClient
-from sqlalchemy import func, select
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import api.routers.roadmaps as roadmaps_router
 import api.services.activity_log_limit as activity_log_limit
 import api.services.roadmap_join_service as roadmap_join_service
 import api.services.version_service as version_service
-from api.models.roadmap import ActivityLog, RoadmapVersion
+from api.database import get_db
+from api.main import create_app
+from api.models.roadmap import ActivityLog, Participant, Roadmap, RoadmapVersion
 from api.services.auth_service import is_participant_revoked
 from api.services.id_service import generate_id
-from tests.conftest import create_roadmap
+from api.services.rate_limit_service import MemoryRateLimiter
+from tests.conftest import _test_session_factory, create_roadmap
 
 pytestmark = pytest.mark.asyncio
 
 
 def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+@asynccontextmanager
+async def _committing_client():
+    """Use separate loop-safe PostgreSQL sessions that commit like the real DB dependency."""
+
+    async def _override_get_db():
+        async with _test_session_factory() as session:
+            yield session
+
+    app = create_app()
+    app.dependency_overrides[get_db] = _override_get_db
+    transport = ASGITransport(app=app)
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            yield client
+    finally:
+        app.dependency_overrides.clear()
+
+
+def _synchronize_calls(func, parties: int = 2):
+    """Hold route calls until every contender is ready, then release them together."""
+    ready = asyncio.Event()
+    counter_lock = asyncio.Lock()
+    entered = 0
+
+    async def wrapped(*args, **kwargs):
+        nonlocal entered
+        async with counter_lock:
+            entered += 1
+            if entered >= parties:
+                ready.set()
+        await asyncio.wait_for(ready.wait(), timeout=5)
+        return await func(*args, **kwargs)
+
+    return wrapped
+
+
+async def _delete_committed_roadmaps(roadmap_names: list[str]) -> None:
+    if not roadmap_names:
+        return
+    async with _test_session_factory() as db:
+        await db.execute(delete(Roadmap).where(Roadmap.name.in_(roadmap_names)))
+        await db.commit()
 
 
 async def test_global_server_roadmap_capacity_blocks_further_anonymous_creation(
@@ -48,6 +97,66 @@ async def test_global_server_roadmap_capacity_blocks_further_anonymous_creation(
     assert second.json()["detail"] == "Server roadmap capacity is temporarily unavailable"
 
 
+async def test_global_server_roadmap_capacity_is_exact_under_concurrent_requests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with _test_session_factory() as db:
+        baseline = int(await db.scalar(select(func.count(Roadmap.id))) or 0)
+
+    roadmap_names = ["Concurrent capacity A", "Concurrent capacity B"]
+    original_create = roadmaps_router.create_roadmap
+    monkeypatch.setattr(
+        roadmaps_router,
+        "create_roadmap",
+        _synchronize_calls(original_create),
+    )
+    monkeypatch.setattr(roadmaps_router, "rate_limiter", MemoryRateLimiter())
+    monkeypatch.setattr(
+        roadmaps_router,
+        "get_settings",
+        lambda: SimpleNamespace(
+            web_base_url="http://localhost:3020",
+            max_server_roadmaps=baseline + 1,
+        ),
+    )
+
+    try:
+        async with _committing_client() as concurrent_client:
+            responses = await asyncio.gather(
+                concurrent_client.post(
+                    "/api/roadmaps",
+                    json={
+                        "name": roadmap_names[0],
+                        "owner_display_name": "Owner",
+                        "phases": [],
+                    },
+                ),
+                concurrent_client.post(
+                    "/api/roadmaps",
+                    json={
+                        "name": roadmap_names[1],
+                        "owner_display_name": "Owner",
+                        "phases": [],
+                    },
+                ),
+            )
+
+        assert sorted(response.status_code for response in responses) == [201, 503]
+        rejected = next(response for response in responses if response.status_code == 503)
+        assert rejected.json()["detail"] == "Server roadmap capacity is temporarily unavailable"
+
+        created_ids = [
+            response.json()["id"] for response in responses if response.status_code == 201
+        ]
+        assert len(created_ids) == 1
+
+        async with _test_session_factory() as db:
+            final_count = int(await db.scalar(select(func.count(Roadmap.id))) or 0)
+        assert final_count == baseline + 1
+    finally:
+        await _delete_committed_roadmaps(roadmap_names)
+
+
 async def test_share_link_active_session_cap_prevents_participant_row_amplification(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
@@ -74,6 +183,73 @@ async def test_share_link_active_session_cap_prevents_participant_row_amplificat
     assert first.status_code == 200, first.text
     assert second.status_code == 429, second.text
     assert second.json()["detail"] == "Active session limit reached for this invite"
+
+
+async def test_share_link_active_session_cap_is_exact_under_concurrent_joins(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    roadmap_name = "Concurrent join capacity"
+    router_limiter = MemoryRateLimiter()
+    join_limiter = MemoryRateLimiter()
+    monkeypatch.setattr(roadmaps_router, "rate_limiter", router_limiter)
+    monkeypatch.setattr(roadmap_join_service, "rate_limiter", join_limiter)
+
+    try:
+        async with _committing_client() as concurrent_client:
+            created = await concurrent_client.post(
+                "/api/roadmaps",
+                json={
+                    "name": roadmap_name,
+                    "owner_display_name": "Owner",
+                    "phases": [],
+                },
+            )
+            assert created.status_code == 201, created.text
+            body = created.json()
+            viewer_link = next(
+                link for link in body["share_links"] if link["role"] == "viewer"
+            )
+            token = viewer_link["url"].split("token=")[-1]
+
+            monkeypatch.setattr(
+                roadmap_join_service,
+                "get_settings",
+                lambda: SimpleNamespace(max_active_sessions_per_share_link=1),
+            )
+            original_join = roadmaps_router.join_roadmap
+            monkeypatch.setattr(
+                roadmaps_router,
+                "join_roadmap",
+                _synchronize_calls(original_join),
+            )
+
+            responses = await asyncio.gather(
+                concurrent_client.post(
+                    "/api/roadmaps/join",
+                    json={"token": token, "display_name": "Concurrent Viewer A"},
+                ),
+                concurrent_client.post(
+                    "/api/roadmaps/join",
+                    json={"token": token, "display_name": "Concurrent Viewer B"},
+                ),
+            )
+
+        assert sorted(response.status_code for response in responses) == [200, 429]
+        rejected = next(response for response in responses if response.status_code == 429)
+        assert rejected.json()["detail"] == "Active session limit reached for this invite"
+
+        async with _test_session_factory() as db:
+            participant_count = int(
+                await db.scalar(
+                    select(func.count(Participant.id)).where(
+                        Participant.share_link_id == viewer_link["id"]
+                    )
+                )
+                or 0
+            )
+        assert participant_count == 1
+    finally:
+        await _delete_committed_roadmaps([roadmap_name])
 
 
 async def test_activity_log_cap_keeps_only_newest_rows(
