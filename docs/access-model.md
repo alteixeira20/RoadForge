@@ -34,10 +34,13 @@ request target. The browser reads the fragment and removes the credential from t
 history entry. Legacy `?token=` invite links remain accepted only for migration compatibility
 and should be rotated after the hardened release is deployed.
 
-The viewer link remains usable as stable read-only sharing/demo access while active, but its
-raw token is reveal-once like owner/editor. Migration `0011` revokes legacy viewer links whose
-raw token had been persisted and drops the old plaintext `public_token` column. An owner must
-rotate the viewer link once after upgrading when a new copyable viewer URL is required.
+A viewer invite grants read-only collaboration access. It is an access credential, not a
+public publishing URL, and its raw token is reveal-once exactly like owner/editor invites.
+While the share-link record remains active, the issued credential can continue authorizing
+future joins, but ordinary share-link listing cannot reconstruct the raw URL. Migration
+`0011` revokes legacy viewer links whose raw token had been persisted and drops the old
+plaintext `public_token` column. An owner must rotate the viewer link after upgrading when a
+new copyable viewer invite is required.
 
 Invite rotation/revocation controls **future joins**. It does not automatically revoke
 participant sessions that already joined through an older link.
