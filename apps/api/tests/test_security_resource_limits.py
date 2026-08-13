@@ -53,11 +53,11 @@ def _synchronize_calls(func, parties: int = 2):
     return wrapped
 
 
-async def _delete_committed_roadmaps(roadmap_ids: list[str]) -> None:
-    if not roadmap_ids:
+async def _delete_committed_roadmaps(roadmap_names: list[str]) -> None:
+    if not roadmap_names:
         return
     async with async_session_factory() as db:
-        await db.execute(delete(Roadmap).where(Roadmap.id.in_(roadmap_ids)))
+        await db.execute(delete(Roadmap).where(Roadmap.name.in_(roadmap_names)))
         await db.commit()
 
 
@@ -94,7 +94,7 @@ async def test_global_server_roadmap_capacity_is_exact_under_concurrent_requests
     async with async_session_factory() as db:
         baseline = int(await db.scalar(select(func.count(Roadmap.id))) or 0)
 
-    created_ids: list[str] = []
+    roadmap_names = ["Concurrent capacity A", "Concurrent capacity B"]
     original_create = roadmaps_router.create_roadmap
     monkeypatch.setattr(
         roadmaps_router,
@@ -117,7 +117,7 @@ async def test_global_server_roadmap_capacity_is_exact_under_concurrent_requests
                 concurrent_client.post(
                     "/api/roadmaps",
                     json={
-                        "name": "Concurrent capacity A",
+                        "name": roadmap_names[0],
                         "owner_display_name": "Owner",
                         "phases": [],
                     },
@@ -125,7 +125,7 @@ async def test_global_server_roadmap_capacity_is_exact_under_concurrent_requests
                 concurrent_client.post(
                     "/api/roadmaps",
                     json={
-                        "name": "Concurrent capacity B",
+                        "name": roadmap_names[1],
                         "owner_display_name": "Owner",
                         "phases": [],
                     },
@@ -145,7 +145,7 @@ async def test_global_server_roadmap_capacity_is_exact_under_concurrent_requests
             final_count = int(await db.scalar(select(func.count(Roadmap.id))) or 0)
         assert final_count == baseline + 1
     finally:
-        await _delete_committed_roadmaps(created_ids)
+        await _delete_committed_roadmaps(roadmap_names)
 
 
 async def test_share_link_active_session_cap_prevents_participant_row_amplification(
@@ -179,7 +179,7 @@ async def test_share_link_active_session_cap_prevents_participant_row_amplificat
 async def test_share_link_active_session_cap_is_exact_under_concurrent_joins(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    roadmap_id: str | None = None
+    roadmap_name = "Concurrent join capacity"
     router_limiter = MemoryRateLimiter()
     join_limiter = MemoryRateLimiter()
     monkeypatch.setattr(roadmaps_router, "rate_limiter", router_limiter)
@@ -190,14 +190,13 @@ async def test_share_link_active_session_cap_is_exact_under_concurrent_joins(
             created = await concurrent_client.post(
                 "/api/roadmaps",
                 json={
-                    "name": "Concurrent join capacity",
+                    "name": roadmap_name,
                     "owner_display_name": "Owner",
                     "phases": [],
                 },
             )
             assert created.status_code == 201, created.text
             body = created.json()
-            roadmap_id = body["id"]
             viewer_link = next(
                 link for link in body["share_links"] if link["role"] == "viewer"
             )
@@ -241,7 +240,7 @@ async def test_share_link_active_session_cap_is_exact_under_concurrent_joins(
             )
         assert participant_count == 1
     finally:
-        await _delete_committed_roadmaps([roadmap_id] if roadmap_id else [])
+        await _delete_committed_roadmaps([roadmap_name])
 
 
 async def test_activity_log_cap_keeps_only_newest_rows(
