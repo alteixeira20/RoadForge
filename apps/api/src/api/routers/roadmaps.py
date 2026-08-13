@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from api.routers import (
     roadmap_activity,
+    roadmap_core,
     roadmap_locks,
     roadmap_realtime,
     roadmap_sharing,
@@ -24,7 +25,7 @@ _MIGRATED_PREFIXES = (
     "/{roadmap_id}/participants",
     "/{roadmap_id}/events",
 )
-_MIGRATED_PATHS = {"/{roadmap_id}/activity"}
+_MIGRATED_PATHS = {"", "/join", "/{roadmap_id}", "/{roadmap_id}/activity"}
 
 
 def _route_is_migrated(route: object) -> bool:
@@ -38,6 +39,7 @@ router = APIRouter()
 router.routes.extend(
     route for route in roadmaps_legacy.router.routes if not _route_is_migrated(route)
 )
+router.routes.extend(roadmap_core.router.routes)
 router.routes.extend(roadmap_versions.router.routes)
 router.routes.extend(roadmap_activity.router.routes)
 router.routes.extend(roadmap_tasks.router.routes)
