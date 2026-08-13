@@ -2,7 +2,9 @@
 
 **Status:** Current reference.
 
-Use this document as the maintained entry point for merge and release readiness. Historical audits are point-in-time evidence and do not override current code, tests, or maintained contract documentation.
+Use this document as the maintained entry point for merge and release readiness.
+Historical audits are point-in-time evidence and do not override current code, tests,
+or maintained contract documentation.
 
 ## Evidence order
 
@@ -14,13 +16,18 @@ Use this document as the maintained entry point for merge and release readiness.
 
 ## Required automated evidence
 
-The exact candidate revision must pass the permanent checks relevant to its changed paths. A successful run from an older revision does not certify a later candidate.
+The exact candidate revision must pass the permanent checks relevant to its changed paths.
+A successful run from an older revision does not certify a later candidate.
 
-The maintained release workflow covers web quality and behavior, API quality and behavior, database migrations, multi-worker behavior, dependency audits, package validation, deployment configuration, and production browser checks.
+The maintained release workflow covers web quality and behavior, API quality and behavior,
+database migrations, multi-worker behavior, dependency audits, package validation,
+deployment configuration, and production browser checks.
 
 ## Required manual evidence
 
-Use [`manual-qa.md`](manual-qa.md) for scenarios that automated checks cannot fully prove. Record what was actually run; use `NOT RUN` when evidence was not collected rather than implying success.
+Use [`manual-qa.md`](manual-qa.md) for scenarios that automated checks cannot fully prove.
+Record what was actually run; use `NOT RUN` when evidence was not collected rather than
+implying success.
 
 ## Review priorities
 
@@ -47,4 +54,6 @@ Use these maintained documents for present behavior:
 - [`security/README.md`](security/README.md)
 - [`performance.md`](performance.md)
 
-[`senior-readiness-audit.md`](senior-readiness-audit.md) is retained as historical review evidence. When it disagrees with current code, tests, or maintained references, the current sources above win.
+[`senior-readiness-audit.md`](senior-readiness-audit.md) is retained as historical review
+evidence. When it disagrees with current code, tests, or maintained references, the current
+sources above win.
