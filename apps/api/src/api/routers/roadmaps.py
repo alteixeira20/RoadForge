@@ -49,5 +49,8 @@ router = APIRouter()
 router.routes.extend(
     route for route in roadmaps_legacy.router.routes if not _route_is_migrated(route)
 )
-router.include_router(roadmap_versions.router)
-router.include_router(roadmap_activity.router)
+# These routers already contain fully configured APIRoute objects. Append them
+# directly so the staged composer preserves their exact route metadata while
+# the legacy route table is being filtered domain by domain.
+router.routes.extend(roadmap_versions.router.routes)
+router.routes.extend(roadmap_activity.router.routes)
