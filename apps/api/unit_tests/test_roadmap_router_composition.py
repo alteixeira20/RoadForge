@@ -6,11 +6,66 @@ from api.routers import (
     roadmap_locks,
     roadmap_realtime,
     roadmap_sharing,
+    roadmap_tags,
     roadmap_tasks,
     roadmap_versions,
     roadmaps,
-    roadmaps_legacy,
 )
+
+_CORE_ROUTES = {
+    ("POST", ""),
+    ("POST", "/join"),
+    ("GET", "/{roadmap_id}"),
+    ("PUT", "/{roadmap_id}"),
+    ("DELETE", "/{roadmap_id}"),
+}
+_VERSION_ROUTES = {
+    ("GET", "/{roadmap_id}/versions"),
+    ("POST", "/{roadmap_id}/versions/checkpoint"),
+    ("GET", "/{roadmap_id}/versions/{version_id}"),
+    ("POST", "/{roadmap_id}/versions/{version_id}/restore"),
+}
+_ACTIVITY_ROUTES = {("GET", "/{roadmap_id}/activity")}
+_TASK_ROUTES = {
+    ("PATCH", "/{roadmap_id}/tasks/{task_id}"),
+    ("PATCH", "/{roadmap_id}/tasks/{task_id}/done"),
+    ("PATCH", "/{roadmap_id}/tasks/{task_id}/claim"),
+    ("DELETE", "/{roadmap_id}/tasks/{task_id}/claim"),
+}
+_LOCK_ROUTES = {
+    ("POST", "/{roadmap_id}/locks"),
+    ("GET", "/{roadmap_id}/locks"),
+    ("DELETE", "/{roadmap_id}/locks/{target}"),
+}
+_SHARING_ROUTES = {
+    ("GET", "/{roadmap_id}/share-links"),
+    ("POST", "/{roadmap_id}/share-links/{role}/rotate"),
+    ("DELETE", "/{roadmap_id}/share-links/{role}"),
+    ("GET", "/{roadmap_id}/participants"),
+    ("POST", "/{roadmap_id}/participants/{participant_id}/revoke"),
+}
+_REALTIME_ROUTES = {
+    ("POST", "/{roadmap_id}/events/ticket"),
+    ("GET", "/{roadmap_id}/events"),
+}
+_TAG_ROUTES = {
+    ("GET", "/{roadmap_id}/tags"),
+    ("POST", "/{roadmap_id}/tags"),
+    ("PUT", "/{roadmap_id}/tags/{tag_id}"),
+    ("DELETE", "/{roadmap_id}/tags/{tag_id}"),
+}
+
+_DOMAIN_CONTRACTS = (
+    (roadmap_core.router, _CORE_ROUTES),
+    (roadmap_versions.router, _VERSION_ROUTES),
+    (roadmap_activity.router, _ACTIVITY_ROUTES),
+    (roadmap_tasks.router, _TASK_ROUTES),
+    (roadmap_locks.router, _LOCK_ROUTES),
+    (roadmap_sharing.router, _SHARING_ROUTES),
+    (roadmap_realtime.router, _REALTIME_ROUTES),
+    (roadmap_tags.router, _TAG_ROUTES),
+)
+_EXPECTED_PUBLIC_ROUTES = set().union(*(expected for _, expected in _DOMAIN_CONTRACTS))
 
 
 def _route_keys(router) -> list[tuple[str, str]]:
@@ -22,8 +77,9 @@ def _route_keys(router) -> list[tuple[str, str]]:
     )
 
 
-def test_composed_router_preserves_legacy_method_path_contract() -> None:
-    assert _route_keys(roadmaps.router) == _route_keys(roadmaps_legacy.router)
+def test_composed_router_matches_public_method_path_contract() -> None:
+    assert set(_route_keys(roadmaps.router)) == _EXPECTED_PUBLIC_ROUTES
+    assert len(_EXPECTED_PUBLIC_ROUTES) == 28
 
 
 def test_composed_router_has_no_duplicate_method_path_routes() -> None:
@@ -31,55 +87,6 @@ def test_composed_router_has_no_duplicate_method_path_routes() -> None:
     assert len(keys) == len(set(keys))
 
 
-def test_extracted_domains_own_the_migrated_routes() -> None:
-    core_keys = set(_route_keys(roadmap_core.router))
-    version_keys = set(_route_keys(roadmap_versions.router))
-    activity_keys = set(_route_keys(roadmap_activity.router))
-    task_keys = set(_route_keys(roadmap_tasks.router))
-    lock_keys = set(_route_keys(roadmap_locks.router))
-    sharing_keys = set(_route_keys(roadmap_sharing.router))
-    realtime_keys = set(_route_keys(roadmap_realtime.router))
-    composed_keys = set(_route_keys(roadmaps.router))
-
-    expected_core_keys = {
-        ("POST", ""),
-        ("POST", "/join"),
-        ("GET", "/{roadmap_id}"),
-        ("PUT", "/{roadmap_id}"),
-        ("DELETE", "/{roadmap_id}"),
-    }
-    assert core_keys == expected_core_keys
-
-    assert version_keys
-    assert activity_keys
-    assert task_keys
-    assert lock_keys
-    assert sharing_keys
-    assert realtime_keys
-
-    for domain_keys in (
-        core_keys,
-        version_keys,
-        activity_keys,
-        task_keys,
-        lock_keys,
-        sharing_keys,
-        realtime_keys,
-    ):
-        assert domain_keys <= composed_keys
-
-    assert all(path.startswith("/{roadmap_id}/versions") for _, path in version_keys)
-    assert {path for _, path in activity_keys} == {"/{roadmap_id}/activity"}
-    assert all(path.startswith("/{roadmap_id}/tasks") for _, path in task_keys)
-    assert all(path.startswith("/{roadmap_id}/locks") for _, path in lock_keys)
-    assert all(
-        path.startswith("/{roadmap_id}/share-links")
-        or path.startswith("/{roadmap_id}/participants")
-        for _, path in sharing_keys
-    )
-    assert all(path.startswith("/{roadmap_id}/events") for _, path in realtime_keys)
-
-    assert len(task_keys) == 4
-    assert len(lock_keys) == 3
-    assert len(sharing_keys) == 5
-    assert len(realtime_keys) == 2
+def test_each_domain_router_owns_exactly_its_contract() -> None:
+    for domain_router, expected in _DOMAIN_CONTRACTS:
+        assert set(_route_keys(domain_router)) == expected
