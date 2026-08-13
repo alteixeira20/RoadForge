@@ -36,7 +36,7 @@ from sqlalchemy.pool import NullPool  # noqa: E402
 
 import api.routers.roadmap_activity as _roadmap_activity_module  # noqa: E402
 import api.routers.roadmap_versions as _roadmap_versions_module  # noqa: E402
-import api.routers.roadmaps_legacy as _roadmaps_module  # noqa: E402
+import api.routers.roadmaps as _roadmaps_module  # noqa: E402
 from api.database import get_db  # noqa: E402
 from api.main import create_app  # noqa: E402
 from api.models.base import Base  # noqa: E402
