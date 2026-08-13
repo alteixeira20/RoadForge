@@ -6,7 +6,7 @@ import pytest
 from httpx import AsyncClient
 
 import api.routers.roadmap_locks as locks_router
-import api.routers.roadmaps_legacy as legacy_router
+import api.routers.roadmap_realtime as realtime_router
 from api.services.lock_service import MemoryLockService
 from api.services.ticket_service import MemoryTicketService
 from tests.conftest import create_roadmap
@@ -49,7 +49,7 @@ async def _join(client: AsyncClient, token: str, display_name: str) -> dict:
 @pytest.fixture(autouse=True)
 def _fresh_realtime_stores(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(locks_router, "lock_service", MemoryLockService())
-    monkeypatch.setattr(legacy_router, "ticket_service", MemoryTicketService())
+    monkeypatch.setattr(realtime_router, "ticket_service", MemoryTicketService())
 
 
 async def test_owner_acquires_refreshes_lists_and_releases_lock(client: AsyncClient):
