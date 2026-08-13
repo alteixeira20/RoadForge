@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-import api.routers.roadmaps as roadmaps_router
+import api.routers.roadmaps_legacy as roadmaps_router
 from api.services.lock_service import MemoryLockService
 from api.services.ticket_service import MemoryTicketService
 from tests.conftest import create_roadmap
