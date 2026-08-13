@@ -9,6 +9,7 @@ from fastapi import APIRouter
 from api.routers import (
     roadmap_activity,
     roadmap_locks,
+    roadmap_sharing,
     roadmap_tasks,
     roadmap_versions,
     roadmaps_legacy,
@@ -18,6 +19,8 @@ _MIGRATED_PREFIXES = (
     "/{roadmap_id}/versions",
     "/{roadmap_id}/tasks",
     "/{roadmap_id}/locks",
+    "/{roadmap_id}/share-links",
+    "/{roadmap_id}/participants",
 )
 _MIGRATED_PATHS = {"/{roadmap_id}/activity"}
 
@@ -37,3 +40,4 @@ router.routes.extend(roadmap_versions.router.routes)
 router.routes.extend(roadmap_activity.router.routes)
 router.routes.extend(roadmap_tasks.router.routes)
 router.routes.extend(roadmap_locks.router.routes)
+router.routes.extend(roadmap_sharing.router.routes)

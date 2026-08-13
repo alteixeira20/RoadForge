@@ -3,6 +3,7 @@ from fastapi.routing import APIRoute
 from api.routers import (
     roadmap_activity,
     roadmap_locks,
+    roadmap_sharing,
     roadmap_tasks,
     roadmap_versions,
     roadmaps,
@@ -33,20 +34,34 @@ def test_extracted_domains_own_the_migrated_routes() -> None:
     activity_keys = set(_route_keys(roadmap_activity.router))
     task_keys = set(_route_keys(roadmap_tasks.router))
     lock_keys = set(_route_keys(roadmap_locks.router))
+    sharing_keys = set(_route_keys(roadmap_sharing.router))
     composed_keys = set(_route_keys(roadmaps.router))
 
     assert version_keys
     assert activity_keys
     assert task_keys
     assert lock_keys
+    assert sharing_keys
 
-    for domain_keys in (version_keys, activity_keys, task_keys, lock_keys):
+    for domain_keys in (
+        version_keys,
+        activity_keys,
+        task_keys,
+        lock_keys,
+        sharing_keys,
+    ):
         assert domain_keys <= composed_keys
 
     assert all(path.startswith("/{roadmap_id}/versions") for _, path in version_keys)
     assert {path for _, path in activity_keys} == {"/{roadmap_id}/activity"}
     assert all(path.startswith("/{roadmap_id}/tasks") for _, path in task_keys)
     assert all(path.startswith("/{roadmap_id}/locks") for _, path in lock_keys)
+    assert all(
+        path.startswith("/{roadmap_id}/share-links")
+        or path.startswith("/{roadmap_id}/participants")
+        for _, path in sharing_keys
+    )
 
     assert len(task_keys) == 4
     assert len(lock_keys) == 3
+    assert len(sharing_keys) == 5
