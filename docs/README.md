@@ -45,6 +45,7 @@ or team-scale SLA.
 | Understand shared access | [`access-model.md`](access-model.md) |
 | Understand the browser application | [`frontend-foundation.md`](frontend-foundation.md) |
 | Understand API semantics | [`backend-api.md`](backend-api.md) |
+| Review merge/release readiness | [`release-readiness.md`](release-readiness.md) |
 | Run release QA | [`manual-qa.md`](manual-qa.md) |
 | Self-host | [`self-hosting.md`](self-hosting.md) and [`../deploy/self-hosted/README.md`](../deploy/self-hosted/README.md) |
 | Review public-deployment security | [`public-deployment-security.md`](public-deployment-security.md) |
@@ -61,6 +62,7 @@ their contract changes:
 - `access-model.md`
 - `backend-api.md`
 - `frontend-foundation.md`
+- `release-readiness.md`
 - `task-complexity.md`
 - `performance.md`
 - `architecture/overview.md`
@@ -109,6 +111,10 @@ still applies.
 
 When an old plan becomes misleading, prefer a short durable record that points to the
 current contract rather than continuously editing old implementation steps to look current.
+
+`senior-readiness-audit.md` is historical point-in-time review evidence. It is preserved for
+context and may contain superseded findings. Use `release-readiness.md` for the maintained
+current merge/release contract.
 
 ## RoadForge's own roadmap
 
