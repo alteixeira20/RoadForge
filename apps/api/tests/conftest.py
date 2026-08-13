@@ -36,6 +36,7 @@ from sqlalchemy.pool import NullPool  # noqa: E402
 
 import api.routers.roadmap_activity as _roadmap_activity_module  # noqa: E402
 import api.routers.roadmap_locks as _roadmap_locks_module  # noqa: E402
+import api.routers.roadmap_sharing as _roadmap_sharing_module  # noqa: E402
 import api.routers.roadmap_tasks as _roadmap_tasks_module  # noqa: E402
 import api.routers.roadmap_versions as _roadmap_versions_module  # noqa: E402
 import api.routers.roadmaps_legacy as _roadmaps_module  # noqa: E402
@@ -96,6 +97,7 @@ async def client(db_session: AsyncSession):
     _roadmaps_module.rate_limiter = limiter
     _roadmap_activity_module.rate_limiter = limiter
     _roadmap_locks_module.rate_limiter = limiter
+    _roadmap_sharing_module.rate_limiter = limiter
     _roadmap_tasks_module.rate_limiter = limiter
     _roadmap_versions_module.rate_limiter = limiter
 
