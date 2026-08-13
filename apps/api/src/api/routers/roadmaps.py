@@ -6,9 +6,19 @@ remaining route domains move into focused modules.
 
 from fastapi import APIRouter
 
-from api.routers import roadmap_activity, roadmap_versions, roadmaps_legacy
+from api.routers import (
+    roadmap_activity,
+    roadmap_locks,
+    roadmap_tasks,
+    roadmap_versions,
+    roadmaps_legacy,
+)
 
-_MIGRATED_PREFIXES = ("/{roadmap_id}/versions",)
+_MIGRATED_PREFIXES = (
+    "/{roadmap_id}/versions",
+    "/{roadmap_id}/tasks",
+    "/{roadmap_id}/locks",
+)
 _MIGRATED_PATHS = {"/{roadmap_id}/activity"}
 
 
@@ -25,3 +35,5 @@ router.routes.extend(
 )
 router.routes.extend(roadmap_versions.router.routes)
 router.routes.extend(roadmap_activity.router.routes)
+router.routes.extend(roadmap_tasks.router.routes)
+router.routes.extend(roadmap_locks.router.routes)
