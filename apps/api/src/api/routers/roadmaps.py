@@ -4,38 +4,12 @@
 remaining route domains move into focused modules.
 """
 
-import sys
-from types import ModuleType
-
 from fastapi import APIRouter
 
 from api.routers import roadmap_activity, roadmap_versions, roadmaps_legacy
 
 _MIGRATED_PREFIXES = ("/{roadmap_id}/versions",)
 _MIGRATED_PATHS = {"/{roadmap_id}/activity"}
-_FORWARD_TO_LEGACY = {
-    "create_roadmap",
-    "get_settings",
-    "join_roadmap",
-    "lock_service",
-    "rate_limiter",
-    "ticket_service",
-}
-
-
-class _RoadmapRouterModule(ModuleType):
-    """Keep historical test monkeypatch seams working during decomposition."""
-
-    def __setattr__(self, name: str, value: object) -> None:
-        super().__setattr__(name, value)
-        if name in _FORWARD_TO_LEGACY:
-            setattr(roadmaps_legacy, name, value)
-
-
-_module = sys.modules[__name__]
-_module.__class__ = _RoadmapRouterModule
-for _name in _FORWARD_TO_LEGACY:
-    setattr(_module, _name, getattr(roadmaps_legacy, _name))
 
 
 def _route_is_migrated(route: object) -> bool:
@@ -49,8 +23,5 @@ router = APIRouter()
 router.routes.extend(
     route for route in roadmaps_legacy.router.routes if not _route_is_migrated(route)
 )
-# These routers already contain fully configured APIRoute objects. Append them
-# directly so the staged composer preserves their exact route metadata while
-# the legacy route table is being filtered domain by domain.
 router.routes.extend(roadmap_versions.router.routes)
 router.routes.extend(roadmap_activity.router.routes)

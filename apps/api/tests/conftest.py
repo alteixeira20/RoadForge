@@ -24,7 +24,7 @@ from api.config import get_settings  # noqa: E402
 
 get_settings.cache_clear()
 
-# ── 3. Now safe to import api modules ─────────────────────────────────────────
+# ── 3. Now safe to import api modules ────────────────────────────────────────
 import pytest_asyncio  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy.ext.asyncio import (  # noqa: E402
@@ -36,7 +36,7 @@ from sqlalchemy.pool import NullPool  # noqa: E402
 
 import api.routers.roadmap_activity as _roadmap_activity_module  # noqa: E402
 import api.routers.roadmap_versions as _roadmap_versions_module  # noqa: E402
-import api.routers.roadmaps as _roadmaps_module  # noqa: E402
+import api.routers.roadmaps_legacy as _roadmaps_module  # noqa: E402
 from api.database import get_db  # noqa: E402
 from api.main import create_app  # noqa: E402
 from api.models.base import Base  # noqa: E402
