@@ -76,9 +76,9 @@ RoadForge has no login system or verified personal identities.
 - **Editor** — edit roadmap content and claim tasks.
 - **Viewer** — read roadmap content and activity.
 
-Owner/editor invite links and participant sessions are bearer credentials. Share them
-privately. Viewer links are intentionally read-only. Display names are collaboration
-labels, not verified identities.
+Owner/editor/viewer invite links and participant sessions are bearer credentials. Share them
+privately. Viewer invites grant read-only collaboration access; they are not public publishing
+links. Display names are collaboration labels, not verified identities.
 
 Task assignees and server participants are separate concepts: an assignee is roadmap
 data; a participant is a joined server session.
@@ -250,7 +250,7 @@ run does not certify a later commit.
 
 See:
 
-- [Senior readiness audit](docs/senior-readiness-audit.md)
+- [Release readiness](docs/release-readiness.md)
 - [Manual QA](docs/manual-qa.md)
 - [Performance baseline](docs/performance.md)
 - [Security documentation](docs/security/README.md)

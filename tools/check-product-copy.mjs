@@ -30,6 +30,9 @@ const currentSurfaces = [
   'apps/web/src/components/home/HowItWorksSection.tsx',
   'apps/web/src/components/layout/SiteFooter.tsx',
   'apps/web/src/components/roadmap/Workspace.tsx',
+  'apps/web/src/components/share/ShareModal.tsx',
+  'apps/web/src/components/share/ShareRoleSection.tsx',
+  'apps/web/src/services/roadmap-sharing.service.ts',
 ]
 
 const stalePatterns = [
@@ -53,6 +56,8 @@ const requiredStatements = new Map([
     'Export important roadmaps as JSON',
     'especially for a larger team',
     'controlled clone and self-host it',
+    'Owner/editor/viewer invite links and participant sessions are bearer credentials',
+    'Release readiness',
   ]],
   ['CONTRIBUTING.md', [
     'source-available',
@@ -81,6 +86,11 @@ const requiredStatements = new Map([
     'fork the repository',
     'no SLA',
     'load-test',
+  ]],
+  ['docs/access-model.md', [
+    'A viewer invite grants read-only collaboration access',
+    'not a public publishing URL',
+    'cannot be recovered from ordinary share-link listing',
   ]],
   ['docs/self-hosting.md', [
     'demo/convenience deployment',
@@ -112,6 +122,8 @@ const requiredStatements = new Map([
     'larger team',
     'fork the repository',
     'no hosted',
+    'Owner, editor, and viewer links are access credentials',
+    'not public publishing links',
   ]],
   ['apps/web/src/components/home/HeroSection.tsx', [
     'Export JSON backups',
@@ -131,6 +143,31 @@ const requiredStatements = new Map([
     'Hosted demo',
     'Non-commercial source available',
     'Fork/self-host for team use',
+  ]],
+  ['apps/web/src/components/share/ShareModal.tsx', [
+    'Read-only viewer invite',
+    'not public publishing links',
+  ]],
+  ['apps/web/src/components/share/ShareRoleSection.tsx', [
+    'not a public publishing URL',
+  ]],
+  ['apps/web/src/services/roadmap-sharing.service.ts', [
+    'Treat this invite as a private credential',
+  ]],
+])
+
+const forbiddenStatements = new Map([
+  ['apps/web/src/components/share/ShareModal.tsx', [
+    'Public viewer link',
+    'public read-only link',
+    'Generate public link',
+    'public viewer URL',
+  ]],
+  ['apps/web/src/components/share/ShareRoleSection.tsx', [
+    'README, portfolio, or live demo',
+  ]],
+  ['apps/web/src/services/roadmap-sharing.service.ts', [
+    'Good for public demos',
   ]],
 ])
 
@@ -152,6 +189,12 @@ for (const relativePath of currentSurfaces) {
   for (const statement of requiredStatements.get(relativePath) ?? []) {
     if (!normalizedContent.includes(statement)) {
       failures.push(`${relativePath}: missing required copy: ${JSON.stringify(statement)}`)
+    }
+  }
+
+  for (const statement of forbiddenStatements.get(relativePath) ?? []) {
+    if (normalizedContent.includes(statement)) {
+      failures.push(`${relativePath}: forbidden current copy: ${JSON.stringify(statement)}`)
     }
   }
 }

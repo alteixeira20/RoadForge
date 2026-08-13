@@ -46,7 +46,7 @@ interface ApiJoinResponse {
 const _LINK_META: Record<string, { icon: string; desc: string; recommended?: true }> = {
   owner:  { icon: 'shield', desc: 'Full control — manage settings, links, and members.' },
   editor: { icon: 'users',  desc: 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.', recommended: true },
-  viewer: { icon: 'circle', desc: 'Anyone with this link can view this roadmap read-only. Good for public demos.' },
+  viewer: { icon: 'circle', desc: 'Read-only roadmap access. Treat this invite as a private credential.' },
 }
 
 function toShareLink(r: ApiShareLinkResponse): ShareLink {

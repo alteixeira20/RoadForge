@@ -110,11 +110,12 @@ gate during join.
 As Owner:
 
 - [ ] Open sharing controls.
-- [ ] Owner/editor raw invite URLs are not recoverable from ordinary listing after the one-time response.
+- [ ] Owner/editor/viewer raw invite URLs are not recoverable from ordinary listing after their one-time issue/rotation response.
 - [ ] Rotate the editor link and save the new URL temporarily for QA.
-- [ ] Obtain/refresh the viewer link and save it temporarily for QA.
-- [ ] Re-open sharing and verify owner/editor raw URLs are hidden.
-- [ ] Verify the active viewer link remains intentionally copyable when the current product contract says it should be.
+- [ ] Rotate the viewer link and save the new URL temporarily for QA.
+- [ ] Re-open sharing and verify owner/editor/viewer raw URLs are hidden while their active/inactive states remain visible.
+- [ ] Rotate the viewer link again and verify the new viewer invite URL is revealed only in that response.
+- [ ] Confirm the UI describes the viewer link as a read-only access credential rather than a public publishing URL.
 
 Destroy temporary QA invite URLs after the run. Never paste them into an issue or CI log.
 

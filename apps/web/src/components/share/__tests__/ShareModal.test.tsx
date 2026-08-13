@@ -54,4 +54,16 @@ describe('ShareModal local fallback', () => {
     expect(dialog.querySelector('code')).toBeNull()
     expect(dialog.textContent).not.toContain('roadforge.anvilary.tools/r/')
   })
+
+  it('describes viewer access as a read-only invite rather than public publishing', () => {
+    act(() => {
+      root.render(<ShareModal open={true} onClose={vi.fn()} onToast={vi.fn()} />)
+    })
+
+    const dialog = document.body.querySelector('[role="dialog"]') as HTMLElement
+    expect(dialog.textContent).toContain('Read-only viewer invite')
+    expect(dialog.textContent).toContain('not public publishing links')
+    expect(dialog.textContent).not.toContain('Public viewer link')
+    expect(dialog.textContent).not.toContain('Generate public link')
+  })
 })
