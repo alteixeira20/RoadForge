@@ -14,7 +14,7 @@ const SHARE_ROLES: ShareRole[] = ['owner', 'editor', 'viewer']
 const ROLE_COPY: Record<ShareRole, { title: string; peopleTitle: string }> = {
   owner: { title: 'Private owner link', peopleTitle: 'Owner' },
   editor: { title: 'Private editor invite', peopleTitle: 'Editor' },
-  viewer: { title: 'Public viewer link', peopleTitle: 'Viewer' },
+  viewer: { title: 'Read-only viewer invite', peopleTitle: 'Viewer' },
 }
 
 interface ShareModalProps {
@@ -125,7 +125,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
         ? 'Full control — manage settings, links, and members.'
         : targetRole === 'editor'
         ? 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.'
-        : 'Can read everything but not change anything. Good for stakeholders.',
+        : 'Read-only roadmap access. Treat this invite as a private credential.',
       url: '',
       isActive: false,
     }
@@ -147,25 +147,15 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
   }
 
   const linkHint = (targetRole: ShareRole, link: ShareLink) => {
-    if (link.isActive && targetRole === 'viewer') {
-      return 'Reset link to make this public viewer URL copyable'
-    }
-    if (link.isActive) return 'Rotate to reveal a new link'
-    if (targetRole === 'viewer') return 'No active public viewer link'
-    return 'No active invite link'
+    if (link.isActive) return `Rotate to reveal a new ${targetRole} invite`
+    return `No active ${targetRole} invite`
   }
 
-  const rotateLabel = (targetRole: ShareRole) => (
-    targetRole === 'viewer' ? 'Reset link' : 'Rotate link'
-  )
+  const rotateLabel = (_targetRole: ShareRole) => 'Rotate link'
 
-  const revokeLabel = (targetRole: ShareRole) => (
-    targetRole === 'viewer' ? 'Disable link' : 'Revoke link'
-  )
+  const revokeLabel = (_targetRole: ShareRole) => 'Revoke link'
 
-  const generateLabel = (targetRole: ShareRole) => (
-    targetRole === 'viewer' ? 'Generate public link' : 'Generate link'
-  )
+  const generateLabel = (_targetRole: ShareRole) => 'Generate invite'
 
   const replaceRoleLink = (updated: ShareLink) => {
     setLinks((prev) => prev.map((l) => (l.role === updated.role ? updated : l)))
@@ -245,14 +235,14 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       width={580}
       icon={{ name: 'share', plain: true }}
       title="Share this roadmap"
-      sub="Use private invite links for collaborators and a public read-only link for demos."
+      sub="Create role-scoped invite links for collaborators. Viewer invites are read-only access credentials."
       footer={
         <>
           <span className="note">
             <Icon name="lock" size={12} />{' '}
             {isPasswordEnabled
               ? 'This roadmap is password protected — people need both the invite link and the password to join.'
-              : 'The public viewer link is read-only. Owner and editor links are private credentials.'}
+              : 'Owner, editor, and viewer invite links are access credentials. Viewer invites are read-only, not public publishing links.'}
           </span>
           <span className="spacer" />
           <button className="btn" onClick={onClose}>
