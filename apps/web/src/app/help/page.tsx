@@ -97,8 +97,9 @@ export default function HelpPage() {
             <p>
               <strong>Save</strong> creates a server-backed copy and enables
               sharing. On `roadforge.anvilary.tools`, that server is the public
-              hosted demo. Owner and editor links are credentials, so send them
-              privately. Viewer links are read-only.
+              hosted demo. Owner, editor, and viewer links are access credentials,
+              so share them privately. Viewer invites grant read-only collaboration;
+              they are not public publishing links.
             </p>
             <ul>
               <li><strong>Owner:</strong> edit, restore versions, manage links and participants, and override claims.</li>
