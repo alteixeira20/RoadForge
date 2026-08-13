@@ -7,7 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import api.routers.roadmaps as roadmaps_router
+import api.routers.roadmaps_legacy as roadmaps_router
 import api.services.activity_log_limit as activity_log_limit
 import api.services.roadmap_join_service as roadmap_join_service
 import api.services.version_service as version_service
