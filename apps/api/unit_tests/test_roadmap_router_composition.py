@@ -2,6 +2,7 @@ from fastapi.routing import APIRoute
 
 from api.routers import (
     roadmap_activity,
+    roadmap_core,
     roadmap_locks,
     roadmap_realtime,
     roadmap_sharing,
@@ -31,6 +32,7 @@ def test_composed_router_has_no_duplicate_method_path_routes() -> None:
 
 
 def test_extracted_domains_own_the_migrated_routes() -> None:
+    core_keys = set(_route_keys(roadmap_core.router))
     version_keys = set(_route_keys(roadmap_versions.router))
     activity_keys = set(_route_keys(roadmap_activity.router))
     task_keys = set(_route_keys(roadmap_tasks.router))
@@ -38,6 +40,15 @@ def test_extracted_domains_own_the_migrated_routes() -> None:
     sharing_keys = set(_route_keys(roadmap_sharing.router))
     realtime_keys = set(_route_keys(roadmap_realtime.router))
     composed_keys = set(_route_keys(roadmaps.router))
+
+    expected_core_keys = {
+        ("POST", ""),
+        ("POST", "/join"),
+        ("GET", "/{roadmap_id}"),
+        ("PUT", "/{roadmap_id}"),
+        ("DELETE", "/{roadmap_id}"),
+    }
+    assert core_keys == expected_core_keys
 
     assert version_keys
     assert activity_keys
@@ -47,6 +58,7 @@ def test_extracted_domains_own_the_migrated_routes() -> None:
     assert realtime_keys
 
     for domain_keys in (
+        core_keys,
         version_keys,
         activity_keys,
         task_keys,
