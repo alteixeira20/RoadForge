@@ -150,7 +150,7 @@ export function useSaveFlow({
   const handleConfirmSave = async (password?: string) => {
     closeSave()
     if (partialWriteInFlight) {
-      showToast('Wait for the task update to finish before saving.')
+      showToast('Wait for the focused roadmap update to finish before saving.')
       return
     }
     const changeSummary = buildChangeSummary(pendingActivityChanges, serverRoadmapId)

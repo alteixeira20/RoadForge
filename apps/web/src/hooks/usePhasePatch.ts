@@ -17,6 +17,7 @@ import {
   type PatchPhaseFields,
 } from '@/services/roadmap-structure.service'
 import type { Phase } from '@/types/roadmap'
+import type { PhaseServerReadiness } from './usePhaseStructureSync'
 
 interface UsePhasePatchParams {
   phases: Phase[]
@@ -26,11 +27,18 @@ interface UsePhasePatchParams {
   sessionToken: string | null
   updatedAt: string | null
   setUpdatedAt: (updatedAt: string) => void
+  showToast?: (message: string) => void
+  onSuccess?: () => void
+  onSessionExpired?: () => void
+  beginFocusedWrite?: () => void
+  endFocusedWrite?: () => void
+  waitForPhaseReady?: (phaseId: string) => Promise<PhaseServerReadiness>
 }
 
 interface PatchSyncedPhaseParams {
   phaseId: string
   updates: PatchPhaseFields
+  onAggregateFallback?: () => void
 }
 
 interface UsePhasePatchResult {
@@ -38,6 +46,8 @@ interface UsePhasePatchResult {
 }
 
 const PHASE_PATCH_FIELDS: PhasePatchField[] = ['name', 'color', 'colorMode']
+const NOOP = () => {}
+const PHASE_READY = async (): Promise<PhaseServerReadiness> => 'ready'
 
 function changedPhaseFields(
   phase: Phase,
@@ -78,6 +88,12 @@ export function usePhasePatch({
   sessionToken,
   updatedAt,
   setUpdatedAt,
+  showToast = NOOP,
+  onSuccess = NOOP,
+  onSessionExpired = NOOP,
+  beginFocusedWrite = NOOP,
+  endFocusedWrite = NOOP,
+  waitForPhaseReady = PHASE_READY,
 }: UsePhasePatchParams): UsePhasePatchResult {
   const phasesRef = useRef(phases)
   const latestRevisionRef = useRef<string | null>(updatedAt)
@@ -114,6 +130,7 @@ export function usePhasePatch({
   const patchSyncedPhase = useCallback(({
     phaseId,
     updates,
+    onAggregateFallback = NOOP,
   }: PatchSyncedPhaseParams): boolean => {
     if (!serverRoadmapId || !sessionToken) return false
     const phase = phasesRef.current.find((candidate) => candidate.id === phaseId)
@@ -131,12 +148,23 @@ export function usePhasePatch({
       generations.set(field, generation)
     }
 
+    beginFocusedWrite()
     const optimistic = applyLocalPhaseFields(phasesRef.current, phaseId, updates, fields)
     phasesRef.current = optimistic
     setPhases(optimistic)
 
     enqueue(`phase:${phaseId}`, async () => {
       try {
+        const readiness = await waitForPhaseReady(phaseId)
+        if (readiness === 'absent') return
+        if (readiness === 'uncertain') {
+          if (phasesRef.current.some((candidate) => candidate.id === phaseId)) {
+            setSaved(false)
+            onAggregateFallback()
+          }
+          return
+        }
+
         const result = await patchPhaseFields(
           serverRoadmapId,
           phaseId,
@@ -164,6 +192,7 @@ export function usePhasePatch({
           setPhases(merged)
         }
         advanceUpdatedAt(result.updatedAt)
+        onSuccess()
       } catch (error) {
         const { kind } = classifyRoadmapSaveError(error)
         if (
@@ -187,24 +216,44 @@ export function usePhasePatch({
             phasesRef.current = rolledBack
             setPhases(rolledBack)
           }
+          if (kind === 'session-expired' || kind === 'unauthorized') {
+            onSessionExpired()
+          } else if (kind === 'forbidden') {
+            showToast('You do not have permission to update this phase.')
+          } else {
+            showToast('The server rejected this phase update.')
+          }
           return
         }
 
-        // Connection/server failures are ambiguous: keep the optimistic field
-        // as a local draft instead of undoing a write that may have committed.
-        // Aggregate recovery remains enabled until the offline-operation queue
-        // replaces this fallback in a later collaboration slice.
+        // A connection/server failure is ambiguous: the focused write may
+        // already have committed. Preserve the optimistic field as a local
+        // draft and let aggregate recovery use its normal revision guard.
         setSaved(false)
+        onAggregateFallback()
+        showToast(
+          kind === 'connection'
+            ? 'Could not confirm the phase update with the server. It remains a local draft.'
+            : 'Could not confirm the phase update. It remains a local draft.',
+        )
+      } finally {
+        endFocusedWrite()
       }
     })
     return true
   }, [
     advanceUpdatedAt,
+    beginFocusedWrite,
+    endFocusedWrite,
     enqueue,
+    onSessionExpired,
+    onSuccess,
     serverRoadmapId,
     sessionToken,
     setPhases,
     setSaved,
+    showToast,
+    waitForPhaseReady,
   ])
 
   return { patchSyncedPhase }
