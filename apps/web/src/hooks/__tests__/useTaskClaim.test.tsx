@@ -4,6 +4,10 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useTaskClaim, type UseTaskClaimResult } from '@/hooks/useTaskClaim'
+import {
+  registerPendingTaskCreation,
+  resetPendingTaskCreationsForTests,
+} from '@/lib/task-creation-readiness'
 import { patchTaskClaim, deleteTaskClaim } from '@/services/roadmap-crud.service'
 import { ApiError } from '@/services/roadmap-http'
 import type { Phase, Roadmap, Task } from '@/types/roadmap'
@@ -41,6 +45,12 @@ const phase: Phase = {
   status: 'active',
   progress: 0,
   tasks: [task],
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((next) => { resolve = next })
+  return { promise, resolve }
 }
 
 function Harness({
@@ -96,6 +106,7 @@ describe('useTaskClaim', () => {
   beforeEach(() => {
     mockedPatchTaskClaim.mockReset()
     mockedDeleteTaskClaim.mockReset()
+    resetPendingTaskCreationsForTests()
     showToast = vi.fn()
     context = {
       displayName: 'Alex',
@@ -117,6 +128,7 @@ describe('useTaskClaim', () => {
   })
 
   afterEach(() => {
+    resetPendingTaskCreationsForTests()
     act(() => root.unmount())
     container.remove()
   })
@@ -152,6 +164,59 @@ describe('useTaskClaim', () => {
     expect(mockedPatchTaskClaim).not.toHaveBeenCalled()
     expect(context.setPhases).toHaveBeenCalled()
     expect(context.setSaved).toHaveBeenCalledWith(false)
+  })
+
+  it('waits for a pending shared task create before claiming', async () => {
+    const readiness = deferred<'ready' | 'absent' | 'uncertain'>()
+    registerPendingTaskCreation(task.id, readiness.promise)
+    const serverRoadmap = roadmapResponse('Alex')
+    mockedPatchTaskClaim.mockResolvedValue(serverRoadmap)
+
+    let claim!: Promise<void>
+    await act(async () => {
+      claim = result.handleClaim()
+      await Promise.resolve()
+    })
+    expect(mockedPatchTaskClaim).not.toHaveBeenCalled()
+
+    await act(async () => {
+      readiness.resolve('ready')
+      await claim
+    })
+
+    expect(mockedPatchTaskClaim).toHaveBeenCalledWith({
+      roadmapId: 'rm_1',
+      taskId: 'tk_1',
+      sessionToken: 'session-token',
+      override: false,
+    })
+    expect(context.setPhases).toHaveBeenCalledWith(serverRoadmap.phases)
+  })
+
+  it('does not issue a claim when pending task creation is uncertain', async () => {
+    registerPendingTaskCreation(task.id, Promise.resolve('uncertain'))
+
+    await act(async () => {
+      await result.handleClaim()
+    })
+
+    expect(mockedPatchTaskClaim).not.toHaveBeenCalled()
+    expect(context.setPhases).not.toHaveBeenCalled()
+    expect(showToast).toHaveBeenCalledWith(
+      'This task has not been confirmed on the server yet. Reconnect or save it before changing its claim.',
+    )
+  })
+
+  it('cancels a claim when pending task creation is definitively absent', async () => {
+    registerPendingTaskCreation(task.id, Promise.resolve('absent'))
+
+    await act(async () => {
+      await result.handleClaim()
+    })
+
+    expect(mockedPatchTaskClaim).not.toHaveBeenCalled()
+    expect(context.setPhases).not.toHaveBeenCalled()
+    expect(showToast).not.toHaveBeenCalled()
   })
 
   it('passes an explicit owner override and applies the server roadmap', async () => {
