@@ -138,8 +138,10 @@ export function realtimeRefreshRequestFromEvent(
   if (payload.phase_operation) {
     if (payload.phase_operation === 'created' || payload.phase_operation === 'deleted') {
       if (payload.phase_id) request.phaseStructureIds.add(payload.phase_id)
+      request.phaseOrder = true
+    } else if (payload.phase_operation === 'reordered') {
+      request.phaseOrder = true
     }
-    if (payload.phase_operation === 'reordered') request.phaseOrder = true
   } else if (payload.phase_id) {
     const fields = getRealtimePhaseFields(payload.changed_fields)
     if (fields.length > 0) request.phaseFields.set(payload.phase_id, new Set(fields))
