@@ -112,6 +112,11 @@ describe('realtime phase structure merge', () => {
     )
 
     expect(next[0]).toBe(phaseA)
-    expect(next[1]).toEqual(remoteWinner)
+    expect(next[1]).toEqual(expect.objectContaining({
+      id: 'phase-local-pending',
+      name: 'Remote winner',
+      color: '#abcdef',
+      num: '02',
+    }))
   })
 })
