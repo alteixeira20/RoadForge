@@ -39,17 +39,16 @@ async def test_create_top_level_task_is_server_normalized_and_keeps_projection_p
     assert response.status_code == 201, response.text
     phases = response.json()["phases"]
     created = _task(phases, "tk_new")
-    assert created == {
-        "id": "tk_new",
-        "title": "New shared task",
-        "done": False,
-        "next": False,
-        "est": "",
-        "complexity": "medium",
-        "tags": [],
-        "deps": [],
-        "desc": "",
-    }
+    assert created["id"] == "tk_new"
+    assert created["title"] == "New shared task"
+    assert created["done"] is False
+    assert created["next"] is False
+    assert created["est"] == ""
+    assert created["complexity"] == "medium"
+    assert created["tags"] == []
+    assert created["deps"] == []
+    assert created["desc"] == ""
+    assert created.get("parentId") is None
     roadmap = await db_session.get(Roadmap, body["id"])
     assert roadmap is not None
     parity = await validate_projection_parity(db_session, roadmap)
@@ -101,6 +100,33 @@ async def test_create_rejects_duplicate_task_id_and_missing_parent_without_mutat
     assert loaded.status_code == 200
     assert loaded.json()["phases"] == body["phases"]
     assert loaded.json()["updated_at"] == body["updated_at"]
+
+
+async def test_task_structure_payloads_reject_extra_duplicate_and_empty_shape(
+    client: AsyncClient,
+):
+    body = await create_with_phases(client)
+    headers = auth(body["owner_session_token"])
+
+    create_extra = await client.post(
+        f"/api/roadmaps/{body['id']}/phases/ph_a/tasks",
+        headers=headers,
+        json={"id": "tk_new", "title": "New", "done": True},
+    )
+    duplicate_order = await client.put(
+        f"/api/roadmaps/{body['id']}/phases/ph_a/tasks/order",
+        headers=headers,
+        json={"task_ids": ["tk_a1", "tk_a1"]},
+    )
+    empty_order = await client.put(
+        f"/api/roadmaps/{body['id']}/phases/ph_a/tasks/order",
+        headers=headers,
+        json={"task_ids": []},
+    )
+
+    assert create_extra.status_code == 422
+    assert duplicate_order.status_code == 422
+    assert empty_order.status_code == 422
 
 
 async def test_delete_task_removes_descendants_and_external_dependency_edges(
