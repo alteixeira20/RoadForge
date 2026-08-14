@@ -2,9 +2,9 @@
 Shared helpers for roadmap service modules.
 
 This module provides low-level helpers used by multiple roadmap service
-modules: snapshot parsing, response construction, conflict detection,
-and DB fetch helpers.  It must NOT import from other roadmap service
-sub-modules to avoid circular imports.
+modules: snapshot parsing, response construction, and conflict detection.
+It must NOT import from other roadmap service sub-modules to avoid circular
+imports.
 """
 
 import logging
@@ -12,8 +12,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from fastapi import HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
@@ -368,33 +366,6 @@ async def _phases_for_read(db: AsyncSession, roadmap: Roadmap) -> list[PhaseDTO]
             exc_info=True,
         )
         return _phases_from_snapshot(roadmap.snapshot_json)
-
-
-# ---------------------------------------------------------------------------
-# DB fetch helpers
-# ---------------------------------------------------------------------------
-
-
-async def _fetch_active_roadmap(db: AsyncSession, roadmap_id: str) -> Roadmap:
-    result = await db.execute(
-        select(Roadmap).where(Roadmap.id == roadmap_id, Roadmap.deleted_at.is_(None))
-    )
-    roadmap = result.scalar_one_or_none()
-    if roadmap is None:
-        raise HTTPException(status_code=404, detail="Roadmap not found")
-    return roadmap
-
-
-async def _fetch_active_roadmap_for_update(db: AsyncSession, roadmap_id: str) -> Roadmap:
-    result = await db.execute(
-        select(Roadmap)
-        .where(Roadmap.id == roadmap_id, Roadmap.deleted_at.is_(None))
-        .with_for_update()
-    )
-    roadmap = result.scalar_one_or_none()
-    if roadmap is None:
-        raise HTTPException(status_code=404, detail="Roadmap not found")
-    return roadmap
 
 
 # ---------------------------------------------------------------------------
