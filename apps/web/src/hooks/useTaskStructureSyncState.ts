@@ -10,10 +10,11 @@ import { storage } from '@/lib/storage'
 import {
   registerPendingTaskCreation,
   unregisterPendingTaskCreation,
+  type TaskServerReadiness,
 } from '@/lib/task-creation-readiness'
 import type { Phase } from '@/types/roadmap'
 
-export type TaskServerReadiness = 'ready' | 'absent' | 'uncertain'
+export type { TaskServerReadiness } from '@/lib/task-creation-readiness'
 
 export interface TaskCreationBarrier {
   promise: Promise<TaskServerReadiness>
