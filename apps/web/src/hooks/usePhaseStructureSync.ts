@@ -209,11 +209,12 @@ export function usePhaseStructureSync({
   ): boolean => {
     if (!serverRoadmapId || !sessionToken) return false
 
+    const beforePhases = phasesRef.current
     const readinessPromise = waitForPhaseReady(phaseId)
     structureGenerationRef.current += 1
     const generation = structureGenerationRef.current
     beginFocusedWrite()
-    setCurrentPhases(removePhaseAndDanglingDependencies(phasesRef.current, phaseId))
+    setCurrentPhases(removePhaseAndDanglingDependencies(beforePhases, phaseId))
 
     void (async () => {
       try {
@@ -244,23 +245,28 @@ export function usePhaseStructureSync({
         onSuccess()
       } catch (error) {
         const { kind, status } = classifyRoadmapSaveError(error)
-        if (kind === 'session-expired' || kind === 'unauthorized') {
-          onSessionExpired()
-          return
-        }
-        if (kind === 'forbidden') {
-          showToast('You do not have permission to delete phases.')
-          return
-        }
-        if (kind === 'validation') {
-          showToast('The server rejected this phase deletion.')
-          return
-        }
         if (status === 404) {
           // The desired entity state is already true. Realtime will carry the
           // collaborator revision; do not resurrect a phase solely because
           // another participant won the delete race.
           onSuccess()
+          return
+        }
+        const definitive = kind === 'validation'
+          || kind === 'forbidden'
+          || kind === 'unauthorized'
+          || kind === 'session-expired'
+        if (definitive) {
+          if (structureGenerationRef.current === generation) {
+            setCurrentPhases(beforePhases)
+          }
+          if (kind === 'session-expired' || kind === 'unauthorized') {
+            onSessionExpired()
+          } else if (kind === 'forbidden') {
+            showToast('You do not have permission to delete phases.')
+          } else {
+            showToast('The server rejected this phase deletion.')
+          }
           return
         }
         handleAmbiguousFailure(
@@ -278,7 +284,6 @@ export function usePhaseStructureSync({
   }, [
     advanceUpdatedAt,
     beginFocusedWrite,
-    deleteServerPhase,
     endFocusedWrite,
     handleAmbiguousFailure,
     onSessionExpired,
@@ -297,11 +302,12 @@ export function usePhaseStructureSync({
   ): boolean => {
     if (!serverRoadmapId || !sessionToken) return false
 
+    const beforePhases = phasesRef.current
     const readinessPromises = phaseIds.map((phaseId) => waitForPhaseReady(phaseId))
     structureGenerationRef.current += 1
     const generation = structureGenerationRef.current
     beginFocusedWrite()
-    setCurrentPhases(orderPhasesByPreference(phasesRef.current, phaseIds))
+    setCurrentPhases(orderPhasesByPreference(beforePhases, phaseIds))
 
     void (async () => {
       try {
@@ -332,16 +338,21 @@ export function usePhaseStructureSync({
         onSuccess()
       } catch (error) {
         const { kind } = classifyRoadmapSaveError(error)
-        if (kind === 'session-expired' || kind === 'unauthorized') {
-          onSessionExpired()
-          return
-        }
-        if (kind === 'forbidden') {
-          showToast('You do not have permission to reorder phases.')
-          return
-        }
-        if (kind === 'validation') {
-          showToast('The server rejected this phase order.')
+        const definitive = kind === 'validation'
+          || kind === 'forbidden'
+          || kind === 'unauthorized'
+          || kind === 'session-expired'
+        if (definitive) {
+          if (structureGenerationRef.current === generation) {
+            setCurrentPhases(beforePhases)
+          }
+          if (kind === 'session-expired' || kind === 'unauthorized') {
+            onSessionExpired()
+          } else if (kind === 'forbidden') {
+            showToast('You do not have permission to reorder phases.')
+          } else {
+            showToast('The server rejected this phase order.')
+          }
           return
         }
         handleAmbiguousFailure(
