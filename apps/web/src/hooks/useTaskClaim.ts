@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react'
 import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
 import { addTaskAssignee } from '@/lib/task-assignment'
+import { waitForPendingTaskCreation } from '@/lib/task-creation-readiness'
 import { patchTaskClaim, deleteTaskClaim } from '@/services/roadmap-crud.service'
 import { isAuthError, isApiConnectionError, isConflictError } from '@/services/roadmap-http'
 import type { Task } from '@/types/roadmap'
@@ -75,12 +76,22 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
     setSaved(false)
   }, [phases, setPhases, setSaved, task.id, participantId])
 
+  const waitForServerTask = useCallback(async (): Promise<boolean> => {
+    const readiness = await waitForPendingTaskCreation(task.id)
+    if (readiness === 'ready') return true
+    if (readiness === 'uncertain') {
+      showToast('This task has not been confirmed on the server yet. Reconnect or save it before changing its claim.')
+    }
+    return false
+  }, [showToast, task.id])
+
   const handleClaim = useCallback(async (override = false) => {
     if (isClaiming || task.done || role === 'viewer') return
 
     if (serverRoadmapId && sessionToken) {
       setIsClaiming(true)
       try {
+        if (!await waitForServerTask()) return
         const roadmap = await patchTaskClaim({
           roadmapId: serverRoadmapId,
           taskId: task.id,
@@ -105,7 +116,7 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
     } else {
       applyLocalClaim(displayName)
     }
-  }, [isClaiming, task.done, task.id, task.claimedBy, role, serverRoadmapId, sessionToken, applyLocalClaim, displayName, setPhases, setUpdatedAt, showToast])
+  }, [isClaiming, task.done, task.id, task.claimedBy, role, serverRoadmapId, sessionToken, applyLocalClaim, displayName, setPhases, setUpdatedAt, showToast, waitForServerTask])
 
   const handleUnclaim = useCallback(async (override = false) => {
     if (isClaiming || role === 'viewer') return
@@ -113,6 +124,7 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
     if (serverRoadmapId && sessionToken) {
       setIsClaiming(true)
       try {
+        if (!await waitForServerTask()) return
         const roadmap = await deleteTaskClaim({
           roadmapId: serverRoadmapId,
           taskId: task.id,
@@ -137,7 +149,7 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
     } else {
       applyLocalClaim(null)
     }
-  }, [isClaiming, task.id, task.claimedBy, role, serverRoadmapId, sessionToken, applyLocalClaim, setPhases, setUpdatedAt, showToast])
+  }, [isClaiming, task.id, task.claimedBy, role, serverRoadmapId, sessionToken, applyLocalClaim, setPhases, setUpdatedAt, showToast, waitForServerTask])
 
   return {
     isClaiming,
