@@ -2,7 +2,12 @@
 
 import { useCallback, useRef } from 'react'
 import { classifyRoadmapSaveError } from '@/lib/roadmap-sync-errors'
-import { isNewerServerRevision } from '@/lib/server-revision'
+import {
+  isNewerServerRevision,
+  isOlderServerRevision,
+  newestServerRevision,
+} from '@/lib/server-revision'
+import { storage } from '@/lib/storage'
 import {
   mergeReturnedPhaseFields,
   type PhasePatchField,
@@ -59,6 +64,12 @@ function applyLocalPhaseFields(
   })
 }
 
+function cachedServerRevision(): string | null {
+  const activeId = storage.getActiveRoadmapId()
+  if (!activeId) return null
+  return storage.getRoadmapCache(activeId)?.updatedAt ?? null
+}
+
 export function usePhasePatch({
   phases,
   setPhases,
@@ -71,6 +82,7 @@ export function usePhasePatch({
   const phasesRef = useRef(phases)
   const latestRevisionRef = useRef<string | null>(updatedAt)
   const queuesRef = useRef<Map<string, Promise<void>>>(new Map())
+  const fieldGenerationsRef = useRef<Map<string, number>>(new Map())
 
   phasesRef.current = phases
   if (updatedAt && isNewerServerRevision(updatedAt, latestRevisionRef.current)) {
@@ -78,6 +90,11 @@ export function usePhasePatch({
   }
 
   const advanceUpdatedAt = useCallback((candidate: string) => {
+    const current = newestServerRevision(
+      latestRevisionRef.current,
+      cachedServerRevision(),
+    )
+    if (isOlderServerRevision(candidate, current)) return
     if (!isNewerServerRevision(candidate, latestRevisionRef.current)) return
     latestRevisionRef.current = candidate
     setUpdatedAt(candidate)
@@ -105,8 +122,13 @@ export function usePhasePatch({
     if (fields.length === 0) return true
 
     const previousValues: PatchPhaseFields = {}
+    const generations = new Map<PhasePatchField, number>()
     for (const field of fields) {
       Object.assign(previousValues, { [field]: phase[field] })
+      const key = `${phaseId}:${field}`
+      const generation = (fieldGenerationsRef.current.get(key) ?? 0) + 1
+      fieldGenerationsRef.current.set(key, generation)
+      generations.set(field, generation)
     }
 
     const optimistic = applyLocalPhaseFields(phasesRef.current, phaseId, updates, fields)
@@ -121,10 +143,16 @@ export function usePhasePatch({
           updates,
           sessionToken,
         )
-        const currentPhase = phasesRef.current.find((candidate) => candidate.id === phaseId)
-        const fieldsStillOwnedByThisWrite = fields.filter((field) => (
-          currentPhase?.[field] === updates[field]
-        ))
+        const currentRevision = newestServerRevision(
+          latestRevisionRef.current,
+          cachedServerRevision(),
+        )
+        const responseIsStale = isOlderServerRevision(result.updatedAt, currentRevision)
+        const fieldsStillOwnedByThisWrite = responseIsStale
+          ? []
+          : fields.filter((field) => (
+              fieldGenerationsRef.current.get(`${phaseId}:${field}`) === generations.get(field)
+            ))
         if (fieldsStillOwnedByThisWrite.length > 0) {
           const merged = mergeReturnedPhaseFields(
             phasesRef.current,
@@ -147,6 +175,7 @@ export function usePhasePatch({
           const currentPhase = phasesRef.current.find((candidate) => candidate.id === phaseId)
           const rollbackFields = fields.filter((field) => (
             currentPhase?.[field] === updates[field]
+            && fieldGenerationsRef.current.get(`${phaseId}:${field}`) === generations.get(field)
           ))
           if (rollbackFields.length > 0) {
             const rolledBack = applyLocalPhaseFields(

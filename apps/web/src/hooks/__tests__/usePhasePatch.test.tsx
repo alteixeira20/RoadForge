@@ -4,6 +4,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePhasePatch } from '@/hooks/usePhasePatch'
+import { storage } from '@/lib/storage'
 import { patchPhaseFields } from '@/services/roadmap-structure.service'
 import { ApiConnectionError } from '@/services/roadmap-http'
 import type { Phase } from '@/types/roadmap'
@@ -81,6 +82,8 @@ describe('usePhasePatch', () => {
   let root: Root
 
   beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
     mockedPatchPhaseFields.mockReset()
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -263,6 +266,70 @@ describe('usePhasePatch', () => {
 
     expect(setUpdatedAt).toHaveBeenCalledTimes(1)
     expect(setUpdatedAt).toHaveBeenCalledWith('2026-08-14T09:04:00Z')
+  })
+
+  it('does not let an older phase response overwrite a newer realtime revision before rerender', async () => {
+    const response = deferred<{ phases: Phase[]; updatedAt: string }>()
+    mockedPatchPhaseFields.mockImplementationOnce(() => response.promise)
+
+    let currentPhases = initialPhases
+    const setPhases = vi.fn((next: Phase[]) => {
+      currentPhases = next
+    })
+    const setUpdatedAt = vi.fn()
+    let result!: HookResult
+
+    storage.setActiveRoadmapId('rm_1')
+    storage.setRoadmapCache('rm_1', {
+      roadmapName: 'Roadmap',
+      phases: initialPhases,
+      saved: true,
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-08-14T09:00:00Z',
+      isPasswordEnabled: false,
+    })
+
+    act(() => {
+      root.render(
+        <Harness
+          phases={currentPhases}
+          setPhases={setPhases}
+          setSaved={vi.fn()}
+          updatedAt="2026-08-14T09:00:00Z"
+          setUpdatedAt={setUpdatedAt}
+          onResult={(next) => { result = next }}
+        />,
+      )
+    })
+
+    act(() => {
+      result.patchSyncedPhase({ phaseId: 'phase-1', updates: { name: 'Local pending' } })
+    })
+    await act(async () => Promise.resolve())
+
+    // Simulate realtime committing a newer server revision before React has
+    // rerendered this hook with that revision.
+    currentPhases = [{ ...initialPhases[0], name: 'Remote newer' }, initialPhases[1]]
+    storage.setRoadmapCache('rm_1', {
+      roadmapName: 'Roadmap',
+      phases: currentPhases,
+      saved: true,
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-08-14T09:05:00Z',
+      isPasswordEnabled: false,
+    })
+
+    await act(async () => {
+      response.resolve({
+        phases: [{ ...initialPhases[0], name: 'Older local response' }, initialPhases[1]],
+        updatedAt: '2026-08-14T09:04:00Z',
+      })
+      await response.promise
+      await Promise.resolve()
+    })
+
+    expect(currentPhases[0].name).toBe('Remote newer')
+    expect(setUpdatedAt).not.toHaveBeenCalled()
   })
 
   it('keeps an optimistic phase field as a local draft when the connection result is ambiguous', async () => {

@@ -2,7 +2,12 @@
 
 import { useCallback, useRef } from 'react'
 import { classifyRoadmapSaveError } from '@/lib/roadmap-sync-errors'
-import { isNewerServerRevision } from '@/lib/server-revision'
+import {
+  isNewerServerRevision,
+  isOlderServerRevision,
+  newestServerRevision,
+} from '@/lib/server-revision'
+import { storage } from '@/lib/storage'
 import { patchRoadmapName } from '@/services/roadmap-structure.service'
 
 const ROADMAP_NAME_MAX = 120
@@ -25,6 +30,12 @@ interface UseRoadmapRenameResult {
   handleRenameRoadmap: (name: string) => boolean
 }
 
+function cachedServerRevision(): string | null {
+  const activeId = storage.getActiveRoadmapId()
+  if (!activeId) return null
+  return storage.getRoadmapCache(activeId)?.updatedAt ?? null
+}
+
 export function useRoadmapRename({
   roadmapName,
   setRoadmapName,
@@ -41,6 +52,7 @@ export function useRoadmapRename({
   const roadmapNameRef = useRef(roadmapName)
   const latestRevisionRef = useRef<string | null>(updatedAt)
   const queueRef = useRef<Promise<void>>(Promise.resolve())
+  const renameGenerationRef = useRef(0)
 
   roadmapNameRef.current = roadmapName
   if (updatedAt && isNewerServerRevision(updatedAt, latestRevisionRef.current)) {
@@ -48,6 +60,11 @@ export function useRoadmapRename({
   }
 
   const advanceUpdatedAt = useCallback((candidate: string) => {
+    const current = newestServerRevision(
+      latestRevisionRef.current,
+      cachedServerRevision(),
+    )
+    if (isOlderServerRevision(candidate, current)) return
     if (!isNewerServerRevision(candidate, latestRevisionRef.current)) return
     latestRevisionRef.current = candidate
     setUpdatedAt(candidate)
@@ -78,14 +95,22 @@ export function useRoadmapRename({
     }
 
     showMessage(null)
+    const generation = renameGenerationRef.current + 1
+    renameGenerationRef.current = generation
     roadmapNameRef.current = nextName
     setRoadmapName(nextName)
 
     const work = async () => {
       try {
         const result = await patchRoadmapName(serverRoadmapId, nextName, sessionToken)
-        // A queued older response must never overwrite a newer optimistic rename.
-        if (roadmapNameRef.current === nextName) {
+        const currentRevision = newestServerRevision(
+          latestRevisionRef.current,
+          cachedServerRevision(),
+        )
+        const responseIsStale = isOlderServerRevision(result.updatedAt, currentRevision)
+        // A newer local rename owns the title even if this response is newer;
+        // a newer realtime revision owns it even if this request resolves late.
+        if (!responseIsStale && renameGenerationRef.current === generation) {
           roadmapNameRef.current = result.roadmapName
           setRoadmapName(result.roadmapName)
         }
@@ -94,6 +119,7 @@ export function useRoadmapRename({
       } catch (error) {
         const { kind, validationMessage } = classifyRoadmapSaveError(error)
         const rollback = () => {
+          if (renameGenerationRef.current !== generation) return
           if (roadmapNameRef.current !== nextName) return
           roadmapNameRef.current = previousName
           setRoadmapName(previousName)

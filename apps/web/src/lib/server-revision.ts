@@ -12,3 +12,21 @@ export function isNewerServerRevision(
 
   return candidate > current
 }
+
+export function newestServerRevision(
+  ...revisions: Array<string | null | undefined>
+): string | null {
+  let newest: string | null = null
+  for (const revision of revisions) {
+    if (!revision) continue
+    if (isNewerServerRevision(revision, newest)) newest = revision
+  }
+  return newest
+}
+
+export function isOlderServerRevision(
+  candidate: string,
+  current: string | null,
+): boolean {
+  return current !== null && isNewerServerRevision(current, candidate)
+}

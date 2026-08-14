@@ -10,12 +10,23 @@ work that can be safely rebased.
 - Task-scoped remote operations (`task.updated`, completion/reopen, claim/unclaim) are
   fetched from the authoritative server snapshot and rebased immediately onto the
   current browser draft. Unrelated local roadmap, phase, and task edits remain intact.
-- A successful task-scoped rebase advances the local `updated_at` base to the server
-  revision so a later aggregate save does not intentionally manufacture a stale-write
-  conflict for an operation that has already been incorporated.
-- If a task-scoped update cannot be reconciled because the task is missing from either
-  the local or authoritative snapshot, RoadForge preserves the local draft and does
-  not advance its server revision.
+- Shared phase name/color/color-mode and roadmap-name operations are also field-scoped.
+  Their realtime metadata identifies the affected phase/roadmap fields, so another
+  collaborator's accepted change is rebased directly onto the current browser draft
+  even when unrelated aggregate work is dirty.
+- Scoped realtime rebases apply all requested fields from one authoritative GET as one
+  local-cache update. The browser advances its `updated_at` base only after every
+  requested task/phase/roadmap scope was proven reconcilable. If any requested entity
+  is missing, RoadForge preserves the local draft and its previous server revision.
+- Realtime refresh bursts are single-flight. At most one authoritative GET is active
+  per connection attempt plus one coalesced follow-up containing every queued task ID,
+  phase field, and roadmap field. A queued full refresh does not erase those scopes:
+  if the draft becomes dirty before the follow-up resolves, full replacement is
+  skipped while safely scoped changes can still rebase.
+- Focused-write responses and realtime responses use monotonic revision ordering. A
+  late phase/rename response cannot overwrite a newer collaborator revision, including
+  the narrow window before React rerenders the focused write hook with that revision.
+  Newer local optimistic operations retain ownership over older queued local responses.
 - Shared phase name/color/color-mode edits are optimistic, field-scoped server writes.
   The server serializes them against the latest roadmap row rather than requiring a
   whole-roadmap revision token. The originating browser applies the authoritative
@@ -24,14 +35,10 @@ work that can be safely rebased.
   optimistically, rename requests are serialized, late responses cannot overwrite a
   newer title or regress the server revision, and local-only roadmaps retain their
   existing browser-local rename path.
-- Remote phase-field and roadmap-rename events refresh authoritative state immediately
-  when the receiving browser has no unrelated aggregate draft. Scoped rebasing of
-  those structure events onto a dirty aggregate draft remains part of the next
-  collaboration boundary.
 - Full-roadmap remote updates that race an unsaved aggregate edit still preserve the
-  browser draft for now. This is a transitional boundary: the server-authoritative
-  collaboration work will replace the legacy whole-roadmap local/server choice rather
-  than silently discarding either side.
+  browser draft for now. This is a transitional boundary for mutation surfaces that do
+  not yet expose safe focused semantics; RoadForge must not silently replace the draft
+  merely because a non-scoped event arrived.
 - Task completion and task-field/claim partial writes update immediately from the
   returned roadmap aggregate, then realtime events reconcile other clients.
 - Task creation/deletion/reordering/dependency changes, phase creation/deletion/reorder,
