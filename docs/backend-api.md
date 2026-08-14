@@ -105,23 +105,38 @@ estimate, complexity, assignees, tags, and supported links. `very_high` complexi
 valid for top-level tasks with at least two direct subtasks; the domain validator rejects
 writes that would violate that structure.
 
-## Focused phase-field writes
+## Focused phase structure and field writes
 
 | Method | Path | Access | Purpose |
 | --- | --- | --- | --- |
+| `POST` | `/api/roadmaps/{id}/phases` | owner/editor | append one empty phase using a client-proposed stable ID |
+| `PUT` | `/api/roadmaps/{id}/phases/order` | owner/editor | apply a preferred order for caller-known phase IDs |
 | `PATCH` | `/api/roadmaps/{id}/phases/{phase_id}` | owner/editor | update phase `name`, `color`, and/or `colorMode` |
+| `DELETE` | `/api/roadmaps/{id}/phases/{phase_id}` | owner/editor | delete one phase and renumber survivors |
 
-Phase-field PATCH is collaboration-oriented and operates on the latest row-locked canonical
-snapshot. It intentionally does **not** require `last_updated_at`: only the fields explicitly
-present in the request are changed, so an unrelated collaborator write cannot create a
-whole-roadmap stale-revision conflict. Concurrent field operations on the same roadmap are
-serialized by the database row lock; operations touching different fields both survive.
-For the same field, the latest accepted server operation becomes the visible authoritative
-value.
+All phase structure operations run against the latest row-locked canonical snapshot and do
+not carry unrelated client roadmap state. Create accepts only the proposed phase identity and
+presentation fields; the server assigns sequence/status/progress and creates the phase with
+an empty task list. Duplicate IDs are rejected. Delete removes the identified latest server
+phase and renumbers the remaining phases.
 
-A no-op phase PATCH returns the current roadmap without advancing `updated_at` or writing
-activity. Real changes keep the derivative projection in parity and publish a
-`roadmap.updated` event with `phase_id`, action, and changed fields.
+Reorder deliberately uses **merge semantics** rather than an exact phase-set precondition.
+`phase_ids` is the caller's preferred order for IDs it currently knows. IDs already deleted
+by another collaborator are ignored. Phases created concurrently and therefore absent from
+the caller list remain present, preserving their current relative order after caller-known
+phases. The final server order is renumbered. This lets create/delete/reorder compose under
+the roadmap row lock without manufacturing a whole-roadmap revision conflict.
+
+Phase-field PATCH is collaboration-oriented and also operates on the latest row-locked
+canonical snapshot. It intentionally does **not** require `last_updated_at`: only fields
+explicitly present in the request are changed. Concurrent operations are serialized by the
+row lock; operations touching unrelated intent both survive. For the same field/entity, the
+latest accepted server operation becomes authoritative.
+
+No-op phase field/reorder writes return current state without advancing `updated_at` or
+writing activity. Real structural changes keep the derivative projection in parity and emit
+`roadmap.updated` metadata identifying the phase operation so browser collaboration can
+reconcile it without treating the whole roadmap as a conflicting snapshot.
 
 ## Tag registry
 
@@ -201,6 +216,9 @@ operation:
   server revision (`updated_at`) compare-and-swap contract;
 - roadmap rename and phase-field writes mutate only declared fields on the latest
   row-locked server state and therefore do not require a whole-roadmap revision token;
+- phase create/delete mutate one identified entity against the latest row-locked phase list;
+- phase reorder merges caller-known order with current server-only phases instead of
+  requiring an exact phase set or whole-roadmap revision token;
 - claim/release operations use their own atomic ownership rules.
 
 For compare-and-swap writes, a stale **or future** revision is not allowed to overwrite
@@ -210,11 +228,11 @@ recovery.
 
 Clients and MCP tools must not turn a conflicting aggregate replacement into a blind
 overwrite. Intent-scoped operations may be safely retried only according to their documented
-field/ownership semantics.
+field/entity/order semantics.
 
 ## Caching and sensitive responses
 
-Sensitive roadmap API responses use `Cache-Control: no-store`, including `PATCH` responses.
+Sensitive roadmap API responses use `Cache-Control: no-store`, including mutation responses.
 The browser-session exchange and event-ticket bootstrap also use `no-store`. SSE streaming
 uses its dedicated no-cache/no-store behavior.
 
@@ -229,7 +247,7 @@ uses its dedicated no-cache/no-store behavior.
 | `401` | missing/invalid/expired/revoked credential |
 | `403` | insufficient role or rejected cookie-authenticated request origin |
 | `404` | active roadmap/entity not found |
-| `409` | optimistic-concurrency or ownership conflict |
+| `409` | optimistic-concurrency, ownership, or stable-ID collision conflict |
 | `413` | request body exceeds the supported payload ceiling |
 | `422` | schema/field validation failure |
 | `429` | rate limit exceeded |

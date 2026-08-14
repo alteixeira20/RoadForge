@@ -5,7 +5,12 @@ single import surface so existing code continues to work unchanged.
 """
 
 from api.schemas.activity import ActivityLogListResponse, ActivityLogResponse
-from api.schemas.collaboration import PatchPhaseRequest, PatchRoadmapNameRequest
+from api.schemas.collaboration import (
+    CreatePhaseRequest,
+    PatchPhaseRequest,
+    PatchRoadmapNameRequest,
+    ReorderPhasesRequest,
+)
 from api.schemas.conflicts import (
     RoadmapConflictMetadata,
     RoadmapConflictResponse,
@@ -60,8 +65,10 @@ __all__ = [
     "ActivityLogListResponse",
     "ActivityLogResponse",
     # Collaboration
+    "CreatePhaseRequest",
     "PatchPhaseRequest",
     "PatchRoadmapNameRequest",
+    "ReorderPhasesRequest",
     # Conflicts
     "RoadmapConflictMetadata",
     "RoadmapConflictResponse",

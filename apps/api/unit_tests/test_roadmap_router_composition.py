@@ -22,7 +22,10 @@ _CORE_ROUTES = {
 }
 _STRUCTURE_ROUTES = {
     ("PATCH", "/{roadmap_id}/name"),
+    ("POST", "/{roadmap_id}/phases"),
+    ("PUT", "/{roadmap_id}/phases/order"),
     ("PATCH", "/{roadmap_id}/phases/{phase_id}"),
+    ("DELETE", "/{roadmap_id}/phases/{phase_id}"),
 }
 _VERSION_ROUTES = {
     ("GET", "/{roadmap_id}/versions"),
@@ -85,7 +88,7 @@ def _route_keys(router) -> list[tuple[str, str]]:
 
 def test_composed_router_matches_public_method_path_contract() -> None:
     assert set(_route_keys(roadmaps.router)) == _EXPECTED_PUBLIC_ROUTES
-    assert len(_EXPECTED_PUBLIC_ROUTES) == 30
+    assert len(_EXPECTED_PUBLIC_ROUTES) == 33
 
 
 def test_composed_router_has_no_duplicate_method_path_routes() -> None:
