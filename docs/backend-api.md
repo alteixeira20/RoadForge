@@ -90,7 +90,7 @@ snapshot. A no-op rename does not advance `updated_at` or create activity. A rea
 creates `roadmap.renamed` activity and publishes `roadmap.updated` with
 `roadmap_fields: ["name"]`.
 
-## Focused task writes
+## Focused task field and claim writes
 
 | Method | Path | Access | Purpose |
 | --- | --- | --- | --- |
@@ -104,6 +104,44 @@ not create a second source of truth. Task planning PATCH supports title, descrip
 estimate, complexity, assignees, tags, and supported links. `very_high` complexity is only
 valid for top-level tasks with at least two direct subtasks; the domain validator rejects
 writes that would violate that structure.
+
+## Focused task structure and dependency writes
+
+| Method | Path | Access | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/api/roadmaps/{id}/phases/{phase_id}/tasks` | owner/editor | create one top-level task or subtask using a client-proposed stable ID |
+| `DELETE` | `/api/roadmaps/{id}/tasks/{task_id}` | owner/editor | delete one task subtree and clean surviving dependency references |
+| `PUT` | `/api/roadmaps/{id}/phases/{phase_id}/tasks/order` | owner/editor | apply preferred order to caller-known top-level tasks in one phase |
+| `PUT` | `/api/roadmaps/{id}/tasks/{parent_id}/subtasks/order` | owner/editor | apply preferred order to caller-known direct subtasks of one parent |
+| `PUT` | `/api/roadmaps/{id}/tasks/{task_id}/dependencies/{dependency_id}` | owner/editor | idempotently link one dependency edge |
+| `DELETE` | `/api/roadmaps/{id}/tasks/{task_id}/dependencies/{dependency_id}` | owner/editor | idempotently unlink one dependency edge |
+
+These operations run against the latest row-locked canonical task graph and intentionally
+do **not** accept a whole-roadmap revision token. Requests carry only the entity/order/edge
+intent they own; unrelated caller task state is never written.
+
+Task creation accepts a stable task ID, title, and optional `parentId`. The server owns all
+other initial fields. Top-level tasks start incomplete with default planning fields. A task
+with `parentId` becomes a subtask in that same phase and receives the existing `subtask`
+tag convention. IDs are unique roadmap-wide. A missing phase/parent returns `404`; a
+stable-ID collision returns `409`.
+
+Task deletion removes the identified task plus all descendants. Any dependency references
+from surviving tasks to deleted task IDs are removed in the same transaction. The resulting
+full roadmap graph is validated before canonical state is committed, so deleting a required
+direct child of a `very_high` task, creating an invalid parent graph, or otherwise violating
+domain invariants is rejected atomically. Create/delete recompute the affected phase progress.
+
+Top-level and subtask reorder use **preferred-known-order merge semantics**. Caller-known
+peers appear in the requested order; peers already deleted concurrently are ignored;
+server-only peers created concurrently remain present afterward in their current relative
+order. Child subtrees move with their root task. Reorder is revision/activity neutral when
+the effective scoped order does not change.
+
+Dependency link/unlink is idempotent. The server validates the complete dependency graph
+before commit, so self-dependencies, missing references, duplicate edges, and dependency
+cycles cannot be introduced. Real dependency changes emit task-scoped realtime metadata,
+while create/delete/reorder emit task-structure metadata for collaboration reconciliation.
 
 ## Focused phase structure and field writes
 
@@ -216,6 +254,10 @@ operation:
   server revision (`updated_at`) compare-and-swap contract;
 - roadmap rename and phase-field writes mutate only declared fields on the latest
   row-locked server state and therefore do not require a whole-roadmap revision token;
+- task create/delete and dependency link/unlink mutate one entity/edge against the latest
+  row-locked task graph;
+- top-level task reorder merges caller-known order within one phase, and subtask reorder
+  does the same within one parent, preserving current server-only peers;
 - phase create/delete mutate one identified entity against the latest row-locked phase list;
 - phase reorder merges caller-known order with current server-only phases instead of
   requiring an exact phase set or whole-roadmap revision token;
@@ -228,7 +270,7 @@ recovery.
 
 Clients and MCP tools must not turn a conflicting aggregate replacement into a blind
 overwrite. Intent-scoped operations may be safely retried only according to their documented
-field/entity/order semantics.
+field/entity/order/edge semantics.
 
 ## Caching and sensitive responses
 
