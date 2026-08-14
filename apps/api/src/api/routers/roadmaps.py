@@ -1,8 +1,4 @@
-"""Compose roadmap routes while domain modules are extracted.
-
-`roadmaps_legacy` is a temporary migration source. It must disappear after the
-remaining route domains move into focused modules.
-"""
+"""Compose focused roadmap route domains into the public router."""
 
 from fastapi import APIRouter
 
@@ -12,37 +8,22 @@ from api.routers import (
     roadmap_locks,
     roadmap_realtime,
     roadmap_sharing,
+    roadmap_tags,
     roadmap_tasks,
     roadmap_versions,
-    roadmaps_legacy,
 )
 
-_MIGRATED_PREFIXES = (
-    "/{roadmap_id}/versions",
-    "/{roadmap_id}/tasks",
-    "/{roadmap_id}/locks",
-    "/{roadmap_id}/share-links",
-    "/{roadmap_id}/participants",
-    "/{roadmap_id}/events",
+_DOMAIN_ROUTERS = (
+    roadmap_core.router,
+    roadmap_versions.router,
+    roadmap_activity.router,
+    roadmap_tasks.router,
+    roadmap_locks.router,
+    roadmap_sharing.router,
+    roadmap_realtime.router,
+    roadmap_tags.router,
 )
-_MIGRATED_PATHS = {"", "/join", "/{roadmap_id}", "/{roadmap_id}/activity"}
-
-
-def _route_is_migrated(route: object) -> bool:
-    path = getattr(route, "path", "")
-    return path in _MIGRATED_PATHS or any(
-        path.startswith(prefix) for prefix in _MIGRATED_PREFIXES
-    )
-
 
 router = APIRouter()
-router.routes.extend(
-    route for route in roadmaps_legacy.router.routes if not _route_is_migrated(route)
-)
-router.routes.extend(roadmap_core.router.routes)
-router.routes.extend(roadmap_versions.router.routes)
-router.routes.extend(roadmap_activity.router.routes)
-router.routes.extend(roadmap_tasks.router.routes)
-router.routes.extend(roadmap_locks.router.routes)
-router.routes.extend(roadmap_sharing.router.routes)
-router.routes.extend(roadmap_realtime.router.routes)
+for _domain_router in _DOMAIN_ROUTERS:
+    router.routes.extend(_domain_router.routes)

@@ -39,9 +39,9 @@ import api.routers.roadmap_core as _roadmap_core_module  # noqa: E402
 import api.routers.roadmap_locks as _roadmap_locks_module  # noqa: E402
 import api.routers.roadmap_realtime as _roadmap_realtime_module  # noqa: E402
 import api.routers.roadmap_sharing as _roadmap_sharing_module  # noqa: E402
+import api.routers.roadmap_tags as _roadmap_tags_module  # noqa: E402
 import api.routers.roadmap_tasks as _roadmap_tasks_module  # noqa: E402
 import api.routers.roadmap_versions as _roadmap_versions_module  # noqa: E402
-import api.routers.roadmaps_legacy as _roadmaps_module  # noqa: E402
 from api.database import get_db  # noqa: E402
 from api.main import create_app  # noqa: E402
 from api.models.base import Base  # noqa: E402
@@ -96,12 +96,12 @@ async def client(db_session: AsyncSession):
     # All roadmap route modules share one fresh limiter per test so endpoint
     # budgets preserve the pre-decomposition behavior without cross-test bleed.
     limiter = MemoryRateLimiter()
-    _roadmaps_module.rate_limiter = limiter
     _roadmap_activity_module.rate_limiter = limiter
     _roadmap_core_module.rate_limiter = limiter
     _roadmap_locks_module.rate_limiter = limiter
     _roadmap_realtime_module.rate_limiter = limiter
     _roadmap_sharing_module.rate_limiter = limiter
+    _roadmap_tags_module.rate_limiter = limiter
     _roadmap_tasks_module.rate_limiter = limiter
     _roadmap_versions_module.rate_limiter = limiter
 
