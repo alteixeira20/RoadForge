@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
+import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
+import { useRoadmapRename } from '@/hooks/useRoadmapRename'
 
 interface WorkspaceHeadProps {
   roadmapName: string
@@ -28,10 +30,55 @@ export function WorkspaceHead({
   onRename,
   isSample = false,
 }: WorkspaceHeadProps) {
+  const {
+    setRoadmapName,
+    setSaved,
+    updatedAt,
+    setUpdatedAt,
+  } = useRoadmapData()
+  const {
+    serverRoadmapId,
+    setServerRoadmapId,
+    sessionToken,
+    setSessionToken,
+    setParticipantId,
+    setRole,
+  } = useRoadmapSession()
   const [isEditing, setIsEditing] = useState(false)
   const [draftName, setDraftName] = useState(roadmapName)
+  const [renameMessage, setRenameMessage] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const skipBlurSaveRef = useRef(false)
+
+  const handleRenameSessionExpired = useCallback(() => {
+    // Clearing serverRoadmapId removes the persisted auth cache for the active
+    // roadmap; clear the in-memory session slice at the same time.
+    setServerRoadmapId(null)
+    setSessionToken(null)
+    setParticipantId(null)
+    setRole(null)
+    setSaved(false)
+  }, [
+    setParticipantId,
+    setRole,
+    setSaved,
+    setServerRoadmapId,
+    setSessionToken,
+  ])
+
+  const { handleRenameRoadmap } = useRoadmapRename({
+    roadmapName,
+    setRoadmapName,
+    setSaved,
+    canRename,
+    serverRoadmapId,
+    sessionToken,
+    updatedAt,
+    setUpdatedAt: (value) => setUpdatedAt(value),
+    onLocalRename: onRename,
+    showMessage: setRenameMessage,
+    onSessionExpired: handleRenameSessionExpired,
+  })
 
   useEffect(() => {
     if (!isEditing) setDraftName(roadmapName)
@@ -52,18 +99,20 @@ export function WorkspaceHead({
   const startEditing = () => {
     if (!canRename) return
     skipBlurSaveRef.current = false
+    setRenameMessage(null)
     setDraftName(roadmapName)
     setIsEditing(true)
   }
 
   const saveEdit = () => {
-    const didSave = onRename?.(draftName) ?? true
+    const didSave = handleRenameRoadmap(draftName)
     if (!didSave) setDraftName(roadmapName)
     setIsEditing(false)
   }
 
   const cancelEdit = () => {
     skipBlurSaveRef.current = true
+    setRenameMessage(null)
     setDraftName(roadmapName)
     setIsEditing(false)
   }
@@ -147,6 +196,11 @@ export function WorkspaceHead({
         {saved && (
           <span>
             <Icon name="users" size={14} /> Collaboration enabled
+          </span>
+        )}
+        {renameMessage && (
+          <span role="status" aria-live="polite" className="ember">
+            {renameMessage}
           </span>
         )}
       </div>
