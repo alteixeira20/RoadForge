@@ -7,7 +7,6 @@ from typing import Any
 
 from fastapi import HTTPException
 
-
 TaskDict = dict[str, Any]
 PhaseDict = dict[str, Any]
 
