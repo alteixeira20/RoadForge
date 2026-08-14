@@ -39,6 +39,7 @@ import { usePhaseMutations } from '@/hooks/usePhaseMutations'
 import { useTaskDonePatch } from '@/hooks/useTaskDonePatch'
 import { useTaskPatch } from '@/hooks/useTaskPatch'
 import { useExpandedTaskState } from '@/hooks/useExpandedTaskState'
+import { useFocusedWriteGate } from '@/hooks/useFocusedWriteGate'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import type { ImportMode } from '@/lib/import-merge/types'
 import { resolveWorkspaceSyncStatus } from '@/lib/sync-status'
@@ -272,7 +273,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     onConflict: (metadata) => taskDoneConflictRef.current(metadata),
     onSessionExpired: () => taskDoneSessionExpiredRef.current(),
   })
-  const partialWriteInFlight = taskDonePatchInFlight || taskPatchInFlight
+  const {
+    focusedWriteInFlight: phaseFocusedWriteInFlight,
+    beginFocusedWrite: beginPhaseFocusedWrite,
+    endFocusedWrite: endPhaseFocusedWrite,
+  } = useFocusedWriteGate()
+  const partialWriteInFlight = (
+    taskDonePatchInFlight || taskPatchInFlight || phaseFocusedWriteInFlight
+  )
 
   const {
     syncStatus,
@@ -413,6 +421,14 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     readOnly,
     serverRoadmapId,
     addPendingActivityChange,
+    showToast,
+    onSuccess: () => {
+      markServerStateHealthy()
+      if (showActivity) refreshActivity()
+    },
+    onSessionExpired: handleSessionExpired,
+    beginFocusedWrite: beginPhaseFocusedWrite,
+    endFocusedWrite: endPhaseFocusedWrite,
   })
 
   const handleAddPhaseRequest = useCallback(() => {
