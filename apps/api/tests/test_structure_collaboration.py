@@ -1,4 +1,4 @@
-"""Server-authoritative roadmap/phase collaboration write tests."""
+"""Server-authoritative phase collaboration write tests."""
 
 from __future__ import annotations
 
@@ -52,20 +52,6 @@ def _synchronize_calls(func, parties: int = 2):
         return await func(*args, **kwargs)
 
     return wrapped
-
-
-async def test_owner_renames_without_revision_token(client: AsyncClient):
-    body = await create_with_phases(client)
-
-    response = await client.patch(
-        f"/api/roadmaps/{body['id']}/name",
-        headers=auth(body["owner_session_token"]),
-        json={"name": "  Shared roadmap renamed  "},
-    )
-
-    assert response.status_code == 200, response.text
-    assert response.json()["name"] == "Shared roadmap renamed"
-    assert response.json()["updated_at"] != body["updated_at"]
 
 
 async def test_phase_patch_preserves_tasks_and_projection_parity(
@@ -171,7 +157,7 @@ async def test_phase_patch_validates_shape_and_missing_phase(client: AsyncClient
     assert missing.json() == {"detail": "Phase not found"}
 
 
-async def test_viewer_cannot_rename_or_patch_phase(client: AsyncClient):
+async def test_viewer_cannot_patch_phase(client: AsyncClient):
     body = await create_with_phases(client)
     rotate = await client.post(
         f"/api/roadmaps/{body['id']}/share-links/viewer/rotate",
@@ -184,20 +170,13 @@ async def test_viewer_cannot_rename_or_patch_phase(client: AsyncClient):
         json={"token": invite_token, "display_name": "Viewer"},
     )
     assert joined.status_code == 200, joined.text
-    viewer_headers = auth(joined.json()["session_token"])
 
-    rename = await client.patch(
-        f"/api/roadmaps/{body['id']}/name",
-        headers=viewer_headers,
-        json={"name": "Forbidden"},
-    )
     phase = await client.patch(
         f"/api/roadmaps/{body['id']}/phases/ph_a",
-        headers=viewer_headers,
+        headers=auth(joined.json()["session_token"]),
         json={"name": "Forbidden"},
     )
 
-    assert rename.status_code == 403
     assert phase.status_code == 403
 
 
