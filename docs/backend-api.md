@@ -77,6 +77,19 @@ The canonical synced phase/task document remains PostgreSQL `roadmaps.snapshot_j
 with the roadmap tag registry stored alongside it. Relational phase/task tables are
 derivative projections.
 
+## Focused roadmap metadata writes
+
+| Method | Path | Access | Purpose |
+| --- | --- | --- | --- |
+| `PATCH` | `/api/roadmaps/{id}/name` | owner/editor | rename the roadmap |
+
+Roadmap rename is collaboration-oriented and operates on the latest row-locked roadmap
+row. It intentionally does **not** require `last_updated_at`: only the canonical roadmap
+name changes, so unrelated phase/task writes cannot be overwritten by a stale aggregate
+snapshot. A no-op rename does not advance `updated_at` or create activity. A real rename
+creates `roadmap.renamed` activity and publishes `roadmap.updated` with
+`roadmap_fields: ["name"]`.
+
 ## Focused task writes
 
 | Method | Path | Access | Purpose |
@@ -186,8 +199,8 @@ operation:
 
 - aggregate roadmap replacement (`PUT`) and task planning/completion writes use an exact
   server revision (`updated_at`) compare-and-swap contract;
-- phase-field writes mutate only declared fields on the latest row-locked server snapshot
-  and therefore do not require a whole-roadmap revision token;
+- roadmap rename and phase-field writes mutate only declared fields on the latest
+  row-locked server state and therefore do not require a whole-roadmap revision token;
 - claim/release operations use their own atomic ownership rules.
 
 For compare-and-swap writes, a stale **or future** revision is not allowed to overwrite
