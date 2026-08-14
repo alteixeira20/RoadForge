@@ -18,6 +18,7 @@ interface UsePhasePatchParams {
   setSaved: (saved: boolean) => void
   serverRoadmapId: string | null
   sessionToken: string | null
+  updatedAt: string | null
   setUpdatedAt: (updatedAt: string) => void
 }
 
@@ -58,20 +59,41 @@ function applyLocalPhaseFields(
   })
 }
 
+function isNewerRevision(candidate: string, current: string | null): boolean {
+  if (!current) return true
+  const candidateTime = Date.parse(candidate)
+  const currentTime = Date.parse(current)
+  if (Number.isFinite(candidateTime) && Number.isFinite(currentTime)) {
+    return candidateTime > currentTime
+  }
+  return candidate > current
+}
+
 export function usePhasePatch({
   phases,
   setPhases,
   setSaved,
   serverRoadmapId,
   sessionToken,
+  updatedAt,
   setUpdatedAt,
 }: UsePhasePatchParams): UsePhasePatchResult {
   const [phasePatchInFlight, setPhasePatchInFlight] = useState(false)
   const phasesRef = useRef(phases)
+  const latestRevisionRef = useRef<string | null>(updatedAt)
   const queuesRef = useRef<Map<string, Promise<void>>>(new Map())
   const pendingCountRef = useRef(0)
 
   phasesRef.current = phases
+  if (updatedAt && isNewerRevision(updatedAt, latestRevisionRef.current)) {
+    latestRevisionRef.current = updatedAt
+  }
+
+  const advanceUpdatedAt = useCallback((candidate: string) => {
+    if (!isNewerRevision(candidate, latestRevisionRef.current)) return
+    latestRevisionRef.current = candidate
+    setUpdatedAt(candidate)
+  }, [setUpdatedAt])
 
   const enqueue = useCallback((key: string, work: () => Promise<void>) => {
     pendingCountRef.current += 1
@@ -129,7 +151,7 @@ export function usePhasePatch({
           phasesRef.current = merged
           setPhases(merged)
         }
-        setUpdatedAt(result.updatedAt)
+        advanceUpdatedAt(result.updatedAt)
       } catch (error) {
         const { kind } = classifyRoadmapSaveError(error)
         if (
@@ -164,12 +186,12 @@ export function usePhasePatch({
     })
     return true
   }, [
+    advanceUpdatedAt,
     enqueue,
     serverRoadmapId,
     sessionToken,
     setPhases,
     setSaved,
-    setUpdatedAt,
   ])
 
   return { phasePatchInFlight, patchSyncedPhase }
