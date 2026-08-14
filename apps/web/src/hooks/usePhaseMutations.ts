@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { createPhase } from '@/lib/roadmap-factory'
 import { renumberPhases } from '@/lib/phase-progress'
 import type { ActivityChange, Phase, PhaseColorMode } from '@/types/roadmap'
+import type { PatchPhaseFields } from '@/services/roadmap-structure.service'
 
 interface UsePhaseMutationsParams {
   phases: Phase[]
@@ -10,6 +11,7 @@ interface UsePhaseMutationsParams {
   readOnly: boolean
   serverRoadmapId: string | null
   addPendingActivityChange: (change: ActivityChange) => void
+  patchSyncedPhase?: (params: { phaseId: string; updates: PatchPhaseFields }) => boolean
 }
 
 interface UsePhaseMutationsResult {
@@ -28,6 +30,7 @@ export function usePhaseMutations({
   readOnly,
   serverRoadmapId,
   addPendingActivityChange,
+  patchSyncedPhase,
 }: UsePhaseMutationsParams): UsePhaseMutationsResult {
   const handleAddPhase = useCallback(() => {
     if (readOnly) return null
@@ -52,6 +55,10 @@ export function usePhaseMutations({
 
     const phase = phases.find((p) => p.id === phaseId)
     if (!phase || (phase.color === color && phase.colorMode === 'manual')) return
+    if (patchSyncedPhase?.({
+      phaseId,
+      updates: { color, colorMode: 'manual' },
+    })) return
 
     setPhases(
       phases.map((p) => (
@@ -71,12 +78,24 @@ export function usePhaseMutations({
       details: `${phase.num} — ${phase.name}`,
     })
     setSaved(false)
-  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
+  }, [
+    addPendingActivityChange,
+    patchSyncedPhase,
+    phases,
+    readOnly,
+    setPhases,
+    setSaved,
+  ])
 
-  const handleUpdatePhaseColorMode = useCallback((phaseId: string, colorMode: PhaseColorMode) => {
+  const handleUpdatePhaseColorMode = useCallback((
+    phaseId: string,
+    colorMode: PhaseColorMode,
+  ) => {
     if (readOnly) return
     const phase = phases.find((item) => item.id === phaseId)
     if (!phase || phase.colorMode === colorMode) return
+    if (patchSyncedPhase?.({ phaseId, updates: { colorMode } })) return
+
     setPhases(phases.map((item) => (
       item.id === phaseId ? { ...item, colorMode } : item
     )))
@@ -93,13 +112,21 @@ export function usePhaseMutations({
       details: `${phase.num} — ${phase.name}`,
     })
     setSaved(false)
-  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
+  }, [
+    addPendingActivityChange,
+    patchSyncedPhase,
+    phases,
+    readOnly,
+    setPhases,
+    setSaved,
+  ])
 
   const handleUpdatePhaseName = useCallback((phaseId: string, name: string) => {
     if (readOnly) return
 
     const phase = phases.find((p) => p.id === phaseId)
     if (!phase || phase.name === name) return
+    if (patchSyncedPhase?.({ phaseId, updates: { name } })) return
 
     setPhases(
       phases.map((p) => (p.id === phaseId ? { ...p, name } : p)),
@@ -117,7 +144,14 @@ export function usePhaseMutations({
       details: `${phase.num} — ${name}`,
     })
     setSaved(false)
-  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
+  }, [
+    addPendingActivityChange,
+    patchSyncedPhase,
+    phases,
+    readOnly,
+    setPhases,
+    setSaved,
+  ])
 
   const handleReorderPhases = useCallback((phaseIds: string[]) => {
     if (readOnly) return
