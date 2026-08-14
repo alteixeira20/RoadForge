@@ -18,8 +18,14 @@ from api.services.id_service import generate_id
 from api.services.projection.snapshot import (
     _PHASE_KEYS,
     _TASK_KEYS,
+)
+from api.services.projection.snapshot import (
     parse_claimed_at as _parse_claimed_at,
+)
+from api.services.projection.snapshot import (
     snapshot_phases as _snapshot_phases,
+)
+from api.services.projection.snapshot import (
     source_json as _source_json,
 )
 
