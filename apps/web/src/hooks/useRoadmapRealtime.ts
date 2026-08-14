@@ -1,6 +1,13 @@
 'use client'
 
-import { useState, useCallback, useEffect, type Dispatch, type SetStateAction, type MutableRefObject } from 'react'
+import {
+  useState,
+  useCallback,
+  useEffect,
+  type Dispatch,
+  type SetStateAction,
+  type MutableRefObject,
+} from 'react'
 import type {
   Phase,
   RealtimeConnectionStatus,
@@ -10,6 +17,7 @@ import type {
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { buildRegistryFromPhases } from '@/lib/tag-registry'
+import { mergeAuthoritativeTasksIntoLocalPhases } from '@/lib/realtime-task-merge'
 import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import { getEventTicket, subscribeToRoadmapEvents } from '@/services/roadmap-realtime.service'
@@ -106,10 +114,21 @@ export function useRoadmapRealtime({
     setSavedState,
     setTagRegistryState,
   } = roadmapState
-  const { setServerRoadmapIdState, setSessionTokenState, setParticipantIdState, setRoleState } = sessionState
-  const { setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState } = metadataState
+  const {
+    setServerRoadmapIdState,
+    setSessionTokenState,
+    setParticipantIdState,
+    setRoleState,
+  } = sessionState
+  const {
+    setOwnerDisplayNameState,
+    setUpdatedAtState,
+    setIsPasswordEnabledState,
+  } = metadataState
   const { setLocks } = lockState
-  const [accessRevokedEvent, setAccessRevokedEvent] = useState<'revoked' | 'deleted' | 'expired' | null>(null)
+  const [accessRevokedEvent, setAccessRevokedEvent] = useState<
+    'revoked' | 'deleted' | 'expired' | null
+  >(null)
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('local')
 
   useEffect(() => {
@@ -163,19 +182,18 @@ export function useRoadmapRealtime({
     interface ConnectionAttempt {
       unsubscribe: (() => void) | null
       aborted: boolean
-      // Authoritative-refresh single-flight state now lives per attempt
-      // (rather than shared across the whole effect) so a stale
-      // generation's in-flight/hung GET can never block or downgrade a
-      // newer generation's own mandatory resync - each attempt owns its
-      // own in-flight flag, its own queued follow-up, and its own abort
-      // controller.
+      // Authoritative-refresh single-flight state lives per attempt so a stale
+      // generation's in-flight/hung GET can never block or downgrade a newer
+      // generation's mandatory resync.
       refreshInFlight: boolean
       refreshController: AbortController | null
-      // Whether a follow-up refresh was requested while one was already
-      // in flight - the request itself carries no other information: a
-      // failed refresh always closes the attempt and reconnects (see
-      // `runAuthoritativeRefresh`) regardless of what triggered it.
+      // Bursts are coalesced into one queued follow-up. Task-scoped events
+      // remember every affected task so a single authoritative snapshot can
+      // rebase them together. Any full-roadmap refresh request dominates the
+      // queued task scopes.
       pendingRefresh: boolean
+      pendingTaskIds: Set<string>
+      pendingFullRefresh: boolean
     }
 
     let currentAttempt: ConnectionAttempt | null = null
@@ -205,6 +223,8 @@ export function useRoadmapRealtime({
       // own connect flow (started elsewhere) is allowed to recover.
       attempt.refreshController?.abort()
       attempt.pendingRefresh = false
+      attempt.pendingTaskIds.clear()
+      attempt.pendingFullRefresh = false
       if (attempt.unsubscribe) {
         attempt.unsubscribe()
         attempt.unsubscribe = null
@@ -296,6 +316,37 @@ export function useRoadmapRealtime({
       }
     }
 
+    // A task-scoped server mutation can be automatically rebased on top of
+    // unrelated local unsaved edits. The browser cache is the same local
+    // snapshot written by RoadmapContext's mutation setters, so it gives this
+    // callback the current draft without adding another render dependency to
+    // the realtime connection effect.
+    const applyLoadedTaskUpdates = (
+      loaded: LoadedRoadmap,
+      taskIds: ReadonlySet<string>,
+    ): boolean => {
+      const activeId = subscribedActiveId ?? storage.getActiveRoadmapId()
+      if (!activeId) return false
+      const cached = storage.getRoadmapCache(activeId)
+      if (!cached) return false
+
+      const mergedPhases = mergeAuthoritativeTasksIntoLocalPhases(
+        cached.phases,
+        loaded.phases,
+        taskIds,
+      )
+      if (!mergedPhases) return false
+
+      setPhasesState(mergedPhases)
+      setUpdatedAtState(loaded.updatedAt)
+      storage.setRoadmapCache(activeId, {
+        ...cached,
+        phases: mergedPhases,
+        updatedAt: loaded.updatedAt,
+      })
+      return true
+    }
+
     const scheduleReconnect = () => {
       if (stopped || cancelled) return
       clearRetryTimer()
@@ -313,33 +364,45 @@ export function useRoadmapRealtime({
     // gates the transition into `live`, so a reconnect (or a stale resync
     // outlived by an EventSource error, revocation, or a newer connection
     // attempt) can never be falsely reported as live or apply an outdated
-    // snapshot. A transient failure of this GET - for any reason other than
-    // a definitive session/auth rejection - always closes this attempt and
-    // schedules a reconnect: the existing reconnect flow (fresh ticket,
-    // authoritative resync-before-live, capped backoff, single concurrent
-    // attempt) is the one recovery path, whether the failure came from the
-    // mandatory post-open resync or a plain `roadmap.updated` refetch.
-    const runAuthoritativeRefresh = async (attempt: ConnectionAttempt) => {
+    // snapshot. Task-scoped updates may be rebased onto an unsaved local
+    // draft; full-roadmap refreshes still preserve that draft until the next
+    // collaboration slice replaces the legacy aggregate conflict contract.
+    const runAuthoritativeRefresh = async (
+      attempt: ConnectionAttempt,
+      taskIds: ReadonlySet<string> | null = null,
+    ) => {
       attempt.refreshInFlight = true
       setRealtimeStatus('updating')
       const controller = new AbortController()
       attempt.refreshController = controller
       const timeoutId = setTimeout(() => controller.abort(), AUTHORITATIVE_REFRESH_TIMEOUT_MS)
       try {
-        const loaded = await getRoadmap(serverRoadmapId, sessionToken, { signal: controller.signal })
+        const loaded = await getRoadmap(serverRoadmapId, sessionToken, {
+          signal: controller.signal,
+        })
         if (!isCurrentAttempt(attempt)) return
-        // Preserve local unsaved work: don't clobber it with the server
-        // snapshot, but the connection itself is genuinely live.
-        if (savedRef.current !== false) {
+
+        const appliedTaskUpdate = taskIds && taskIds.size > 0
+          ? applyLoadedTaskUpdates(loaded, taskIds)
+          : false
+
+        if (!appliedTaskUpdate && savedRef.current !== false) {
           applyLoadedRoadmap(loaded)
+        } else if (!appliedTaskUpdate && taskIds && taskIds.size > 0) {
+          console.warn(
+            'Could not safely rebase a task-scoped realtime update onto the local draft; preserving the draft.',
+          )
         }
+
         setRealtimeStatus('live')
         reconnectAttempt = 0
         // A prior transient REST failure (here or during initial
         // hydration) may have flagged the backend as unavailable; a
         // successful resync means it's back, so the UX signal should
         // reflect that instead of being left stale.
-        setBackendUnavailableRoadmapId((current) => (current === serverRoadmapId ? null : current))
+        setBackendUnavailableRoadmapId((current) => (
+          current === serverRoadmapId ? null : current
+        ))
       } catch (err) {
         if (!isCurrentAttempt(attempt)) return
         if (isSessionExpiredError(err) || isAuthError(err)) {
@@ -353,10 +416,19 @@ export function useRoadmapRealtime({
         clearTimeout(timeoutId)
         attempt.refreshInFlight = false
         attempt.refreshController = null
+
         const hadPendingRefresh = attempt.pendingRefresh
+        const pendingFullRefresh = attempt.pendingFullRefresh
+        const pendingTaskIds = new Set(attempt.pendingTaskIds)
         attempt.pendingRefresh = false
+        attempt.pendingFullRefresh = false
+        attempt.pendingTaskIds.clear()
+
         if (hadPendingRefresh && isCurrentAttempt(attempt)) {
-          void runAuthoritativeRefresh(attempt)
+          void runAuthoritativeRefresh(
+            attempt,
+            pendingFullRefresh ? null : pendingTaskIds,
+          )
         }
       }
     }
@@ -364,16 +436,24 @@ export function useRoadmapRealtime({
     // Coalesces overlapping refresh triggers (e.g. a burst of
     // `roadmap.updated` events) into at most one in-flight request plus one
     // queued follow-up, instead of racing multiple GETs whose responses
-    // could otherwise be applied out of order. This is per-attempt, not
-    // shared across the whole effect, so a stale generation's in-flight
-    // request can never coalesce (and thus delay) a newer generation's own
-    // mandatory resync.
-    const requestAuthoritativeRefresh = (attempt: ConnectionAttempt) => {
+    // could otherwise be applied out of order. A queued full refresh wins
+    // over task scopes; otherwise every queued task ID is rebased from the
+    // same authoritative follow-up snapshot.
+    const requestAuthoritativeRefresh = (
+      attempt: ConnectionAttempt,
+      taskId?: string,
+    ) => {
       if (attempt.refreshInFlight) {
         attempt.pendingRefresh = true
+        if (taskId) attempt.pendingTaskIds.add(taskId)
+        else attempt.pendingFullRefresh = true
         return
       }
-      void runAuthoritativeRefresh(attempt)
+
+      void runAuthoritativeRefresh(
+        attempt,
+        taskId ? new Set([taskId]) : null,
+      )
     }
 
     const startSync = async (isReconnect = false) => {
@@ -390,6 +470,8 @@ export function useRoadmapRealtime({
         refreshInFlight: false,
         refreshController: null,
         pendingRefresh: false,
+        pendingTaskIds: new Set(),
+        pendingFullRefresh: false,
       }
       currentAttempt = attempt
       clearRetryTimer()
@@ -397,16 +479,25 @@ export function useRoadmapRealtime({
 
       try {
         const activeLocks = await getLocks(serverRoadmapId, sessionToken)
-        if (!isCurrentAttempt(attempt)) { connecting = false; return }
+        if (!isCurrentAttempt(attempt)) {
+          connecting = false
+          return
+        }
         const lockMap: LockMap = {}
         for (const l of activeLocks) {
-          lockMap[l.target] = { participantId: l.participant_id, displayName: l.display_name }
+          lockMap[l.target] = {
+            participantId: l.participant_id,
+            displayName: l.display_name,
+          }
         }
         setLocks(lockMap)
 
         // Every attempt - first connect or retry - gets a fresh single-use ticket.
         await getEventTicket(serverRoadmapId, sessionToken)
-        if (!isCurrentAttempt(attempt)) { connecting = false; return }
+        if (!isCurrentAttempt(attempt)) {
+          connecting = false
+          return
+        }
         attempt.unsubscribe = subscribeToRoadmapEvents(serverRoadmapId, {
           onOpen: () => {
             if (!isCurrentAttempt(attempt)) return
@@ -417,13 +508,20 @@ export function useRoadmapRealtime({
             if (payload.participant_id === participantId) return
             if (!isCurrentAttempt(attempt)) return
 
-            // If this client has pending unsynced changes, do NOT overwrite local
-            // phases, roadmap name, or updatedAt - preserve the user's work and
-            // keep the stale updatedAt so the next autosync sends an outdated
-            // last_updated_at and receives a 409, surfacing as CONFLICT.
-            if (savedRef.current === false) {
+            // Task endpoints are operation-scoped, so their authoritative
+            // result can be rebased immediately onto unrelated local edits.
+            // This is the core shared-roadmap rule: another collaborator
+            // completing/editing/claiming a task is visible directly instead
+            // of intentionally manufacturing a whole-roadmap 409.
+            if (payload.task_id) {
+              requestAuthoritativeRefresh(attempt, payload.task_id)
               return
             }
+
+            // Aggregate roadmap mutations are handled by the next
+            // server-authoritative reconciliation slice. Until then, preserve
+            // an unsaved aggregate draft rather than silently replacing it.
+            if (savedRef.current === false) return
 
             requestAuthoritativeRefresh(attempt)
           },
@@ -431,7 +529,10 @@ export function useRoadmapRealtime({
             if (!isCurrentAttempt(attempt)) return
             setLocks((prev) => ({
               ...prev,
-              [payload.target]: { participantId: payload.participant_id, displayName: payload.display_name },
+              [payload.target]: {
+                participantId: payload.participant_id,
+                displayName: payload.display_name,
+              },
             }))
           },
           onLockReleased: (payload) => {
@@ -530,7 +631,29 @@ export function useRoadmapRealtime({
       document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('online', handleOnline)
     }
-  }, [serverRoadmapId, sessionToken, participantId, role, activeRoadmapId, isHydratingServer, showUpgradeNoticeOnce, setBackendUnavailableRoadmapId, savedRef, setLocks, setRoadmapNameState, setPhasesState, setTagRegistryState, setOwnerDisplayNameState, setUpdatedAtState, setIsPasswordEnabledState, setSavedState, setServerRoadmapIdState, setSessionTokenState, setParticipantIdState, setRoleState])
+  }, [
+    serverRoadmapId,
+    sessionToken,
+    participantId,
+    role,
+    activeRoadmapId,
+    isHydratingServer,
+    showUpgradeNoticeOnce,
+    setBackendUnavailableRoadmapId,
+    savedRef,
+    setLocks,
+    setRoadmapNameState,
+    setPhasesState,
+    setTagRegistryState,
+    setOwnerDisplayNameState,
+    setUpdatedAtState,
+    setIsPasswordEnabledState,
+    setSavedState,
+    setServerRoadmapIdState,
+    setSessionTokenState,
+    setParticipantIdState,
+    setRoleState,
+  ])
 
   const clearAccessRevokedEvent = useCallback(() => {
     setAccessRevokedEvent(null)
