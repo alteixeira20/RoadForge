@@ -1,13 +1,8 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { classifyRoadmapSaveError } from '@/lib/roadmap-sync-errors'
-import {
-  isNewerServerRevision,
-  isOlderServerRevision,
-  newestServerRevision,
-} from '@/lib/server-revision'
-import { storage } from '@/lib/storage'
+import { isNewerServerRevision } from '@/lib/server-revision'
 import {
   addTaskToPhase,
   mergeCreatedTaskAcknowledgement,
@@ -26,8 +21,12 @@ import {
   setServerTaskDependency,
 } from '@/services/roadmap-task-structure.service'
 import type { Phase, Task } from '@/types/roadmap'
+import {
+  useTaskStructureSyncState,
+  type TaskServerReadiness,
+} from './useTaskStructureSyncState'
 
-export type TaskServerReadiness = 'ready' | 'absent' | 'uncertain'
+export type { TaskServerReadiness } from './useTaskStructureSyncState'
 
 interface UseTaskStructureSyncParams {
   phases: Phase[]
@@ -46,11 +45,6 @@ interface UseTaskStructureSyncParams {
 
 interface FocusedStructureOptions {
   onAggregateFallback: () => void
-}
-
-interface CreationBarrier {
-  promise: Promise<TaskServerReadiness>
-  resolve: (readiness: TaskServerReadiness) => void
 }
 
 interface UseTaskStructureSyncResult {
@@ -79,22 +73,6 @@ interface UseTaskStructureSyncResult {
   waitForTaskReady: (taskId: string) => Promise<TaskServerReadiness>
 }
 
-function cachedRoadmap() {
-  const activeId = storage.getActiveRoadmapId()
-  if (!activeId) return null
-  return storage.getRoadmapCache(activeId)
-}
-
-function cachedServerRevision(): string | null {
-  return cachedRoadmap()?.updatedAt ?? null
-}
-
-function createBarrier(): CreationBarrier {
-  let resolve!: (readiness: TaskServerReadiness) => void
-  const promise = new Promise<TaskServerReadiness>((next) => { resolve = next })
-  return { promise, resolve }
-}
-
 function taskExists(phases: Phase[], taskId: string): boolean {
   return phases.some((phase) => phase.tasks.some((task) => task.id === taskId))
 }
@@ -113,47 +91,23 @@ export function useTaskStructureSync({
   beginFocusedWrite,
   endFocusedWrite,
 }: UseTaskStructureSyncParams): UseTaskStructureSyncResult {
-  const phasesRef = useRef(phases)
-  const latestRevisionRef = useRef<string | null>(updatedAt)
-  const generationsRef = useRef<Map<string, number>>(new Map())
-  const creationBarriersRef = useRef<Map<string, CreationBarrier>>(new Map())
-
-  phasesRef.current = phases
-  if (updatedAt && isNewerServerRevision(updatedAt, latestRevisionRef.current)) {
-    latestRevisionRef.current = updatedAt
-  }
-
-  const setCurrentPhases = useCallback((nextPhases: Phase[]) => {
-    phasesRef.current = nextPhases
-    setPhases(nextPhases)
-  }, [setPhases])
-
-  const nextGeneration = useCallback((scope: string) => {
-    const next = (generationsRef.current.get(scope) ?? 0) + 1
-    generationsRef.current.set(scope, next)
-    return next
-  }, [])
-
-  const ownsGeneration = useCallback((scope: string, generation: number) => (
-    generationsRef.current.get(scope) === generation
-  ), [])
-
-  const responseIsStale = useCallback((candidate: string): boolean => {
-    const current = newestServerRevision(latestRevisionRef.current, cachedServerRevision())
-    return isOlderServerRevision(candidate, current)
-  }, [])
-
-  const advanceUpdatedAt = useCallback((candidate: string) => {
-    const current = newestServerRevision(latestRevisionRef.current, cachedServerRevision())
-    if (isOlderServerRevision(candidate, current)) return
-    if (!isNewerServerRevision(candidate, latestRevisionRef.current)) return
-    latestRevisionRef.current = candidate
-    setUpdatedAt(candidate)
-  }, [setUpdatedAt])
-
-  const waitForTaskReady = useCallback((taskId: string): Promise<TaskServerReadiness> => (
-    creationBarriersRef.current.get(taskId)?.promise ?? Promise.resolve('ready')
-  ), [])
+  const {
+    phasesRef,
+    setCurrentPhases,
+    nextGeneration,
+    ownsGeneration,
+    responseIsStale,
+    advanceUpdatedAt,
+    waitForTaskReady,
+    beginTaskCreation,
+    finishTaskCreation,
+    cachedRoadmap,
+  } = useTaskStructureSyncState({
+    phases,
+    setPhases,
+    updatedAt,
+    setUpdatedAt,
+  })
 
   const handleAmbiguousFailure = useCallback((
     message: string,
@@ -171,14 +125,9 @@ export function useTaskStructureSync({
   ): boolean => {
     if (!serverRoadmapId || !sessionToken) return false
 
-    const startedAtRevision = newestServerRevision(
-      latestRevisionRef.current,
-      cachedServerRevision(),
-    )
+    const { barrier, startedAtRevision } = beginTaskCreation(task.id)
     const scope = `task:${task.id}:existence`
     const generation = nextGeneration(scope)
-    const barrier = createBarrier()
-    creationBarriersRef.current.set(task.id, barrier)
     beginFocusedWrite()
     setCurrentPhases(addTaskToPhase(phasesRef.current, phaseId, task))
 
@@ -243,10 +192,7 @@ export function useTaskStructureSync({
           onAggregateFallback,
         )
       } finally {
-        barrier.resolve(readiness)
-        if (creationBarriersRef.current.get(task.id) === barrier) {
-          creationBarriersRef.current.delete(task.id)
-        }
+        finishTaskCreation(task.id, barrier, readiness)
         endFocusedWrite()
       }
     })()
@@ -255,12 +201,16 @@ export function useTaskStructureSync({
   }, [
     advanceUpdatedAt,
     beginFocusedWrite,
+    beginTaskCreation,
+    cachedRoadmap,
     endFocusedWrite,
+    finishTaskCreation,
     handleAmbiguousFailure,
     nextGeneration,
     onSessionExpired,
     onSuccess,
     ownsGeneration,
+    phasesRef,
     responseIsStale,
     serverRoadmapId,
     sessionToken,
@@ -347,6 +297,7 @@ export function useTaskStructureSync({
     onSessionExpired,
     onSuccess,
     ownsGeneration,
+    phasesRef,
     responseIsStale,
     serverRoadmapId,
     sessionToken,
@@ -446,6 +397,7 @@ export function useTaskStructureSync({
     onSessionExpired,
     onSuccess,
     ownsGeneration,
+    phasesRef,
     responseIsStale,
     serverRoadmapId,
     sessionToken,
@@ -559,6 +511,7 @@ export function useTaskStructureSync({
     onSessionExpired,
     onSuccess,
     ownsGeneration,
+    phasesRef,
     responseIsStale,
     serverRoadmapId,
     sessionToken,
@@ -682,6 +635,7 @@ export function useTaskStructureSync({
     onSessionExpired,
     onSuccess,
     ownsGeneration,
+    phasesRef,
     responseIsStale,
     serverRoadmapId,
     sessionToken,
