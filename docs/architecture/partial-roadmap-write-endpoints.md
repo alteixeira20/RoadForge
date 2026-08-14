@@ -96,31 +96,39 @@ whole-roadmap local/server choice when the mutation can be safely isolated.
 
 ## Browser ordering and fallback
 
-The browser currently treats focused phase operations as their own write family rather than
-letting optimistic phase state leak into aggregate autosave:
+The browser treats focused phase and task-structure operations as one collaboration write
+family rather than allowing optimistic structure to leak into aggregate autosave:
 
-- phase create/delete/reorder and phase-field PATCHes enter a reference-counted focused-write
-  gate;
-- aggregate autosave/manual replacement is paused while any focused phase operation owns
-  that gate;
-- a newly created phase has an explicit creation-readiness barrier, so the UI may open its
-  name editor immediately while a phase-field PATCH waits until the server has accepted the
-  phase create;
-- delete/reorder involving a just-created phase wait on the same barrier instead of relying
-  on timers, microtask order, or expected network latency;
+- phase create/delete/reorder, phase-field PATCHes, task/subtask create/delete/order, and
+  dependency link/unlink all enter the same reference-counted focused-write gate;
+- aggregate autosave/manual replacement is paused while any focused structural operation
+  owns that gate;
+- newly-created phases and tasks have explicit creation-readiness barriers, so dependent
+  writes wait for server acceptance instead of relying on timers, microtask order, or
+  expected network latency;
+- immediate task field/completion writes after create use the revision returned by the
+  successful task-create response explicitly; they do not rely on React rerender timing to
+  discover the new server revision;
+- task/phase delete, reorder, and dependency operations involving a just-created entity wait
+  on the corresponding creation barrier before issuing the focused request;
 - local structural operation generations prevent an older focused response from replacing
   a newer optimistic structural action;
 - focused acknowledgements reconcile only the structure/fields owned by that operation;
   they must not replace the returned full phase array over unrelated dirty local task data;
-- definitive validation/authorization failures roll back the optimistic operation when it
-  still owns the latest local generation;
+- new shared interactive phase/task IDs are collision-resistant while existing/imported IDs
+  remain unchanged;
+- definitive validation/authorization failures roll back only the optimistic operation when
+  it still owns the latest local generation;
 - ambiguous transport/server failures preserve the optimistic state as a local draft and
   re-enable aggregate recovery under its normal revision guard, because the focused write
-  may already have committed server-side.
+  may already have committed server-side;
+- normal focused success relies on server-side activity and does not duplicate that activity
+  into the browser's aggregate pending-change queue; only aggregate fallback records the
+  local recovery activity needed by a later aggregate save.
 
-The task-structure API follows the same server-side intent-scoping principles, but browser
-migration is a separate follow-up. Until that browser slice lands, this section must not be
-read as claiming task create/order/dependency UI already uses these new routes.
+Local-only roadmaps still execute the same semantic mutation factory without any server
+calls. Shared roadmaps switch only the persistence/reconciliation path, not the task-domain
+rules presented to the user.
 
 This fallback is transitional recovery, not the desired normal collaboration path. A future
 bounded offline-operation queue may replace ambiguous aggregate fallback, but must preserve
