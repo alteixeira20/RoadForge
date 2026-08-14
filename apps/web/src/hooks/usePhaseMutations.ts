@@ -1,7 +1,6 @@
 import { useCallback } from 'react'
 import { createPhase } from '@/lib/roadmap-factory'
 import { renumberPhases } from '@/lib/phase-progress'
-import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
 import { usePhasePatch } from '@/hooks/usePhasePatch'
 import type { ActivityChange, Phase, PhaseColorMode } from '@/types/roadmap'
 
@@ -11,6 +10,9 @@ interface UsePhaseMutationsParams {
   setSaved: (saved: boolean) => void
   readOnly: boolean
   serverRoadmapId: string | null
+  sessionToken?: string | null
+  updatedAt?: string | null
+  setUpdatedAt?: (updatedAt: string) => void
   addPendingActivityChange: (change: ActivityChange) => void
 }
 
@@ -29,10 +31,11 @@ export function usePhaseMutations({
   setSaved,
   readOnly,
   serverRoadmapId,
+  sessionToken = null,
+  updatedAt = null,
+  setUpdatedAt = () => {},
   addPendingActivityChange,
 }: UsePhaseMutationsParams): UsePhaseMutationsResult {
-  const { updatedAt, setUpdatedAt } = useRoadmapData()
-  const { sessionToken } = useRoadmapSession()
   const { patchSyncedPhase } = usePhasePatch({
     phases,
     setPhases,
