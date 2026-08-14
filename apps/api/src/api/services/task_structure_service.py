@@ -26,10 +26,12 @@ from api.services.task_structure_helpers import (
     recompute_phase_progress,
     remove_dependencies_on_tasks,
     reorder_direct_children,
-    reorder_top_level_tasks as reorder_top_level_task_dicts,
     task_location,
     task_summary,
     with_phases,
+)
+from api.services.task_structure_helpers import (
+    reorder_top_level_tasks as reorder_top_level_task_dicts,
 )
 
 
