@@ -20,7 +20,7 @@ from api.schemas.roadmap import (
 from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
-from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
+from api.services.projection import sync_roadmap_projection_best_effort
 from api.services.session_policy import ensure_aware_utc
 
 logger = logging.getLogger(__name__)

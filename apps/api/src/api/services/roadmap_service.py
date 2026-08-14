@@ -23,6 +23,7 @@ from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.password_service import hash_password
+from api.services.projection import sync_roadmap_projection_best_effort
 from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
     RoadmapConflictError,  # noqa: F401 - compatibility re-export for routers/tests
@@ -35,7 +36,6 @@ from api.services.roadmap_helpers import (
     _snapshot_from_phases,
 )
 from api.services.roadmap_join_service import join_roadmap  # noqa: F401
-from api.services.roadmap_projection_service import sync_roadmap_projection_best_effort
 from api.services.roadmap_validation import validate_roadmap_domain
 from api.services.session_policy import session_expires_at
 from api.services.sharing_service import _ROLE_LABELS, _ROLE_ORDER, _SHARE_PREFIXES  # noqa: F401

@@ -14,7 +14,7 @@ import pytest
 
 from api.models.roadmap import Roadmap
 from api.services.id_service import generate_id
-from api.services.roadmap_projection_service import (
+from api.services.projection import (
     rebuild_roadmap_projection,
     serialize_projection_to_snapshot,
 )

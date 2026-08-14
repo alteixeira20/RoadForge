@@ -26,7 +26,7 @@ from api.schemas.roadmap import (
     RoadmapConflictSummary,
     RoadmapResponse,
 )
-from api.services.roadmap_projection_service import (
+from api.services.projection import (
     serialize_projection_to_snapshot,
     validate_projection_parity,
 )

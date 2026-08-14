@@ -9,7 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import Roadmap
-from api.services.roadmap_projection_service import validate_projection_parity
+from api.services.projection import validate_projection_parity
 from tests.helpers_projection import auth, create_with_phases
 
 pytestmark = pytest.mark.asyncio
