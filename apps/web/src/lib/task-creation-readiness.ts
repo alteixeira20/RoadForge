@@ -1,4 +1,4 @@
-import type { TaskServerReadiness } from '@/hooks/useTaskStructureSyncState'
+export type TaskServerReadiness = 'ready' | 'absent' | 'uncertain'
 
 interface PendingCreation {
   promise: Promise<TaskServerReadiness>
