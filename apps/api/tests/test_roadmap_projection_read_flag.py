@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
 from api.services import roadmap_helpers
-from api.services.roadmap_projection_service import clear_roadmap_projection
+from api.services.projection import clear_roadmap_projection
 from tests.helpers_projection import auth, create_with_phases
 
 pytestmark = pytest.mark.asyncio
