@@ -1,8 +1,9 @@
 import { useCallback } from 'react'
 import { createPhase } from '@/lib/roadmap-factory'
 import { renumberPhases } from '@/lib/phase-progress'
+import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
+import { usePhasePatch } from '@/hooks/usePhasePatch'
 import type { ActivityChange, Phase, PhaseColorMode } from '@/types/roadmap'
-import type { PatchPhaseFields } from '@/services/roadmap-structure.service'
 
 interface UsePhaseMutationsParams {
   phases: Phase[]
@@ -11,7 +12,6 @@ interface UsePhaseMutationsParams {
   readOnly: boolean
   serverRoadmapId: string | null
   addPendingActivityChange: (change: ActivityChange) => void
-  patchSyncedPhase?: (params: { phaseId: string; updates: PatchPhaseFields }) => boolean
 }
 
 interface UsePhaseMutationsResult {
@@ -30,8 +30,18 @@ export function usePhaseMutations({
   readOnly,
   serverRoadmapId,
   addPendingActivityChange,
-  patchSyncedPhase,
 }: UsePhaseMutationsParams): UsePhaseMutationsResult {
+  const { setUpdatedAt } = useRoadmapData()
+  const { sessionToken } = useRoadmapSession()
+  const { patchSyncedPhase } = usePhasePatch({
+    phases,
+    setPhases,
+    setSaved,
+    serverRoadmapId,
+    sessionToken,
+    setUpdatedAt,
+  })
+
   const handleAddPhase = useCallback(() => {
     if (readOnly) return null
 
@@ -55,7 +65,7 @@ export function usePhaseMutations({
 
     const phase = phases.find((p) => p.id === phaseId)
     if (!phase || (phase.color === color && phase.colorMode === 'manual')) return
-    if (patchSyncedPhase?.({
+    if (patchSyncedPhase({
       phaseId,
       updates: { color, colorMode: 'manual' },
     })) return
@@ -94,7 +104,7 @@ export function usePhaseMutations({
     if (readOnly) return
     const phase = phases.find((item) => item.id === phaseId)
     if (!phase || phase.colorMode === colorMode) return
-    if (patchSyncedPhase?.({ phaseId, updates: { colorMode } })) return
+    if (patchSyncedPhase({ phaseId, updates: { colorMode } })) return
 
     setPhases(phases.map((item) => (
       item.id === phaseId ? { ...item, colorMode } : item
@@ -126,7 +136,7 @@ export function usePhaseMutations({
 
     const phase = phases.find((p) => p.id === phaseId)
     if (!phase || phase.name === name) return
-    if (patchSyncedPhase?.({ phaseId, updates: { name } })) return
+    if (patchSyncedPhase({ phaseId, updates: { name } })) return
 
     setPhases(
       phases.map((p) => (p.id === phaseId ? { ...p, name } : p)),
