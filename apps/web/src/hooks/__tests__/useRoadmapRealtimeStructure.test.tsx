@@ -292,6 +292,40 @@ describe('useRoadmapRealtime structure rebasing', () => {
     )
   })
 
+  it('ignores a scoped GET that is older than the browser server revision', async () => {
+    const { params } = render()
+    await flushAsync()
+
+    storage.setRoadmapCache('local_1', {
+      roadmapName: 'Newer local view',
+      phases: [{ ...localPhase, name: 'Already newer' }],
+      saved: false,
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-08-14T10:30:00Z',
+      isPasswordEnabled: false,
+    })
+    mockedGetRoadmap.mockResolvedValueOnce(serverRoadmap({
+      updatedAt: '2026-08-14T10:20:00Z',
+    }))
+
+    act(() => handlers.onUpdated?.({
+      roadmap_id: 'rm_1',
+      updated_at: '2026-08-14T10:20:00Z',
+      participant_id: 'pt_other',
+      phase_id: 'phase-1',
+      action: 'phase.updated',
+      changed_fields: ['name'],
+    }))
+    await flushAsync()
+
+    expect(params.roadmapState.setPhasesState).not.toHaveBeenCalled()
+    expect(params.metadataState.setUpdatedAtState).not.toHaveBeenCalled()
+    expect(storage.getRoadmapCache('local_1')?.phases[0].name).toBe('Already newer')
+    expect(storage.getRoadmapCache('local_1')?.updatedAt).toBe(
+      '2026-08-14T10:30:00Z',
+    )
+  })
+
   it('does not advance the revision when a dirty scoped event cannot be reconciled', async () => {
     const { params } = render()
     await flushAsync()
