@@ -27,18 +27,18 @@ interface UsePhasePatchParams {
   sessionToken: string | null
   updatedAt: string | null
   setUpdatedAt: (updatedAt: string) => void
-  showToast: (message: string) => void
-  onSuccess: () => void
-  onSessionExpired: () => void
-  beginFocusedWrite: () => void
-  endFocusedWrite: () => void
-  waitForPhaseReady: (phaseId: string) => Promise<PhaseServerReadiness>
+  showToast?: (message: string) => void
+  onSuccess?: () => void
+  onSessionExpired?: () => void
+  beginFocusedWrite?: () => void
+  endFocusedWrite?: () => void
+  waitForPhaseReady?: (phaseId: string) => Promise<PhaseServerReadiness>
 }
 
 interface PatchSyncedPhaseParams {
   phaseId: string
   updates: PatchPhaseFields
-  onAggregateFallback: () => void
+  onAggregateFallback?: () => void
 }
 
 interface UsePhasePatchResult {
@@ -46,6 +46,8 @@ interface UsePhasePatchResult {
 }
 
 const PHASE_PATCH_FIELDS: PhasePatchField[] = ['name', 'color', 'colorMode']
+const NOOP = () => {}
+const PHASE_READY = async (): Promise<PhaseServerReadiness> => 'ready'
 
 function changedPhaseFields(
   phase: Phase,
@@ -86,12 +88,12 @@ export function usePhasePatch({
   sessionToken,
   updatedAt,
   setUpdatedAt,
-  showToast,
-  onSuccess,
-  onSessionExpired,
-  beginFocusedWrite,
-  endFocusedWrite,
-  waitForPhaseReady,
+  showToast = NOOP,
+  onSuccess = NOOP,
+  onSessionExpired = NOOP,
+  beginFocusedWrite = NOOP,
+  endFocusedWrite = NOOP,
+  waitForPhaseReady = PHASE_READY,
 }: UsePhasePatchParams): UsePhasePatchResult {
   const phasesRef = useRef(phases)
   const latestRevisionRef = useRef<string | null>(updatedAt)
@@ -128,7 +130,7 @@ export function usePhasePatch({
   const patchSyncedPhase = useCallback(({
     phaseId,
     updates,
-    onAggregateFallback,
+    onAggregateFallback = NOOP,
   }: PatchSyncedPhaseParams): boolean => {
     if (!serverRoadmapId || !sessionToken) return false
     const phase = phasesRef.current.find((candidate) => candidate.id === phaseId)
