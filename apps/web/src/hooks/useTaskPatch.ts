@@ -34,6 +34,7 @@ interface UseTaskPatchParams {
 interface PatchSyncedTaskParams {
   task: Task
   updates: PatchTaskUpdates
+  lastUpdatedAt?: string
 }
 
 interface UseTaskPatchResult {
@@ -67,8 +68,10 @@ export function useTaskPatch({
   const patchSyncedTask = useCallback(async ({
     task,
     updates,
+    lastUpdatedAt,
   }: PatchSyncedTaskParams): Promise<boolean> => {
-    if (!serverRoadmapId || !sessionToken || !updatedAt) return false
+    const revision = lastUpdatedAt ?? updatedAt
+    if (!serverRoadmapId || !sessionToken || !revision) return false
     if (pendingTaskIdsRef.current.has(task.id)) return false
 
     const changedFields = getChangedTaskFields(task, updates)
@@ -84,7 +87,7 @@ export function useTaskPatch({
         taskId: task.id,
         updates,
         sessionToken,
-        lastUpdatedAt: updatedAt,
+        lastUpdatedAt: revision,
       })
       const appliedFullResponse = applyPartialWriteResult({
         roadmap,
