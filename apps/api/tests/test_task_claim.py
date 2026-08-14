@@ -11,7 +11,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import Roadmap
-from api.services.roadmap_projection_service import (
+from api.services.projection import (
     serialize_projection_to_snapshot,
     validate_projection_parity,
 )
