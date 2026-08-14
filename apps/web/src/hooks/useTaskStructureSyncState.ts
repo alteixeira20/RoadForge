@@ -7,9 +7,14 @@ import {
   newestServerRevision,
 } from '@/lib/server-revision'
 import { storage } from '@/lib/storage'
+import {
+  registerPendingTaskCreation,
+  unregisterPendingTaskCreation,
+  type TaskServerReadiness,
+} from '@/lib/task-creation-readiness'
 import type { Phase } from '@/types/roadmap'
 
-export type TaskServerReadiness = 'ready' | 'absent' | 'uncertain'
+export type { TaskServerReadiness } from '@/lib/task-creation-readiness'
 
 export interface TaskCreationBarrier {
   promise: Promise<TaskServerReadiness>
@@ -90,6 +95,7 @@ export function useTaskStructureSyncState({
   const beginTaskCreation = useCallback((taskId: string) => {
     const barrier = createBarrier()
     creationBarriersRef.current.set(taskId, barrier)
+    registerPendingTaskCreation(taskId, barrier.promise)
     return {
       barrier,
       startedAtRevision: newestServerRevision(
@@ -105,6 +111,7 @@ export function useTaskStructureSyncState({
     readiness: TaskServerReadiness,
   ) => {
     barrier.resolve(readiness)
+    unregisterPendingTaskCreation(taskId, barrier.promise)
     if (creationBarriersRef.current.get(taskId) === barrier) {
       creationBarriersRef.current.delete(taskId)
     }

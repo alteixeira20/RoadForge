@@ -111,6 +111,9 @@ family rather than allowing optimistic structure to leak into aggregate autosave
   discover the new server revision;
 - task/phase delete, reorder, and dependency operations involving a just-created entity wait
   on the corresponding creation barrier before issuing the focused request;
+- shared claim/release actions also wait for a just-created task's creation barrier. A
+  definitively absent create cancels the claim action, while an uncertain create does not
+  invent server ownership and requires the user to recover/sync the task first;
 - local structural operation generations prevent an older focused response from replacing
   a newer optimistic structural action;
 - focused acknowledgements reconcile only the structure/fields owned by that operation;
