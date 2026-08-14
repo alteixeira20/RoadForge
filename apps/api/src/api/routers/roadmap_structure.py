@@ -12,14 +12,9 @@ from api.schemas.collaboration import (
 )
 from api.schemas.roadmap import RoadmapResponse
 from api.services.auth_service import require_participant
+from api.services.phase_structure_service import create_phase, delete_phase, reorder_phases
 from api.services.rate_limit_service import rate_limiter
-from api.services.roadmap_structure_service import (
-    create_phase,
-    delete_phase,
-    patch_phase,
-    patch_roadmap_name,
-    reorder_phases,
-)
+from api.services.roadmap_structure_service import patch_phase, patch_roadmap_name
 
 router = APIRouter(tags=["roadmaps"])
 _OWNER_EDITOR = {"owner", "editor"}
