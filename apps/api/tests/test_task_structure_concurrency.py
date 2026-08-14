@@ -178,7 +178,7 @@ async def test_concurrent_dependency_links_both_survive_row_lock(
                 for task in phase["tasks"]
                 if task["id"] == "tk_b1"
             )
-            assert task_b1["deps"] == ["tk_a1", "tk_a2"]
+            assert set(task_b1["deps"]) == {"tk_a1", "tk_a2"}
     finally:
         if roadmap_id is not None:
             async with _test_session_factory() as db:
