@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { createPhase } from '@/lib/roadmap-factory'
 import { renumberPhases } from '@/lib/phase-progress'
+import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
 import { usePhasePatch } from '@/hooks/usePhasePatch'
 import type { ActivityChange, Phase, PhaseColorMode } from '@/types/roadmap'
 
@@ -10,10 +11,13 @@ interface UsePhaseMutationsParams {
   setSaved: (saved: boolean) => void
   readOnly: boolean
   serverRoadmapId: string | null
-  sessionToken?: string | null
-  updatedAt?: string | null
-  setUpdatedAt?: (updatedAt: string) => void
   addPendingActivityChange: (change: ActivityChange) => void
+}
+
+interface UsePhaseMutationsCoreParams extends UsePhaseMutationsParams {
+  sessionToken: string | null
+  updatedAt: string | null
+  setUpdatedAt: (updatedAt: string) => void
 }
 
 interface UsePhaseMutationsResult {
@@ -25,17 +29,30 @@ interface UsePhaseMutationsResult {
   handleDeletePhase: (phaseId: string) => void
 }
 
-export function usePhaseMutations({
+/** Connected workspace adapter. Keep context reads here and mutation logic in the core. */
+export function usePhaseMutations(params: UsePhaseMutationsParams): UsePhaseMutationsResult {
+  const { updatedAt, setUpdatedAt } = useRoadmapData()
+  const { sessionToken } = useRoadmapSession()
+  return usePhaseMutationsCore({
+    ...params,
+    sessionToken,
+    updatedAt,
+    setUpdatedAt,
+  })
+}
+
+/** Dependency-injected phase mutation core for reuse and isolated testing. */
+export function usePhaseMutationsCore({
   phases,
   setPhases,
   setSaved,
   readOnly,
   serverRoadmapId,
-  sessionToken = null,
-  updatedAt = null,
-  setUpdatedAt = () => {},
+  sessionToken,
+  updatedAt,
+  setUpdatedAt,
   addPendingActivityChange,
-}: UsePhaseMutationsParams): UsePhaseMutationsResult {
+}: UsePhaseMutationsCoreParams): UsePhaseMutationsResult {
   const { patchSyncedPhase } = usePhasePatch({
     phases,
     setPhases,
