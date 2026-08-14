@@ -62,6 +62,44 @@ def _phase_summary(phase: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _remove_dependencies_on_tasks(
+    phases: list[dict[str, Any]],
+    deleted_task_ids: set[str],
+) -> tuple[list[dict[str, Any]], int]:
+    if not deleted_task_ids:
+        return phases, 0
+
+    removed_count = 0
+    next_phases: list[dict[str, Any]] = []
+    for phase in phases:
+        tasks = phase.get("tasks")
+        if not isinstance(tasks, list):
+            next_phases.append(phase)
+            continue
+
+        changed_phase = False
+        next_tasks: list[Any] = []
+        for task in tasks:
+            if not isinstance(task, dict):
+                next_tasks.append(task)
+                continue
+            deps = task.get("deps")
+            if not isinstance(deps, list):
+                next_tasks.append(task)
+                continue
+            filtered = [dep for dep in deps if dep not in deleted_task_ids]
+            removed_count += len(deps) - len(filtered)
+            if filtered == deps:
+                next_tasks.append(task)
+                continue
+            changed_phase = True
+            next_tasks.append({**task, "deps": filtered})
+
+        next_phases.append({**phase, "tasks": next_tasks} if changed_phase else phase)
+
+    return next_phases, removed_count
+
+
 async def patch_roadmap_name(
     db: AsyncSession,
     roadmap_id: str,
@@ -120,7 +158,10 @@ async def create_phase(
     roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     phases = _phase_dicts(roadmap.snapshot_json)
     if len(phases) >= PHASES_MAX:
-        raise HTTPException(status_code=422, detail=f"Roadmap supports at most {PHASES_MAX} phases")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Roadmap supports at most {PHASES_MAX} phases",
+        )
     if any(phase.get("id") == payload.id for phase in phases):
         raise HTTPException(status_code=409, detail="Phase ID already exists")
 
@@ -149,7 +190,7 @@ async def create_phase(
             action="phase.created",
             entity_type="phase",
             entity_id=payload.id,
-            before_json=None,
+            before_json={},
             after_json=_phase_summary(created),
             metadata_json={
                 "phaseId": payload.id,
@@ -193,8 +234,21 @@ async def delete_phase(
     if deleted is None:
         raise HTTPException(status_code=404, detail="Phase not found")
 
+    deleted_tasks = deleted.get("tasks")
+    deleted_task_ids = {
+        task["id"]
+        for task in deleted_tasks
+        if isinstance(deleted_tasks, list)
+        and isinstance(task, dict)
+        and isinstance(task.get("id"), str)
+    } if isinstance(deleted_tasks, list) else set()
+
     remaining = [phase for phase in phases if phase.get("id") != phase_id]
-    renumbered = _renumber_phase_dicts(remaining)
+    dependency_cleaned, removed_dependency_count = _remove_dependencies_on_tasks(
+        remaining,
+        deleted_task_ids,
+    )
+    renumbered = _renumber_phase_dicts(dependency_cleaned)
     next_snapshot = _with_phases(roadmap.snapshot_json, renumbered)
     next_phases = _phases_from_snapshot(next_snapshot)
     validate_roadmap_domain(next_phases, _stored_tag_registry(roadmap))
@@ -211,11 +265,13 @@ async def delete_phase(
             entity_type="phase",
             entity_id=phase_id,
             before_json=_phase_summary(deleted),
-            after_json=None,
+            after_json={},
             metadata_json={
                 "phaseId": phase_id,
                 "phaseName": deleted.get("name"),
                 "phaseNum": deleted.get("num"),
+                "deletedTaskCount": len(deleted_task_ids),
+                "removedDependencyCount": removed_dependency_count,
             },
         )
     )
