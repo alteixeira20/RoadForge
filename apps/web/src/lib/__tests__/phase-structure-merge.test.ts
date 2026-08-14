@@ -3,6 +3,8 @@ import {
   orderPhasesByPreference,
   reconcileCreatedPhaseAcknowledgement,
   removePhaseAndDanglingDependencies,
+  restoreDeletedPhase,
+  restorePhaseOrder,
 } from '@/lib/phase-structure-merge'
 import type { Phase } from '@/types/roadmap'
 
@@ -68,6 +70,47 @@ describe('phase structure merge helpers', () => {
 
     expect(next.map((phase) => phase.id)).toEqual(['phase-b', 'phase-a', 'phase-local'])
     expect(next.map((phase) => phase.num)).toEqual(['01', '02', '03'])
+  })
+
+  it('restores a rejected delete without overwriting newer surviving phase edits', () => {
+    const current = [{
+      ...phases[1],
+      name: 'Beta edited while delete was pending',
+      tasks: [{
+        ...phases[1].tasks[0],
+        desc: 'newer task draft',
+      }],
+    }]
+
+    const next = restoreDeletedPhase(current, phases, 'phase-a')
+
+    expect(next.map((phase) => phase.id)).toEqual(['phase-a', 'phase-b'])
+    expect(next[1]).toEqual(expect.objectContaining({
+      name: 'Beta edited while delete was pending',
+      tasks: [expect.objectContaining({ desc: 'newer task draft' })],
+    }))
+  })
+
+  it('restores only the rejected order and keeps current phase contents/new phases', () => {
+    const currentOnly: Phase = {
+      ...phases[0],
+      id: 'phase-c',
+      num: '03',
+      name: 'Concurrent create',
+      tasks: [],
+    }
+    const current = [
+      { ...phases[1], name: 'Beta edited' },
+      { ...phases[0], name: 'Alpha edited' },
+      currentOnly,
+    ]
+
+    const next = restorePhaseOrder(current, phases)
+
+    expect(next.map((phase) => phase.id)).toEqual(['phase-a', 'phase-b', 'phase-c'])
+    expect(next[0].name).toBe('Alpha edited')
+    expect(next[1].name).toBe('Beta edited')
+    expect(next[2].name).toBe('Concurrent create')
   })
 
   it('accepts server-owned create metadata without overwriting a newer local name', () => {
