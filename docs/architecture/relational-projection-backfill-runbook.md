@@ -96,7 +96,7 @@ a Python shell inside the container:
 import asyncio
 from api.database import async_session_factory
 from api.models.roadmap import Roadmap
-from api.services.roadmap_projection_service import validate_projection_parity
+from api.services.projection import validate_projection_parity
 from sqlalchemy import select
 
 async def check(roadmap_id: str):
