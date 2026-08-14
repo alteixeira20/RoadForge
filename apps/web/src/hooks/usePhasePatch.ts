@@ -2,6 +2,7 @@
 
 import { useCallback, useRef } from 'react'
 import { classifyRoadmapSaveError } from '@/lib/roadmap-sync-errors'
+import { isNewerServerRevision } from '@/lib/server-revision'
 import {
   mergeReturnedPhaseFields,
   type PhasePatchField,
@@ -58,16 +59,6 @@ function applyLocalPhaseFields(
   })
 }
 
-function isNewerRevision(candidate: string, current: string | null): boolean {
-  if (!current) return true
-  const candidateTime = Date.parse(candidate)
-  const currentTime = Date.parse(current)
-  if (Number.isFinite(candidateTime) && Number.isFinite(currentTime)) {
-    return candidateTime > currentTime
-  }
-  return candidate > current
-}
-
 export function usePhasePatch({
   phases,
   setPhases,
@@ -82,12 +73,12 @@ export function usePhasePatch({
   const queuesRef = useRef<Map<string, Promise<void>>>(new Map())
 
   phasesRef.current = phases
-  if (updatedAt && isNewerRevision(updatedAt, latestRevisionRef.current)) {
+  if (updatedAt && isNewerServerRevision(updatedAt, latestRevisionRef.current)) {
     latestRevisionRef.current = updatedAt
   }
 
   const advanceUpdatedAt = useCallback((candidate: string) => {
-    if (!isNewerRevision(candidate, latestRevisionRef.current)) return
+    if (!isNewerServerRevision(candidate, latestRevisionRef.current)) return
     latestRevisionRef.current = candidate
     setUpdatedAt(candidate)
   }, [setUpdatedAt])
