@@ -8,6 +8,7 @@ from api.routers import (
     roadmap_locks,
     roadmap_realtime,
     roadmap_sharing,
+    roadmap_structure,
     roadmap_tags,
     roadmap_tasks,
     roadmap_versions,
@@ -15,6 +16,7 @@ from api.routers import (
 
 _DOMAIN_ROUTERS = (
     roadmap_core.router,
+    roadmap_structure.router,
     roadmap_versions.router,
     roadmap_activity.router,
     roadmap_tasks.router,

@@ -16,15 +16,22 @@ work that can be safely rebased.
 - If a task-scoped update cannot be reconciled because the task is missing from either
   the local or authoritative snapshot, RoadForge preserves the local draft and does
   not advance its server revision.
+- Shared phase name/color/color-mode edits are optimistic, field-scoped server writes.
+  The server serializes them against the latest roadmap row rather than requiring a
+  whole-roadmap revision token. The originating browser applies the authoritative
+  response and advances its revision without marking the whole roadmap dirty.
+- Remote phase-field events refresh authoritative state immediately when the receiving
+  browser has no unrelated aggregate draft. Scoped rebasing of phase events onto a
+  dirty aggregate draft remains part of the next collaboration boundary.
 - Full-roadmap remote updates that race an unsaved aggregate edit still preserve the
   browser draft for now. This is a transitional boundary: the server-authoritative
   collaboration work will replace the legacy whole-roadmap local/server choice rather
   than silently discarding either side.
 - Task completion and task-field/claim partial writes update immediately from the
   returned roadmap aggregate, then realtime events reconcile other clients.
-- Task creation/deletion/reordering/dependency changes, phase edits, roadmap renames,
-  tag edits, and imports still use aggregate saves until they receive operation-scoped
-  server write contracts.
+- Task creation/deletion/reordering/dependency changes, phase creation/deletion/reorder,
+  roadmap renames, tag edits, and imports still use their current aggregate or existing
+  dedicated contracts until their collaboration-specific write paths are completed.
 - Claim conflicts use specific ownership feedback; owner override remains explicit.
 - Offline, expired-session, revoked-access, and deleted-roadmap states use persistent
   workspace banners or gates, not transient notifications alone.

@@ -92,6 +92,24 @@ estimate, complexity, assignees, tags, and supported links. `very_high` complexi
 valid for top-level tasks with at least two direct subtasks; the domain validator rejects
 writes that would violate that structure.
 
+## Focused phase-field writes
+
+| Method | Path | Access | Purpose |
+| --- | --- | --- | --- |
+| `PATCH` | `/api/roadmaps/{id}/phases/{phase_id}` | owner/editor | update phase `name`, `color`, and/or `colorMode` |
+
+Phase-field PATCH is collaboration-oriented and operates on the latest row-locked canonical
+snapshot. It intentionally does **not** require `last_updated_at`: only the fields explicitly
+present in the request are changed, so an unrelated collaborator write cannot create a
+whole-roadmap stale-revision conflict. Concurrent field operations on the same roadmap are
+serialized by the database row lock; operations touching different fields both survive.
+For the same field, the latest accepted server operation becomes the visible authoritative
+value.
+
+A no-op phase PATCH returns the current roadmap without advancing `updated_at` or writing
+activity. Real changes keep the derivative projection in parity and publish a
+`roadmap.updated` event with `phase_id`, action, and changed fields.
+
 ## Tag registry
 
 | Method | Path | Access |
@@ -161,17 +179,25 @@ Memory realtime supports one API process. Redis mode shares events, tickets, loc
 revocation state, and rate limits across workers/instances. In Redis mode, a Redis error in
 the public rate limiter fails closed with `503` rather than silently permitting requests.
 
-## Optimistic concurrency
+## Concurrency contracts
 
-Roadmap content writes use an exact server revision (`updated_at`) compare-and-swap
-contract. Clients send their last observed revision. A stale **or future** revision is
-not allowed to overwrite current server state.
+RoadForge uses more than one concurrency contract because the safest scope depends on the
+operation:
 
-A conflict returns HTTP `409` with `code: "roadmap_conflict"` and the current server
-revision plus enough server state/summary information for the client to preserve local
-work and present an explicit resolution path.
+- aggregate roadmap replacement (`PUT`) and task planning/completion writes use an exact
+  server revision (`updated_at`) compare-and-swap contract;
+- phase-field writes mutate only declared fields on the latest row-locked server snapshot
+  and therefore do not require a whole-roadmap revision token;
+- claim/release operations use their own atomic ownership rules.
 
-Clients and MCP tools must not silently retry a conflicting write as an overwrite.
+For compare-and-swap writes, a stale **or future** revision is not allowed to overwrite
+current server state. A conflict returns HTTP `409` with `code: "roadmap_conflict"` and the
+current server revision plus enough server state/summary information for deliberate
+recovery.
+
+Clients and MCP tools must not turn a conflicting aggregate replacement into a blind
+overwrite. Intent-scoped operations may be safely retried only according to their documented
+field/ownership semantics.
 
 ## Caching and sensitive responses
 

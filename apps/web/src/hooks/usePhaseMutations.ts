@@ -1,6 +1,8 @@
 import { useCallback } from 'react'
 import { createPhase } from '@/lib/roadmap-factory'
 import { renumberPhases } from '@/lib/phase-progress'
+import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
+import { usePhasePatch } from '@/hooks/usePhasePatch'
 import type { ActivityChange, Phase, PhaseColorMode } from '@/types/roadmap'
 
 interface UsePhaseMutationsParams {
@@ -12,6 +14,12 @@ interface UsePhaseMutationsParams {
   addPendingActivityChange: (change: ActivityChange) => void
 }
 
+interface UsePhaseMutationsCoreParams extends UsePhaseMutationsParams {
+  sessionToken: string | null
+  updatedAt: string | null
+  setUpdatedAt: (updatedAt: string) => void
+}
+
 interface UsePhaseMutationsResult {
   handleAddPhase: () => string | null
   handleUpdatePhaseColor: (phaseId: string, color: string) => void
@@ -21,14 +29,40 @@ interface UsePhaseMutationsResult {
   handleDeletePhase: (phaseId: string) => void
 }
 
-export function usePhaseMutations({
+/** Connected workspace adapter. Keep context reads here and mutation logic in the core. */
+export function usePhaseMutations(params: UsePhaseMutationsParams): UsePhaseMutationsResult {
+  const { updatedAt, setUpdatedAt } = useRoadmapData()
+  const { sessionToken } = useRoadmapSession()
+  return usePhaseMutationsCore({
+    ...params,
+    sessionToken,
+    updatedAt,
+    setUpdatedAt,
+  })
+}
+
+/** Dependency-injected phase mutation core for reuse and isolated testing. */
+export function usePhaseMutationsCore({
   phases,
   setPhases,
   setSaved,
   readOnly,
   serverRoadmapId,
+  sessionToken,
+  updatedAt,
+  setUpdatedAt,
   addPendingActivityChange,
-}: UsePhaseMutationsParams): UsePhaseMutationsResult {
+}: UsePhaseMutationsCoreParams): UsePhaseMutationsResult {
+  const { patchSyncedPhase } = usePhasePatch({
+    phases,
+    setPhases,
+    setSaved,
+    serverRoadmapId,
+    sessionToken,
+    updatedAt,
+    setUpdatedAt,
+  })
+
   const handleAddPhase = useCallback(() => {
     if (readOnly) return null
 
@@ -52,6 +86,10 @@ export function usePhaseMutations({
 
     const phase = phases.find((p) => p.id === phaseId)
     if (!phase || (phase.color === color && phase.colorMode === 'manual')) return
+    if (patchSyncedPhase({
+      phaseId,
+      updates: { color, colorMode: 'manual' },
+    })) return
 
     setPhases(
       phases.map((p) => (
@@ -71,12 +109,24 @@ export function usePhaseMutations({
       details: `${phase.num} — ${phase.name}`,
     })
     setSaved(false)
-  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
+  }, [
+    addPendingActivityChange,
+    patchSyncedPhase,
+    phases,
+    readOnly,
+    setPhases,
+    setSaved,
+  ])
 
-  const handleUpdatePhaseColorMode = useCallback((phaseId: string, colorMode: PhaseColorMode) => {
+  const handleUpdatePhaseColorMode = useCallback((
+    phaseId: string,
+    colorMode: PhaseColorMode,
+  ) => {
     if (readOnly) return
     const phase = phases.find((item) => item.id === phaseId)
     if (!phase || phase.colorMode === colorMode) return
+    if (patchSyncedPhase({ phaseId, updates: { colorMode } })) return
+
     setPhases(phases.map((item) => (
       item.id === phaseId ? { ...item, colorMode } : item
     )))
@@ -93,13 +143,21 @@ export function usePhaseMutations({
       details: `${phase.num} — ${phase.name}`,
     })
     setSaved(false)
-  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
+  }, [
+    addPendingActivityChange,
+    patchSyncedPhase,
+    phases,
+    readOnly,
+    setPhases,
+    setSaved,
+  ])
 
   const handleUpdatePhaseName = useCallback((phaseId: string, name: string) => {
     if (readOnly) return
 
     const phase = phases.find((p) => p.id === phaseId)
     if (!phase || phase.name === name) return
+    if (patchSyncedPhase({ phaseId, updates: { name } })) return
 
     setPhases(
       phases.map((p) => (p.id === phaseId ? { ...p, name } : p)),
@@ -117,7 +175,14 @@ export function usePhaseMutations({
       details: `${phase.num} — ${name}`,
     })
     setSaved(false)
-  }, [addPendingActivityChange, phases, readOnly, setPhases, setSaved])
+  }, [
+    addPendingActivityChange,
+    patchSyncedPhase,
+    phases,
+    readOnly,
+    setPhases,
+    setSaved,
+  ])
 
   const handleReorderPhases = useCallback((phaseIds: string[]) => {
     if (readOnly) return

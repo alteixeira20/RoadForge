@@ -3,7 +3,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { usePhaseMutations } from '@/hooks/usePhaseMutations'
+import { usePhaseMutationsCore as usePhaseMutations } from '@/hooks/usePhaseMutations'
 import type { Phase } from '@/types/roadmap'
 
 const phase: Phase = {
@@ -61,6 +61,9 @@ describe('usePhaseMutations', () => {
       setSaved: vi.fn(),
       readOnly: false,
       serverRoadmapId: 'roadmap-1',
+      sessionToken: null,
+      updatedAt: null,
+      setUpdatedAt: vi.fn(),
       addPendingActivityChange: vi.fn(),
       ...overrides,
     }
@@ -244,6 +247,9 @@ describe('usePhaseMutations', () => {
       setSaved: vi.fn(),
       readOnly: false,
       serverRoadmapId: 'roadmap-1',
+      sessionToken: null,
+      updatedAt: null,
+      setUpdatedAt: vi.fn(),
       addPendingActivityChange: vi.fn(),
     }
     let mutations: Mutations | null = null

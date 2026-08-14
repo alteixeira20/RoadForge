@@ -10,6 +10,8 @@ interface ApplyPartialWriteResultParams {
   setSaved: (saved: boolean) => void
 }
 
+export type PhasePatchField = 'name' | 'color' | 'colorMode'
+
 export function applyPartialWriteResult({
   roadmap,
   wasSaved,
@@ -47,6 +49,29 @@ export function mergeReturnedTaskFields(
       task.id === taskId ? copyTaskFields(task, returnedTask, fields) : task
     )),
   }))
+}
+
+export function mergeReturnedPhaseFields(
+  phases: Phase[],
+  returnedPhases: Phase[],
+  phaseId: string,
+  fields: PhasePatchField[],
+): Phase[] {
+  const returnedPhase = returnedPhases.find((phase) => phase.id === phaseId)
+  if (!returnedPhase) return phases
+
+  return phases.map((phase) => {
+    if (phase.id !== phaseId) return phase
+    const nextPhase = { ...phase }
+    for (const field of fields) {
+      if (field in returnedPhase) {
+        Object.assign(nextPhase, { [field]: returnedPhase[field] })
+      } else {
+        delete (nextPhase as Partial<Phase>)[field]
+      }
+    }
+    return nextPhase
+  })
 }
 
 function copyTaskFields(

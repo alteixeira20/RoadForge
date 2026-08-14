@@ -4,7 +4,7 @@
 **Endpoint semantics:** [`../backend-api.md`](../backend-api.md) and API tests.
 
 RoadForge uses a mix of aggregate saves and focused mutation endpoints. Focused writes are
-an optimization and intent-narrowing mechanism; they do not change the canonical roadmap
+an intent-narrowing and collaboration mechanism; they do not change the canonical roadmap
 source of truth.
 
 ## Invariant
@@ -15,7 +15,7 @@ For synced roadmaps:
 - the tag registry remains canonical roadmap data;
 - relational phase/task tables are derivative;
 - activity/version records are separate recovery/history evidence;
-- optimistic content writes preserve the current exact-revision contract.
+- each write surface owns an explicit concurrency contract appropriate to its mutation scope.
 
 Local-only roadmaps continue to use the browser-local mutation path and remain usable
 without the API.
@@ -27,6 +27,7 @@ Current code includes focused operations for:
 - task planning-field updates;
 - task completion/reopen;
 - task claim/release;
+- phase name/color/color-mode updates;
 - tag registry listing/mutation.
 
 The exact routes, roles, fields, limits, and errors are maintained in
@@ -44,19 +45,27 @@ Add a focused path when there is evidence that it improves at least one of:
 - correctness by preventing unrelated client state from joining a mutation;
 - payload/write amplification;
 - conflict scope or recovery clarity;
+- live collaboration behavior;
 - a concrete integration/agent use case.
 
 The new path must preserve portable JSON, authorization, activity, projection, realtime,
 and recovery invariants.
 
-## Conflict behavior
+## Concurrency behavior
 
-Focused content writes do not bypass optimistic concurrency. Stale or future revisions
-must not silently overwrite newer server state. Conflict UI/integrations should preserve
-local work and require an explicit next action.
+Focused writes do **not** all need the same optimistic-concurrency mechanism.
 
-Claims/other coordination operations can have additional atomic ownership semantics; use
-the current service tests as the contract rather than inferring them from this overview.
+- Task planning/completion writes currently use the exact observed roadmap revision.
+- Phase-field writes are safe to apply to the latest row-locked server snapshot because
+  they mutate only explicitly declared phase fields. They therefore do not require a
+  whole-roadmap `last_updated_at` token.
+- Claim/release operations use atomic ownership semantics.
+- Aggregate replacement remains compare-and-swap and must not become a blind overwrite.
+
+The important invariant is that unrelated client state is never smuggled into a focused
+mutation. A server-authoritative collaboration client should reconcile or retry an
+intent-scoped operation according to that operation's contract rather than forcing a
+whole-roadmap local/server choice when the mutation can be safely isolated.
 
 ## Projection behavior
 
@@ -79,7 +88,7 @@ A PR should demonstrate:
 
 1. a concrete user/operational reason;
 2. API role enforcement;
-3. exact revision/ownership behavior;
+3. explicit concurrency/ownership behavior appropriate to the mutation scope;
 4. canonical snapshot mutation correctness;
 5. projection parity;
 6. precise activity behavior;
