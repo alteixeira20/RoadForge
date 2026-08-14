@@ -6,9 +6,18 @@ import { API_BASE_URL, requestJson } from './roadmap-http'
 
 // ─── Realtime handler types ────────────────────────────────────────────────────
 
+export interface RoadmapUpdatedEventPayload {
+  roadmap_id: string
+  updated_at: string
+  participant_id: string
+  task_id?: string
+  action?: string
+  changed_fields?: string[]
+}
+
 export interface RealtimeHandlers {
   onOpen?: () => void
-  onUpdated?: (payload: { roadmap_id: string; updated_at: string; participant_id: string }) => void
+  onUpdated?: (payload: RoadmapUpdatedEventPayload) => void
   onLockAcquired?: (payload: { roadmap_id: string; target: string; participant_id: string; display_name: string }) => void
   onLockReleased?: (payload: { roadmap_id: string; target: string; participant_id: string }) => void
   onParticipantRevoked?: (payload: { roadmap_id: string; participant_id: string; revoked_at: string }) => void
