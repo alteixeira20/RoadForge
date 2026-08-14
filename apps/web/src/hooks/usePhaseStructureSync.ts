@@ -55,10 +55,14 @@ interface CreationBarrier {
   resolve: (readiness: PhaseServerReadiness) => void
 }
 
-function cachedServerRevision(): string | null {
+function cachedRoadmap() {
   const activeId = storage.getActiveRoadmapId()
   if (!activeId) return null
-  return storage.getRoadmapCache(activeId)?.updatedAt ?? null
+  return storage.getRoadmapCache(activeId)
+}
+
+function cachedServerRevision(): string | null {
+  return cachedRoadmap()?.updatedAt ?? null
 }
 
 function createBarrier(): CreationBarrier {
@@ -130,6 +134,10 @@ export function usePhaseStructureSync({
   ): boolean => {
     if (!serverRoadmapId || !sessionToken) return false
 
+    const startedAtRevision = newestServerRevision(
+      latestRevisionRef.current,
+      cachedServerRevision(),
+    )
     structureGenerationRef.current += 1
     const generation = structureGenerationRef.current
     const barrier = createBarrier()
@@ -156,11 +164,31 @@ export function usePhaseStructureSync({
         onSuccess()
       } catch (error) {
         const { kind } = classifyRoadmapSaveError(error)
+
+        if (kind === 'conflict') {
+          // The local create definitively lost, so dependent field/delete/order
+          // writes must not target this ID. If realtime already advanced the
+          // cache and installed the remote winner with the same ID, preserve
+          // that authoritative entity instead of removing it as a rollback.
+          readiness = 'absent'
+          const cached = cachedRoadmap()
+          const remoteWinnerObserved = !!(
+            cached
+            && cached.updatedAt
+            && isNewerServerRevision(cached.updatedAt, startedAtRevision)
+            && cached.phases.some((candidate) => candidate.id === phase.id)
+          )
+          if (!remoteWinnerObserved) {
+            setCurrentPhases(removePhaseAndDanglingDependencies(phasesRef.current, phase.id))
+          }
+          showToast('Another phase already uses this ID. Your local create was cancelled.')
+          return
+        }
+
         const definitive = kind === 'validation'
           || kind === 'forbidden'
           || kind === 'unauthorized'
           || kind === 'session-expired'
-          || kind === 'conflict'
         if (definitive) {
           readiness = 'absent'
           setCurrentPhases(removePhaseAndDanglingDependencies(phasesRef.current, phase.id))
@@ -168,10 +196,8 @@ export function usePhaseStructureSync({
             onSessionExpired()
           } else if (kind === 'forbidden') {
             showToast('You do not have permission to create phases.')
-          } else if (kind === 'validation') {
-            showToast('The server rejected this phase. The local phase was removed.')
           } else {
-            showToast('That phase could not be created because its ID is already in use.')
+            showToast('The server rejected this phase. The local phase was removed.')
           }
         } else {
           handleAmbiguousFailure(
