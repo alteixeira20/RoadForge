@@ -157,20 +157,17 @@ describe('usePhasePatch', () => {
     const setUpdatedAt = vi.fn()
     let result!: HookResult
 
-    const render = () => {
-      act(() => {
-        root.render(
-          <Harness
-            phases={currentPhases}
-            setPhases={setPhases}
-            setSaved={setSaved}
-            setUpdatedAt={setUpdatedAt}
-            onResult={(next) => { result = next }}
-          />,
-        )
-      })
-    }
-    render()
+    act(() => {
+      root.render(
+        <Harness
+          phases={currentPhases}
+          setPhases={setPhases}
+          setSaved={setSaved}
+          setUpdatedAt={setUpdatedAt}
+          onResult={(next) => { result = next }}
+        />,
+      )
+    })
 
     act(() => {
       result.patchSyncedPhase({ phaseId: 'phase-1', updates: { name: 'First' } })
@@ -207,9 +204,7 @@ describe('usePhasePatch', () => {
   })
 
   it('keeps an optimistic phase field as a local draft when the connection result is ambiguous', async () => {
-    mockedPatchPhaseFields.mockRejectedValue(
-      new ApiConnectionError('Failed to reach RoadForge API'),
-    )
+    mockedPatchPhaseFields.mockRejectedValue(new ApiConnectionError())
     let currentPhases = initialPhases
     const setPhases = vi.fn((next: Phase[]) => {
       currentPhases = next
