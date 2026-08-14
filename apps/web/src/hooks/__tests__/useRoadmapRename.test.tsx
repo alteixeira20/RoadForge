@@ -4,6 +4,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRoadmapRename } from '@/hooks/useRoadmapRename'
+import { storage } from '@/lib/storage'
 import { patchRoadmapName } from '@/services/roadmap-structure.service'
 import { ApiConnectionError, ApiError } from '@/services/roadmap-http'
 
@@ -42,6 +43,8 @@ describe('useRoadmapRename', () => {
   let root: Root
 
   beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
     mockedPatchRoadmapName.mockReset()
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -190,6 +193,58 @@ describe('useRoadmapRename', () => {
       await Promise.resolve()
     })
 
+    expect(setUpdatedAt).not.toHaveBeenCalled()
+  })
+
+  it('does not let an older rename response overwrite a newer realtime revision before rerender', async () => {
+    const response = deferred<{ roadmapName: string; updatedAt: string }>()
+    mockedPatchRoadmapName.mockImplementationOnce(() => response.promise)
+
+    let visibleName = 'Current roadmap'
+    const setRoadmapName = vi.fn((name: string) => {
+      visibleName = name
+    })
+    const setUpdatedAt = vi.fn()
+
+    storage.setActiveRoadmapId('rm_1')
+    storage.setRoadmapCache('rm_1', {
+      roadmapName: visibleName,
+      phases: [],
+      saved: true,
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-08-14T09:00:00Z',
+      isPasswordEnabled: false,
+    })
+
+    const harness = renderHook({ setRoadmapName, setUpdatedAt })
+    act(() => {
+      harness.result.handleRenameRoadmap('Local pending')
+    })
+    await act(async () => Promise.resolve())
+
+    // Realtime applies a newer rename and writes its revision to the shared
+    // browser cache before this hook has rerendered with the new props.
+    visibleName = 'Remote newer'
+    storage.setRoadmapCache('rm_1', {
+      roadmapName: visibleName,
+      phases: [],
+      saved: true,
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-08-14T09:05:00Z',
+      isPasswordEnabled: false,
+    })
+
+    await act(async () => {
+      response.resolve({
+        roadmapName: 'Older local response',
+        updatedAt: '2026-08-14T09:04:00Z',
+      })
+      await response.promise
+      await Promise.resolve()
+    })
+
+    expect(visibleName).toBe('Remote newer')
+    expect(setRoadmapName).not.toHaveBeenCalledWith('Older local response')
     expect(setUpdatedAt).not.toHaveBeenCalled()
   })
 
