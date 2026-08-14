@@ -1,5 +1,6 @@
+from pathlib import Path
+
 import api.services.projection as projection
-import api.services.roadmap_projection_service as facade
 
 _PUBLIC_EXPORTS = {
     "ProjectionBackfillResult",
@@ -20,11 +21,22 @@ _PUBLIC_EXPORTS = {
 }
 
 
-def test_projection_facade_exports_exact_public_surface() -> None:
-    assert set(facade.__all__) == _PUBLIC_EXPORTS
+def test_projection_package_exports_exact_public_surface() -> None:
     assert set(projection.__all__) == _PUBLIC_EXPORTS
 
 
-def test_projection_facade_reexports_package_objects_by_identity() -> None:
-    for name in _PUBLIC_EXPORTS:
-        assert getattr(facade, name) is getattr(projection, name)
+def test_legacy_projection_facade_is_removed_and_not_imported() -> None:
+    api_root = Path(__file__).resolve().parents[1]
+    service_root = api_root / "src" / "api" / "services"
+    legacy_module = "roadmap_projection" + "_service"
+    legacy_import = "api.services." + legacy_module
+
+    assert not (service_root / f"{legacy_module}.py").exists()
+
+    offenders: list[str] = []
+    for source_root in (api_root / "src", api_root / "tests", api_root / "unit_tests"):
+        for path in source_root.rglob("*.py"):
+            if legacy_import in path.read_text(encoding="utf-8"):
+                offenders.append(str(path.relative_to(api_root)))
+
+    assert offenders == []
