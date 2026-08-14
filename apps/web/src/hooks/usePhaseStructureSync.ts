@@ -6,6 +6,8 @@ import {
   orderPhasesByPreference,
   reconcileCreatedPhaseAcknowledgement,
   removePhaseAndDanglingDependencies,
+  restoreDeletedPhase,
+  restorePhaseOrder,
 } from '@/lib/phase-structure-merge'
 import {
   isNewerServerRevision,
@@ -258,7 +260,7 @@ export function usePhaseStructureSync({
           || kind === 'session-expired'
         if (definitive) {
           if (structureGenerationRef.current === generation) {
-            setCurrentPhases(beforePhases)
+            setCurrentPhases(restoreDeletedPhase(phasesRef.current, beforePhases, phaseId))
           }
           if (kind === 'session-expired' || kind === 'unauthorized') {
             onSessionExpired()
@@ -344,7 +346,7 @@ export function usePhaseStructureSync({
           || kind === 'session-expired'
         if (definitive) {
           if (structureGenerationRef.current === generation) {
-            setCurrentPhases(beforePhases)
+            setCurrentPhases(restorePhaseOrder(phasesRef.current, beforePhases))
           }
           if (kind === 'session-expired' || kind === 'unauthorized') {
             onSessionExpired()
