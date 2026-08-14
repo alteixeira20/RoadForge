@@ -11,7 +11,10 @@ from api.services.projection.snapshot import (
     snapshot_counts,
     snapshot_phases,
 )
-from api.services.projection.types import ProjectionDriftFinding, ProjectionParityResult
+from api.services.projection.types import (
+    ProjectionDriftFinding,
+    ProjectionParityResult,
+)
 
 
 def _compare_optional_list(
