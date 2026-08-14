@@ -139,7 +139,7 @@ describe('useTaskStructureSync', () => {
     const showToast = vi.fn()
     let result!: HookResult
 
-    act(() => {
+    const renderCurrent = () => {
       root.render(
         <Harness
           phases={currentPhases}
@@ -154,12 +154,20 @@ describe('useTaskStructureSync', () => {
           onResult={(next) => { result = next }}
         />,
       )
-    })
+    }
+
+    act(renderCurrent)
+
+    const rerenderWithPhases = (nextPhases: Phase[]) => {
+      setPhases(nextPhases)
+      act(renderCurrent)
+    }
 
     return {
       get result() { return result },
       get phases() { return currentPhases },
       setPhases,
+      rerenderWithPhases,
       setSaved,
       setUpdatedAt,
       beginFocusedWrite,
@@ -238,7 +246,8 @@ describe('useTaskStructureSync', () => {
   it('restores a definitively rejected task deletion without losing newer surviving edits', async () => {
     const child: Task = { id: 'child-a', title: 'Child', done: false, parentId: 'root-a' }
     const before: Phase = { ...phaseA, tasks: [rootA, child, rootB] }
-    mockedDelete.mockRejectedValueOnce(new ApiError(403, 'Forbidden'))
+    const pendingDelete = deferred<never>()
+    mockedDelete.mockImplementationOnce(() => pendingDelete.promise)
     const hook = renderHook([before])
 
     act(() => {
@@ -247,9 +256,15 @@ describe('useTaskStructureSync', () => {
     expect(hook.phases[0].tasks.map((task) => task.id)).toEqual(['root-b'])
 
     const newerRootB = { ...hook.phases[0].tasks[0], title: 'Root B newer edit' }
-    hook.setPhases([{ ...hook.phases[0], tasks: [newerRootB] }])
+    hook.rerenderWithPhases([{ ...hook.phases[0], tasks: [newerRootB] }])
 
     await act(async () => {
+      pendingDelete.reject(new ApiError(403, 'Forbidden'))
+      try {
+        await pendingDelete.promise
+      } catch {
+        // expected
+      }
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -309,7 +324,7 @@ describe('useTaskStructureSync', () => {
       updatedAt: '2026-08-14T09:01:00Z',
       isPasswordEnabled: false,
     })
-    hook.setPhases(remotePhases)
+    hook.rerenderWithPhases(remotePhases)
 
     await act(async () => {
       create.reject(new ApiError(409, 'Task ID already exists'))
