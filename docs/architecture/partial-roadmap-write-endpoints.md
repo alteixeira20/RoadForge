@@ -80,6 +80,34 @@ mutation. A server-authoritative collaboration client should reconcile or retry 
 intent-scoped operation according to that operation's contract rather than forcing a
 whole-roadmap local/server choice when the mutation can be safely isolated.
 
+## Browser ordering and fallback
+
+The browser treats focused phase operations as their own write family rather than letting
+optimistic phase state leak into aggregate autosave:
+
+- phase create/delete/reorder and phase-field PATCHes enter a reference-counted focused-write
+  gate;
+- aggregate autosave/manual replacement is paused while any focused phase operation owns
+  that gate;
+- a newly created phase has an explicit creation-readiness barrier, so the UI may open its
+  name editor immediately while a phase-field PATCH waits until the server has accepted the
+  phase create;
+- delete/reorder involving a just-created phase wait on the same barrier instead of relying
+  on timers, microtask order, or expected network latency;
+- local structural operation generations prevent an older focused response from replacing
+  a newer optimistic structural action;
+- focused acknowledgements reconcile only the structure/fields owned by that operation;
+  they must not replace the returned full phase array over unrelated dirty local task data;
+- definitive validation/authorization failures roll back the optimistic operation when it
+  still owns the latest local generation;
+- ambiguous transport/server failures preserve the optimistic state as a local draft and
+  re-enable aggregate recovery under its normal revision guard, because the focused write
+  may already have committed server-side.
+
+This fallback is transitional recovery, not the desired normal collaboration path. A future
+bounded offline-operation queue may replace ambiguous aggregate fallback, but must preserve
+the same intent-scoped ordering and data-loss guarantees.
+
 ## Projection behavior
 
 Projection tables are rebuildable derivatives. Focused writes should keep them consistent
