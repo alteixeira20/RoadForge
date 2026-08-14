@@ -28,14 +28,16 @@ from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
     RoadmapConflictError,  # noqa: F401 - compatibility re-export for routers/tests
     _change_summary_fields,
-    _fetch_active_roadmap,
-    _fetch_active_roadmap_for_update,
     _phases_for_read,
     _phases_from_snapshot,
     _roadmap_response,
     _snapshot_from_phases,
 )
 from api.services.roadmap_join_service import join_roadmap  # noqa: F401
+from api.services.roadmap_query import (
+    fetch_active_roadmap,
+    fetch_active_roadmap_for_update,
+)
 from api.services.roadmap_validation import validate_roadmap_domain
 from api.services.session_policy import session_expires_at
 from api.services.sharing_service import _ROLE_LABELS, _ROLE_ORDER, _SHARE_PREFIXES  # noqa: F401
@@ -187,7 +189,7 @@ async def create_roadmap(
 
 
 async def get_roadmap(db: AsyncSession, roadmap_id: str) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+    roadmap = await fetch_active_roadmap(db, roadmap_id)
     return _roadmap_response(roadmap, await _phases_for_read(db, roadmap))
 
 
@@ -197,7 +199,7 @@ async def update_roadmap(
     payload: UpdateRoadmapRequest,
     participant: Participant | None = None,
 ) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
 
     # The echoed server timestamp is an opaque compare-and-swap token. Exact
     # equality prevents future client timestamps from bypassing conflict checks.
@@ -284,7 +286,7 @@ async def delete_roadmap(
     roadmap_id: str,
     participant: Participant,
 ) -> dict[str, bool]:
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     now = datetime.now(timezone.utc)
 
     result = await db.execute(
@@ -330,7 +332,7 @@ async def get_activity_logs(
     limit: int = 100,
     offset: int = 0,
 ) -> ActivityLogListResponse:
-    await _fetch_active_roadmap(db, roadmap_id)
+    await fetch_active_roadmap(db, roadmap_id)
 
     safe_limit = min(limit, 200)
     stmt = (
