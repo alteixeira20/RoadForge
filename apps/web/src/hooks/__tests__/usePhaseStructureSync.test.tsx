@@ -4,6 +4,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePhaseStructureSync } from '@/hooks/usePhaseStructureSync'
+import { storage } from '@/lib/storage'
 import {
   createServerPhase,
   deleteServerPhase,
@@ -223,6 +224,56 @@ describe('usePhaseStructureSync', () => {
     expect(hook.setSaved).toHaveBeenCalledWith(false)
     expect(fallback).toHaveBeenCalledTimes(1)
     expect(hook.beginFocusedWrite).toHaveBeenCalledTimes(1)
+    expect(hook.endFocusedWrite).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels dependent writes after a duplicate create but preserves an already-observed remote winner', async () => {
+    const create = deferred<{ phases: Phase[]; updatedAt: string }>()
+    mockedCreateServerPhase.mockImplementationOnce(() => create.promise)
+    storage.setActiveRoadmapId('local_1')
+    storage.setRoadmapCache('local_1', {
+      roadmapName: 'Roadmap',
+      phases: [phaseA],
+      saved: true,
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-08-14T09:00:00Z',
+      isPasswordEnabled: false,
+    })
+    const hook = renderHook()
+    let readiness!: Promise<'ready' | 'absent' | 'uncertain'>
+
+    act(() => {
+      hook.result.createSyncedPhase(phaseB, { onAggregateFallback: vi.fn() })
+      readiness = hook.result.waitForPhaseReady('phase-b')
+    })
+
+    const remoteWinner = { ...phaseB, name: 'Remote winner', color: '#abcdef' }
+    storage.setRoadmapCache('local_1', {
+      roadmapName: 'Roadmap',
+      phases: [phaseA, remoteWinner],
+      saved: true,
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-08-14T09:01:00Z',
+      isPasswordEnabled: false,
+    })
+    hook.setPhases([phaseA, remoteWinner])
+
+    await act(async () => {
+      create.reject(new ApiError(409, 'Phase ID already exists'))
+      try {
+        await create.promise
+      } catch {
+        // expected rejection
+      }
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await expect(readiness).resolves.toBe('absent')
+    expect(hook.phases).toEqual([phaseA, remoteWinner])
+    expect(hook.showToast).toHaveBeenCalledWith(
+      'Another phase already uses this ID. Your local create was cancelled.',
+    )
     expect(hook.endFocusedWrite).toHaveBeenCalledTimes(1)
   })
 

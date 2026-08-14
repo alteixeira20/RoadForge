@@ -25,6 +25,8 @@ const deliveryPhase: Phase = {
   status: 'future',
 }
 
+const INTERACTIVE_PHASE_ID = /^rf-p-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 type MutationParams = Parameters<typeof usePhaseMutations>[0]
 type Mutations = ReturnType<typeof usePhaseMutations>
 
@@ -95,11 +97,15 @@ describe('usePhaseMutations', () => {
       phaseId = harness.mutations.handleAddPhase()
     })
 
-    expect(phaseId).toBe('rf-p-2')
+    expect(phaseId).toMatch(INTERACTIVE_PHASE_ID)
     expect(harness.params.setPhases).toHaveBeenCalledTimes(1)
     expect(harness.params.setPhases).toHaveBeenCalledWith([
       phase,
-      expect.objectContaining({ id: 'rf-p-2', num: '02', tasks: [] }),
+      expect.objectContaining({
+        id: expect.stringMatching(INTERACTIVE_PHASE_ID),
+        num: '02',
+        tasks: [],
+      }),
     ])
     expect(harness.params.setSaved).toHaveBeenCalledWith(false)
     expect(harness.params.addPendingActivityChange).toHaveBeenCalledTimes(1)
@@ -107,13 +113,13 @@ describe('usePhaseMutations', () => {
       expect.objectContaining({
         action: 'phase.created',
         entity_type: 'phase',
-        entity_id: 'rf-p-2',
-        phaseId: 'rf-p-2',
+        entity_id: phaseId,
+        phaseId,
       }),
     )
   })
 
-  it('recovers a zero-phase roadmap with an active first phase', () => {
+  it('recovers a zero-phase roadmap with an active first interactive phase', () => {
     const harness = renderMutations({ phases: [] })
 
     act(() => {
@@ -122,7 +128,7 @@ describe('usePhaseMutations', () => {
 
     expect(harness.params.setPhases).toHaveBeenCalledWith([
       expect.objectContaining({
-        id: 'rf-p-1',
+        id: expect.stringMatching(INTERACTIVE_PHASE_ID),
         num: '01',
         status: 'active',
       }),

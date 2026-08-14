@@ -19,6 +19,11 @@ import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { buildRegistryFromPhases } from '@/lib/tag-registry'
 import { mergeAuthoritativeTasksIntoLocalPhases } from '@/lib/realtime-task-merge'
 import {
+  mergeAuthoritativePhaseStructureIntoLocalPhases,
+  phaseIdsInSnapshot,
+  taskIdsInSnapshot,
+} from '@/lib/realtime-phase-structure-merge'
+import {
   getRealtimePhaseFields,
   getRealtimeRoadmapFields,
   mergeAuthoritativePhaseFieldsIntoLocalPhases,
@@ -106,6 +111,8 @@ interface RealtimeRefreshRequest {
   full: boolean
   taskIds: Set<string>
   phaseFields: Map<string, Set<RealtimePhaseField>>
+  phaseStructureIds: Set<string>
+  phaseOrderChanged: boolean
   roadmapFields: Set<RealtimeRoadmapField>
 }
 
@@ -116,6 +123,8 @@ function createRefreshRequest(full = false): RealtimeRefreshRequest {
     full,
     taskIds: new Set(),
     phaseFields: new Map(),
+    phaseStructureIds: new Set(),
+    phaseOrderChanged: false,
     roadmapFields: new Set(),
   }
 }
@@ -127,6 +136,8 @@ function cloneRefreshRequest(request: RealtimeRefreshRequest): RealtimeRefreshRe
     phaseFields: new Map(
       [...request.phaseFields].map(([phaseId, fields]) => [phaseId, new Set(fields)]),
     ),
+    phaseStructureIds: new Set(request.phaseStructureIds),
+    phaseOrderChanged: request.phaseOrderChanged,
     roadmapFields: new Set(request.roadmapFields),
   }
 }
@@ -136,7 +147,9 @@ function mergeRefreshRequest(
   source: RealtimeRefreshRequest,
 ): void {
   target.full ||= source.full
+  target.phaseOrderChanged ||= source.phaseOrderChanged
   source.taskIds.forEach((taskId) => target.taskIds.add(taskId))
+  source.phaseStructureIds.forEach((phaseId) => target.phaseStructureIds.add(phaseId))
   source.roadmapFields.forEach((field) => target.roadmapFields.add(field))
   for (const [phaseId, fields] of source.phaseFields) {
     const targetFields = target.phaseFields.get(phaseId) ?? new Set<RealtimePhaseField>()
@@ -148,6 +161,8 @@ function mergeRefreshRequest(
 function hasScopedRefresh(request: RealtimeRefreshRequest): boolean {
   return request.taskIds.size > 0
     || request.phaseFields.size > 0
+    || request.phaseStructureIds.size > 0
+    || request.phaseOrderChanged
     || request.roadmapFields.size > 0
 }
 
@@ -157,6 +172,15 @@ function refreshRequestFromEvent(
   const request = createRefreshRequest(false)
 
   if (payload.task_id) request.taskIds.add(payload.task_id)
+
+  if (payload.phase_operation === 'created' || payload.phase_operation === 'deleted') {
+    if (payload.phase_id) {
+      request.phaseStructureIds.add(payload.phase_id)
+      request.phaseOrderChanged = true
+    }
+  } else if (payload.phase_operation === 'reordered') {
+    request.phaseOrderChanged = true
+  }
 
   if (payload.phase_id) {
     const fields = getRealtimePhaseFields(payload.changed_fields)
@@ -265,9 +289,10 @@ export function useRoadmapRealtime({
       refreshInFlight: boolean
       refreshController: AbortController | null
       // Bursts are coalesced into one queued follow-up request. Scoped events
-      // accumulate every affected task/phase/roadmap field. A full refresh may
-      // be queued alongside those scopes: if a dirty draft later prevents full
-      // replacement, the safe scopes are still eligible to rebase.
+      // accumulate every affected task/phase/roadmap field plus structural
+      // phase identities/order. A full refresh may be queued alongside those
+      // scopes: if a dirty draft later prevents full replacement, the safe
+      // scopes are still eligible to rebase.
       pendingRequest: RealtimeRefreshRequest | null
     }
 
@@ -402,7 +427,7 @@ export function useRoadmapRealtime({
     // unrelated local unsaved edits. The browser cache is the same local
     // snapshot written by RoadmapContext's mutation setters, so this applies
     // all requested scopes as one atomic local-cache update and advances the
-    // server revision only after every scope was proven reconcilable.
+    // server revision only after every non-obsolete scope is proven reconciled.
     const applyLoadedScopedUpdates = (
       loaded: LoadedRoadmap,
       request: RealtimeRefreshRequest,
@@ -417,25 +442,66 @@ export function useRoadmapRealtime({
         return 'stale'
       }
 
-      let nextPhases = cached.phases
-      if (request.taskIds.size > 0) {
-        const mergedTasks = mergeAuthoritativeTasksIntoLocalPhases(
+      const localBeforeStructure = cached.phases
+      const loadedPhaseIds = phaseIdsInSnapshot(loaded.phases)
+      const loadedTaskIds = taskIdsInSnapshot(loaded.phases)
+      const finalAbsentAffectedPhaseIds = new Set(
+        [...request.phaseStructureIds].filter((phaseId) => !loadedPhaseIds.has(phaseId)),
+      )
+      const tasksRemovedByAffectedPhaseDeletion = new Set(
+        localBeforeStructure
+          .filter((phase) => finalAbsentAffectedPhaseIds.has(phase.id))
+          .flatMap((phase) => phase.tasks.map((task) => task.id)),
+      )
+
+      let nextPhases = localBeforeStructure
+      if (request.phaseStructureIds.size > 0 || request.phaseOrderChanged) {
+        nextPhases = mergeAuthoritativePhaseStructureIntoLocalPhases(
           nextPhases,
           loaded.phases,
-          request.taskIds,
+          request.phaseStructureIds,
+          request.phaseOrderChanged,
         )
-        if (!mergedTasks) return 'unreconciled'
-        nextPhases = mergedTasks
+      }
+
+      if (request.taskIds.size > 0) {
+        const unexplainedMissingTask = [...request.taskIds].some((taskId) => (
+          !loadedTaskIds.has(taskId) && !tasksRemovedByAffectedPhaseDeletion.has(taskId)
+        ))
+        if (unexplainedMissingTask) return 'unreconciled'
+
+        const effectiveTaskIds = new Set(
+          [...request.taskIds].filter((taskId) => loadedTaskIds.has(taskId)),
+        )
+        if (effectiveTaskIds.size > 0) {
+          const mergedTasks = mergeAuthoritativeTasksIntoLocalPhases(
+            nextPhases,
+            loaded.phases,
+            effectiveTaskIds,
+          )
+          if (!mergedTasks) return 'unreconciled'
+          nextPhases = mergedTasks
+        }
       }
 
       if (request.phaseFields.size > 0) {
-        const mergedPhaseFields = mergeAuthoritativePhaseFieldsIntoLocalPhases(
-          nextPhases,
-          loaded.phases,
-          request.phaseFields,
-        )
-        if (!mergedPhaseFields) return 'unreconciled'
-        nextPhases = mergedPhaseFields
+        const effectivePhaseFields = new Map<string, Set<RealtimePhaseField>>()
+        for (const [phaseId, fields] of request.phaseFields) {
+          if (!loadedPhaseIds.has(phaseId)) {
+            if (finalAbsentAffectedPhaseIds.has(phaseId)) continue
+            return 'unreconciled'
+          }
+          effectivePhaseFields.set(phaseId, fields)
+        }
+        if (effectivePhaseFields.size > 0) {
+          const mergedPhaseFields = mergeAuthoritativePhaseFieldsIntoLocalPhases(
+            nextPhases,
+            loaded.phases,
+            effectivePhaseFields,
+          )
+          if (!mergedPhaseFields) return 'unreconciled'
+          nextPhases = mergedPhaseFields
+        }
       }
 
       let nextRoadmapName = cached.roadmapName
@@ -443,7 +509,12 @@ export function useRoadmapRealtime({
         nextRoadmapName = loaded.roadmap.name
       }
 
-      if (request.taskIds.size > 0 || request.phaseFields.size > 0) {
+      if (
+        request.taskIds.size > 0
+        || request.phaseFields.size > 0
+        || request.phaseStructureIds.size > 0
+        || request.phaseOrderChanged
+      ) {
         setPhasesState(nextPhases)
       }
       if (request.roadmapFields.has('name')) {
@@ -608,11 +679,12 @@ export function useRoadmapRealtime({
             if (payload.participant_id === participantId) return
             if (!isCurrentAttempt(attempt)) return
 
-            // Focused task, phase-field, and roadmap-name operations carry
-            // enough metadata to rebase only their authoritative fields onto
-            // unrelated local work. This is the shared-roadmap rule: normal
-            // collaborator actions become visible directly instead of
-            // manufacturing a whole-roadmap local/server choice.
+            // Focused task, phase-field, phase-structure, and roadmap-name
+            // operations carry enough metadata to rebase only their
+            // authoritative scope onto unrelated local work. This is the
+            // shared-roadmap rule: normal collaborator actions become visible
+            // directly instead of manufacturing a whole-roadmap local/server
+            // choice.
             const scopedRequest = refreshRequestFromEvent(payload)
             if (scopedRequest) {
               requestAuthoritativeRefresh(attempt, scopedRequest)
