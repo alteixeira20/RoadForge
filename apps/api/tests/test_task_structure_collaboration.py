@@ -43,11 +43,11 @@ async def test_create_top_level_task_is_server_normalized_and_keeps_projection_p
     assert created["title"] == "New shared task"
     assert created["done"] is False
     assert created["next"] is False
-    assert created["est"] == ""
+    assert created["est"] is None
     assert created["complexity"] == "medium"
     assert created["tags"] == []
     assert created["deps"] == []
-    assert created["desc"] == ""
+    assert created["desc"] is None
     assert created.get("parentId") is None
     roadmap = await db_session.get(Roadmap, body["id"])
     assert roadmap is not None
