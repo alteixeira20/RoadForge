@@ -9,10 +9,7 @@ import {
   mergeAuthoritativeTaskStructureIntoLocalPhases,
   taskIdsInPhases,
 } from '@/lib/realtime-task-structure-merge'
-import {
-  mergeAuthoritativeTasksIntoLocalPhases,
-  taskIdsInSnapshot,
-} from '@/lib/realtime-task-merge'
+import { mergeAuthoritativeTasksIntoLocalPhases } from '@/lib/realtime-task-merge'
 import type { Phase } from '@/types/roadmap'
 
 interface ScopedRealtimeMergeParams {
@@ -35,6 +32,19 @@ function localTaskPhaseIds(phases: Phase[]): Map<string, string> {
   return new Map(phases.flatMap((phase) => (
     phase.tasks.map((task) => [task.id, phase.id] as const)
   )))
+}
+
+function unreconciled(
+  localPhases: Phase[],
+  localRoadmapName: string,
+): ScopedRealtimeMergeResult {
+  return {
+    reconciled: false,
+    phases: localPhases,
+    roadmapName: localRoadmapName,
+    phasesChanged: false,
+    roadmapNameChanged: false,
+  }
 }
 
 export function mergeAuthoritativeRealtimeScopes({
@@ -62,15 +72,7 @@ export function mergeAuthoritativeRealtimeScopes({
       request.phaseStructureIds,
       request.phaseOrder,
     )
-    if (!merged) {
-      return {
-        reconciled: false,
-        phases: localPhases,
-        roadmapName: localRoadmapName,
-        phasesChanged: false,
-        roadmapNameChanged: false,
-      }
-    }
+    if (!merged) return unreconciled(localPhases, localRoadmapName)
     nextPhases = merged
     phasesChanged = true
   }
@@ -97,15 +99,7 @@ export function mergeAuthoritativeRealtimeScopes({
       request.topLevelTaskOrderPhaseIds,
       request.childTaskOrderParentIds,
     )
-    if (!merged) {
-      return {
-        reconciled: false,
-        phases: localPhases,
-        roadmapName: localRoadmapName,
-        phasesChanged: false,
-        roadmapNameChanged: false,
-      }
-    }
+    if (!merged) return unreconciled(localPhases, localRoadmapName)
     nextPhases = merged
     phasesChanged = true
   }
@@ -114,15 +108,7 @@ export function mergeAuthoritativeRealtimeScopes({
     const unexplainedMissing = [...request.taskDependencyIds].some((taskId) => (
       !serverTaskIds.has(taskId) && !missingTaskExplained(taskId)
     ))
-    if (unexplainedMissing) {
-      return {
-        reconciled: false,
-        phases: localPhases,
-        roadmapName: localRoadmapName,
-        phasesChanged: false,
-        roadmapNameChanged: false,
-      }
-    }
+    if (unexplainedMissing) return unreconciled(localPhases, localRoadmapName)
     const effectiveTaskIds = [...request.taskDependencyIds].filter((taskId) => (
       serverTaskIds.has(taskId)
     ))
@@ -132,15 +118,7 @@ export function mergeAuthoritativeRealtimeScopes({
         serverPhases,
         effectiveTaskIds,
       )
-      if (!merged) {
-        return {
-          reconciled: false,
-          phases: localPhases,
-          roadmapName: localRoadmapName,
-          phasesChanged: false,
-          roadmapNameChanged: false,
-        }
-      }
+      if (!merged) return unreconciled(localPhases, localRoadmapName)
       nextPhases = merged
       phasesChanged = true
     }
@@ -150,15 +128,7 @@ export function mergeAuthoritativeRealtimeScopes({
     const unexplainedMissing = [...request.taskIds].some((taskId) => (
       !serverTaskIds.has(taskId) && !missingTaskExplained(taskId)
     ))
-    if (unexplainedMissing) {
-      return {
-        reconciled: false,
-        phases: localPhases,
-        roadmapName: localRoadmapName,
-        phasesChanged: false,
-        roadmapNameChanged: false,
-      }
-    }
+    if (unexplainedMissing) return unreconciled(localPhases, localRoadmapName)
     const effectiveTaskIds = [...request.taskIds].filter((taskId) => serverTaskIds.has(taskId))
     if (effectiveTaskIds.length > 0) {
       const merged = mergeAuthoritativeTasksIntoLocalPhases(
@@ -166,15 +136,7 @@ export function mergeAuthoritativeRealtimeScopes({
         serverPhases,
         effectiveTaskIds,
       )
-      if (!merged || ![...effectiveTaskIds].every((taskId) => taskIdsInSnapshot(merged).has(taskId))) {
-        return {
-          reconciled: false,
-          phases: localPhases,
-          roadmapName: localRoadmapName,
-          phasesChanged: false,
-          roadmapNameChanged: false,
-        }
-      }
+      if (!merged) return unreconciled(localPhases, localRoadmapName)
       nextPhases = merged
       phasesChanged = true
     }
@@ -188,13 +150,7 @@ export function mergeAuthoritativeRealtimeScopes({
         continue
       }
       if (!finalAbsentAffectedPhaseIds.has(phaseId)) {
-        return {
-          reconciled: false,
-          phases: localPhases,
-          roadmapName: localRoadmapName,
-          phasesChanged: false,
-          roadmapNameChanged: false,
-        }
+        return unreconciled(localPhases, localRoadmapName)
       }
     }
     if (effectivePhaseFields.size > 0) {
@@ -203,15 +159,7 @@ export function mergeAuthoritativeRealtimeScopes({
         serverPhases,
         effectivePhaseFields,
       )
-      if (!merged) {
-        return {
-          reconciled: false,
-          phases: localPhases,
-          roadmapName: localRoadmapName,
-          phasesChanged: false,
-          roadmapNameChanged: false,
-        }
-      }
+      if (!merged) return unreconciled(localPhases, localRoadmapName)
       nextPhases = merged
       phasesChanged = true
     }
