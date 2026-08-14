@@ -12,6 +12,7 @@ source of truth.
 For synced roadmaps:
 
 - the canonical phase/task document remains `roadmaps.snapshot_json`;
+- roadmap metadata such as the name remains canonical on the roadmap row;
 - the tag registry remains canonical roadmap data;
 - relational phase/task tables are derivative;
 - activity/version records are separate recovery/history evidence;
@@ -24,6 +25,7 @@ without the API.
 
 Current code includes focused operations for:
 
+- roadmap rename;
 - task planning-field updates;
 - task completion/reopen;
 - task claim/release;
@@ -56,9 +58,9 @@ and recovery invariants.
 Focused writes do **not** all need the same optimistic-concurrency mechanism.
 
 - Task planning/completion writes currently use the exact observed roadmap revision.
-- Phase-field writes are safe to apply to the latest row-locked server snapshot because
-  they mutate only explicitly declared phase fields. They therefore do not require a
-  whole-roadmap `last_updated_at` token.
+- Roadmap rename and phase-field writes are safe to apply to the latest row-locked server
+  state because they mutate only explicitly declared fields. They therefore do not
+  require a whole-roadmap `last_updated_at` token.
 - Claim/release operations use atomic ownership semantics.
 - Aggregate replacement remains compare-and-swap and must not become a blind overwrite.
 
@@ -70,8 +72,10 @@ whole-roadmap local/server choice when the mutation can be safely isolated.
 ## Projection behavior
 
 Projection tables are rebuildable derivatives. Focused writes should keep them consistent
-with canonical state, but projection architecture must not make a best-effort derivative
-more authoritative than the roadmap snapshot.
+with canonical state when the projected document changes, but metadata-only writes such as
+roadmap rename do not need to rebuild an unchanged phase/task projection. Projection
+architecture must never make a best-effort derivative more authoritative than canonical
+roadmap state.
 
 Any proposal to make relational rows canonical is a separate data-model decision and must
 include migration, parity, recovery, and compatibility evidence.
@@ -89,8 +93,8 @@ A PR should demonstrate:
 1. a concrete user/operational reason;
 2. API role enforcement;
 3. explicit concurrency/ownership behavior appropriate to the mutation scope;
-4. canonical snapshot mutation correctness;
-5. projection parity;
+4. canonical state mutation correctness;
+5. projection parity when projected state changes;
 6. precise activity behavior;
 7. realtime behavior when applicable;
 8. normalized no-op behavior;
