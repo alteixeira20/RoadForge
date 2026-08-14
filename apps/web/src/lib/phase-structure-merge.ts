@@ -53,6 +53,39 @@ export function orderPhasesByPreference(phases: Phase[], phaseIds: string[]): Ph
 }
 
 /**
+ * Roll back an optimistic phase deletion without replacing surviving phases.
+ * The deleted phase itself comes from the pre-delete snapshot, while every
+ * still-present phase keeps its current task/field contents. The old order is
+ * then used only as a preferred structural order.
+ */
+export function restoreDeletedPhase(
+  currentPhases: Phase[],
+  beforeDelete: Phase[],
+  phaseId: string,
+): Phase[] {
+  if (currentPhases.some((phase) => phase.id === phaseId)) {
+    return orderPhasesByPreference(currentPhases, beforeDelete.map((phase) => phase.id))
+  }
+  const deleted = beforeDelete.find((phase) => phase.id === phaseId)
+  if (!deleted) return currentPhases
+  return orderPhasesByPreference(
+    [...currentPhases, deleted],
+    beforeDelete.map((phase) => phase.id),
+  )
+}
+
+/**
+ * Roll back only phase ordering. Current phase objects remain authoritative for
+ * local task/field edits; phases created after the failed reorder are retained.
+ */
+export function restorePhaseOrder(
+  currentPhases: Phase[],
+  beforeReorder: Phase[],
+): Phase[] {
+  return orderPhasesByPreference(currentPhases, beforeReorder.map((phase) => phase.id))
+}
+
+/**
  * Reconcile acknowledgement of a focused create without replacing unrelated
  * local phase/task content. Server-owned sequence/status/progress are accepted;
  * mutable phase fields remain local because the name/color editor may already
