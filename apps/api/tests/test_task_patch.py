@@ -13,11 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import api.services.roadmap_task_service as task_service
 from api.models.roadmap import ActivityLog, Roadmap, RoadmapVersion
 from api.schemas.roadmap import PatchTaskRequest, TaskDTO
-from api.services.roadmap_helpers import _patch_task_fields_in_snapshot
-from api.services.roadmap_projection_service import (
+from api.services.projection import (
     serialize_projection_to_snapshot,
     validate_projection_parity,
 )
+from api.services.roadmap_helpers import _patch_task_fields_in_snapshot
 from tests.helpers_projection import PHASES_WITH_TASKS, auth, create_with_phases
 
 
