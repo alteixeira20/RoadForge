@@ -8,6 +8,7 @@ from api.routers import (
     roadmap_sharing,
     roadmap_structure,
     roadmap_tags,
+    roadmap_task_structure,
     roadmap_tasks,
     roadmap_versions,
     roadmaps,
@@ -40,6 +41,14 @@ _TASK_ROUTES = {
     ("PATCH", "/{roadmap_id}/tasks/{task_id}/claim"),
     ("DELETE", "/{roadmap_id}/tasks/{task_id}/claim"),
 }
+_TASK_STRUCTURE_ROUTES = {
+    ("POST", "/{roadmap_id}/phases/{phase_id}/tasks"),
+    ("DELETE", "/{roadmap_id}/tasks/{task_id}"),
+    ("PUT", "/{roadmap_id}/phases/{phase_id}/tasks/order"),
+    ("PUT", "/{roadmap_id}/tasks/{parent_id}/subtasks/order"),
+    ("PUT", "/{roadmap_id}/tasks/{task_id}/dependencies/{dependency_id}"),
+    ("DELETE", "/{roadmap_id}/tasks/{task_id}/dependencies/{dependency_id}"),
+}
 _LOCK_ROUTES = {
     ("POST", "/{roadmap_id}/locks"),
     ("GET", "/{roadmap_id}/locks"),
@@ -69,6 +78,7 @@ _DOMAIN_CONTRACTS = (
     (roadmap_versions.router, _VERSION_ROUTES),
     (roadmap_activity.router, _ACTIVITY_ROUTES),
     (roadmap_tasks.router, _TASK_ROUTES),
+    (roadmap_task_structure.router, _TASK_STRUCTURE_ROUTES),
     (roadmap_locks.router, _LOCK_ROUTES),
     (roadmap_sharing.router, _SHARING_ROUTES),
     (roadmap_realtime.router, _REALTIME_ROUTES),
@@ -88,7 +98,7 @@ def _route_keys(router) -> list[tuple[str, str]]:
 
 def test_composed_router_matches_public_method_path_contract() -> None:
     assert set(_route_keys(roadmaps.router)) == _EXPECTED_PUBLIC_ROUTES
-    assert len(_EXPECTED_PUBLIC_ROUTES) == 33
+    assert len(_EXPECTED_PUBLIC_ROUTES) == 39
 
 
 def test_composed_router_has_no_duplicate_method_path_routes() -> None:
