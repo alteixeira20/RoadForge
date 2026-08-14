@@ -25,6 +25,7 @@ import {
   type RealtimePhaseField,
   type RealtimeRoadmapField,
 } from '@/lib/realtime-structure-merge'
+import { isOlderServerRevision } from '@/lib/server-revision'
 import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import {
@@ -107,6 +108,8 @@ interface RealtimeRefreshRequest {
   phaseFields: Map<string, Set<RealtimePhaseField>>
   roadmapFields: Set<RealtimeRoadmapField>
 }
+
+type ScopedApplyResult = 'applied' | 'stale' | 'unreconciled'
 
 function createRefreshRequest(full = false): RealtimeRefreshRequest {
   return {
@@ -285,6 +288,18 @@ export function useRoadmapRealtime({
     const isCurrentAttempt = (attempt: ConnectionAttempt) =>
       !cancelled && !stopped && !attempt.aborted && currentAttempt === attempt
 
+    const activeCache = () => {
+      const activeId = subscribedActiveId ?? storage.getActiveRoadmapId()
+      if (!activeId) return null
+      const cache = storage.getRoadmapCache(activeId)
+      return cache ? { activeId, cache } : null
+    }
+
+    const loadedRevisionIsStale = (loaded: LoadedRoadmap): boolean => {
+      const current = activeCache()?.cache.updatedAt ?? null
+      return current !== null && isOlderServerRevision(loaded.updatedAt, current)
+    }
+
     // Idempotent: marks an attempt as done and closes its own EventSource,
     // never touching whatever `currentAttempt` may have moved on to.
     const closeAttempt = (attempt: ConnectionAttempt) => {
@@ -368,21 +383,18 @@ export function useRoadmapRealtime({
       setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
       setSavedState(nextSaved)
 
-      const activeId = storage.getActiveRoadmapId()
-      if (activeId) {
-        const rc = storage.getRoadmapCache(activeId)
-        if (rc) {
-          storage.setRoadmapCache(activeId, {
-            ...rc,
-            roadmapName: nextRoadmapName,
-            phases: normalizedSsePhases,
-            tagRegistry: nextRegistry,
-            saved: nextSaved,
-            ownerDisplayName: loaded.ownerDisplayName,
-            updatedAt: loaded.updatedAt,
-            isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
-          })
-        }
+      const current = activeCache()
+      if (current) {
+        storage.setRoadmapCache(current.activeId, {
+          ...current.cache,
+          roadmapName: nextRoadmapName,
+          phases: normalizedSsePhases,
+          tagRegistry: nextRegistry,
+          saved: nextSaved,
+          ownerDisplayName: loaded.ownerDisplayName,
+          updatedAt: loaded.updatedAt,
+          isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
+        })
       }
     }
 
@@ -394,11 +406,16 @@ export function useRoadmapRealtime({
     const applyLoadedScopedUpdates = (
       loaded: LoadedRoadmap,
       request: RealtimeRefreshRequest,
-    ): boolean => {
-      const activeId = subscribedActiveId ?? storage.getActiveRoadmapId()
-      if (!activeId) return false
-      const cached = storage.getRoadmapCache(activeId)
-      if (!cached) return false
+    ): ScopedApplyResult => {
+      const current = activeCache()
+      if (!current) return 'unreconciled'
+      const { activeId, cache: cached } = current
+      if (
+        cached.updatedAt !== null
+        && isOlderServerRevision(loaded.updatedAt, cached.updatedAt)
+      ) {
+        return 'stale'
+      }
 
       let nextPhases = cached.phases
       if (request.taskIds.size > 0) {
@@ -407,7 +424,7 @@ export function useRoadmapRealtime({
           loaded.phases,
           request.taskIds,
         )
-        if (!mergedTasks) return false
+        if (!mergedTasks) return 'unreconciled'
         nextPhases = mergedTasks
       }
 
@@ -417,7 +434,7 @@ export function useRoadmapRealtime({
           loaded.phases,
           request.phaseFields,
         )
-        if (!mergedPhaseFields) return false
+        if (!mergedPhaseFields) return 'unreconciled'
         nextPhases = mergedPhaseFields
       }
 
@@ -439,7 +456,7 @@ export function useRoadmapRealtime({
         phases: nextPhases,
         updatedAt: loaded.updatedAt,
       })
-      return true
+      return 'applied'
     }
 
     const scheduleReconnect = () => {
@@ -475,14 +492,17 @@ export function useRoadmapRealtime({
         if (!isCurrentAttempt(attempt)) return
 
         let applied = false
-        if (request.full && savedRef.current !== false) {
+        let stale = loadedRevisionIsStale(loaded)
+        if (!stale && request.full && savedRef.current !== false) {
           applyLoadedRoadmap(loaded)
           applied = true
-        } else if (hasScopedRefresh(request)) {
-          applied = applyLoadedScopedUpdates(loaded, request)
+        } else if (!stale && hasScopedRefresh(request)) {
+          const scopedResult = applyLoadedScopedUpdates(loaded, request)
+          applied = scopedResult === 'applied'
+          stale = scopedResult === 'stale'
         }
 
-        if (!applied && hasScopedRefresh(request)) {
+        if (!applied && !stale && hasScopedRefresh(request)) {
           console.warn(
             'Could not safely rebase a scoped realtime update onto the local draft; preserving the draft and its current server revision.',
           )
@@ -493,8 +513,8 @@ export function useRoadmapRealtime({
         // A prior transient REST failure (here or during initial hydration)
         // may have flagged the backend as unavailable; a successful resync
         // means it is back, so the UX signal should reflect that.
-        setBackendUnavailableRoadmapId((current) => (
-          current === serverRoadmapId ? null : current
+        setBackendUnavailableRoadmapId((currentRoadmapId) => (
+          currentRoadmapId === serverRoadmapId ? null : currentRoadmapId
         ))
       } catch (err) {
         if (!isCurrentAttempt(attempt)) return
