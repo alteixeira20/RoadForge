@@ -4,7 +4,6 @@ import { useCallback, useRef } from 'react'
 import { classifyRoadmapSaveError } from '@/lib/roadmap-sync-errors'
 import { isNewerServerRevision } from '@/lib/server-revision'
 import { patchRoadmapName } from '@/services/roadmap-structure.service'
-import type { ActivityChange } from '@/types/roadmap'
 
 const ROADMAP_NAME_MAX = 120
 
@@ -17,9 +16,8 @@ interface UseRoadmapRenameParams {
   sessionToken: string | null
   updatedAt: string | null
   setUpdatedAt: (updatedAt: string) => void
-  addPendingActivityChange: (change: ActivityChange) => void
-  showToast: (message: string) => void
-  onSuccess: () => void
+  onLocalRename?: (name: string) => boolean
+  showMessage: (message: string | null) => void
   onSessionExpired: () => void
 }
 
@@ -36,9 +34,8 @@ export function useRoadmapRename({
   sessionToken,
   updatedAt,
   setUpdatedAt,
-  addPendingActivityChange,
-  showToast,
-  onSuccess,
+  onLocalRename,
+  showMessage,
   onSessionExpired,
 }: UseRoadmapRenameParams): UseRoadmapRenameResult {
   const roadmapNameRef = useRef(roadmapName)
@@ -61,33 +58,26 @@ export function useRoadmapRename({
 
     const nextName = name.trim()
     if (!nextName) {
-      showToast('Roadmap name cannot be empty.')
+      showMessage('Roadmap name cannot be empty.')
       return false
     }
     if (nextName.length > ROADMAP_NAME_MAX) {
-      showToast(`Roadmap name must be ${ROADMAP_NAME_MAX} characters or fewer.`)
+      showMessage(`Roadmap name must be ${ROADMAP_NAME_MAX} characters or fewer.`)
       return false
     }
 
     const previousName = roadmapNameRef.current
-    if (nextName === previousName) return true
-
-    // Local-only roadmaps keep the original browser-local behavior.
-    if (!serverRoadmapId || !sessionToken) {
-      roadmapNameRef.current = nextName
-      setRoadmapName(nextName)
-      addPendingActivityChange({
-        action: 'roadmap.renamed',
-        entity_type: 'roadmap',
-        entity_id: serverRoadmapId || undefined,
-        roadmapName: nextName,
-        previousRoadmapName: previousName,
-        nextRoadmapName: nextName,
-      })
-      setSaved(false)
+    if (nextName === previousName) {
+      showMessage(null)
       return true
     }
 
+    // Local-only roadmaps retain their existing aggregate/local behavior.
+    if (!serverRoadmapId || !sessionToken) {
+      return onLocalRename?.(nextName) ?? false
+    }
+
+    showMessage(null)
     roadmapNameRef.current = nextName
     setRoadmapName(nextName)
 
@@ -100,7 +90,7 @@ export function useRoadmapRename({
           setRoadmapName(result.roadmapName)
         }
         advanceUpdatedAt(result.updatedAt)
-        onSuccess()
+        showMessage(null)
       } catch (error) {
         const { kind, validationMessage } = classifyRoadmapSaveError(error)
         const rollback = () => {
@@ -112,16 +102,17 @@ export function useRoadmapRename({
         if (kind === 'session-expired' || kind === 'unauthorized') {
           rollback()
           onSessionExpired()
+          showMessage('Session expired. Rejoin through an active invite link.')
           return
         }
         if (kind === 'forbidden') {
           rollback()
-          showToast('You do not have permission to rename this roadmap.')
+          showMessage('You do not have permission to rename this roadmap.')
           return
         }
         if (kind === 'validation') {
           rollback()
-          showToast(validationMessage ?? 'The server rejected this roadmap name.')
+          showMessage(validationMessage ?? 'The server rejected this roadmap name.')
           return
         }
 
@@ -129,7 +120,7 @@ export function useRoadmapRename({
         // even when the response was lost. Keep the optimistic name as a local
         // recovery draft instead of undoing a potentially successful server write.
         setSaved(false)
-        showToast(
+        showMessage(
           kind === 'connection'
             ? 'Connection lost. Kept the roadmap name locally while RoadForge reconnects.'
             : 'Could not confirm the roadmap rename. Kept it locally for recovery.',
@@ -140,16 +131,15 @@ export function useRoadmapRename({
     queueRef.current = queueRef.current.catch(() => undefined).then(work)
     return true
   }, [
-    addPendingActivityChange,
     advanceUpdatedAt,
     canRename,
+    onLocalRename,
     onSessionExpired,
-    onSuccess,
     serverRoadmapId,
     sessionToken,
     setRoadmapName,
     setSaved,
-    showToast,
+    showMessage,
   ])
 
   return { handleRenameRoadmap }
