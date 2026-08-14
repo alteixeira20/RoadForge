@@ -20,9 +20,14 @@ work that can be safely rebased.
   The server serializes them against the latest roadmap row rather than requiring a
   whole-roadmap revision token. The originating browser applies the authoritative
   response and advances its revision without marking the whole roadmap dirty.
-- Remote phase-field events refresh authoritative state immediately when the receiving
-  browser has no unrelated aggregate draft. Scoped rebasing of phase events onto a
-  dirty aggregate draft remains part of the next collaboration boundary.
+- Shared roadmap renames use the same server-authoritative pattern. The title updates
+  optimistically, rename requests are serialized, late responses cannot overwrite a
+  newer title or regress the server revision, and local-only roadmaps retain their
+  existing browser-local rename path.
+- Remote phase-field and roadmap-rename events refresh authoritative state immediately
+  when the receiving browser has no unrelated aggregate draft. Scoped rebasing of
+  those structure events onto a dirty aggregate draft remains part of the next
+  collaboration boundary.
 - Full-roadmap remote updates that race an unsaved aggregate edit still preserve the
   browser draft for now. This is a transitional boundary: the server-authoritative
   collaboration work will replace the legacy whole-roadmap local/server choice rather
@@ -30,8 +35,8 @@ work that can be safely rebased.
 - Task completion and task-field/claim partial writes update immediately from the
   returned roadmap aggregate, then realtime events reconcile other clients.
 - Task creation/deletion/reordering/dependency changes, phase creation/deletion/reorder,
-  roadmap renames, tag edits, and imports still use their current aggregate or existing
-  dedicated contracts until their collaboration-specific write paths are completed.
+  tag edits, and imports still use their current aggregate or existing dedicated
+  contracts until their collaboration-specific write paths are completed.
 - Claim conflicts use specific ownership feedback; owner override remains explicit.
 - Offline, expired-session, revoked-access, and deleted-roadmap states use persistent
   workspace banners or gates, not transient notifications alone.

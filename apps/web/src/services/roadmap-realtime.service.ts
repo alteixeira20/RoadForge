@@ -14,6 +14,7 @@ export interface RoadmapUpdatedEventPayload {
   phase_id?: string
   action?: string
   changed_fields?: string[]
+  roadmap_fields?: string[]
 }
 
 export interface RealtimeHandlers {

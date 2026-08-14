@@ -4,8 +4,21 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from api.schemas.limits import PHASE_COLOR_MAX, PHASE_NAME_MAX
+from api.schemas.limits import PHASE_COLOR_MAX, PHASE_NAME_MAX, ROADMAP_NAME_MAX
 from api.schemas.validators import clean_required_text
+
+
+class PatchRoadmapNameRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=ROADMAP_NAME_MAX)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _validate_name(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        return clean_required_text(value, "name", ROADMAP_NAME_MAX)
 
 
 class PatchPhaseRequest(BaseModel):

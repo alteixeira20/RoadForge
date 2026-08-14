@@ -1,4 +1,4 @@
-"""Server-authoritative phase collaboration write tests."""
+"""Server-authoritative roadmap structure collaboration write tests."""
 
 from __future__ import annotations
 
@@ -52,6 +52,89 @@ def _synchronize_calls(func, parties: int = 2):
         return await func(*args, **kwargs)
 
     return wrapped
+
+
+def _shared_barrier_wrappers(*functions):
+    ready = asyncio.Event()
+    counter_lock = asyncio.Lock()
+    entered = 0
+
+    def wrap(func):
+        async def wrapped(*args, **kwargs):
+            nonlocal entered
+            async with counter_lock:
+                entered += 1
+                if entered >= len(functions):
+                    ready.set()
+            await asyncio.wait_for(ready.wait(), timeout=5)
+            return await func(*args, **kwargs)
+
+        return wrapped
+
+    return tuple(wrap(func) for func in functions)
+
+
+async def test_roadmap_rename_needs_no_revision_and_preserves_snapshot(client: AsyncClient):
+    body = await create_with_phases(client)
+
+    response = await client.patch(
+        f"/api/roadmaps/{body['id']}/name",
+        headers=auth(body["owner_session_token"]),
+        json={"name": "  Shared roadmap renamed  "},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["name"] == "Shared roadmap renamed"
+    assert response.json()["phases"] == body["phases"]
+    assert response.json()["updated_at"] != body["updated_at"]
+
+
+async def test_roadmap_rename_noop_does_not_advance_revision_or_log_activity(
+    client: AsyncClient,
+    db_session,
+):
+    body = await create_with_phases(client)
+
+    response = await client.patch(
+        f"/api/roadmaps/{body['id']}/name",
+        headers=auth(body["owner_session_token"]),
+        json={"name": body["name"]},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["updated_at"] == body["updated_at"]
+    result = await db_session.execute(
+        select(ActivityLog).where(
+            ActivityLog.roadmap_id == body["id"],
+            ActivityLog.action == "roadmap.renamed",
+        )
+    )
+    assert result.scalars().all() == []
+
+
+async def test_roadmap_rename_validates_shape(client: AsyncClient):
+    body = await create_with_phases(client)
+    headers = auth(body["owner_session_token"])
+
+    empty = await client.patch(
+        f"/api/roadmaps/{body['id']}/name",
+        headers=headers,
+        json={"name": "   "},
+    )
+    too_long = await client.patch(
+        f"/api/roadmaps/{body['id']}/name",
+        headers=headers,
+        json={"name": "x" * 121},
+    )
+    extra = await client.patch(
+        f"/api/roadmaps/{body['id']}/name",
+        headers=headers,
+        json={"name": "Valid", "last_updated_at": body["updated_at"]},
+    )
+
+    assert empty.status_code == 422
+    assert too_long.status_code == 422
+    assert extra.status_code == 422
 
 
 async def test_phase_patch_preserves_tasks_and_projection_parity(
@@ -157,7 +240,7 @@ async def test_phase_patch_validates_shape_and_missing_phase(client: AsyncClient
     assert missing.json() == {"detail": "Phase not found"}
 
 
-async def test_viewer_cannot_patch_phase(client: AsyncClient):
+async def test_viewer_cannot_rename_or_patch_phase(client: AsyncClient):
     body = await create_with_phases(client)
     rotate = await client.post(
         f"/api/roadmaps/{body['id']}/share-links/viewer/rotate",
@@ -170,13 +253,20 @@ async def test_viewer_cannot_patch_phase(client: AsyncClient):
         json={"token": invite_token, "display_name": "Viewer"},
     )
     assert joined.status_code == 200, joined.text
+    viewer_headers = auth(joined.json()["session_token"])
 
+    rename = await client.patch(
+        f"/api/roadmaps/{body['id']}/name",
+        headers=viewer_headers,
+        json={"name": "Forbidden"},
+    )
     phase = await client.patch(
         f"/api/roadmaps/{body['id']}/phases/ph_a",
-        headers=auth(joined.json()["session_token"]),
+        headers=viewer_headers,
         json={"name": "Forbidden"},
     )
 
+    assert rename.status_code == 403
     assert phase.status_code == 403
 
 
@@ -233,3 +323,61 @@ async def test_concurrent_phase_field_operations_both_survive_row_lock(
         async with _test_session_factory() as db:
             await db.execute(delete(Roadmap).where(Roadmap.name == roadmap_name))
             await db.commit()
+
+
+async def test_concurrent_rename_and_phase_update_both_survive_row_lock(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    initial_name = "Concurrent rename collaboration"
+    roadmap_id: str | None = None
+    monkeypatch.setattr(structure_router, "rate_limiter", MemoryRateLimiter())
+    synchronized_name, synchronized_phase = _shared_barrier_wrappers(
+        structure_router.patch_roadmap_name,
+        structure_router.patch_phase,
+    )
+    monkeypatch.setattr(structure_router, "patch_roadmap_name", synchronized_name)
+    monkeypatch.setattr(structure_router, "patch_phase", synchronized_phase)
+
+    try:
+        async with _committing_client() as concurrent_client:
+            created = await concurrent_client.post(
+                "/api/roadmaps",
+                json={
+                    "name": initial_name,
+                    "owner_display_name": "Owner",
+                    "phases": PHASES_WITH_TASKS,
+                },
+            )
+            assert created.status_code == 201, created.text
+            body = created.json()
+            roadmap_id = body["id"]
+            headers = auth(body["owner_session_token"])
+
+            responses = await asyncio.gather(
+                concurrent_client.patch(
+                    f"/api/roadmaps/{roadmap_id}/name",
+                    headers=headers,
+                    json={"name": "Renamed concurrently"},
+                ),
+                concurrent_client.patch(
+                    f"/api/roadmaps/{roadmap_id}/phases/ph_a",
+                    headers=headers,
+                    json={"color": "#778899", "colorMode": "manual"},
+                ),
+            )
+
+            assert [response.status_code for response in responses] == [200, 200]
+            loaded = await concurrent_client.get(
+                f"/api/roadmaps/{roadmap_id}",
+                headers=headers,
+            )
+            assert loaded.status_code == 200, loaded.text
+            assert loaded.json()["name"] == "Renamed concurrently"
+            phase = loaded.json()["phases"][0]
+            assert phase["color"] == "#778899"
+            assert phase["colorMode"] == "manual"
+    finally:
+        if roadmap_id is not None:
+            async with _test_session_factory() as db:
+                await db.execute(delete(Roadmap).where(Roadmap.id == roadmap_id))
+                await db.commit()
