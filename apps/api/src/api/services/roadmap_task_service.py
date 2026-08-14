@@ -27,13 +27,13 @@ from api.services.id_service import generate_id
 from api.services.projection import sync_task_projection_best_effort
 from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
-    _fetch_active_roadmap_for_update,
     _patch_task_claim_snapshot,
     _patch_task_done_snapshot,
     _patch_task_fields_in_snapshot,
     _phases_from_snapshot,
     _roadmap_response,
 )
+from api.services.roadmap_query import fetch_active_roadmap_for_update
 from api.services.roadmap_validation import validate_roadmap_domain
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ async def patch_task(
     payload: PatchTaskRequest,
     participant: Participant,
 ) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     ensure_roadmap_is_current(roadmap, payload.last_updated_at)
 
     updates = payload.model_dump(
@@ -125,7 +125,7 @@ async def patch_task_done(
     payload: PatchTaskDoneRequest,
     participant: Participant,
 ) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     ensure_roadmap_is_current(roadmap, payload.last_updated_at)
 
     patched = _patch_task_done_snapshot(roadmap.snapshot_json, task_id, payload.done)
@@ -186,7 +186,7 @@ async def patch_task_claim(
     *,
     override: bool = False,
 ) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     now = datetime.now(timezone.utc)
 
     patched = _patch_task_claim_snapshot(
@@ -266,7 +266,7 @@ async def delete_task_claim(
     *,
     override: bool = False,
 ) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     now = datetime.now(timezone.utc)
 
     patched = _patch_task_claim_snapshot(

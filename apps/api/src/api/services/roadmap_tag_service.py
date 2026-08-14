@@ -27,10 +27,12 @@ from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
-    _fetch_active_roadmap,
-    _fetch_active_roadmap_for_update,
     _phases_from_snapshot,
     _roadmap_response,
+)
+from api.services.roadmap_query import (
+    fetch_active_roadmap,
+    fetch_active_roadmap_for_update,
 )
 
 logger = logging.getLogger(__name__)
@@ -138,7 +140,7 @@ def _tag_id_in_snapshot(snapshot_json: dict, tag_id: str) -> bool:
 
 
 async def list_tags(db: AsyncSession, roadmap_id: str) -> list[TagResponse]:
-    roadmap = await _fetch_active_roadmap(db, roadmap_id)
+    roadmap = await fetch_active_roadmap(db, roadmap_id)
     registry = roadmap.tag_registry_json or []
     return [TagResponse(**tag) for tag in registry if isinstance(tag, dict)]
 
@@ -149,7 +151,7 @@ async def create_tag(
     payload: CreateTagRequest,
     participant: Participant,
 ) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     _ensure_tag_mutation_is_current(roadmap, payload.last_updated_at)
     registry: list[dict] = list(roadmap.tag_registry_json or [])
 
@@ -190,7 +192,7 @@ async def update_tag(
     payload: UpdateTagRequest,
     participant: Participant,
 ) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     _ensure_tag_mutation_is_current(roadmap, payload.last_updated_at)
     registry: list[dict] = list(roadmap.tag_registry_json or [])
 
@@ -230,7 +232,7 @@ async def delete_tag(
     last_updated_at: datetime,
     participant: Participant,
 ) -> RoadmapResponse:
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     _ensure_tag_mutation_is_current(roadmap, last_updated_at)
     registry: list[dict] = list(roadmap.tag_registry_json or [])
 

@@ -21,6 +21,10 @@ from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.projection import sync_roadmap_projection_best_effort
+from api.services.roadmap_query import (
+    fetch_active_roadmap,
+    fetch_active_roadmap_for_update,
+)
 from api.services.session_policy import ensure_aware_utc
 
 logger = logging.getLogger(__name__)
@@ -166,9 +170,7 @@ async def get_roadmap_versions(
     db: AsyncSession,
     roadmap_id: str,
 ) -> list[RoadmapVersionSummaryResponse]:
-    from api.services.roadmap_helpers import _fetch_active_roadmap
-
-    await _fetch_active_roadmap(db, roadmap_id)
+    await fetch_active_roadmap(db, roadmap_id)
 
     result = await db.execute(
         select(RoadmapVersion)
@@ -196,9 +198,7 @@ async def get_roadmap_version(
     roadmap_id: str,
     version_id: str,
 ) -> RoadmapVersionDetailResponse:
-    from api.services.roadmap_helpers import _fetch_active_roadmap
-
-    await _fetch_active_roadmap(db, roadmap_id)
+    await fetch_active_roadmap(db, roadmap_id)
     result = await db.execute(
         select(RoadmapVersion).where(
             RoadmapVersion.roadmap_id == roadmap_id,
@@ -236,11 +236,10 @@ async def restore_roadmap_version(
 ) -> RoadmapResponse:
     from api.services.roadmap_helpers import (
         RoadmapConflictError,
-        _fetch_active_roadmap_for_update,
         _roadmap_conflict_response,
     )
 
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     result = await db.execute(
         select(RoadmapVersion).where(
             RoadmapVersion.roadmap_id == roadmap_id,
@@ -344,9 +343,7 @@ async def create_roadmap_checkpoint(
     (created=False, latest) when the current snapshot already matches the
     latest version and no new version is needed.
     """
-    from api.services.roadmap_helpers import _fetch_active_roadmap_for_update
-
-    roadmap = await _fetch_active_roadmap_for_update(db, roadmap_id)
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
 
     latest_result = await db.execute(
         select(RoadmapVersion)
