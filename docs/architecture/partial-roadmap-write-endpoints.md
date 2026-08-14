@@ -29,6 +29,9 @@ Current code includes focused operations for:
 - task planning-field updates;
 - task completion/reopen;
 - task claim/release;
+- task/subtask creation and task-subtree deletion;
+- phase-scoped top-level task order and parent-scoped subtask order;
+- dependency link/unlink edges;
 - phase create/delete/reorder;
 - phase name/color/color-mode updates;
 - tag registry listing/mutation.
@@ -62,6 +65,17 @@ Focused writes do **not** all need the same optimistic-concurrency mechanism.
 - Roadmap rename and phase-field writes are safe to apply to the latest row-locked server
   state because they mutate only explicitly declared fields. They therefore do not
   require a whole-roadmap `last_updated_at` token.
+- Task/subtask create and task-subtree delete are entity-intent operations against the
+  latest row-locked canonical task graph. Create accepts only stable identity/title plus an
+  optional parent relationship; the server owns every other initial task field. Delete
+  removes descendants with the task and cleans surviving dependency edges to deleted IDs.
+- Top-level task reorder is scoped to one phase; subtask reorder is scoped to one parent.
+  Both use preferred-known-order merge semantics: caller-known entities are ordered first,
+  concurrently-created server-only peers remain present afterward in their current relative
+  order, and concurrently-deleted caller IDs are ignored. Subtree contents move as blocks.
+- Dependency link/unlink mutates exactly one graph edge on the latest row-locked state.
+  Repeated link/unlink requests are no-ops, and the full roadmap domain validator rejects
+  self-dependencies, missing references, cycles, or any resulting invalid task graph.
 - Phase create/delete are entity-intent operations on the latest row-locked phase list.
   Create appends one validated empty phase; delete removes the identified phase from the
   latest server state and renumbers survivors. Neither operation carries unrelated client
@@ -82,8 +96,8 @@ whole-roadmap local/server choice when the mutation can be safely isolated.
 
 ## Browser ordering and fallback
 
-The browser treats focused phase operations as their own write family rather than letting
-optimistic phase state leak into aggregate autosave:
+The browser currently treats focused phase operations as their own write family rather than
+letting optimistic phase state leak into aggregate autosave:
 
 - phase create/delete/reorder and phase-field PATCHes enter a reference-counted focused-write
   gate;
@@ -103,6 +117,10 @@ optimistic phase state leak into aggregate autosave:
 - ambiguous transport/server failures preserve the optimistic state as a local draft and
   re-enable aggregate recovery under its normal revision guard, because the focused write
   may already have committed server-side.
+
+The task-structure API follows the same server-side intent-scoping principles, but browser
+migration is a separate follow-up. Until that browser slice lands, this section must not be
+read as claiming task create/order/dependency UI already uses these new routes.
 
 This fallback is transitional recovery, not the desired normal collaboration path. A future
 bounded offline-operation queue may replace ambiguous aggregate fallback, but must preserve

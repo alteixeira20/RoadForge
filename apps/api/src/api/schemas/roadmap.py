@@ -45,6 +45,7 @@ from api.schemas.tags import (
     UpdateTagRequest,
     validate_tag_registry_uniqueness,
 )
+from api.schemas.task_structure import CreateTaskStructureRequest, ReorderTaskStructureRequest
 from api.schemas.tasks import (
     PatchTaskDoneRequest,
     PatchTaskRequest,
@@ -103,6 +104,9 @@ __all__ = [
     "TagResponse",
     "UpdateTagRequest",
     "validate_tag_registry_uniqueness",
+    # Task structure
+    "CreateTaskStructureRequest",
+    "ReorderTaskStructureRequest",
     # Tasks
     "PatchTaskRequest",
     "PatchTaskDoneRequest",
