@@ -53,12 +53,14 @@ function Harness({
   phases,
   setPhases,
   setSaved,
+  updatedAt = '2026-08-14T08:59:00Z',
   setUpdatedAt,
   onResult,
 }: {
   phases: Phase[]
   setPhases: (phases: Phase[]) => void
   setSaved: (saved: boolean) => void
+  updatedAt?: string | null
   setUpdatedAt: (updatedAt: string) => void
   onResult: (result: HookResult) => void
 }) {
@@ -68,6 +70,7 @@ function Harness({
     setSaved,
     serverRoadmapId: 'rm_1',
     sessionToken: 'session-token',
+    updatedAt,
     setUpdatedAt,
   }))
   return null
@@ -201,6 +204,61 @@ describe('usePhasePatch', () => {
 
     expect(currentPhases[0].name).toBe('Second')
     expect(setUpdatedAt).toHaveBeenLastCalledWith('2026-08-14T09:02:00Z')
+  })
+
+  it('never regresses the server revision when different phase responses arrive out of order', async () => {
+    const phaseOne = deferred<{ phases: Phase[]; updatedAt: string }>()
+    const phaseTwo = deferred<{ phases: Phase[]; updatedAt: string }>()
+    mockedPatchPhaseFields
+      .mockImplementationOnce(() => phaseOne.promise)
+      .mockImplementationOnce(() => phaseTwo.promise)
+
+    let currentPhases = initialPhases
+    const setPhases = vi.fn((next: Phase[]) => {
+      currentPhases = next
+    })
+    const setUpdatedAt = vi.fn()
+    let result!: HookResult
+
+    act(() => {
+      root.render(
+        <Harness
+          phases={currentPhases}
+          setPhases={setPhases}
+          setSaved={vi.fn()}
+          setUpdatedAt={setUpdatedAt}
+          onResult={(next) => { result = next }}
+        />,
+      )
+    })
+
+    act(() => {
+      result.patchSyncedPhase({ phaseId: 'phase-1', updates: { name: 'Phase one live' } })
+      result.patchSyncedPhase({ phaseId: 'phase-2', updates: { name: 'Phase two live' } })
+    })
+    await act(async () => Promise.resolve())
+    expect(mockedPatchPhaseFields).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      phaseTwo.resolve({
+        phases: [initialPhases[0], { ...initialPhases[1], name: 'Phase two live' }],
+        updatedAt: '2026-08-14T09:04:00Z',
+      })
+      await phaseTwo.promise
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      phaseOne.resolve({
+        phases: [{ ...initialPhases[0], name: 'Phase one live' }, initialPhases[1]],
+        updatedAt: '2026-08-14T09:03:00Z',
+      })
+      await phaseOne.promise
+      await Promise.resolve()
+    })
+
+    expect(setUpdatedAt).toHaveBeenCalledTimes(1)
+    expect(setUpdatedAt).toHaveBeenCalledWith('2026-08-14T09:04:00Z')
   })
 
   it('keeps an optimistic phase field as a local draft when the connection result is ambiguous', async () => {
