@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef } from 'react'
 import { classifyRoadmapSaveError } from '@/lib/roadmap-sync-errors'
 import {
   mergeReturnedPhaseFields,
@@ -28,7 +28,6 @@ interface PatchSyncedPhaseParams {
 }
 
 interface UsePhasePatchResult {
-  phasePatchInFlight: boolean
   patchSyncedPhase: (params: PatchSyncedPhaseParams) => boolean
 }
 
@@ -78,11 +77,9 @@ export function usePhasePatch({
   updatedAt,
   setUpdatedAt,
 }: UsePhasePatchParams): UsePhasePatchResult {
-  const [phasePatchInFlight, setPhasePatchInFlight] = useState(false)
   const phasesRef = useRef(phases)
   const latestRevisionRef = useRef<string | null>(updatedAt)
   const queuesRef = useRef<Map<string, Promise<void>>>(new Map())
-  const pendingCountRef = useRef(0)
 
   phasesRef.current = phases
   if (updatedAt && isNewerRevision(updatedAt, latestRevisionRef.current)) {
@@ -96,16 +93,12 @@ export function usePhasePatch({
   }, [setUpdatedAt])
 
   const enqueue = useCallback((key: string, work: () => Promise<void>) => {
-    pendingCountRef.current += 1
-    setPhasePatchInFlight(true)
     const previous = queuesRef.current.get(key) ?? Promise.resolve()
     const next = previous
       .catch(() => undefined)
       .then(work)
       .finally(() => {
         if (queuesRef.current.get(key) === next) queuesRef.current.delete(key)
-        pendingCountRef.current = Math.max(0, pendingCountRef.current - 1)
-        setPhasePatchInFlight(pendingCountRef.current > 0)
       })
     queuesRef.current.set(key, next)
   }, [])
@@ -194,5 +187,5 @@ export function usePhasePatch({
     setSaved,
   ])
 
-  return { phasePatchInFlight, patchSyncedPhase }
+  return { patchSyncedPhase }
 }
