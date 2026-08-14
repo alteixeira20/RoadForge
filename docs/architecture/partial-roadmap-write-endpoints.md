@@ -29,6 +29,7 @@ Current code includes focused operations for:
 - task planning-field updates;
 - task completion/reopen;
 - task claim/release;
+- phase create/delete/reorder;
 - phase name/color/color-mode updates;
 - tag registry listing/mutation.
 
@@ -61,6 +62,16 @@ Focused writes do **not** all need the same optimistic-concurrency mechanism.
 - Roadmap rename and phase-field writes are safe to apply to the latest row-locked server
   state because they mutate only explicitly declared fields. They therefore do not
   require a whole-roadmap `last_updated_at` token.
+- Phase create/delete are entity-intent operations on the latest row-locked phase list.
+  Create appends one validated empty phase; delete removes the identified phase from the
+  latest server state and renumbers survivors. Neither operation carries unrelated client
+  snapshot data.
+- Phase reorder uses merge semantics rather than an exact phase-set precondition. The
+  caller supplies its preferred order for IDs it knows; IDs already deleted on the server
+  are ignored, while server-only phases created concurrently remain present in their
+  existing relative order after caller-known phases. The server then renumbers the final
+  authoritative order. This makes reorder compose deterministically with concurrent phase
+  creation instead of manufacturing a whole-roadmap conflict.
 - Claim/release operations use atomic ownership semantics.
 - Aggregate replacement remains compare-and-swap and must not become a blind overwrite.
 
