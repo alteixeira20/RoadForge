@@ -31,7 +31,7 @@ export function usePhaseMutations({
   serverRoadmapId,
   addPendingActivityChange,
 }: UsePhaseMutationsParams): UsePhaseMutationsResult {
-  const { setUpdatedAt } = useRoadmapData()
+  const { updatedAt, setUpdatedAt } = useRoadmapData()
   const { sessionToken } = useRoadmapSession()
   const { patchSyncedPhase } = usePhasePatch({
     phases,
@@ -39,6 +39,7 @@ export function usePhaseMutations({
     setSaved,
     serverRoadmapId,
     sessionToken,
+    updatedAt,
     setUpdatedAt,
   })
 
