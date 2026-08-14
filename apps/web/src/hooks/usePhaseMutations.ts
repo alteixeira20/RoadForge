@@ -9,6 +9,8 @@ import { usePhasePatch } from '@/hooks/usePhasePatch'
 import { usePhaseStructureSync } from '@/hooks/usePhaseStructureSync'
 import type { ActivityChange, Phase, PhaseColorMode } from '@/types/roadmap'
 
+const NOOP = () => {}
+
 interface UsePhaseMutationsParams {
   phases: Phase[]
   setPhases: (phases: Phase[]) => void
@@ -16,11 +18,11 @@ interface UsePhaseMutationsParams {
   readOnly: boolean
   serverRoadmapId: string | null
   addPendingActivityChange: (change: ActivityChange) => void
-  showToast: (message: string) => void
-  onSuccess: () => void
-  onSessionExpired: () => void
-  beginFocusedWrite: () => void
-  endFocusedWrite: () => void
+  showToast?: (message: string) => void
+  onSuccess?: () => void
+  onSessionExpired?: () => void
+  beginFocusedWrite?: () => void
+  endFocusedWrite?: () => void
 }
 
 interface UsePhaseMutationsCoreParams extends UsePhaseMutationsParams {
@@ -61,11 +63,11 @@ export function usePhaseMutationsCore({
   updatedAt,
   setUpdatedAt,
   addPendingActivityChange,
-  showToast,
-  onSuccess,
-  onSessionExpired,
-  beginFocusedWrite,
-  endFocusedWrite,
+  showToast = NOOP,
+  onSuccess = NOOP,
+  onSessionExpired = NOOP,
+  beginFocusedWrite = NOOP,
+  endFocusedWrite = NOOP,
 }: UsePhaseMutationsCoreParams): UsePhaseMutationsResult {
   const {
     createSyncedPhase,
