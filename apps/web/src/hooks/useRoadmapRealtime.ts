@@ -17,32 +17,28 @@ import type {
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { buildRegistryFromPhases } from '@/lib/tag-registry'
-import { mergeAuthoritativeTasksIntoLocalPhases } from '@/lib/realtime-task-merge'
 import {
-  mergeAuthoritativePhaseStructureIntoLocalPhases,
-  phaseIdsInSnapshot,
-  taskIdsInSnapshot,
-} from '@/lib/realtime-phase-structure-merge'
-import {
-  getRealtimePhaseFields,
-  getRealtimeRoadmapFields,
-  mergeAuthoritativePhaseFieldsIntoLocalPhases,
-  type RealtimePhaseField,
-  type RealtimeRoadmapField,
-} from '@/lib/realtime-structure-merge'
+  cloneRealtimeRefreshRequest as cloneRefreshRequest,
+  createRealtimeRefreshRequest as createRefreshRequest,
+  hasScopedRealtimeRefresh as hasScopedRefresh,
+  mergeRealtimeRefreshRequest as mergeRefreshRequest,
+  realtimeRefreshRequestFromEvent as refreshRequestFromEvent,
+  type RealtimeRefreshRequest,
+} from '@/lib/realtime-refresh-request'
+import { mergeAuthoritativeRealtimeScopes } from '@/lib/realtime-scoped-merge'
 import { isOlderServerRevision } from '@/lib/server-revision'
 import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import {
   getEventTicket,
   subscribeToRoadmapEvents,
-  type RoadmapUpdatedEventPayload,
 } from '@/services/roadmap-realtime.service'
 import { getLocks } from '@/services/roadmap-locks.service'
 import { isApiConnectionError, isAuthError, isSessionExpiredError } from '@/services/roadmap-http'
 import { computeReconnectDelayMs } from '@/lib/reconnect-backoff'
 
 type LoadedRoadmap = Awaited<ReturnType<typeof getRoadmap>>
+type ScopedApplyResult = 'applied' | 'stale' | 'unreconciled'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,95 +101,6 @@ export interface UseRoadmapRealtimeReturn {
   accessRevokedEvent: 'revoked' | 'deleted' | 'expired' | null
   clearAccessRevokedEvent: () => void
   realtimeStatus: RealtimeConnectionStatus
-}
-
-interface RealtimeRefreshRequest {
-  full: boolean
-  taskIds: Set<string>
-  phaseFields: Map<string, Set<RealtimePhaseField>>
-  phaseStructureIds: Set<string>
-  phaseOrderChanged: boolean
-  roadmapFields: Set<RealtimeRoadmapField>
-}
-
-type ScopedApplyResult = 'applied' | 'stale' | 'unreconciled'
-
-function createRefreshRequest(full = false): RealtimeRefreshRequest {
-  return {
-    full,
-    taskIds: new Set(),
-    phaseFields: new Map(),
-    phaseStructureIds: new Set(),
-    phaseOrderChanged: false,
-    roadmapFields: new Set(),
-  }
-}
-
-function cloneRefreshRequest(request: RealtimeRefreshRequest): RealtimeRefreshRequest {
-  return {
-    full: request.full,
-    taskIds: new Set(request.taskIds),
-    phaseFields: new Map(
-      [...request.phaseFields].map(([phaseId, fields]) => [phaseId, new Set(fields)]),
-    ),
-    phaseStructureIds: new Set(request.phaseStructureIds),
-    phaseOrderChanged: request.phaseOrderChanged,
-    roadmapFields: new Set(request.roadmapFields),
-  }
-}
-
-function mergeRefreshRequest(
-  target: RealtimeRefreshRequest,
-  source: RealtimeRefreshRequest,
-): void {
-  target.full ||= source.full
-  target.phaseOrderChanged ||= source.phaseOrderChanged
-  source.taskIds.forEach((taskId) => target.taskIds.add(taskId))
-  source.phaseStructureIds.forEach((phaseId) => target.phaseStructureIds.add(phaseId))
-  source.roadmapFields.forEach((field) => target.roadmapFields.add(field))
-  for (const [phaseId, fields] of source.phaseFields) {
-    const targetFields = target.phaseFields.get(phaseId) ?? new Set<RealtimePhaseField>()
-    fields.forEach((field) => targetFields.add(field))
-    target.phaseFields.set(phaseId, targetFields)
-  }
-}
-
-function hasScopedRefresh(request: RealtimeRefreshRequest): boolean {
-  return request.taskIds.size > 0
-    || request.phaseFields.size > 0
-    || request.phaseStructureIds.size > 0
-    || request.phaseOrderChanged
-    || request.roadmapFields.size > 0
-}
-
-function refreshRequestFromEvent(
-  payload: RoadmapUpdatedEventPayload,
-): RealtimeRefreshRequest | null {
-  const request = createRefreshRequest(false)
-
-  if (payload.task_id) request.taskIds.add(payload.task_id)
-
-  if (payload.phase_operation === 'created' || payload.phase_operation === 'deleted') {
-    if (payload.phase_id) {
-      request.phaseStructureIds.add(payload.phase_id)
-      request.phaseOrderChanged = true
-    }
-  } else if (payload.phase_operation === 'reordered') {
-    request.phaseOrderChanged = true
-  }
-
-  if (payload.phase_id) {
-    const fields = getRealtimePhaseFields(payload.changed_fields)
-    if (fields.length > 0) {
-      request.phaseFields.set(payload.phase_id, new Set(fields))
-    }
-  }
-
-  for (const field of getRealtimeRoadmapFields(payload.roadmap_fields)) {
-    request.roadmapFields.add(field)
-  }
-
-  return hasScopedRefresh(request) ? request : null
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -264,48 +171,24 @@ export function useRoadmapRealtime({
     if (!serverRoadmapId || !sessionToken) return
     if (typeof document === 'undefined') return
     if (isHydratingServer) return
-    // `backendUnavailableRoadmapId` is a UX signal (also set by initial
-    // hydration failures), not a reconnect gate: a transient REST failure
-    // here sets it and still schedules its own retry below, so bailing out
-    // whenever it happens to be set would permanently disable realtime
-    // recovery until something unrelated clears it.
 
     const subscribedActiveId = activeRoadmapId
 
-    // Each connection attempt owns an immutable identity and its own
-    // EventSource handle. Every callback registered on that EventSource
-    // captures this exact object and checks `isCurrentAttempt` before
-    // mutating any state, so a callback firing from an EventSource that has
-    // since errored, been superseded by a newer attempt, or outlived access
-    // loss can never mutate the replacement connection's locks, close the
-    // replacement's EventSource, schedule a duplicate retry, or restore a
-    // status the replacement didn't itself earn.
     interface ConnectionAttempt {
       unsubscribe: (() => void) | null
       aborted: boolean
-      // Authoritative-refresh single-flight state lives per attempt so a stale
-      // generation's in-flight/hung GET can never block or downgrade a newer
-      // generation's mandatory resync.
       refreshInFlight: boolean
       refreshController: AbortController | null
-      // Bursts are coalesced into one queued follow-up request. Scoped events
-      // accumulate every affected task/phase/roadmap field plus structural
-      // phase identities/order. A full refresh may be queued alongside those
-      // scopes: if a dirty draft later prevents full replacement, the safe
-      // scopes are still eligible to rebase.
+      // Bursts coalesce into one queued follow-up request. Full refresh and
+      // task/phase/roadmap scopes coexist because a dirty draft may reject
+      // aggregate replacement while still accepting every proven-safe scope.
       pendingRequest: RealtimeRefreshRequest | null
     }
 
     let currentAttempt: ConnectionAttempt | null = null
     let hiddenAt: number | null = null
-    // Guards against a startSync() call resuming after this effect has
-    // already been cleaned up (e.g. the active roadmap changed mid-await).
     let cancelled = false
-    // Set once access is permanently lost (or on cleanup) so no further
-    // connection attempt or scheduled retry can fire afterward.
     let stopped = false
-    // Prevents two connection attempts from ever running concurrently
-    // (e.g. a visibility/online wake racing a scheduled retry).
     let connecting = false
     let reconnectAttempt = 0
     let retryTimer: ReturnType<typeof setTimeout> | null = null
@@ -325,14 +208,8 @@ export function useRoadmapRealtime({
       return current !== null && isOlderServerRevision(loaded.updatedAt, current)
     }
 
-    // Idempotent: marks an attempt as done and closes its own EventSource,
-    // never touching whatever `currentAttempt` may have moved on to.
     const closeAttempt = (attempt: ConnectionAttempt) => {
       attempt.aborted = true
-      // A closed/superseded attempt must never resume or recover on its
-      // own: abort whatever authoritative GET it may have in flight and
-      // drop any follow-up it had queued - only the replacement attempt's
-      // own connect flow (started elsewhere) is allowed to recover.
       attempt.refreshController?.abort()
       attempt.pendingRequest = null
       if (attempt.unsubscribe) {
@@ -341,9 +218,6 @@ export function useRoadmapRealtime({
       }
     }
 
-    // A GET that never responds (network black hole, hung server) must not
-    // block recovery forever - this bounds it distinctly from a permanent
-    // auth failure, which arrives via a 401/expired response, not a timeout.
     const AUTHORITATIVE_REFRESH_TIMEOUT_MS = 15_000
 
     const clearRetryTimer = () => {
@@ -353,9 +227,6 @@ export function useRoadmapRealtime({
       }
     }
 
-    // Shared teardown for participant-revoked, roadmap-deleted, and expired/invalid-session
-    // outcomes. Closes the EventSource first (auth is no longer valid), stops all future
-    // reconnect attempts, then clears auth cache while preserving the local roadmap cache.
     const handleAccessLoss = (kind: 'revoked' | 'deleted' | 'expired') => {
       stopped = true
       clearRetryTimer()
@@ -374,9 +245,8 @@ export function useRoadmapRealtime({
       setAccessRevokedEvent(kind)
     }
 
-    // Applies an authoritative snapshot fetched from the server (used by both
-    // the post-event refetch and the post-reconnect resync). Local unsaved
-    // drafts are preserved by callers checking `savedRef` before invoking this.
+    // Full authoritative replacement is used only when the local roadmap is
+    // clean. Dirty drafts are handled by the scoped merge path below.
     const applyLoadedRoadmap = (loaded: LoadedRoadmap) => {
       let nextRoadmapName = loaded.roadmap.name
       let normalizedSsePhases = normalizePhasesProgress(loaded.phases)
@@ -423,11 +293,11 @@ export function useRoadmapRealtime({
       }
     }
 
-    // Scoped server mutations can be automatically rebased on top of
-    // unrelated local unsaved edits. The browser cache is the same local
-    // snapshot written by RoadmapContext's mutation setters, so this applies
-    // all requested scopes as one atomic local-cache update and advances the
-    // server revision only after every non-obsolete scope is proven reconciled.
+    // All queued focused scopes are reconciled atomically against the same
+    // authoritative GET. The pure merge module owns deletion explanations,
+    // task structure/order, deps-only events, task fields, phase structure/
+    // fields, and roadmap fields. The revision advances only after every
+    // non-obsolete scope is proven incorporated.
     const applyLoadedScopedUpdates = (
       loaded: LoadedRoadmap,
       request: RealtimeRefreshRequest,
@@ -442,89 +312,22 @@ export function useRoadmapRealtime({
         return 'stale'
       }
 
-      const localBeforeStructure = cached.phases
-      const loadedPhaseIds = phaseIdsInSnapshot(loaded.phases)
-      const loadedTaskIds = taskIdsInSnapshot(loaded.phases)
-      const finalAbsentAffectedPhaseIds = new Set(
-        [...request.phaseStructureIds].filter((phaseId) => !loadedPhaseIds.has(phaseId)),
-      )
-      const tasksRemovedByAffectedPhaseDeletion = new Set(
-        localBeforeStructure
-          .filter((phase) => finalAbsentAffectedPhaseIds.has(phase.id))
-          .flatMap((phase) => phase.tasks.map((task) => task.id)),
-      )
+      const merged = mergeAuthoritativeRealtimeScopes({
+        localPhases: cached.phases,
+        localRoadmapName: cached.roadmapName,
+        serverPhases: loaded.phases,
+        serverRoadmapName: loaded.roadmap.name,
+        request,
+      })
+      if (!merged.reconciled) return 'unreconciled'
 
-      let nextPhases = localBeforeStructure
-      if (request.phaseStructureIds.size > 0 || request.phaseOrderChanged) {
-        nextPhases = mergeAuthoritativePhaseStructureIntoLocalPhases(
-          nextPhases,
-          loaded.phases,
-          request.phaseStructureIds,
-          request.phaseOrderChanged,
-        )
-      }
-
-      if (request.taskIds.size > 0) {
-        const unexplainedMissingTask = [...request.taskIds].some((taskId) => (
-          !loadedTaskIds.has(taskId) && !tasksRemovedByAffectedPhaseDeletion.has(taskId)
-        ))
-        if (unexplainedMissingTask) return 'unreconciled'
-
-        const effectiveTaskIds = new Set(
-          [...request.taskIds].filter((taskId) => loadedTaskIds.has(taskId)),
-        )
-        if (effectiveTaskIds.size > 0) {
-          const mergedTasks = mergeAuthoritativeTasksIntoLocalPhases(
-            nextPhases,
-            loaded.phases,
-            effectiveTaskIds,
-          )
-          if (!mergedTasks) return 'unreconciled'
-          nextPhases = mergedTasks
-        }
-      }
-
-      if (request.phaseFields.size > 0) {
-        const effectivePhaseFields = new Map<string, Set<RealtimePhaseField>>()
-        for (const [phaseId, fields] of request.phaseFields) {
-          if (!loadedPhaseIds.has(phaseId)) {
-            if (finalAbsentAffectedPhaseIds.has(phaseId)) continue
-            return 'unreconciled'
-          }
-          effectivePhaseFields.set(phaseId, fields)
-        }
-        if (effectivePhaseFields.size > 0) {
-          const mergedPhaseFields = mergeAuthoritativePhaseFieldsIntoLocalPhases(
-            nextPhases,
-            loaded.phases,
-            effectivePhaseFields,
-          )
-          if (!mergedPhaseFields) return 'unreconciled'
-          nextPhases = mergedPhaseFields
-        }
-      }
-
-      let nextRoadmapName = cached.roadmapName
-      if (request.roadmapFields.has('name')) {
-        nextRoadmapName = loaded.roadmap.name
-      }
-
-      if (
-        request.taskIds.size > 0
-        || request.phaseFields.size > 0
-        || request.phaseStructureIds.size > 0
-        || request.phaseOrderChanged
-      ) {
-        setPhasesState(nextPhases)
-      }
-      if (request.roadmapFields.has('name')) {
-        setRoadmapNameState(nextRoadmapName)
-      }
+      if (merged.phasesChanged) setPhasesState(merged.phases)
+      if (merged.roadmapNameChanged) setRoadmapNameState(merged.roadmapName)
       setUpdatedAtState(loaded.updatedAt)
       storage.setRoadmapCache(activeId, {
         ...cached,
-        roadmapName: nextRoadmapName,
-        phases: nextPhases,
+        roadmapName: merged.roadmapName,
+        phases: merged.phases,
         updatedAt: loaded.updatedAt,
       })
       return 'applied'
@@ -542,11 +345,6 @@ export function useRoadmapRealtime({
       }, delay)
     }
 
-    // Fetches a fresh authoritative snapshot and applies it only if
-    // `attempt` is still current when the response arrives. A clean local
-    // roadmap may accept a requested full refresh. A dirty roadmap never gets
-    // replaced wholesale, but any task/phase/roadmap scopes carried by the
-    // same refresh request are still rebased safely onto that draft.
     const runAuthoritativeRefresh = async (
       attempt: ConnectionAttempt,
       request: RealtimeRefreshRequest,
@@ -581,9 +379,6 @@ export function useRoadmapRealtime({
 
         setRealtimeStatus('live')
         reconnectAttempt = 0
-        // A prior transient REST failure (here or during initial hydration)
-        // may have flagged the backend as unavailable; a successful resync
-        // means it is back, so the UX signal should reflect that.
         setBackendUnavailableRoadmapId((currentRoadmapId) => (
           currentRoadmapId === serverRoadmapId ? null : currentRoadmapId
         ))
@@ -609,10 +404,6 @@ export function useRoadmapRealtime({
       }
     }
 
-    // Coalesces overlapping refresh triggers into at most one in-flight GET
-    // plus one queued follow-up. The follow-up retains every focused scope
-    // even if a full refresh is also requested, because a dirty draft may
-    // block aggregate replacement while still allowing safe scoped rebases.
     const requestAuthoritativeRefresh = (
       attempt: ConnectionAttempt,
       request: RealtimeRefreshRequest,
@@ -632,10 +423,6 @@ export function useRoadmapRealtime({
     const startSync = async (isReconnect = false) => {
       if (stopped || cancelled || connecting) return
       connecting = true
-      // Starting a new attempt always supersedes whatever came before it.
-      // Closing it here (idempotent if it already closed itself, e.g. via
-      // its own onError) centralizes attempt teardown in one place instead
-      // of every caller of startSync() having to remember to do it first.
       if (currentAttempt) closeAttempt(currentAttempt)
       const attempt: ConnectionAttempt = {
         unsubscribe: null,
@@ -663,7 +450,6 @@ export function useRoadmapRealtime({
         }
         setLocks(lockMap)
 
-        // Every attempt - first connect or retry - gets a fresh single-use ticket.
         await getEventTicket(serverRoadmapId, sessionToken)
         if (!isCurrentAttempt(attempt)) {
           connecting = false
@@ -679,12 +465,9 @@ export function useRoadmapRealtime({
             if (payload.participant_id === participantId) return
             if (!isCurrentAttempt(attempt)) return
 
-            // Focused task, phase-field, phase-structure, and roadmap-name
-            // operations carry enough metadata to rebase only their
-            // authoritative scope onto unrelated local work. This is the
-            // shared-roadmap rule: normal collaborator actions become visible
-            // directly instead of manufacturing a whole-roadmap local/server
-            // choice.
+            // Focused task fields/structure/dependencies, phase fields/
+            // structure, and roadmap-name operations carry enough metadata to
+            // rebase only their authoritative scope onto unrelated local work.
             const scopedRequest = refreshRequestFromEvent(payload)
             if (scopedRequest) {
               requestAuthoritativeRefresh(attempt, scopedRequest)
@@ -728,10 +511,6 @@ export function useRoadmapRealtime({
             handleAccessLoss('deleted')
           },
           onError: () => {
-            // An old EventSource's error must only ever close its own
-            // handle and must never touch `connecting` or schedule a
-            // retry on behalf of a replacement attempt already in
-            // progress or already live.
             if (!isCurrentAttempt(attempt)) return
             connecting = false
             closeAttempt(attempt)
@@ -760,10 +539,6 @@ export function useRoadmapRealtime({
       }
     }
 
-    // A pending retry is accelerated (fired immediately) rather than waiting
-    // out its backoff once the tab is visible again or the network reports
-    // "online" - but a scheduled retry is required; this never starts a
-    // connection on its own.
     const wakeIfPending = () => {
       if (stopped || cancelled || retryTimer === null) return
       clearRetryTimer()
@@ -776,8 +551,6 @@ export function useRoadmapRealtime({
         const wasHiddenLong = hiddenAt !== null && now - hiddenAt > 60_000
         hiddenAt = null
         if (wasHiddenLong) {
-          // startSync() itself closes whatever attempt is current before
-          // starting the replacement, so no manual close is needed here.
           clearRetryTimer()
           void startSync(true)
         } else {
