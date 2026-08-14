@@ -93,13 +93,11 @@ describe('usePhasePatch', () => {
   })
 
   it('optimistically patches a phase then confirms only authoritative fields', async () => {
+    const response = deferred<{ phases: Phase[]; updatedAt: string }>()
     const setPhases = vi.fn()
     const setSaved = vi.fn()
     const setUpdatedAt = vi.fn()
-    mockedPatchPhaseFields.mockResolvedValue({
-      phases: [{ ...initialPhases[0], name: 'Server normalized' }, initialPhases[1]],
-      updatedAt: '2026-08-14T09:00:00Z',
-    })
+    mockedPatchPhaseFields.mockImplementationOnce(() => response.promise)
 
     let result!: HookResult
     act(() => {
@@ -126,17 +124,23 @@ describe('usePhasePatch', () => {
       initialPhases[1],
     ])
 
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
+    await act(async () => Promise.resolve())
     expect(mockedPatchPhaseFields).toHaveBeenCalledWith(
       'rm_1',
       'phase-1',
       { name: '  Server normalized  ' },
       'session-token',
     )
+
+    await act(async () => {
+      response.resolve({
+        phases: [{ ...initialPhases[0], name: 'Server normalized' }, initialPhases[1]],
+        updatedAt: '2026-08-14T09:00:00Z',
+      })
+      await response.promise
+      await Promise.resolve()
+    })
+
     expect(setPhases).toHaveBeenLastCalledWith([
       expect.objectContaining({ id: 'phase-1', name: 'Server normalized' }),
       initialPhases[1],
