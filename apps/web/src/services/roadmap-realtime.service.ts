@@ -11,6 +11,7 @@ export interface RoadmapUpdatedEventPayload {
   updated_at: string
   participant_id: string
   task_id?: string
+  phase_id?: string
   action?: string
   changed_fields?: string[]
 }
