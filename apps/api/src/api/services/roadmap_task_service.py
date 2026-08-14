@@ -24,6 +24,7 @@ from api.schemas.roadmap import (
 from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
+from api.services.projection import sync_task_projection_best_effort
 from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
     _fetch_active_roadmap_for_update,
@@ -33,7 +34,6 @@ from api.services.roadmap_helpers import (
     _phases_from_snapshot,
     _roadmap_response,
 )
-from api.services.roadmap_projection_service import sync_task_projection_best_effort
 from api.services.roadmap_validation import validate_roadmap_domain
 
 logger = logging.getLogger(__name__)
