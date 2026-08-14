@@ -15,7 +15,7 @@ import {
 import { generateTaskId, generateSubtaskId, hasCycle as hasCycleGraph } from '@/lib/task-graph'
 import { newestServerRevision } from '@/lib/server-revision'
 import type { PatchTaskUpdates } from '@/services/roadmap-crud.service'
-import type { ActivityChange, Phase, Task } from '@/types/roadmap'
+import type { ActivityChange, Phase, Task, TaskActivityField } from '@/types/roadmap'
 import {
   buildTaskDoneActivityChanges,
   buildTaskDonePhases,
@@ -120,18 +120,20 @@ export function useTaskMutations(
 ): TaskMutations {
   const phasesRef = useRef(params.phases)
   const revisionRef = useRef<string | null>(params.updatedAt)
+  const setPhasesState = params.setPhases
+  const setUpdatedAtState = runtime.setUpdatedAt
   phasesRef.current = params.phases
   revisionRef.current = newestServerRevision(revisionRef.current, params.updatedAt)
 
   const setCurrentPhases = useCallback((nextPhases: Phase[]) => {
     phasesRef.current = nextPhases
-    params.setPhases(nextPhases)
-  }, [params.setPhases])
+    setPhasesState(nextPhases)
+  }, [setPhasesState])
 
   const setCurrentUpdatedAt = useCallback((nextUpdatedAt: string) => {
     revisionRef.current = newestServerRevision(revisionRef.current, nextUpdatedAt)
-    runtime.setUpdatedAt(nextUpdatedAt)
-  }, [runtime.setUpdatedAt])
+    setUpdatedAtState(nextUpdatedAt)
+  }, [setUpdatedAtState])
 
   const structure = useTaskStructureSync({
     phases: params.phases,
@@ -162,7 +164,7 @@ export function useTaskMutations(
 function taskActivity(
   task: Task,
   phase: Phase | undefined,
-  changedFields: string[],
+  changedFields: TaskActivityField[],
   title: string,
 ): ActivityChange {
   return {
@@ -374,7 +376,7 @@ export function createTaskMutations({
     id: string,
     updates: Partial<Task>,
     sourcePhases: Phase[],
-    changedFields: string[],
+    changedFields: TaskActivityField[],
   ): boolean => {
     const task = sourcePhases.flatMap((phase) => phase.tasks).find((candidate) => candidate.id === id)
     if (!task) return false
