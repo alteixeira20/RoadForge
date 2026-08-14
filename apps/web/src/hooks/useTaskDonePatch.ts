@@ -33,6 +33,7 @@ interface PatchSyncedTaskDoneParams {
   done: boolean
   nextPhases: Phase[]
   revertPhases: (taskId: string, done: boolean, phases: Phase[]) => Phase[]
+  lastUpdatedAt?: string
 }
 
 interface UseTaskDonePatchResult {
@@ -107,8 +108,10 @@ export function useTaskDonePatch({
     done,
     nextPhases,
     revertPhases,
+    lastUpdatedAt,
   }: PatchSyncedTaskDoneParams): Promise<boolean> => {
-    if (!serverRoadmapId || !sessionToken || !updatedAt) return false
+    const revision = lastUpdatedAt ?? updatedAt
+    if (!serverRoadmapId || !sessionToken || !revision) return false
     if (!beginTaskDonePatch(task.id)) return true
 
     const wasSaved = saved
@@ -120,7 +123,7 @@ export function useTaskDonePatch({
         taskId: task.id,
         done,
         sessionToken,
-        lastUpdatedAt: updatedAt,
+        lastUpdatedAt: revision,
       })
       applyPartialWriteResult({
         roadmap,

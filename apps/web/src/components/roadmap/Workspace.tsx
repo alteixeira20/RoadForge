@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ToastViewport } from '@/components/ui/Toast'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -34,7 +34,7 @@ import { useToastState } from '@/hooks/useToastState'
 import { useSaveFlow } from '@/hooks/useSaveFlow'
 import { useWorkspaceParticipants } from '@/hooks/useWorkspaceParticipants'
 import { useParticipantRevocation } from '@/hooks/useParticipantRevocation'
-import { createTaskMutations } from '@/hooks/useTaskMutations'
+import { useTaskMutations } from '@/hooks/useTaskMutations'
 import { usePhaseMutations } from '@/hooks/usePhaseMutations'
 import { useTaskDonePatch } from '@/hooks/useTaskDonePatch'
 import { useTaskPatch } from '@/hooks/useTaskPatch'
@@ -274,12 +274,12 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     onSessionExpired: () => taskDoneSessionExpiredRef.current(),
   })
   const {
-    focusedWriteInFlight: phaseFocusedWriteInFlight,
-    beginFocusedWrite: beginPhaseFocusedWrite,
-    endFocusedWrite: endPhaseFocusedWrite,
+    focusedWriteInFlight,
+    beginFocusedWrite,
+    endFocusedWrite,
   } = useFocusedWriteGate()
   const partialWriteInFlight = (
-    taskDonePatchInFlight || taskPatchInFlight || phaseFocusedWriteInFlight
+    taskDonePatchInFlight || taskPatchInFlight || focusedWriteInFlight
   )
 
   const {
@@ -365,7 +365,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     return true
   }
 
-  const taskMutations = useMemo(() => createTaskMutations({
+  const taskMutations = useTaskMutations({
     phases,
     setPhases,
     setSaved,
@@ -379,21 +379,13 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     isTaskDonePatchInFlight,
     patchSyncedTaskDone,
     patchSyncedTask,
-  }), [
-    addPendingActivityChange,
-    isTaskDonePatchInFlight,
-    patchSyncedTask,
-    patchSyncedTaskDone,
-    phases,
-    readOnly,
-    serverRoadmapId,
-    sessionToken,
-    setExpandedTaskId,
-    setPhases,
-    setSaved,
-    showToast,
-    updatedAt,
-  ])
+  }, {
+    setUpdatedAt,
+    onFocusedSuccess: () => taskDoneSuccessRef.current(),
+    onSessionExpired: handleSessionExpired,
+    beginFocusedWrite,
+    endFocusedWrite,
+  })
   const {
     hasCycle,
     onCheckTask,
@@ -427,8 +419,8 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
       if (showActivity) refreshActivity()
     },
     onSessionExpired: handleSessionExpired,
-    beginFocusedWrite: beginPhaseFocusedWrite,
-    endFocusedWrite: endPhaseFocusedWrite,
+    beginFocusedWrite,
+    endFocusedWrite,
   })
 
   const handleAddPhaseRequest = useCallback(() => {
