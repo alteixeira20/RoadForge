@@ -11,6 +11,12 @@ export interface RealtimeTaskOrderScope {
   parentId: string | null
 }
 
+function withoutParent(task: Task): Task {
+  const nextTask = { ...task }
+  delete nextTask.parentId
+  return nextTask
+}
+
 function withoutDeletedTasks(
   phases: Phase[],
   deletedTaskIds: ReadonlySet<string>,
@@ -26,8 +32,7 @@ function withoutDeletedTasks(
         const parentDeleted = task.parentId ? deletedTaskIds.has(task.parentId) : false
         if (!parentDeleted && nextDeps.length === (task.deps ?? []).length) return task
 
-        const { parentId: _parentId, ...withoutParent } = task
-        const nextTask: Task = parentDeleted ? withoutParent : task
+        const nextTask = parentDeleted ? withoutParent(task) : task
         return nextDeps.length === (task.deps ?? []).length
           ? nextTask
           : { ...nextTask, deps: nextDeps }
@@ -49,8 +54,7 @@ function taskLocation(
 function withAuthoritativeParent(localTask: Task, serverTask: Task): Task {
   if (localTask.parentId === serverTask.parentId) return localTask
   if (serverTask.parentId) return { ...localTask, parentId: serverTask.parentId }
-  const { parentId: _parentId, ...withoutParent } = localTask
-  return withoutParent
+  return withoutParent(localTask)
 }
 
 function mergeCreatedTask(
