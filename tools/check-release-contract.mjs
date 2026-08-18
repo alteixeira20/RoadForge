@@ -17,6 +17,7 @@ const apiConfig = read('apps/api/src/api/config.py')
 const changelog = read('CHANGELOG.md')
 const makefile = read('Makefile')
 const nvmrc = read('.nvmrc').trim()
+const webRootLayout = read('apps/web/src/app/layout.tsx')
 
 const productVersion = rootPackage.version
 expect(typeof productVersion === 'string' && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(productVersion),
@@ -53,6 +54,8 @@ expect(rootPackage.engines?.node === webPackage.engines?.node,
   `root/web Node engine ranges differ: ${rootPackage.engines?.node} vs ${webPackage.engines?.node}`)
 expect(rootPackage.engines?.node === mcpPackage.engines?.node,
   `root/MCP Node engine ranges differ: ${rootPackage.engines?.node} vs ${mcpPackage.engines?.node}`)
+expect(!webRootLayout.includes("next/font/google"),
+  'web root layout must not use next/font/google because production builds must not require external font downloads')
 
 if (failures.length) {
   console.error('Release contract validation failed:')
