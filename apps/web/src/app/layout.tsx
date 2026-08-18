@@ -1,23 +1,8 @@
 import type { Metadata } from 'next'
-import { Lexend, JetBrains_Mono } from 'next/font/google'
 import { headers } from 'next/headers'
 import { StorageWriteFailureBanner } from '@/components/ui/StorageWriteFailureBanner'
 import { RoadmapProvider } from '@/context/RoadmapContext'
 import './globals.css'
-
-const lexend = Lexend({
-  subsets: ['latin'],
-  variable: '--font-lexend',
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-})
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
-  weight: ['400', '500'],
-  display: 'swap',
-})
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://roadforge.anvilary.tools'),
@@ -61,7 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   await headers()
 
   return (
-    <html lang="en" className={`${lexend.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en">
       <body>
         <StorageWriteFailureBanner />
         <RoadmapProvider>{children}</RoadmapProvider>
