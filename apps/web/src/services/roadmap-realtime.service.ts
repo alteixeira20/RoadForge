@@ -7,13 +7,18 @@ import { API_BASE_URL, requestJson } from './roadmap-http'
 // ─── Realtime handler types ────────────────────────────────────────────────────
 
 export type RealtimePhaseOperation = 'created' | 'deleted' | 'reordered'
+export type RealtimeTaskOperation = 'created' | 'deleted' | 'reordered'
 
 export interface RoadmapUpdatedEventPayload {
   roadmap_id: string
   updated_at: string
   participant_id: string
   task_id?: string
+  task_ids?: string[]
+  task_operation?: RealtimeTaskOperation
   phase_id?: string
+  parent_id?: string | null
+  dependency_id?: string
   phase_operation?: RealtimePhaseOperation
   phase_ids?: string[]
   action?: string
