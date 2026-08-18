@@ -467,6 +467,15 @@ class RedisPubSubEventBus:
         return f"{self._key_prefix}:events:roadmap:{roadmap_id}"
 
     async def publish(self, event: Event) -> None:
+        """Best-effort fan-out of an already-authoritative application event.
+
+        Realtime delivery is a notification side effect, not part of the
+        authoritative PostgreSQL/lock state transition. A Redis publish
+        outage therefore must not turn an already-committed mutation into a
+        false HTTP failure that callers may retry. Security-critical
+        revocation preconditions use ``revocations.mark_pending`` separately
+        and remain fail-closed.
+        """
         message = json.dumps({
             "action": event.action,
             "payload": event.payload,
@@ -475,7 +484,6 @@ class RedisPubSubEventBus:
             await self._redis.publish(self._channel(event.roadmap_id), message)
         except RedisError:
             logger.exception("Failed to publish realtime event through Redis")
-            raise
 
     async def open_subscription(self, roadmap_id: str) -> "RedisSubscription":
         channel = self._channel(roadmap_id)
