@@ -35,7 +35,9 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 from sqlalchemy.pool import NullPool  # noqa: E402
 
 import api.routers.roadmap_activity as _roadmap_activity_module  # noqa: E402
+import api.routers.roadmap_client as _roadmap_client_module  # noqa: E402
 import api.routers.roadmap_core as _roadmap_core_module  # noqa: E402
+import api.routers.roadmap_focused as _roadmap_focused_module  # noqa: E402
 import api.routers.roadmap_locks as _roadmap_locks_module  # noqa: E402
 import api.routers.roadmap_realtime as _roadmap_realtime_module  # noqa: E402
 import api.routers.roadmap_sharing as _roadmap_sharing_module  # noqa: E402
@@ -97,7 +99,9 @@ async def client(db_session: AsyncSession):
     # budgets preserve the pre-decomposition behavior without cross-test bleed.
     limiter = MemoryRateLimiter()
     _roadmap_activity_module.rate_limiter = limiter
+    _roadmap_client_module.rate_limiter = limiter
     _roadmap_core_module.rate_limiter = limiter
+    _roadmap_focused_module.rate_limiter = limiter
     _roadmap_locks_module.rate_limiter = limiter
     _roadmap_realtime_module.rate_limiter = limiter
     _roadmap_sharing_module.rate_limiter = limiter
