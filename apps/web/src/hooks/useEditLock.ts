@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { TEAM_FEATURES_ENABLED } from '@/config/capabilities'
 import { acquireLock, releaseLock } from '@/services/roadmap-locks.service'
 import { ApiError } from '@/services/roadmap-http'
 
@@ -28,7 +29,10 @@ interface UseEditLockResult {
 /**
  * Manages acquire / refresh / release lifecycle for an edit lock.
  *
- * - Calls acquireLock when tryAcquire() is invoked.
+ * Team-disabled builds keep editing entirely local: no acquire, refresh, or
+ * release request is sent even when a roadmap is backed by the local API.
+ *
+ * - Calls acquireLock when tryAcquire() is invoked and team features are enabled.
  * - While `active` is true and a server roadmap exists, refreshes the lock
  *   every 20s (server TTL is 30s).
  * - Releases the lock when `active` goes false, on explicit release(), or
@@ -58,7 +62,7 @@ export function useEditLock({
     ownsLockRef.current = false
     setOwnsLock(false)
 
-    if (!serverRoadmapId || !sessionToken) return Promise.resolve()
+    if (!TEAM_FEATURES_ENABLED || !serverRoadmapId || !sessionToken) return Promise.resolve()
 
     const pendingRelease = (async () => {
       setIsReleasing(true)
@@ -82,7 +86,7 @@ export function useEditLock({
     if (releasePromiseRef.current) await releasePromiseRef.current
     const lockGeneration = lockGenerationRef.current
 
-    if (!serverRoadmapId || !sessionToken) {
+    if (!TEAM_FEATURES_ENABLED || !serverRoadmapId || !sessionToken) {
       ownsLockRef.current = true
       setOwnsLock(true)
       return true
@@ -113,7 +117,7 @@ export function useEditLock({
   // Refresh the lock every 20s while active (server TTL is 30s).
   // Release on cleanup when active goes false or on unmount.
   useEffect(() => {
-    if (!active || !serverRoadmapId || !sessionToken) return
+    if (!TEAM_FEATURES_ENABLED || !active || !serverRoadmapId || !sessionToken) return
 
     const tryRefresh = async () => {
       if (!ownsLockRef.current) return

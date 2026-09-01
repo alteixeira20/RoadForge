@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { TEAM_FEATURES_ENABLED } from '@/config/capabilities'
 import { getParticipants } from '@/services/roadmap-sharing.service'
 import type { Participant } from '@/types/roadmap'
 
@@ -31,7 +32,12 @@ export function useWorkspaceParticipants({
   useEffect(() => {
     setParticipants([])
     setParticipantsError(null)
-    if (!serverRoadmapId || !sessionToken || (role !== 'owner' && role !== 'editor')) {
+    if (
+      !TEAM_FEATURES_ENABLED ||
+      !serverRoadmapId ||
+      !sessionToken ||
+      (role !== 'owner' && role !== 'editor')
+    ) {
       setParticipantsLoading(false)
       return
     }
@@ -54,7 +60,7 @@ export function useWorkspaceParticipants({
   }, [serverRoadmapId, sessionToken, role])
 
   const refreshParticipants = async () => {
-    if (!serverRoadmapId || !sessionToken) return
+    if (!TEAM_FEATURES_ENABLED || !serverRoadmapId || !sessionToken) return
     try {
       setParticipants(await getParticipants(serverRoadmapId, sessionToken))
     } catch {

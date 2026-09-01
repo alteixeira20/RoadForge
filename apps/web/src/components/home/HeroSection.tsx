@@ -17,11 +17,12 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
         </h1>
         <p className="lede">
           Plan in phases, track tasks and dependencies, and work entirely on
-          your device. Save to a server later when you need to share. No account
+          your device. Optionally save to a RoadForge service for durable API
+          and coding-agent access without turning the roadmap into a shared
+          workspace. Team sharing is in progress — available soon. No account
           required to start. <strong>Hosted demo:</strong> use this instance to
-          evaluate RoadForge and collaborate lightly. Export JSON backups of
-          important work; for sustained or larger-team use, fork and self-host
-          RoadForge on infrastructure you control.
+          evaluate RoadForge. Export JSON backups of important work; for sustained
+          or larger-team use, fork and self-host RoadForge on infrastructure you control.
         </p>
         <div className="ctas">
           <button className="btn primary lg" onClick={onCreate}>
@@ -49,7 +50,7 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           <span><Icon name="lock" size={14} /> No account required</span>
           <span><Icon name="device" size={14} /> Local-first</span>
           <span><Icon name="export" size={14} /> Portable exports</span>
-          <span><Icon name="shield" size={14} /> Self-host for team use</span>
+          <span><Icon name="robot" size={14} /> API / agent-ready</span>
         </div>
       </div>
     </section>

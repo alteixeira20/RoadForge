@@ -1,5 +1,6 @@
 'use client'
 
+import { TEAM_FEATURES_ENABLED } from '@/config/capabilities'
 import { Icon } from '@/components/ui/Icon'
 import { Brand } from '@/components/ui/Brand'
 import { ProblemReportLink } from '@/components/ui/ProblemReportLink'
@@ -53,11 +54,11 @@ export function AppHeader({
               <button
                 className="btn sm header-save-btn"
                 onClick={onSave}
-                title="Enable sharing"
-                aria-label="Enable sharing"
+                title="Back this roadmap with the local RoadForge service"
+                aria-label="Save to local service"
               >
                 <Icon name="cloud" size={14} />
-                <span className="header-save-label">Share</span>
+                <span className="header-save-label">Save to service</span>
               </button>
             ) : syncStatus === 'conflict' ? (
               <button
@@ -73,17 +74,27 @@ export function AppHeader({
               <button
                 className="btn sm header-save-btn"
                 onClick={onSave}
-                title={syncStatus === 'offline' ? 'Retry sync' : 'Review or retry save'}
-                aria-label={syncStatus === 'offline' ? 'Retry sync' : 'Review or retry save'}
+                title={syncStatus === 'offline' ? 'Retry service save' : 'Review or retry save'}
+                aria-label={syncStatus === 'offline' ? 'Retry service save' : 'Review or retry save'}
               >
                 <Icon name="cloud" size={14} />
                 <span className="header-save-label">
                   {syncStatus === 'offline' ? 'Retry' : 'Review'}
                 </span>
               </button>
-            ) : canManageShare ? (
+            ) : TEAM_FEATURES_ENABLED && canManageShare ? (
               <button className="btn sm" onClick={onShare}>
                 <Icon name="share" size={14} /> Share
+              </button>
+            ) : canManageShare ? (
+              <button
+                className="btn sm"
+                type="button"
+                disabled
+                title="Team sharing is in progress — available soon"
+                aria-label="Team sharing in progress — available soon"
+              >
+                <Icon name="share" size={14} /> Team sharing · Soon
               </button>
             ) : null}
           </>

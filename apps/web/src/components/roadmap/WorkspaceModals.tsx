@@ -1,5 +1,6 @@
 'use client'
 
+import { TEAM_FEATURES_ENABLED } from '@/config/capabilities'
 import { SaveToServerModal } from '@/components/share/SaveToServerModal'
 import { ShareModal } from '@/components/share/ShareModal'
 import { IOModal } from '@/components/share/IOModal'
@@ -40,7 +41,9 @@ export function WorkspaceModals({
         onClose={onCloseSave}
         onConfirm={onConfirmSave}
       />
-      <ShareModal open={showShare} onClose={onCloseShare} onToast={onToast} />
+      {TEAM_FEATURES_ENABLED && (
+        <ShareModal open={showShare} onClose={onCloseShare} onToast={onToast} />
+      )}
       <IOModal open={showIO} onClose={onCloseIO} onToast={onToast} onRoadmapImported={onRoadmapImported} />
     </>
   )

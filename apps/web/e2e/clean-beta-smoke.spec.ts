@@ -147,17 +147,24 @@ for (const role of ['owner', 'editor', 'viewer'] as const) {
     await expect(page.getByRole('button', { name: 'Add phase', exact: true })).toHaveCount(0)
     const addPhase = page.getByRole('button', { name: 'Add another phase', exact: true })
     const share = page.getByRole('button', { name: 'Share' })
+    const teamSharingSoon = page.getByRole('button', {
+      name: 'Team sharing in progress — available soon',
+    })
     if (role === 'owner') {
       await expect(addPhase.first()).toBeVisible()
-      await expect(share).toBeVisible()
+      await expect(share).toHaveCount(0)
+      await expect(teamSharingSoon).toBeVisible()
+      await expect(teamSharingSoon).toBeDisabled()
       await expect(page.getByRole('button', { name: 'Rename roadmap' })).toBeVisible()
     } else if (role === 'editor') {
       await expect(addPhase.first()).toBeVisible()
       await expect(share).toHaveCount(0)
+      await expect(teamSharingSoon).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Rename roadmap' })).toBeVisible()
     } else {
       await expect(addPhase).toHaveCount(0)
       await expect(share).toHaveCount(0)
+      await expect(teamSharingSoon).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Create your own', exact: true })).toBeVisible()
       await page.getByRole('tab', { name: 'Tags' }).click()
       await expect(page.getByText('Tag management is read-only in this view.')).toBeVisible()

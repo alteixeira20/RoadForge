@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useMemo, useRef, type ReactNode } from 'react'
+import { TEAM_FEATURES_ENABLED } from '@/config/capabilities'
 import type {
   Phase,
   RealtimeConnectionStatus,
@@ -145,6 +146,9 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   })
 
   // ─── Realtime subscription ───────────────────────────────────────────────────
+  // Keep the hook call unconditional. In solo mode the hook receives no
+  // collaboration credentials, so its SSE/ticket/reconnect effect has no
+  // eligible connection and creates no realtime work.
 
   const {
     accessRevokedEvent,
@@ -152,10 +156,10 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     realtimeStatus,
   } = useRoadmapRealtime({
     connection: {
-      serverRoadmapId,
-      sessionToken,
-      participantId,
-      role,
+      serverRoadmapId: TEAM_FEATURES_ENABLED ? serverRoadmapId : null,
+      sessionToken: TEAM_FEATURES_ENABLED ? sessionToken : null,
+      participantId: TEAM_FEATURES_ENABLED ? participantId : null,
+      role: TEAM_FEATURES_ENABLED ? role : null,
       activeRoadmapId,
     },
     lifecycle: {

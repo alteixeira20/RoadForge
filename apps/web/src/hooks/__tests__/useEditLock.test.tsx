@@ -7,6 +7,9 @@ import { useEditLock } from '@/hooks/useEditLock'
 import { acquireLock, releaseLock } from '@/services/roadmap-locks.service'
 import { ApiConnectionError, ApiError } from '@/services/roadmap-http'
 
+vi.mock('@/config/capabilities', () => ({
+  TEAM_FEATURES_ENABLED: true,
+}))
 vi.mock('@/services/roadmap-locks.service', () => ({
   acquireLock: vi.fn(),
   releaseLock: vi.fn(),
@@ -36,7 +39,7 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-describe('useEditLock', () => {
+describe('useEditLock in team mode', () => {
   let container: HTMLDivElement
   let root: Root
   let result: Result
