@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { TEAM_FEATURES_ENABLED } from '@/config/capabilities'
 
 export interface WorkspaceModals {
   showSave: boolean
@@ -19,10 +20,12 @@ export function useWorkspaceModals(): WorkspaceModals {
 
   return {
     showSave,
-    showShare,
+    showShare: TEAM_FEATURES_ENABLED && showShare,
     showIO,
     openSave: () => setShowSave(true),
-    openShare: () => setShowShare(true),
+    openShare: () => {
+      if (TEAM_FEATURES_ENABLED) setShowShare(true)
+    },
     openIO: () => setShowIO(true),
     closeSave: () => setShowSave(false),
     closeShare: () => setShowShare(false),
