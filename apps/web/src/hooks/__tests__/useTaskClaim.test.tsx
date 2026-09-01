@@ -17,6 +17,9 @@ const { mockedUseRoadmapData, mockedUseRoadmapSession } = vi.hoisted(() => ({
   mockedUseRoadmapSession: vi.fn(),
 }))
 
+vi.mock('@/config/capabilities', () => ({
+  TEAM_FEATURES_ENABLED: true,
+}))
 vi.mock('@/context/RoadmapContext', () => ({
   useRoadmapData: mockedUseRoadmapData,
   useRoadmapSession: mockedUseRoadmapSession,
@@ -82,7 +85,7 @@ function roadmapResponse(claimedBy?: string): Roadmap {
   }
 }
 
-describe('useTaskClaim', () => {
+describe('useTaskClaim in team mode', () => {
   let container: HTMLDivElement
   let root: Root
   let result: UseTaskClaimResult
