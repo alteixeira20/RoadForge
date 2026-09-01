@@ -2,7 +2,9 @@ from fastapi.routing import APIRoute
 
 from api.routers import (
     roadmap_activity,
+    roadmap_client,
     roadmap_core,
+    roadmap_focused,
     roadmap_locks,
     roadmap_realtime,
     roadmap_sharing,
@@ -20,6 +22,26 @@ _CORE_ROUTES = {
     ("GET", "/{roadmap_id}"),
     ("PUT", "/{roadmap_id}"),
     ("DELETE", "/{roadmap_id}"),
+}
+_FOCUSED_ROUTES = {
+    ("GET", "/{roadmap_id}/summary"),
+    ("GET", "/{roadmap_id}/revision"),
+    ("GET", "/{roadmap_id}/tasks/search"),
+    ("GET", "/{roadmap_id}/tasks/{task_id}"),
+    ("GET", "/{roadmap_id}/context"),
+}
+_CLIENT_ROUTES = {
+    ("PATCH", "/{roadmap_id}/client/tasks/{task_id}"),
+    ("PATCH", "/{roadmap_id}/client/tasks/{task_id}/done"),
+    ("POST", "/{roadmap_id}/client/phases/{phase_id}/tasks"),
+    ("DELETE", "/{roadmap_id}/client/tasks/{task_id}"),
+    ("PUT", "/{roadmap_id}/client/tasks/{task_id}/dependencies/{dependency_id}"),
+    ("DELETE", "/{roadmap_id}/client/tasks/{task_id}/dependencies/{dependency_id}"),
+    ("POST", "/{roadmap_id}/client/phases"),
+    ("PATCH", "/{roadmap_id}/client/phases/{phase_id}"),
+    ("DELETE", "/{roadmap_id}/client/phases/{phase_id}"),
+    ("PATCH", "/{roadmap_id}/client/name"),
+    ("POST", "/{roadmap_id}/client/tags"),
 }
 _STRUCTURE_ROUTES = {
     ("PATCH", "/{roadmap_id}/name"),
@@ -74,6 +96,8 @@ _TAG_ROUTES = {
 
 _DOMAIN_CONTRACTS = (
     (roadmap_core.router, _CORE_ROUTES),
+    (roadmap_focused.router, _FOCUSED_ROUTES),
+    (roadmap_client.router, _CLIENT_ROUTES),
     (roadmap_structure.router, _STRUCTURE_ROUTES),
     (roadmap_versions.router, _VERSION_ROUTES),
     (roadmap_activity.router, _ACTIVITY_ROUTES),
@@ -98,7 +122,7 @@ def _route_keys(router) -> list[tuple[str, str]]:
 
 def test_composed_router_matches_public_method_path_contract() -> None:
     assert set(_route_keys(roadmaps.router)) == _EXPECTED_PUBLIC_ROUTES
-    assert len(_EXPECTED_PUBLIC_ROUTES) == 39
+    assert len(_EXPECTED_PUBLIC_ROUTES) == 55
 
 
 def test_composed_router_has_no_duplicate_method_path_routes() -> None:

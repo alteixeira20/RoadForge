@@ -35,7 +35,9 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 from sqlalchemy.pool import NullPool  # noqa: E402
 
 import api.routers.roadmap_activity as _roadmap_activity_module  # noqa: E402
+import api.routers.roadmap_client as _roadmap_client_module  # noqa: E402
 import api.routers.roadmap_core as _roadmap_core_module  # noqa: E402
+import api.routers.roadmap_focused as _roadmap_focused_module  # noqa: E402
 import api.routers.roadmap_locks as _roadmap_locks_module  # noqa: E402
 import api.routers.roadmap_realtime as _roadmap_realtime_module  # noqa: E402
 import api.routers.roadmap_sharing as _roadmap_sharing_module  # noqa: E402
@@ -93,11 +95,20 @@ async def client(db_session: AsyncSession):
     app = create_app()
     app.dependency_overrides[get_db] = _override_get_db
 
+    # Production intentionally disables the public OpenAPI URL. Expose the
+    # generated schema only in the test app so response-model contracts can be
+    # asserted without changing the deployed API surface.
+    @app.get("/openapi.json", include_in_schema=False)
+    async def _test_openapi_schema() -> dict:
+        return app.openapi()
+
     # All roadmap route modules share one fresh limiter per test so endpoint
     # budgets preserve the pre-decomposition behavior without cross-test bleed.
     limiter = MemoryRateLimiter()
     _roadmap_activity_module.rate_limiter = limiter
+    _roadmap_client_module.rate_limiter = limiter
     _roadmap_core_module.rate_limiter = limiter
+    _roadmap_focused_module.rate_limiter = limiter
     _roadmap_locks_module.rate_limiter = limiter
     _roadmap_realtime_module.rate_limiter = limiter
     _roadmap_sharing_module.rate_limiter = limiter

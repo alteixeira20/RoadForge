@@ -4,7 +4,9 @@ from fastapi import APIRouter
 
 from api.routers import (
     roadmap_activity,
+    roadmap_client,
     roadmap_core,
+    roadmap_focused,
     roadmap_locks,
     roadmap_realtime,
     roadmap_sharing,
@@ -17,6 +19,8 @@ from api.routers import (
 
 _DOMAIN_ROUTERS = (
     roadmap_core.router,
+    roadmap_focused.router,
+    roadmap_client.router,
     roadmap_structure.router,
     roadmap_versions.router,
     roadmap_activity.router,
