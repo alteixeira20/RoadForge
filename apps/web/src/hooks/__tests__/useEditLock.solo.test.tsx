@@ -32,11 +32,9 @@ describe('useEditLock in solo mode', () => {
   let container: HTMLDivElement
   let root: Root
   let result: Result
-  let intervalSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.useFakeTimers()
-    intervalSpy = vi.spyOn(globalThis, 'setInterval')
     mockedAcquireLock.mockReset()
     mockedReleaseLock.mockReset()
     container = document.createElement('div')
@@ -51,7 +49,6 @@ describe('useEditLock in solo mode', () => {
     act(() => root.unmount())
     container.remove()
     vi.useRealTimers()
-    vi.restoreAllMocks()
   })
 
   it('does not acquire or release a server lock for a server-backed roadmap', async () => {
@@ -65,12 +62,14 @@ describe('useEditLock in solo mode', () => {
   })
 
   it('does not create a lock-refresh interval or refresh over time', async () => {
+    expect(vi.getTimerCount()).toBe(0)
+
     await act(async () => {
       expect(await result.tryAcquire()).toBe(true)
       await vi.advanceTimersByTimeAsync(60_000)
     })
 
-    expect(intervalSpy).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
     expect(mockedAcquireLock).not.toHaveBeenCalled()
     expect(mockedReleaseLock).not.toHaveBeenCalled()
   })
