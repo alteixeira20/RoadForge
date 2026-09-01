@@ -6,8 +6,8 @@ export function FeaturesSection() {
     <LandingSectionFrame
       id="features"
       className="features-section"
-      title="Built for solo builders and small teams."
-      lede="A focused set of features, sized to fit how real planning works. The public instance is a demo; teams can run RoadForge on infrastructure they control."
+      title="Built for focused local planning."
+      lede="A small, durable roadmap workspace for one builder today, with optional local service backing for API and agent access. Team features are intentionally dormant for now."
     >
       <div className="features">
         <div className="feature">
@@ -43,21 +43,21 @@ export function FeaturesSection() {
         <div className="feature">
           <div className="feature-head">
             <div className="ic"><Icon name="robot" size={20} /></div>
-            <h3>Tool-readable planning</h3>
+            <h3>API and agent access</h3>
           </div>
           <p>
-            Stable, inspectable JSON works with compatible tools, scripts, and
-            version control while RoadForge remains the source of truth.
+            Back a roadmap with the local RoadForge service when tools, scripts,
+            or MCP-connected coding agents need durable machine-local access.
           </p>
         </div>
         <div className="feature">
           <div className="feature-head">
             <div className="ic"><Icon name="users" size={20} /></div>
-            <h3>Optional sync and sharing</h3>
+            <h3>Team sharing</h3>
           </div>
           <p>
-            Work locally first; add server sync only for participants, share
-            links, activity history, and realtime collaboration.
+            In progress — available soon. Existing collaboration foundations are
+            retained, but they are not active in the current solo product surface.
           </p>
         </div>
         <div className="feature">
@@ -67,8 +67,8 @@ export function FeaturesSection() {
           </div>
           <p>
             Use the hosted demo to evaluate RoadForge. For sustained or larger-team
-            use, run a fork or controlled clone on infrastructure you operate under
-            the repository&apos;s non-commercial source-available license.
+            use later, run a fork or controlled clone on infrastructure you operate
+            under the repository&apos;s non-commercial source-available license.
           </p>
         </div>
       </div>
