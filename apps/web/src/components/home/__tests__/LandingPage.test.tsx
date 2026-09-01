@@ -63,7 +63,7 @@ describe('landing page refinement', () => {
     expect(metadata[0].textContent?.match(/No account required/g)).toHaveLength(1)
     expect(metadata[0].textContent?.match(/Local-first/g)).toHaveLength(1)
     expect(metadata[0].textContent?.match(/Portable exports/g)).toHaveLength(1)
-    expect(metadata[0].textContent?.match(/Team sharing soon/g)).toHaveLength(1)
+    expect(metadata[0].textContent?.match(/API \/ agent-ready/g)).toHaveLength(1)
     expect(preview.compareDocumentPosition(metadata[0])).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
