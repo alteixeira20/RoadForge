@@ -1,3 +1,4 @@
+import { TEAM_FEATURES_ENABLED } from '@/config/capabilities'
 import { Icon } from '@/components/ui/Icon'
 
 interface TaskClaimRowProps {
@@ -19,6 +20,8 @@ export function TaskClaimRow({
   onClaim,
   onClaimAction,
 }: TaskClaimRowProps) {
+  if (!TEAM_FEATURES_ENABLED) return null
+
   return (
     <div className="task-claim-row">
       {claimer ? (
