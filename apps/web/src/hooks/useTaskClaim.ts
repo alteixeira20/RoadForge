@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { TEAM_FEATURES_ENABLED } from '@/config/capabilities'
 import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
 import { addTaskAssignee } from '@/lib/task-assignment'
 import { waitForPendingTaskCreation } from '@/lib/task-creation-readiness'
@@ -39,14 +40,14 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
 
   const [isClaiming, setIsClaiming] = useState(false)
 
-  const claimer = task.claimedBy ?? null
-  const isClaimedByMe = Boolean(
+  const claimer = TEAM_FEATURES_ENABLED ? task.claimedBy ?? null : null
+  const isClaimedByMe = TEAM_FEATURES_ENABLED && Boolean(
     claimer && (
       (participantId && task.claimedById === participantId) ||
       (!participantId && claimer === displayName)
     ),
   )
-  const canOverrideClaim = Boolean(
+  const canOverrideClaim = TEAM_FEATURES_ENABLED && Boolean(
     claimer && !isClaimedByMe && (role === 'owner' || !serverRoadmapId),
   )
 
@@ -86,7 +87,7 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
   }, [showToast, task.id])
 
   const handleClaim = useCallback(async (override = false) => {
-    if (isClaiming || task.done || role === 'viewer') return
+    if (!TEAM_FEATURES_ENABLED || isClaiming || task.done || role === 'viewer') return
 
     if (serverRoadmapId && sessionToken) {
       setIsClaiming(true)
@@ -119,7 +120,7 @@ export function useTaskClaim({ task, showToast }: UseTaskClaimParams): UseTaskCl
   }, [isClaiming, task.done, task.id, task.claimedBy, role, serverRoadmapId, sessionToken, applyLocalClaim, displayName, setPhases, setUpdatedAt, showToast, waitForServerTask])
 
   const handleUnclaim = useCallback(async (override = false) => {
-    if (isClaiming || role === 'viewer') return
+    if (!TEAM_FEATURES_ENABLED || isClaiming || role === 'viewer') return
 
     if (serverRoadmapId && sessionToken) {
       setIsClaiming(true)
