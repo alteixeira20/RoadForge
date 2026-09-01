@@ -7,7 +7,7 @@ import './help.css'
 
 export const metadata: Metadata = {
   title: 'Help · RoadForge',
-  description: 'A practical guide to local roadmaps, sharing, backups, self-hosting, and recovery.',
+  description: 'A practical guide to local roadmaps, portable backups, local service backing, self-hosting, and recovery.',
 }
 
 export default function HelpPage() {
@@ -24,12 +24,12 @@ export default function HelpPage() {
       <main className="help-main">
         <div className="help-hero">
           <p className="help-eyebrow">RoadForge guide</p>
-          <h1>Plan locally. Share only when you choose.</h1>
+          <h1>Plan locally. Add service backing only when useful.</h1>
           <p>
-            Start in this browser, export portable backups, and enable server
-            sync only when you need collaboration. This public server is a hosted
-            demo; sustained or larger-team use should run on infrastructure your
-            team controls.
+            Start in this browser, export portable backups, and optionally save
+            to a RoadForge service when you need durable API or coding-agent access.
+            Team sharing is in progress — available soon. This public server is a
+            hosted demo; long-running use should run on infrastructure you control.
           </p>
         </div>
 
@@ -37,10 +37,10 @@ export default function HelpPage() {
           <a href="#start">Start a roadmap</a>
           <a href="#plan">Create phases and tasks</a>
           <a href="#portable">Import and export</a>
-          <a href="#collaborate">Save and share</a>
+          <a href="#service">Local service backing</a>
+          <a href="#collaborate">Team sharing status</a>
           <a href="#deployment">Demo or self-host</a>
-          <a href="#recover">Resolve conflicts</a>
-          <a href="#history">Activity and versions</a>
+          <a href="#recover">Resolve save conflicts</a>
           <a href="#troubleshoot">Troubleshoot</a>
           <a href="#limits">Known limitations</a>
         </nav>
@@ -50,14 +50,13 @@ export default function HelpPage() {
             <h2>Start a roadmap</h2>
             <p>
               Choose <strong>Blank roadmap</strong> for one empty Planning phase,
-              or <strong>Starter example</strong> for three phases and nine tasks
-              that demonstrate progress, focus, and dependencies. Everything is
-              editable.
+              or <strong>Starter example</strong> for a ready-made roadmap that
+              demonstrates progress, focus, and dependencies. Everything is editable.
             </p>
             <p>
-              Local roadmaps are stored in browser local storage and work
-              offline. Clearing site data or changing browsers can remove them,
-              so keep a JSON backup of anything important.
+              Local roadmaps are stored in browser local storage and work offline.
+              Clearing site data or changing browsers can remove them, so keep a
+              JSON backup of anything important.
             </p>
           </section>
 
@@ -71,8 +70,7 @@ export default function HelpPage() {
             <p>
               RoadForge can highlight one or more <strong>Recommended</strong> tasks.
               Recommendations are guidance, not a decision about what you must do
-              next. Dependencies mark work as blocked until its prerequisites are
-              done. Search and filters only change the current view; they never
+              next. Search and filters only change the current view; they never
               remove roadmap data.
             </p>
           </section>
@@ -92,42 +90,49 @@ export default function HelpPage() {
             </p>
           </section>
 
-          <section id="collaborate">
-            <h2>Save and share</h2>
+          <section id="service">
+            <h2>Back a roadmap with the RoadForge service</h2>
             <p>
-              <strong>Save</strong> creates a server-backed copy and enables
-              sharing. On `roadforge.anvilary.tools`, that server is the public
-              hosted demo. Owner, editor, and viewer links are access credentials,
-              so share them privately. Viewer invites grant read-only collaboration;
-              they are not public publishing links.
+              <strong>Save to service</strong> creates a server-backed copy without
+              enabling team sharing. This is useful for durable machine-local
+              persistence, direct API access, and the RoadForge MCP integration.
+              Browser-local editing and portable JSON remain available either way.
             </p>
-            <ul>
-              <li><strong>Owner:</strong> edit, restore versions, manage links and participants, and override claims.</li>
-              <li><strong>Editor:</strong> edit roadmap content and claim tasks.</li>
-              <li><strong>Viewer:</strong> read the roadmap and activity without changing anything.</li>
-            </ul>
             <p>
-              An edit lock prevents two people from changing the same control at
-              once. A task claim communicates who is working on a task; it does
-              not assign permanent ownership.
+              In the lean local runtime, the web UI is bound to <code>127.0.0.1:3020</code>,
+              the API to <code>127.0.0.1:7878</code>, and Postgres stays internal to
+              the runtime. Team/realtime frontend networking is disabled.
+            </p>
+          </section>
+
+          <section id="collaborate">
+            <h2>Team sharing</h2>
+            <p>
+              Team sharing and live coordination are <strong>in progress — available soon</strong>.
+              Share links, participant presence, edit-lock networking, realtime updates,
+              and task claim controls are intentionally dormant in the current product surface.
+            </p>
+            <p>
+              The retained collaboration model uses owner, editor, and viewer roles.
+              Owner, editor, and viewer links are access credentials and are not public publishing links.
+              When these capabilities return, they should be treated as private bearer credentials.
             </p>
           </section>
 
           <section id="deployment">
             <h2>Use the demo or self-host</h2>
             <p>
-              The Anvilary-hosted RoadForge instance is for evaluation, examples,
-              and light collaboration. It is not a managed team SaaS, durable
-              backup service, or large-team production service. It has no hosted
-              SLA, reserved per-team capacity, or guaranteed data-recovery service.
+              The Anvilary-hosted RoadForge instance is a hosted demo/reference
+              deployment. It is not a managed team SaaS, durable backup service,
+              or large-team production service. There is no hosted SLA, reserved
+              capacity, or guaranteed data-recovery service.
             </p>
             <p>
-              If RoadForge becomes part of your team&apos;s operating workflow—especially
-              for a larger team or long-running roadmap—fork the repository or
-              maintain a controlled clone and self-host it. Your operator should
-              own PostgreSQL backups and restores, retention, monitoring, capacity,
-              upgrades, security configuration, and incident response. Load-test
-              the expected concurrency before depending on the deployment.
+              For long-running or operationally important use, fork the repository
+              or maintain a controlled clone and self-host it. If RoadForge later
+              becomes part of a larger team workflow, the operator should own
+              PostgreSQL backups and restores, monitoring, capacity, upgrades,
+              security configuration, and incident response.
             </p>
             <p>
               Forking and self-hosting remain subject to the repository&apos;s current
@@ -139,26 +144,15 @@ export default function HelpPage() {
           <section id="recover">
             <h2>Resolve save and conflict states</h2>
             <p>
-              <strong>Saving</strong> means a request is in progress,
-              <strong>Synced</strong> means the server accepted it, and
-              <strong>Offline</strong> means RoadForge could not reach the server.
+              <strong>Saving</strong> means a service request is in progress,
+              <strong>Synced</strong> means the service accepted it, and
+              <strong>Offline</strong> means RoadForge could not reach the service.
               Your browser copy remains available.
             </p>
             <p>
-              A conflict means somebody saved a newer version first. Review the
+              A conflict means the service has a newer version. Review the
               differences, then choose whether to keep your local version or load
-              the server version. Loading the server version discards the local
-              draft only after confirmation.
-            </p>
-          </section>
-
-          <section id="history">
-            <h2>Use activity and versions</h2>
-            <p>
-              Activity shows meaningful actions on a shared roadmap. Versions are
-              explicit restore points. Owners and editors can inspect them; only
-              owners can restore one. A restore creates a new restore point rather
-              than deleting later history.
+              the service version. Loading it discards the local draft only after confirmation.
             </p>
           </section>
 
@@ -166,16 +160,14 @@ export default function HelpPage() {
             <h2>Troubleshoot safely</h2>
             <ul>
               <li>If a local roadmap is missing, open the roadmap switcher and check whether browser site data was cleared.</li>
-              <li>If sync is offline, keep working locally and retry after the server is reachable.</li>
-              <li>If a session expired or was revoked, keep the local copy and rejoin through a current invite link.</li>
+              <li>If service saving is offline, keep working locally and retry after the API is reachable.</li>
               <li>If an import fails, leave the original file unchanged and use the validation message to repair a copy.</li>
-              <li>If a self-hosted team instance is slow or unstable, inspect resource/database/Redis/proxy metrics before adding workers blindly.</li>
+              <li>For the local runtime, run <code>sh deploy/local/roadforge-local.sh doctor</code> and inspect service health before changing state.</li>
             </ul>
             <p>
               Need help?{' '}
               <ProblemReportLink />
-              . Do not include invite links, tokens, private roadmap exports,
-              secrets, or private logs in a public issue.
+              . Do not include tokens, private roadmap exports, secrets, or private logs in a public issue.
             </p>
           </section>
 
@@ -183,11 +175,10 @@ export default function HelpPage() {
             <h2>Known limitations</h2>
             <ul>
               <li>Browser storage is not a substitute for an exported backup.</li>
+              <li>Team sharing and live coordination are currently unavailable.</li>
               <li>The public hosted instance is a demo/reference deployment with no uptime, capacity, or recovery SLA.</li>
-              <li>RoadForge does not publish an arbitrary large-team concurrency guarantee; self-hosters must validate their expected load.</li>
               <li>Markdown is presentation-only and PDF export is not available.</li>
               <li>Conflicts require a deliberate choice; RoadForge does not silently merge competing edits.</li>
-              <li>Accountless sharing identifies access credentials and display names, not verified personal identities.</li>
             </ul>
           </section>
         </div>
