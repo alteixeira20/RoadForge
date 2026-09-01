@@ -95,6 +95,13 @@ async def client(db_session: AsyncSession):
     app = create_app()
     app.dependency_overrides[get_db] = _override_get_db
 
+    # Production intentionally disables the public OpenAPI URL. Expose the
+    # generated schema only in the test app so response-model contracts can be
+    # asserted without changing the deployed API surface.
+    @app.get("/openapi.json", include_in_schema=False)
+    async def _test_openapi_schema() -> dict:
+        return app.openapi()
+
     # All roadmap route modules share one fresh limiter per test so endpoint
     # budgets preserve the pre-decomposition behavior without cross-test bleed.
     limiter = MemoryRateLimiter()
