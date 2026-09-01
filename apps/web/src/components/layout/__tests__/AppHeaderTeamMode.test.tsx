@@ -33,7 +33,7 @@ describe('AppHeader in team mode', () => {
       root.render(
         <AppHeader
           roadmapName="Team roadmap"
-          syncStatus="synced"
+          syncStatus="live"
           canManageShare
           onShare={onShare}
         />,
