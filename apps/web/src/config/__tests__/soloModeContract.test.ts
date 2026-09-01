@@ -55,7 +55,7 @@ describe('solo-mode capability contract', () => {
     expect(compose).toContain('ROADFORGE_API_WORKERS: "1"')
     expect(compose).toContain('NEXT_PUBLIC_TEAM_FEATURES_ENABLED: "false"')
 
-    const postgresSection = compose.split('roadforge-postgres:')[1]
+    const postgresSection = compose.split('\n  roadforge-postgres:')[1]
     expect(postgresSection).toBeTruthy()
     expect(postgresSection).not.toContain('\n    ports:')
   })
