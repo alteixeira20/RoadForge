@@ -167,7 +167,8 @@ export default function HelpPage() {
             <p>
               Need help?{' '}
               <ProblemReportLink />
-              . Do not include tokens, private roadmap exports, secrets, or private logs in a public issue.
+              . Do not include invite links, tokens or session credentials, private roadmap exports,
+              secrets, or private logs in a public issue.
             </p>
           </section>
 
