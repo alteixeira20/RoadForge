@@ -27,7 +27,7 @@ export const metadata: Metadata = {
       'Local-first roadmap planning with portable exports and optional accountless collaboration.',
   },
   manifest: '/site.webmanifest',
-  // Static dark-UI favicons — the white Anvilary mark reads on dark browser chrome.
+  // Static dark-UI favicons - the white Anvilary mark reads on dark browser chrome.
   icons: {
     icon: [
       { url: '/brand/anvilary-logo-mark-square-32-white.png', sizes: '32x32', type: 'image/png' },

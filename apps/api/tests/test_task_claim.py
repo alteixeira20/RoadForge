@@ -1,5 +1,5 @@
 """
-RF-2504 — PATCH/DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim tests.
+RF-2504 - PATCH/DELETE /api/roadmaps/{roadmap_id}/tasks/{task_id}/claim tests.
 """
 
 from __future__ import annotations

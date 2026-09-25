@@ -45,7 +45,7 @@ export function TeamPanel({
   )
 
   // Editors receive a reduced participant projection (no timestamps/link
-  // metadata) — only render the detail line when that data is present.
+  // metadata) - only render the detail line when that data is present.
   const hasFullDetails = (participant: Participant) => participant.createdAt !== undefined
 
   return (

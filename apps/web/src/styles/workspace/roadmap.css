@@ -210,7 +210,7 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 760px — tablet: tighten workspace layout ───────────────────────────── */
+/* ── 760px - tablet: tighten workspace layout ───────────────────────────── */
 @media (max-width: 760px) {
   .workspace { padding: 28px 18px 60px; }
   .upgrade-notice {
@@ -221,7 +221,7 @@
   .roadmap-title-edit { opacity: 1; width: 34px; height: 34px; }
 }
 
-/* ── 600px — mobile: compact workspace layout ───────────────────────────── */
+/* ── 600px - mobile: compact workspace layout ───────────────────────────── */
 @media (max-width: 600px) {
   .workspace { padding: 20px 14px 60px; }
 }

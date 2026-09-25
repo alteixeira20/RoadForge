@@ -13,7 +13,7 @@ Enable server sync only when you deliberately want sharing and realtime collabor
 > reserved per-team capacity, or recovery guarantee. **Export important roadmaps as JSON**
 > and keep that file somewhere you control.
 >
-> If RoadForge becomes part of a real team workflow—especially for a larger team—fork the
+> If RoadForge becomes part of a real team workflow, especially for a larger team, fork the
 > repository or maintain a controlled clone and self-host it. Your deployment should own
 > persistence, backups, retention, monitoring, capacity, upgrades, and security configuration.
 > See [Hosted demo and self-hosting](docs/hosted-demo-and-self-hosting.md).
@@ -72,9 +72,9 @@ data-lifecycle boundaries.
 
 RoadForge has no login system or verified personal identities.
 
-- **Owner** — edit, manage sharing and participants, restore versions, override claims, and delete the roadmap.
-- **Editor** — edit roadmap content and claim tasks.
-- **Viewer** — read roadmap content and activity.
+- **Owner** - edit, manage sharing and participants, restore versions, override claims, and delete the roadmap.
+- **Editor** - edit roadmap content and claim tasks.
+- **Viewer** - read roadmap content and activity.
 
 Owner/editor/viewer invite links and participant sessions are bearer credentials. Share them
 privately. Viewer invites grant read-only collaboration access; they are not public publishing
@@ -88,8 +88,8 @@ data; a participant is a joined server session.
 Browser-local roadmaps are stored in scoped `localStorage`. A storage failure is shown
 as a persistent warning rather than being treated as a successful save.
 
-- **JSON** — complete portable roadmap data and the supported re-import format.
-- **Markdown** — deterministic human/agent-readable presentation; not importable.
+- **JSON** - complete portable roadmap data and the supported re-import format.
+- **Markdown** - deterministic human/agent-readable presentation; not importable.
 
 Exports exclude session tokens, invite tokens, passwords, edit locks, and transient
 collaboration state.
@@ -203,9 +203,9 @@ credentials/query strings out of retained logs.
 
 Health endpoints have one contract:
 
-- `/api/health/live` — process liveness only.
-- `/api/health/ready` — PostgreSQL plus configured Redis readiness.
-- `/api/health` — backward-compatible alias for readiness.
+- `/api/health/live` - process liveness only.
+- `/api/health/ready` - PostgreSQL plus configured Redis readiness.
+- `/api/health` - backward-compatible alias for readiness.
 
 Use the maintained production-oriented example under
 [`deploy/self-hosted`](deploy/self-hosted/README.md) and read

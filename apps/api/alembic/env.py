@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from api.config import get_settings  # noqa: E402
 from api.models.base import Base  # noqa: E402
-import api.models.roadmap  # noqa: E402, F401 — registers models against Base.metadata
+import api.models.roadmap  # noqa: E402, F401 - registers models against Base.metadata
 
 config = context.config
 

@@ -122,7 +122,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       role: targetRole,
       icon: targetRole === 'owner' ? 'shield' : targetRole === 'editor' ? 'users' : 'circle',
       desc: targetRole === 'owner'
-        ? 'Full control — manage settings, links, and members.'
+        ? 'Full control - manage settings, links, and members.'
         : targetRole === 'editor'
         ? 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.'
         : 'Read-only roadmap access. Treat this invite as a private credential.',
@@ -176,7 +176,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
     try {
       const updated = await regenerateShareLink(serverRoadmapId, targetRole, sessionToken)
       replaceRoleLink(updated)
-      onToast('New link generated — copy it now')
+      onToast('New link generated - copy it now')
     } catch (err) {
       if (isAuthError(err)) onToast('Only the owner can manage share links.')
       else onToast('Could not rotate link')
@@ -241,7 +241,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
           <span className="note">
             <Icon name="lock" size={12} />{' '}
             {isPasswordEnabled
-              ? 'This roadmap is password protected — people need both the invite link and the password to join.'
+              ? 'This roadmap is password protected - people need both the invite link and the password to join.'
               : 'Owner, editor, and viewer invite links are access credentials. Viewer invites are read-only, not public publishing links.'}
           </span>
           <span className="spacer" />

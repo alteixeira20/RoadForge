@@ -2,7 +2,7 @@
 
 // Ambient forge atmosphere ported from the Anvilary-Website design system
 // (src/components/ui/EmberBackground.tsx). Copied and adapted so RoadForge
-// builds independently — keep behavior in sync with the Anvilary source.
+// builds independently - keep behavior in sync with the Anvilary source.
 
 import { useEffect, useRef } from 'react'
 

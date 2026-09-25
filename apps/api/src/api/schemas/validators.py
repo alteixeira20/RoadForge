@@ -8,7 +8,7 @@ Design:
 - Reject strings containing known injection fragments as a defence-in-depth
   measure. React escapes at render time, but we prefer to reject at ingest.
 - Raise ValueError so Pydantic converts it to a 422 ValidationError.
-- Never silently truncate — callers must enforce length before storing.
+- Never silently truncate - callers must enforce length before storing.
 """
 
 import re

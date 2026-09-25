@@ -263,7 +263,7 @@ async def get_participants_summary(
     roadmap_id: str,
     current_participant: Participant,
 ) -> list[ParticipantSummaryResponse]:
-    """Reduced participant projection for editors — active participants only.
+    """Reduced participant projection for editors - active participants only.
 
     Excludes timestamps, share-link linkage, and access labels that owners
     see in the full listing. Used to feed assignee suggestions without
@@ -338,7 +338,7 @@ async def revoke_participant(
 
 
 async def _log_failure(coro, message: str) -> None:
-    """Await `coro`, logging (not raising) on failure — for steps that must
+    """Await `coro`, logging (not raising) on failure - for steps that must
     never abort an already-authoritative revocation."""
     try:
         await coro

@@ -6,7 +6,7 @@ The public instance at `roadforge.anvilary.tools` is a **hosted demo/reference d
 It is not a managed production service and has no uptime, capacity, hosted-data recovery, or
 large-team support commitment. Keep JSON exports of important roadmaps.
 
-If a team depends on RoadForge operationally—especially a larger team—it should fork the
+If a team depends on RoadForge operationally, especially a larger team, it should fork the
 repository or maintain a controlled clone and self-host under the applicable license. The
 self-hosting operator is responsible for infrastructure, backups, retention, monitoring,
 capacity/load testing, upgrades, and incident response. See

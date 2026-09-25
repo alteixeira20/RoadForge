@@ -1,211 +1,398 @@
 import assert from 'node:assert/strict'
-import { once } from 'node:events'
-import http from 'node:http'
-import { spawn } from 'node:child_process'
-import { test } from 'node:test'
+import test from 'node:test'
 
-const roadmap = {
+import { TOOLS, createToolHandler } from '../src/server.mjs'
+
+const UPDATED_AT = '2026-09-01T12:00:00Z'
+const NEXT_UPDATED_AT = '2026-09-01T12:01:00Z'
+const FULL_PATH = '/api/roadmaps/rm_test'
+
+const fullRoadmap = {
   id: 'rm_test',
   name: 'Launch plan',
-  updated_at: '2026-08-03T20:00:00Z',
+  updated_at: UPDATED_AT,
   phases: [{
-    id: 'ph_1', num: '01', name: 'Build', progress: 0,
-    tasks: [{ id: 'tk_1', title: 'Ship alpha', done: false, next: true, tags: ['alpha'] }],
+    id: 'ph_1',
+    num: '01',
+    name: 'Build',
+    status: 'active',
+    progress: 0,
+    tasks: [{
+      id: 'tk_1',
+      title: 'Ship alpha',
+      done: false,
+      next: true,
+      tags: ['alpha'],
+    }],
   }],
 }
 
-async function mockApi() {
+const summaryPayload = {
+  roadmap_id: 'rm_test',
+  name: 'Launch plan',
+  updated_at: UPDATED_AT,
+  phase_count: 1,
+  total_task_count: 1,
+  open_task_count: 1,
+  completed_task_count: 0,
+  completion_percent: 0,
+  phases: [{
+    id: 'ph_1',
+    num: '01',
+    name: 'Build',
+    status: 'active',
+    progress: 0,
+    task_count: 1,
+    completed_task_count: 0,
+    open_task_count: 1,
+  }],
+  next_task_count: 1,
+  next_tasks: [{
+    id: 'tk_1',
+    title: 'Ship alpha',
+    phase_id: 'ph_1',
+    phase_name: 'Build',
+  }],
+  next_tasks_truncated: false,
+}
+
+const taskPayload = {
+  roadmap_id: 'rm_test',
+  updated_at: UPDATED_AT,
+  phase: {
+    id: 'ph_1',
+    num: '01',
+    name: 'Build',
+    status: 'active',
+    progress: 0,
+  },
+  task: fullRoadmap.phases[0].tasks[0],
+}
+
+const searchPayload = {
+  roadmap_id: 'rm_test',
+  updated_at: UPDATED_AT,
+  query: 'alpha',
+  matching_task_count: 1,
+  returned_task_count: 1,
+  omitted_task_count: 0,
+  truncated: false,
+  results: [{
+    phase: taskPayload.phase,
+    task: {
+      id: 'tk_1',
+      title: 'Ship alpha',
+      done: false,
+      next: true,
+      tags: ['alpha'],
+      assignees: [],
+    },
+  }],
+}
+
+const contextPayload = {
+  roadmap_id: 'rm_test',
+  name: 'Launch plan',
+  updated_at: UPDATED_AT,
+  total_task_count: 1,
+  completed_task_count: 0,
+  open_task_count: 1,
+  matching_task_count: 1,
+  returned_task_count: 1,
+  omitted_task_count: 0,
+  truncated: false,
+  results: [{
+    phase: taskPayload.phase,
+    task: {
+      id: 'tk_1',
+      title: 'Ship alpha',
+      done: false,
+      next: true,
+      complexity: 'medium',
+      est: null,
+      parentId: null,
+      deps: [],
+      tags: ['alpha'],
+      assignees: [],
+      description_preview: null,
+    },
+  }],
+}
+
+function compactMutation(overrides = {}) {
+  return {
+    roadmap_id: 'rm_test',
+    updated_at: NEXT_UPDATED_AT,
+    affected_entity_type: 'task',
+    affected_entity_id: 'tk_1',
+    dependency_id: null,
+    removed: false,
+    phase: {
+      id: 'ph_1',
+      num: '01',
+      name: 'Build',
+      status: 'active',
+      progress: 100,
+      task_count: 1,
+      completed_task_count: 1,
+      open_task_count: 0,
+    },
+    task: {
+      id: 'tk_1',
+      title: 'Ship alpha',
+      done: true,
+      next: true,
+      complexity: 'medium',
+      est: null,
+      parentId: null,
+      deps: [],
+      tags: ['alpha'],
+      assignees: [],
+    },
+    tag: null,
+    ...overrides,
+  }
+}
+
+function response(payload, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
+}
+
+function pathOf(url) {
+  const parsed = new URL(url)
+  return `${parsed.pathname}${parsed.search}`
+}
+
+function mockClient(handler = null) {
   const requests = []
-  const server = http.createServer(async (request, response) => {
-    let body = ''
-    for await (const chunk of request) body += chunk
-    requests.push({ method: request.method, url: request.url, headers: request.headers, body })
-    const next = request.method === 'GET'
-      ? roadmap
-      : { ...roadmap, updated_at: '2026-08-03T20:01:00Z', phases: [{ ...roadmap.phases[0], progress: 100, tasks: [{ ...roadmap.phases[0].tasks[0], done: true }] }] }
-    response.writeHead(200, { 'content-type': 'application/json' })
-    response.end(JSON.stringify(next))
-  })
-  server.listen(0, '127.0.0.1')
-  await once(server, 'listening')
-  return { server, requests, url: `http://127.0.0.1:${server.address().port}` }
-}
-
-function lineReader(stream) {
-  let buffer = ''
-  const waiters = []
-  stream.setEncoding('utf8')
-  stream.on('data', (chunk) => {
-    buffer += chunk
-    while (buffer.includes('\n')) {
-      const index = buffer.indexOf('\n')
-      const line = buffer.slice(0, index)
-      buffer = buffer.slice(index + 1)
-      waiters.shift()?.(JSON.parse(line))
+  const fetchImpl = async (url, options = {}) => {
+    const request = {
+      method: options.method || 'GET',
+      path: pathOf(url),
+      headers: options.headers || {},
+      body: options.body,
     }
-  })
-  return () => new Promise((resolve) => waiters.push(resolve))
-}
-
-function send(child, message) {
-  child.stdin.write(`${JSON.stringify(message)}\n`)
-}
-
-test('stdio server initializes, lists tools, and performs revision-safe writes', async (t) => {
-  const api = await mockApi()
-  t.after(() => api.server.close())
-  const child = spawn(process.execPath, ['bin/roadforge-mcp.mjs'], {
-    cwd: new URL('..', import.meta.url),
+    requests.push(request)
+    if (handler) {
+      const custom = await handler(request)
+      if (custom) return custom
+    }
+    const pathname = new URL(url).pathname
+    if (pathname === `${FULL_PATH}/summary`) return response(summaryPayload)
+    if (pathname === `${FULL_PATH}/revision`) {
+      return response({ roadmap_id: 'rm_test', updated_at: UPDATED_AT })
+    }
+    if (pathname === `${FULL_PATH}/tasks/search`) return response(searchPayload)
+    if (pathname === `${FULL_PATH}/tasks/tk_1`) return response(taskPayload)
+    if (pathname === `${FULL_PATH}/context`) return response(contextPayload)
+    if (pathname === FULL_PATH) return response(fullRoadmap)
+    if (pathname.startsWith(`${FULL_PATH}/client/`)) return response(compactMutation())
+    throw new Error(`Unexpected request: ${request.method} ${request.path}`)
+  }
+  const call = createToolHandler({
     env: {
-      ...process.env,
-      ROADFORGE_API_URL: api.url,
+      ROADFORGE_API_URL: 'https://roadforge.test',
       ROADFORGE_ROADMAP_ID: 'rm_test',
       ROADFORGE_SESSION_TOKEN: 'secret-token',
     },
-    stdio: ['pipe', 'pipe', 'pipe'],
+    fetchImpl,
   })
-  t.after(() => child.kill())
-  const nextLine = lineReader(child.stdout)
+  return { call, requests }
+}
 
-  send(child, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'test', version: '1' } } })
-  const initialized = await nextLine()
-  assert.equal(initialized.result.protocolVersion, '2025-11-25')
-  assert.deepEqual(initialized.result.capabilities, { tools: { listChanged: false } })
+function exactFullReads(requests) {
+  return requests.filter((request) => request.method === 'GET' && request.path === FULL_PATH)
+}
 
-  send(child, { jsonrpc: '2.0', method: 'notifications/initialized' })
-  send(child, { jsonrpc: '2.0', id: 2, method: 'tools/list' })
-  const listed = await nextLine()
-  assert.ok(listed.result.tools.some((tool) => tool.name === 'roadforge_task_done'))
-
-  send(child, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'roadforge_get', arguments: { mode: 'compact' } } })
-  const read = await nextLine()
-  assert.match(read.result.content[0].text, /tk_1 \| Ship alpha/)
-  assert.equal(read.result.structuredContent.taskCount, 1)
-
-  send(child, { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'roadforge_task_done', arguments: { taskId: 'tk_1', done: true } } })
-  const written = await nextLine()
-  assert.equal(written.result.isError, false)
-  assert.equal(written.result.structuredContent.task.done, true)
-
-  assert.equal(api.requests[0].headers.authorization, 'Bearer secret-token')
-  const patch = api.requests.find((entry) => entry.method === 'PATCH')
-  assert.deepEqual(JSON.parse(patch.body), {
-    done: true,
-    last_updated_at: '2026-08-03T20:00:00Z',
-  })
+test('advertised tools cover solo roadmap work and omit claim coordination', () => {
+  const names = TOOLS.map((tool) => tool.name)
+  assert.deepEqual(names, [
+    'roadforge_summary',
+    'roadforge_revision',
+    'roadforge_task_search',
+    'roadforge_task_get',
+    'roadforge_task_create',
+    'roadforge_task_update',
+    'roadforge_task_done',
+    'roadforge_task_delete',
+    'roadforge_dependency_add',
+    'roadforge_dependency_remove',
+    'roadforge_phase_create',
+    'roadforge_phase_update',
+    'roadforge_phase_delete',
+    'roadforge_roadmap_rename',
+    'roadforge_tag_create',
+    'roadforge_get',
+  ])
+  assert.equal(TOOLS.find((tool) => tool.name === 'roadforge_task_delete').annotations.destructiveHint, true)
+  assert.equal(TOOLS.find((tool) => tool.name === 'roadforge_phase_delete').annotations.destructiveHint, true)
+  assert.equal(names.includes('roadforge_task_claim'), false)
+  assert.equal(names.includes('roadforge_task_unclaim'), false)
 })
 
-test('tool errors never expose the configured token', async () => {
-  const { createToolHandler } = await import('../src/server.mjs')
+test('focused summary revision search and task lookup never fetch the full roadmap', async () => {
+  const { call, requests } = mockClient()
+
+  assert.equal((await call('roadforge_summary', {})).isError, false)
+  assert.equal((await call('roadforge_revision', {})).isError, false)
+  assert.equal((await call('roadforge_task_search', { query: 'alpha' })).isError, false)
+  assert.equal((await call('roadforge_task_get', { taskId: 'tk_1' })).isError, false)
+
+  assert.deepEqual(requests.map((request) => request.method), ['GET', 'GET', 'GET', 'GET'])
+  assert.match(requests[0].path, /^\/api\/roadmaps\/rm_test\/summary\?/)
+  assert.equal(requests[1].path, `${FULL_PATH}/revision`)
+  assert.match(requests[2].path, /^\/api\/roadmaps\/rm_test\/tasks\/search\?/)
+  assert.equal(requests[3].path, `${FULL_PATH}/tasks/tk_1`)
+  assert.equal(exactFullReads(requests).length, 0)
+  assert.equal(requests[0].headers.Authorization, 'Bearer secret-token')
+})
+
+test('roadforge_get summary and compact are focused while full is the explicit escape hatch', async () => {
+  const { call, requests } = mockClient()
+
+  const summary = await call('roadforge_get', { mode: 'summary' })
+  const compact = await call('roadforge_get', { mode: 'compact', maxTasks: 10 })
+  assert.equal(summary.isError, false)
+  assert.equal(compact.isError, false)
+  assert.match(compact.content[0].text, /tk_1 \| Ship alpha/)
+  assert.equal(exactFullReads(requests).length, 0)
+
+  const full = await call('roadforge_get', { mode: 'full' })
+  assert.equal(full.isError, false)
+  assert.equal(full.structuredContent.id, 'rm_test')
+  assert.equal(exactFullReads(requests).length, 1)
+  assert.equal(requests.at(-1).path, FULL_PATH)
+})
+
+test('task update without expected revision uses revision then compact client route', async () => {
+  const { call, requests } = mockClient()
+
+  const result = await call('roadforge_task_update', {
+    taskId: 'tk_1',
+    title: 'Updated title',
+  })
+
+  assert.equal(result.isError, false)
+  assert.deepEqual(requests.map((request) => [request.method, request.path]), [
+    ['GET', `${FULL_PATH}/revision`],
+    ['PATCH', `${FULL_PATH}/client/tasks/tk_1`],
+  ])
+  assert.equal(exactFullReads(requests).length, 0)
+  assert.deepEqual(JSON.parse(requests[1].body), {
+    title: 'Updated title',
+    last_updated_at: UPDATED_AT,
+  })
+  assert.equal(result.structuredContent.roadmapId, 'rm_test')
+  assert.equal(result.structuredContent.task.id, 'tk_1')
+})
+
+test('task update with expected revision performs only the compact mutation request', async () => {
+  const { call, requests } = mockClient()
+
+  await call('roadforge_task_update', {
+    taskId: 'tk_1',
+    estimate: '3d',
+    expectedUpdatedAt: 'known-revision',
+  })
+
+  assert.deepEqual(requests.map((request) => [request.method, request.path]), [
+    ['PATCH', `${FULL_PATH}/client/tasks/tk_1`],
+  ])
+  assert.equal(JSON.parse(requests[0].body).last_updated_at, 'known-revision')
+  assert.equal(exactFullReads(requests).length, 0)
+})
+
+test('daily mutation tools use dedicated compact client routes', async () => {
+  const { call, requests } = mockClient()
+
+  await call('roadforge_task_create', { phaseId: 'ph_1', taskId: 'tk_2', title: 'Second' })
+  await call('roadforge_task_done', {
+    taskId: 'tk_1',
+    done: true,
+    expectedUpdatedAt: UPDATED_AT,
+  })
+  await call('roadforge_task_delete', { taskId: 'tk_1' })
+  await call('roadforge_dependency_add', { taskId: 'tk_1', dependencyId: 'tk_2' })
+  await call('roadforge_dependency_remove', { taskId: 'tk_1', dependencyId: 'tk_2' })
+  await call('roadforge_phase_create', {
+    phaseId: 'ph_2',
+    name: 'Ship',
+    color: 'blue',
+  })
+  await call('roadforge_phase_update', { phaseId: 'ph_2', name: 'Release' })
+  await call('roadforge_phase_delete', { phaseId: 'ph_2' })
+  await call('roadforge_roadmap_rename', { name: 'Renamed' })
+  await call('roadforge_tag_create', {
+    id: 'p0',
+    label: 'P0',
+    expectedUpdatedAt: UPDATED_AT,
+  })
+
+  assert.deepEqual(requests.map((request) => [request.method, request.path]), [
+    ['POST', `${FULL_PATH}/client/phases/ph_1/tasks`],
+    ['PATCH', `${FULL_PATH}/client/tasks/tk_1/done`],
+    ['DELETE', `${FULL_PATH}/client/tasks/tk_1`],
+    ['PUT', `${FULL_PATH}/client/tasks/tk_1/dependencies/tk_2`],
+    ['DELETE', `${FULL_PATH}/client/tasks/tk_1/dependencies/tk_2`],
+    ['POST', `${FULL_PATH}/client/phases`],
+    ['PATCH', `${FULL_PATH}/client/phases/ph_2`],
+    ['DELETE', `${FULL_PATH}/client/phases/ph_2`],
+    ['PATCH', `${FULL_PATH}/client/name`],
+    ['POST', `${FULL_PATH}/client/tags`],
+  ])
+  assert.equal(exactFullReads(requests).length, 0)
+})
+
+test('compact 409 conflict metadata remains useful without a server roadmap snapshot', async () => {
+  const conflictPayload = {
+    detail: 'Roadmap was updated by another session',
+    code: 'roadmap_conflict',
+    conflict: {
+      roadmap_id: 'rm_test',
+      server_updated_at: NEXT_UPDATED_AT,
+      client_last_updated_at: UPDATED_AT,
+      summary: { phase_count: 1, task_count: 1, phase_ids: [], task_ids: [] },
+    },
+  }
+  const { call, requests } = mockClient((request) => {
+    if (request.method === 'PATCH' && request.path === `${FULL_PATH}/client/tasks/tk_1`) {
+      return response(conflictPayload, 409)
+    }
+    return null
+  })
+
+  const result = await call('roadforge_task_update', {
+    taskId: 'tk_1',
+    title: 'Stale',
+    expectedUpdatedAt: UPDATED_AT,
+  })
+
+  assert.equal(result.isError, true)
+  assert.equal(result.structuredContent.status, 409)
+  assert.equal(result.structuredContent.conflict.serverUpdatedAt, NEXT_UPDATED_AT)
+  assert.equal(result.structuredContent.conflict.clientUpdatedAt, UPDATED_AT)
+  assert.deepEqual(result.structuredContent.conflict.summary.task_ids, [])
+  assert.equal(JSON.stringify(result).includes('server"'), false)
+  assert.equal(exactFullReads(requests).length, 0)
+})
+
+test('tool errors never expose the configured session token', async () => {
   const call = createToolHandler({
     env: {
-      ROADFORGE_API_URL: 'http://invalid.test',
+      ROADFORGE_API_URL: 'https://roadforge.test',
       ROADFORGE_ROADMAP_ID: 'rm_test',
       ROADFORGE_SESSION_TOKEN: 'do-not-leak',
     },
-    fetchImpl: async () => { throw new Error('network down') },
+    fetchImpl: async () => {
+      throw new Error('network down')
+    },
   })
-  const result = await call('roadforge_get', {})
+
+  const result = await call('roadforge_summary', {})
   assert.equal(result.isError, true)
   assert.doesNotMatch(result.content[0].text, /do-not-leak/)
-})
-
-
-test('invite credentials join once and remain in memory for the process', async () => {
-  const requests = []
-  const { createToolHandler } = await import('../src/server.mjs')
-  const call = createToolHandler({
-    env: {
-      ROADFORGE_API_URL: 'https://roadforge.test',
-      ROADFORGE_INVITE_URL: 'https://roadforge.test/join?token=ed_invite',
-      ROADFORGE_DISPLAY_NAME: 'Build Agent',
-    },
-    fetchImpl: async (url, options = {}) => {
-      requests.push({ url, options })
-      if (url.endsWith('/api/roadmaps/join')) {
-        return new Response(JSON.stringify({
-          roadmap_id: 'rm_test',
-          roadmap_name: 'Launch plan',
-          role: 'editor',
-          session_token: 'sess_joined',
-          participant_id: 'pt_agent',
-        }), { status: 200 })
-      }
-      return new Response(JSON.stringify(roadmap), { status: 200 })
-    },
-  })
-
-  assert.equal((await call('roadforge_get', { mode: 'summary' })).isError, false)
-  assert.equal((await call('roadforge_get', { mode: 'summary' })).isError, false)
-
-  const joins = requests.filter((entry) => entry.url.endsWith('/api/roadmaps/join'))
-  assert.equal(joins.length, 1)
-  assert.deepEqual(JSON.parse(joins[0].options.body), {
-    token: 'ed_invite',
-    display_name: 'Build Agent',
-  })
-  const reads = requests.filter((entry) => entry.url.endsWith('/api/roadmaps/rm_test'))
-  assert.equal(reads.length, 2)
-  assert.equal(reads[0].options.headers.Authorization, 'Bearer sess_joined')
-})
-
-test('summary defaults and targeted task reads avoid full roadmap payloads', async () => {
-  const { createToolHandler } = await import('../src/server.mjs')
-  const call = createToolHandler({
-    env: {
-      ROADFORGE_API_URL: 'https://roadforge.test',
-      ROADFORGE_ROADMAP_ID: 'rm_test',
-      ROADFORGE_SESSION_TOKEN: 'sess_test',
-    },
-    fetchImpl: async () => new Response(JSON.stringify(roadmap), { status: 200 }),
-  })
-
-  const summary = await call('roadforge_get', {})
-  assert.equal(summary.isError, false)
-  assert.equal(summary.structuredContent.taskCount, 1)
-  assert.equal(summary.structuredContent.phases[0].id, 'ph_1')
-  assert.doesNotMatch(summary.content[0].text, /Ship alpha.*alpha/s)
-
-  const task = await call('roadforge_task_get', { taskId: 'tk_1' })
-  assert.equal(task.isError, false)
-  assert.equal(task.structuredContent.task.title, 'Ship alpha')
-  assert.equal(task.structuredContent.phase.id, 'ph_1')
-
-  const search = await call('roadforge_task_search', { query: 'alpha' })
-  assert.equal(search.isError, false)
-  assert.equal(search.structuredContent.matchingTaskCount, 1)
-  assert.equal(search.structuredContent.results[0].task.id, 'tk_1')
-})
-
-test('compact reads omit descriptions by default and report bounded truncation', async () => {
-  const { compactRoadmap } = await import('../src/roadforge-client.mjs')
-  const longDescription = `Sensitive context ${'x'.repeat(500)}`
-  const largeRoadmap = {
-    ...roadmap,
-    phases: [{
-      ...roadmap.phases[0],
-      tasks: [
-        { ...roadmap.phases[0].tasks[0], desc: longDescription },
-        { id: 'tk_2', title: 'Second task', done: false },
-        { id: 'tk_3', title: 'Completed task', done: true },
-      ],
-    }],
-  }
-
-  const defaultCompact = compactRoadmap(largeRoadmap, { maxTasks: 1 })
-  assert.doesNotMatch(defaultCompact.text, /Sensitive context/)
-  assert.equal(defaultCompact.selection.matchingTaskCount, 3)
-  assert.equal(defaultCompact.selection.returnedTaskCount, 1)
-  assert.equal(defaultCompact.selection.omittedTaskCount, 2)
-  assert.equal(defaultCompact.selection.truncated, true)
-  assert.match(defaultCompact.text, /2 matching task\(s\) omitted/)
-
-  const withDescription = compactRoadmap(largeRoadmap, {
-    taskIds: ['tk_1'],
-    includeDescriptions: true,
-    maxTasks: 10,
-  })
-  assert.match(withDescription.text, /Sensitive context/)
-  assert.match(withDescription.text, /…/)
-  assert.ok(withDescription.text.length < longDescription.length)
+  assert.doesNotMatch(JSON.stringify(result.structuredContent), /do-not-leak/)
 })

@@ -36,6 +36,6 @@ def downgrade() -> None:
     # Resetting backfilled expiries back to NULL would re-introduce immortal
     # sessions for all pre-Phase-13 participants, which is strictly worse than
     # leaving a reasonable expiry in place. If you need to roll back Phase 16
-    # enforcement, revert the enforcement code — do not NULL out the expiry
+    # enforcement, revert the enforcement code - do not NULL out the expiry
     # timestamps here.
     pass

@@ -7,11 +7,11 @@ truth from historical design reasoning and project planning.
 
 When two sources disagree, use this order:
 
-1. **Code and executable tests** — current behavior and validation.
-2. **Current contract/reference docs** — maintained explanation of the implemented behavior.
-3. **Operational runbooks** — procedures that must match the current runtime.
-4. **Architecture/design records** — reasoning and implementation history; they may describe earlier states.
-5. **Roadmaps/examples** — plans or sample data; never proof that a capability exists.
+1. **Code and executable tests** - current behavior and validation.
+2. **Current contract/reference docs** - maintained explanation of the implemented behavior.
+3. **Operational runbooks** - procedures that must match the current runtime.
+4. **Architecture/design records** - reasoning and implementation history; they may describe earlier states.
+5. **Roadmaps/examples** - plans or sample data; never proof that a capability exists.
 
 A roadmap task marked complete is not implementation evidence by itself. A historical design
 record is not an API contract. A TypeScript interface is not sufficient proof that imported
@@ -23,7 +23,7 @@ The public Anvilary instance at `roadforge.anvilary.tools` is the official **hos
 demo/reference deployment**. It is for evaluation and light collaboration, not a managed
 team SaaS or large-team production service.
 
-Teams that depend on RoadForge operationally—especially larger teams—should fork the
+Teams that depend on RoadForge operationally, especially larger teams, should fork the
 repository or maintain a controlled clone and self-host under the applicable license. Those
 operators own persistence, backups, retention, monitoring, capacity/load testing, upgrades,
 and deployment security.
@@ -102,7 +102,7 @@ Every design/history record should begin with a status such as:
 ```text
 Status: Accepted current decision
 Status: Implemented design record
-Status: Superseded — current reference: <path>
+Status: Superseded - current reference: <path>
 ```
 
 An implemented or superseded record may retain useful reasoning, alternatives, and rollout

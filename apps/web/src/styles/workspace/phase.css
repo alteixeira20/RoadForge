@@ -83,7 +83,7 @@
   text-align: right;
 }
 
-/* Phase-level lock indicator — mirrors task meta-pill style */
+/* Phase-level lock indicator - mirrors task meta-pill style */
 .phase-head .phase-lock-pill {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11.5px;
@@ -313,7 +313,7 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 760px — tablet: tighten phase layout ───────────────────────────────── */
+/* ── 760px - tablet: tighten phase layout ───────────────────────────────── */
 @media (max-width: 760px) {
   .phase-head { padding: 14px 16px; gap: 10px; }
   .phase-toggle-btn { gap: 10px; }
@@ -326,7 +326,7 @@
   .phase-settings-trigger { opacity: 1; width: 44px; height: 44px; }
 }
 
-/* ── 600px — mobile: compact phase layout ───────────────────────────────── */
+/* ── 600px - mobile: compact phase layout ───────────────────────────────── */
 @media (max-width: 600px) {
   .phase-head .status { display: none; }
   .phase-head .name {

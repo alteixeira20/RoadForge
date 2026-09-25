@@ -148,13 +148,13 @@ export function mergeTagRegistriesWithConflicts(
           importedId: tag.id,
           importedTitle: tag.label,
           currentId: sameId.id,
-          message: `Tag "${tag.id}" has different label or color metadata — current definition preserved.`,
+          message: `Tag "${tag.id}" has different label or color metadata - current definition preserved.`,
           fieldDiffs: [
             { field: 'label', current: sameId.label, imported: tag.label },
             {
               field: 'color',
-              current: sameId.color ?? '—',
-              imported: tag.color ?? '—',
+              current: sameId.color ?? '-',
+              imported: tag.color ?? '-',
             },
           ],
         })
@@ -170,7 +170,7 @@ export function mergeTagRegistriesWithConflicts(
         importedId: tag.id,
         importedTitle: tag.label,
         currentId: sameLabel.id,
-        message: `Tag label "${tag.label}" already belongs to "${sameLabel.id}" — current definition preserved.`,
+        message: `Tag label "${tag.label}" already belongs to "${sameLabel.id}" - current definition preserved.`,
         fieldDiffs: [{
           field: 'id',
           current: sameLabel.id,

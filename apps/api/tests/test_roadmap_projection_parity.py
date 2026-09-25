@@ -1,5 +1,5 @@
 """
-RF-1907 — Projection parity tests across create, update, and restore.
+RF-1907 - Projection parity tests across create, update, and restore.
 
 Groups:
   E  Parity after create
@@ -55,7 +55,7 @@ async def _put_phases(
     return resp.json()
 
 
-# ─── Group E — Parity after create ───────────────────────────────────────────
+# ─── Group E - Parity after create ───────────────────────────────────────────
 
 
 async def test_parity_ok_after_create(client, db_session: AsyncSession):
@@ -75,7 +75,7 @@ async def test_parity_ok_after_create(client, db_session: AsyncSession):
     assert parity.task_count_projection == 3
 
 
-# ─── Group F — Parity after update ───────────────────────────────────────────
+# ─── Group F - Parity after update ───────────────────────────────────────────
 
 
 async def test_parity_ok_after_full_update_import_style_replace(
@@ -166,7 +166,7 @@ async def test_parity_ok_after_full_update_import_style_replace(
     assert retained_task is not None and retained_task.id == original_task_row_id
 
 
-# ─── Group G — Parity after restore ──────────────────────────────────────────
+# ─── Group G - Parity after restore ──────────────────────────────────────────
 
 
 async def test_parity_ok_after_restore(client, db_session: AsyncSession):
@@ -220,7 +220,7 @@ async def test_parity_ok_after_restore(client, db_session: AsyncSession):
     assert parity.task_count_snapshot == 3
 
 
-# ─── Group H — Multi-roadmap rebuild isolation (PS-009) ──────────────────────
+# ─── Group H - Multi-roadmap rebuild isolation (PS-009) ──────────────────────
 
 
 async def test_rebuild_projection_for_multiple_roadmaps_is_isolated(
@@ -280,7 +280,7 @@ async def test_rebuild_projection_for_multiple_roadmaps_is_isolated(
     assert parity_b_after.phase_count_snapshot == 3
 
 
-# ─── Group I — Drift reporting ───────────────────────────────────────────────
+# ─── Group I - Drift reporting ───────────────────────────────────────────────
 
 
 async def test_drift_report_detects_parity_ok(client, db_session: AsyncSession):
@@ -337,7 +337,7 @@ async def test_parity_detects_claim_field_drift(client, db_session: AsyncSession
     assert "task tk_a1 claimedBy mismatch" in parity.issues
 
 
-# ─── Group J — Backfill verification report ──────────────────────────────────
+# ─── Group J - Backfill verification report ──────────────────────────────────
 
 
 async def test_backfill_verify_rebuilds_projection_and_reports_safe(

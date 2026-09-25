@@ -1,4 +1,4 @@
-# Internet-facing security audit — 2026-08-12
+# Internet-facing security audit - 2026-08-12
 
 Status: consolidated source/repository audit for the `security/internet-hardening` candidate.
 

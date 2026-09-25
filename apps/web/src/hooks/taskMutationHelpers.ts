@@ -72,6 +72,6 @@ function buildPhaseActivityChange(
     phaseId: phase.id,
     phaseName: phase.name,
     phaseNum: phase.num,
-    details: `${phase.num} — ${phase.name}`,
+    details: `${phase.num} - ${phase.name}`,
   }
 }

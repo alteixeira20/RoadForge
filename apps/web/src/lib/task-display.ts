@@ -27,7 +27,7 @@ export function deriveTaskStatus(task: Task, allTasks: Task[]): DerivedTaskStatu
 
 /**
  * Computes visual display numbers for all tasks in a roadmap.
- * Returns a Map<taskId, displayString> — e.g. "2.3" for the 3rd task in phase 2,
+ * Returns a Map<taskId, displayString> - e.g. "2.3" for the 3rd task in phase 2,
  * "2.3.1" for its first subtask. Stable task IDs are never modified.
  */
 export function computeTaskDisplayNumbers(phases: Phase[]): Map<string, string> {

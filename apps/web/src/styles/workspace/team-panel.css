@@ -165,7 +165,7 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 600px — mobile: compact team layout ───────────────────────────────── */
+/* ── 600px - mobile: compact team layout ───────────────────────────────── */
 @media (max-width: 600px) {
   .team-view-head {
     flex-direction: column;

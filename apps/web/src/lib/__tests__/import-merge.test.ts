@@ -190,7 +190,7 @@ describe('matchTask', () => {
     const p1 = makePhase({ id: 'p1', tasks: [task] })
     const p2 = makePhase({ id: 'p2', tasks: [] })
     const idx = indexRoadmap([p1, p2])
-    // Looking up against p2 — task lives in p1
+    // Looking up against p2 - task lives in p1
     const result = matchTask(makeTask({ id: 't-new', title: 'Cross Task' }), 'p2', idx)
     expect(result.strategy).toBe('none')
   })

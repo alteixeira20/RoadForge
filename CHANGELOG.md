@@ -9,6 +9,7 @@ Changes after the `0.1.0` baseline belong here.
 
 ### Security hardening
 
+- Upgrade `next`/`eslint-config-next` to 15.5.26 for GHSA-2xp9-vwfh-vxw4 and GHSA-p293-qw3h-jr36 (critical remote code execution, including the Image Optimization API), raise the `sharp` override to ^0.35.4 for GHSA-rgj7-g3m4-5g8c, and replace the expired `nanoid` audit exception with a patched `nanoid@<3.3.17` override so the production JavaScript audit runs with no suppressions.
 - Follow up the Internet-facing audit with HTTPS-only production frontend origins, bounded concurrent SSE streams and slow-consumer queues, per-invite active-session ceilings, a total server roadmap-record ceiling, bounded activity/version-history storage, and terminal SSE authorization on roadmap deletion/session expiry.
 - Consolidate the 2026-08-12 Internet-facing threat model, findings, residual risks, and deployment proof requirements in `docs/security/internet-facing-audit-2026-08-12.md`.
 - Move newly generated invite credentials from query strings to fragment URLs and scrub them from the active history entry after join bootstrap; retain query-token parsing only for migration compatibility.

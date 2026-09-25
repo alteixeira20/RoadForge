@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 _MAX_ROADMAP_VERSIONS = 100
 
 # Actions that warrant a restore point in version history.
-# Default is False for any unknown action — version history is conservative.
+# Default is False for any unknown action - version history is conservative.
 _VERSION_WORTHY_ACTIONS: frozenset[str] = frozenset({
     "roadmap.created",
     "roadmap.imported",
@@ -253,7 +253,7 @@ async def restore_roadmap_version(
     # ── Conflict check ───────────────────────────────────────────────────────
     # Same compare-and-swap contract as PUT/PATCH writes (see roadmap_service
     # .update_roadmap): `last_updated_at` must exactly match the roadmap's
-    # current revision or nothing is written. `force` never bypasses this —
+    # current revision or nothing is written. `force` never bypasses this -
     # it only changes what happens once the match succeeds (see below). This
     # keeps a second collaborator's save, made after a 409 was already shown
     # and force-confirmed against, from being silently overwritten: the
@@ -269,8 +269,8 @@ async def restore_roadmap_version(
     # a plain restore of a base they already had loaded. Always audit it.
     overwritten_updated_at: datetime | None = roadmap.updated_at if force else None
 
-    # Safety checkpoint of the current (pre-restore) state, so a restore —
-    # forced or not — is always recoverable.
+    # Safety checkpoint of the current (pre-restore) state, so a restore -
+    # forced or not - is always recoverable.
     await _create_roadmap_version(
         db, roadmap, participant, "roadmap.checkpoint",
         {"label": "Pre-restore safety checkpoint"}, force=True,

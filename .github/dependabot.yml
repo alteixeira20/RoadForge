@@ -22,6 +22,12 @@ updates:
     versioning-strategy: increase-if-necessary
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # Toolchain majors move with .nvmrc/CI as a deliberate upgrade, not a weekly bump.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: pip
     directory: /apps/api
@@ -44,6 +50,10 @@ updates:
     open-pull-requests-limit: 3
     commit-message:
       prefix: "chore(api-image)"
+    ignore:
+      # The image must match the Python version CI and uv.lock validate (3.12).
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: docker
     directory: /apps/web
@@ -55,3 +65,7 @@ updates:
     open-pull-requests-limit: 3
     commit-message:
       prefix: "chore(web-image)"
+    ignore:
+      # The image must match the Node major pinned in .nvmrc and CI.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]

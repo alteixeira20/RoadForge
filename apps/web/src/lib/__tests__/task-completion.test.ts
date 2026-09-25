@@ -35,7 +35,7 @@ describe('task-completion', () => {
       const dep = makeTask({ id: 'dep-1', title: 'Dep Task', done: false })
       const task = makeTask({ id: 'task-main', deps: ['dep-1'] })
       const result = getTaskCompletionBlocker(task, [task, dep])
-      expect(result).toBe('Complete dep-1 — Dep Task first.')
+      expect(result).toBe('Complete dep-1 - Dep Task first.')
     })
 
     it('blocks with count when multiple dependencies are unfinished', () => {

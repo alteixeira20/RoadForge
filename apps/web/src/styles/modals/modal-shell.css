@@ -1,4 +1,4 @@
-/* ─── Modal shell — overlay, modal base, modal head/body/foot, shared note-line ── */
+/* ─── Modal shell - overlay, modal base, modal head/body/foot, shared note-line ── */
 
 /* ─── Wizard scrim ─────────────────────────────────────────────────────────── */
 .wizard-scrim {
@@ -309,7 +309,7 @@
   border-radius: 8px;
 }
 
-/* ─── Note line — used across multiple modal types ─────────────────────────── */
+/* ─── Note line - used across multiple modal types ─────────────────────────── */
 .note-line {
   display: flex; gap: 10px; align-items: flex-start;
   padding: 10px 12px;
@@ -331,7 +331,7 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 580px — reduce padding, wrap footer ──────────────────────────────── */
+/* ── 580px - reduce padding, wrap footer ──────────────────────────────── */
 @media (max-width: 580px) {
   .modal-head { padding: 18px 18px 10px; }
   .modal-body { padding: 10px 18px 14px; }
@@ -344,7 +344,7 @@
   .wizard-foot { padding: 14px 22px; }
 }
 
-/* ── 480px — small mobile: shrink scrim padding for max content width ──── */
+/* ── 480px - small mobile: shrink scrim padding for max content width ──── */
 @media (max-width: 480px) {
   .modal-scrim { padding: 12px; }
   .wizard-scrim { padding: 12px; }

@@ -142,7 +142,7 @@ export function RoadmapSwitcher({
       } else if (msg.includes('403')) {
         setError('Incorrect password.')
       } else {
-        setError('Could not join — check connection.')
+        setError('Could not join - check connection.')
       }
     } finally {
       setJoining(false)

@@ -229,10 +229,10 @@ export function Phase({
   }, [isOpen, hasDraft])
 
   // dnd-kit only auto-remeasures a droppable's rect via ResizeObserver while
-  // a drag is active — collapsing a phase changes layout (this phase's and
+  // a drag is active - collapsing a phase changes layout (this phase's and
   // its siblings') with no drag in progress, so nothing would normally pick
   // that up before the *next* drag starts. Ask the phase-level DndContext
-  // (the nearest ancestor — SortablePhaseItem/PhaseList) to remeasure every
+  // (the nearest ancestor - SortablePhaseItem/PhaseList) to remeasure every
   // droppable as soon as this phase's open state actually changes, well
   // before a keyboard drag can begin.
   const { measureDroppableContainers } = useDndContext()

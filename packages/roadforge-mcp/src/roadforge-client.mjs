@@ -1,4 +1,5 @@
-const DEFAULT_API_URL = 'http://localhost:7878'
+import { DEFAULT_API_URL, runtimeConfig } from './config.mjs'
+
 const REQUEST_TIMEOUT_MS = 15_000
 
 export class RoadForgeApiError extends Error {
@@ -15,10 +16,6 @@ function optionalEnv(env, name) {
   return value || null
 }
 
-function apiUrl(env) {
-  return (optionalEnv(env, 'ROADFORGE_API_URL') || DEFAULT_API_URL).replace(/\/+$/, '')
-}
-
 function inviteToken(env) {
   const raw = optionalEnv(env, 'ROADFORGE_INVITE_TOKEN')
     || optionalEnv(env, 'ROADFORGE_INVITE_URL')
@@ -29,8 +26,6 @@ function inviteToken(env) {
     const fragment = inviteUrl.hash.startsWith('#') ? inviteUrl.hash.slice(1) : inviteUrl.hash
     const fragmentToken = new URLSearchParams(fragment).get('token')?.trim()
     if (fragmentToken) return fragmentToken
-    // Compatibility only: pre-hardening RoadForge links used ?token= and may
-    // still exist in operator configuration until their invite is rotated.
     return inviteUrl.searchParams.get('token')?.trim() || null
   } catch {
     throw new RoadForgeApiError('ROADFORGE_INVITE_URL is not a valid URL')
@@ -43,21 +38,157 @@ function apiMessage(status, payload) {
   return `RoadForge API request failed with status ${status}`
 }
 
-export function createRoadForgeClient({ env = process.env, fetchImpl = globalThis.fetch } = {}) {
+function addQuery(path, params = {}) {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) continue
+    if (Array.isArray(value)) {
+      for (const item of value) query.append(key, String(item))
+    } else {
+      query.set(key, String(value))
+    }
+  }
+  const suffix = query.toString()
+  return suffix ? `${path}?${suffix}` : path
+}
+
+export function normalizeSummary(payload) {
+  return {
+    roadmapId: payload.roadmap_id,
+    name: payload.name,
+    updatedAt: payload.updated_at,
+    phaseCount: payload.phase_count,
+    taskCount: payload.total_task_count,
+    completedTaskCount: payload.completed_task_count,
+    openTaskCount: payload.open_task_count,
+    completionPercent: payload.completion_percent,
+    phases: (payload.phases || []).map((phase) => ({
+      id: phase.id,
+      num: phase.num,
+      name: phase.name,
+      status: phase.status,
+      progress: phase.progress,
+      taskCount: phase.task_count,
+      completedTaskCount: phase.completed_task_count,
+      openTaskCount: phase.open_task_count,
+    })),
+    nextTaskCount: payload.next_task_count,
+    nextTasks: (payload.next_tasks || []).map((task) => ({
+      id: task.id,
+      title: task.title,
+      phaseId: task.phase_id,
+      phaseName: task.phase_name,
+    })),
+    nextTasksTruncated: payload.next_tasks_truncated,
+  }
+}
+
+function normalizePhase(phase) {
+  if (!phase) return null
+  return {
+    id: phase.id,
+    num: phase.num,
+    name: phase.name,
+    status: phase.status,
+    progress: phase.progress,
+    ...(phase.task_count === undefined ? {} : { taskCount: phase.task_count }),
+    ...(phase.completed_task_count === undefined
+      ? {}
+      : { completedTaskCount: phase.completed_task_count }),
+    ...(phase.open_task_count === undefined ? {} : { openTaskCount: phase.open_task_count }),
+  }
+}
+
+function normalizeSearch(payload) {
+  return {
+    roadmapId: payload.roadmap_id,
+    updatedAt: payload.updated_at,
+    query: payload.query,
+    matchingTaskCount: payload.matching_task_count,
+    returnedTaskCount: payload.returned_task_count,
+    omittedTaskCount: payload.omitted_task_count,
+    truncated: payload.truncated,
+    results: (payload.results || []).map((entry) => ({
+      phase: normalizePhase(entry.phase),
+      task: entry.task,
+    })),
+  }
+}
+
+function normalizeTaskDetail(payload) {
+  return {
+    roadmapId: payload.roadmap_id,
+    updatedAt: payload.updated_at,
+    phase: normalizePhase(payload.phase),
+    task: payload.task,
+  }
+}
+
+function normalizeContext(payload) {
+  return {
+    roadmapId: payload.roadmap_id,
+    name: payload.name,
+    updatedAt: payload.updated_at,
+    taskCount: payload.total_task_count,
+    completedTaskCount: payload.completed_task_count,
+    openTaskCount: payload.open_task_count,
+    matchingTaskCount: payload.matching_task_count,
+    returnedTaskCount: payload.returned_task_count,
+    omittedTaskCount: payload.omitted_task_count,
+    truncated: payload.truncated,
+    results: (payload.results || []).map((entry) => ({
+      phase: normalizePhase(entry.phase),
+      task: {
+        ...entry.task,
+        descriptionPreview: entry.task.description_preview ?? null,
+        description_preview: undefined,
+      },
+    })),
+  }
+}
+
+function normalizeMutation(payload) {
+  return {
+    roadmapId: payload.roadmap_id,
+    updatedAt: payload.updated_at,
+    affectedEntityType: payload.affected_entity_type,
+    affectedEntityId: payload.affected_entity_id ?? null,
+    dependencyId: payload.dependency_id ?? null,
+    removed: Boolean(payload.removed),
+    phase: normalizePhase(payload.phase),
+    task: payload.task ?? null,
+    tag: payload.tag ?? null,
+  }
+}
+
+export function createRoadForgeClient({
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  configPath,
+} = {}) {
   if (typeof fetchImpl !== 'function') {
     throw new TypeError('A Fetch API implementation is required')
   }
 
+  let resolvedRuntime = null
   let resolvedAuth = null
+
+  async function config() {
+    if (!resolvedRuntime) {
+      resolvedRuntime = await runtimeConfig({ env, pathOverride: configPath })
+    }
+    return resolvedRuntime
+  }
 
   async function fetchJson(path, { method = 'GET', body, authorization } = {}) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
     timeout.unref?.()
-
     let response
     try {
-      response = await fetchImpl(`${apiUrl(env)}${path}`, {
+      const runtime = await config()
+      const baseUrl = (runtime.apiUrl || DEFAULT_API_URL).replace(/\/+$/, '')
+      response = await fetchImpl(`${baseUrl}${path}`, {
         method,
         headers: {
           Accept: 'application/json',
@@ -71,6 +202,7 @@ export function createRoadForgeClient({ env = process.env, fetchImpl = globalThi
       if (error?.name === 'AbortError') {
         throw new RoadForgeApiError('RoadForge API request timed out')
       }
+      if (error instanceof RoadForgeApiError) throw error
       throw new RoadForgeApiError(`Could not reach the RoadForge API: ${error.message}`)
     } finally {
       clearTimeout(timeout)
@@ -96,40 +228,49 @@ export function createRoadForgeClient({ env = process.env, fetchImpl = globalThi
 
   async function auth() {
     if (resolvedAuth) return resolvedAuth
-
-    const sessionToken = optionalEnv(env, 'ROADFORGE_SESSION_TOKEN')
-    if (sessionToken) {
-      const roadmapId = optionalEnv(env, 'ROADFORGE_ROADMAP_ID')
+    const runtime = await config()
+    const envSessionToken = optionalEnv(env, 'ROADFORGE_SESSION_TOKEN')
+    if (envSessionToken) {
+      const roadmapId = optionalEnv(env, 'ROADFORGE_ROADMAP_ID') || runtime.roadmapId
       if (!roadmapId) {
         throw new RoadForgeApiError(
           'ROADFORGE_ROADMAP_ID is required with ROADFORGE_SESSION_TOKEN.',
         )
       }
-      resolvedAuth = { roadmapId, sessionToken }
+      resolvedAuth = { roadmapId, sessionToken: envSessionToken }
       return resolvedAuth
     }
 
     const token = inviteToken(env)
-    if (!token) {
-      throw new RoadForgeApiError(
-        'Configure ROADFORGE_SESSION_TOKEN and ROADFORGE_ROADMAP_ID, or provide ROADFORGE_INVITE_TOKEN.',
-      )
+    if (token) {
+      const joined = await fetchJson('/api/roadmaps/join', {
+        method: 'POST',
+        body: {
+          token,
+          display_name: optionalEnv(env, 'ROADFORGE_DISPLAY_NAME') || 'RoadForge Agent',
+          ...(optionalEnv(env, 'ROADFORGE_PASSWORD')
+            ? { password: optionalEnv(env, 'ROADFORGE_PASSWORD') }
+            : {}),
+        },
+      })
+      resolvedAuth = {
+        roadmapId: joined.roadmap_id,
+        sessionToken: joined.session_token,
+      }
+      return resolvedAuth
     }
-    const joined = await fetchJson('/api/roadmaps/join', {
-      method: 'POST',
-      body: {
-        token,
-        display_name: optionalEnv(env, 'ROADFORGE_DISPLAY_NAME') || 'RoadForge Agent',
-        ...(optionalEnv(env, 'ROADFORGE_PASSWORD')
-          ? { password: optionalEnv(env, 'ROADFORGE_PASSWORD') }
-          : {}),
-      },
-    })
-    resolvedAuth = {
-      roadmapId: joined.roadmap_id,
-      sessionToken: joined.session_token,
+
+    if (runtime.sessionToken && runtime.roadmapId) {
+      resolvedAuth = {
+        roadmapId: runtime.roadmapId,
+        sessionToken: runtime.sessionToken,
+      }
+      return resolvedAuth
     }
-    return resolvedAuth
+    throw new RoadForgeApiError(
+      'RoadForge MCP is not configured. Run "roadforge-mcp setup" or set '
+        + 'ROADFORGE_SESSION_TOKEN and ROADFORGE_ROADMAP_ID.',
+    )
   }
 
   async function request(path, { method = 'GET', body } = {}) {
@@ -141,276 +282,220 @@ export function createRoadForgeClient({ env = process.env, fetchImpl = globalThi
     })
   }
 
-  async function getRoadmap() {
+  async function roadmapPath(suffix = '') {
     const { roadmapId } = await auth()
-    return request(`/api/roadmaps/${encodeURIComponent(roadmapId)}`)
+    return `/api/roadmaps/${encodeURIComponent(roadmapId)}${suffix}`
+  }
+
+  async function clientPath(suffix = '') {
+    return roadmapPath(`/client${suffix}`)
+  }
+
+  async function getRoadmap() {
+    return request(await roadmapPath())
+  }
+
+  async function getSummary(maxNext = 20) {
+    const payload = await request(
+      addQuery(await roadmapPath('/summary'), { max_next: maxNext }),
+    )
+    return normalizeSummary(payload)
+  }
+
+  async function getRevision() {
+    const payload = await request(await roadmapPath('/revision'))
+    return { roadmapId: payload.roadmap_id, updatedAt: payload.updated_at }
+  }
+
+  async function searchTasks(query, { includeCompleted = false, maxResults = 20 } = {}) {
+    const payload = await request(
+      addQuery(await roadmapPath('/tasks/search'), {
+        query,
+        include_completed: includeCompleted,
+        limit: maxResults,
+      }),
+    )
+    return normalizeSearch(payload)
+  }
+
+  async function getTask(taskId) {
+    const payload = await request(
+      await roadmapPath(`/tasks/${encodeURIComponent(taskId)}`),
+    )
+    return normalizeTaskDetail(payload)
+  }
+
+  async function getContext(options = {}) {
+    const payload = await request(
+      addQuery(await roadmapPath('/context'), {
+        phase_id: options.phaseIds,
+        task_id: options.taskIds,
+        open_only: options.openOnly || undefined,
+        next_only: options.nextOnly || undefined,
+        include_descriptions: options.includeDescriptions || undefined,
+        limit: options.maxTasks ?? 200,
+      }),
+    )
+    return normalizeContext(payload)
   }
 
   async function currentRevision(expectedUpdatedAt) {
     if (expectedUpdatedAt) return expectedUpdatedAt
-    return (await getRoadmap()).updated_at
+    return (await getRevision()).updatedAt
   }
 
   async function updateTask(taskId, fields, expectedUpdatedAt) {
-    const { roadmapId } = await auth()
-    return request(
-      `/api/roadmaps/${encodeURIComponent(roadmapId)}/tasks/${encodeURIComponent(taskId)}`,
-      {
+    return normalizeMutation(
+      await request(await clientPath(`/tasks/${encodeURIComponent(taskId)}`), {
         method: 'PATCH',
         body: {
           ...fields,
           last_updated_at: await currentRevision(expectedUpdatedAt),
         },
-      },
+      }),
     )
   }
 
   async function setTaskDone(taskId, done, expectedUpdatedAt) {
-    const { roadmapId } = await auth()
-    return request(
-      `/api/roadmaps/${encodeURIComponent(roadmapId)}/tasks/${encodeURIComponent(taskId)}/done`,
-      {
+    return normalizeMutation(
+      await request(await clientPath(`/tasks/${encodeURIComponent(taskId)}/done`), {
         method: 'PATCH',
         body: {
           done,
           last_updated_at: await currentRevision(expectedUpdatedAt),
         },
-      },
+      }),
     )
   }
 
-  async function setTaskClaim(taskId, claimed, override = false) {
-    const { roadmapId } = await auth()
-    const query = override ? '?override=true' : ''
-    return request(
-      `/api/roadmaps/${encodeURIComponent(roadmapId)}/tasks/${encodeURIComponent(taskId)}/claim${query}`,
-      { method: claimed ? 'PATCH' : 'DELETE' },
+  async function createTask(phaseId, task) {
+    return normalizeMutation(
+      await request(await clientPath(`/phases/${encodeURIComponent(phaseId)}/tasks`), {
+        method: 'POST',
+        body: task,
+      }),
+    )
+  }
+
+  async function deleteTask(taskId) {
+    return normalizeMutation(
+      await request(await clientPath(`/tasks/${encodeURIComponent(taskId)}`), {
+        method: 'DELETE',
+      }),
+    )
+  }
+
+  async function setDependency(taskId, dependencyId, linked) {
+    const path = await clientPath(
+      `/tasks/${encodeURIComponent(taskId)}/dependencies/${encodeURIComponent(dependencyId)}`,
+    )
+    return normalizeMutation(
+      await request(path, { method: linked ? 'PUT' : 'DELETE' }),
+    )
+  }
+
+  async function createPhase(phase) {
+    return normalizeMutation(
+      await request(await clientPath('/phases'), {
+        method: 'POST',
+        body: phase,
+      }),
+    )
+  }
+
+  async function updatePhase(phaseId, fields) {
+    return normalizeMutation(
+      await request(await clientPath(`/phases/${encodeURIComponent(phaseId)}`), {
+        method: 'PATCH',
+        body: fields,
+      }),
+    )
+  }
+
+  async function deletePhase(phaseId) {
+    return normalizeMutation(
+      await request(await clientPath(`/phases/${encodeURIComponent(phaseId)}`), {
+        method: 'DELETE',
+      }),
+    )
+  }
+
+  async function renameRoadmap(name) {
+    return normalizeMutation(
+      await request(await clientPath('/name'), {
+        method: 'PATCH',
+        body: { name },
+      }),
     )
   }
 
   async function createTag({ id, label, color, expectedUpdatedAt }) {
-    const { roadmapId } = await auth()
-    return request(`/api/roadmaps/${encodeURIComponent(roadmapId)}/tags`, {
-      method: 'POST',
-      body: {
-        ...(id ? { id } : {}),
-        label,
-        ...(color ? { color } : {}),
-        last_updated_at: await currentRevision(expectedUpdatedAt),
-      },
-    })
-  }
-
-  return { getRoadmap, updateTask, setTaskDone, setTaskClaim, createTag }
-}
-
-export function findTask(roadmap, taskId) {
-  for (const phase of roadmap.phases || []) {
-    for (const task of phase.tasks || []) {
-      if (task.id === taskId) return { phase, task }
-    }
-  }
-  return null
-}
-
-function normalizedIdSet(values) {
-  if (!Array.isArray(values) || !values.length) return null
-  return new Set(values.filter((value) => typeof value === 'string' && value.length))
-}
-
-function taskFlags(task) {
-  const flags = []
-  if (task.next) flags.push('next')
-  if (task.complexity) flags.push(`complexity:${task.complexity}`)
-  if (task.est) flags.push(`est:${task.est}`)
-  if (task.parentId) flags.push(`parent:${task.parentId}`)
-  if (task.deps?.length) flags.push(`deps:${task.deps.join(',')}`)
-  if (task.tags?.length) flags.push(`tags:${task.tags.join(',')}`)
-  if (task.assignees?.length) flags.push(`owners:${task.assignees.join(',')}`)
-  return flags.length ? ` | ${flags.join(' | ')}` : ''
-}
-
-function compactDescription(value, limit = 240) {
-  const normalized = value.replace(/\s+/g, ' ').trim()
-  if (normalized.length <= limit) return normalized
-  return `${normalized.slice(0, Math.max(1, limit - 1)).trimEnd()}…`
-}
-
-export function selectRoadmapTasks(roadmap, options = {}) {
-  const phaseIds = normalizedIdSet(options.phaseIds)
-  const taskIds = normalizedIdSet(options.taskIds)
-  const maxTasks = Number.isInteger(options.maxTasks) ? options.maxTasks : 200
-  const matches = []
-
-  for (const phase of roadmap.phases || []) {
-    if (phaseIds && !phaseIds.has(phase.id)) continue
-    for (const task of phase.tasks || []) {
-      if (taskIds && !taskIds.has(task.id)) continue
-      if (options.openOnly && task.done) continue
-      if (options.nextOnly && (!task.next || task.done)) continue
-      matches.push({ phase, task })
-    }
-  }
-
-  return {
-    matches: matches.slice(0, maxTasks),
-    matchingTaskCount: matches.length,
-    returnedTaskCount: Math.min(matches.length, maxTasks),
-    omittedTaskCount: Math.max(0, matches.length - maxTasks),
-    truncated: matches.length > maxTasks,
-  }
-}
-
-export function compactRoadmap(roadmap, options = {}) {
-  const phases = roadmap.phases || []
-  const allTasks = phases.flatMap((phase) => phase.tasks || [])
-  const done = allTasks.filter((task) => task.done).length
-  const selection = selectRoadmapTasks(roadmap, options)
-  const lines = [
-    `# ${roadmap.name}`,
-    `roadmap:${roadmap.id} updated:${roadmap.updated_at} progress:${done}/${allTasks.length} matching:${selection.matchingTaskCount} returned:${selection.returnedTaskCount} omitted:${selection.omittedTaskCount}`,
-  ]
-
-  let activePhaseId = null
-  for (const { phase, task } of selection.matches) {
-    if (phase.id !== activePhaseId) {
-      activePhaseId = phase.id
-      const phaseTasks = phase.tasks || []
-      const phaseDone = phaseTasks.filter((item) => item.done).length
-      lines.push(`## ${phase.num} ${phase.name} [${phaseDone}/${phaseTasks.length}] id:${phase.id}`)
-    }
-    lines.push(`- [${task.done ? 'x' : ' '}] ${task.id} | ${task.title}${taskFlags(task)}`)
-    if (options.includeDescriptions && task.desc) {
-      lines.push(`  ${compactDescription(task.desc)}`)
-    }
-  }
-  if (selection.truncated) {
-    lines.push(`… ${selection.omittedTaskCount} matching task(s) omitted; narrow filters or increase maxTasks.`)
-  }
-
-  return { text: lines.join('\n'), selection }
-}
-
-export function roadmapSummary(roadmap) {
-  const phases = roadmap.phases || []
-  const tasks = phases.flatMap((phase) => phase.tasks || [])
-  const done = tasks.filter((task) => task.done).length
-  const nextTasks = tasks
-    .filter((task) => task.next && !task.done)
-    .map((task) => ({ id: task.id, title: task.title }))
-  return {
-    roadmapId: roadmap.id,
-    name: roadmap.name,
-    updatedAt: roadmap.updated_at,
-    phaseCount: phases.length,
-    taskCount: tasks.length,
-    completedTaskCount: done,
-    openTaskCount: tasks.length - done,
-    completionPercent: tasks.length ? Math.round((done / tasks.length) * 100) : 0,
-    phases: phases.map((phase) => {
-      const phaseTasks = phase.tasks || []
-      const completedTaskCount = phaseTasks.filter((task) => task.done).length
-      return {
-        id: phase.id,
-        num: phase.num,
-        name: phase.name,
-        status: phase.status,
-        taskCount: phaseTasks.length,
-        completedTaskCount,
-        openTaskCount: phaseTasks.length - completedTaskCount,
-        progress: phase.progress,
-      }
-    }),
-    nextTaskCount: nextTasks.length,
-    nextTasks: nextTasks.slice(0, 50),
-    nextTasksTruncated: nextTasks.length > 50,
-  }
-}
-
-export function taskDetails(roadmap, taskId) {
-  const match = findTask(roadmap, taskId)
-  if (!match) return null
-  return {
-    roadmapId: roadmap.id,
-    updatedAt: roadmap.updated_at,
-    phase: {
-      id: match.phase.id,
-      num: match.phase.num,
-      name: match.phase.name,
-      status: match.phase.status,
-      progress: match.phase.progress,
-    },
-    task: match.task,
-  }
-}
-
-function searchableTaskText(phase, task) {
-  return [
-    task.id,
-    task.title,
-    task.desc,
-    phase.id,
-    phase.name,
-    ...(task.tags || []),
-    ...(task.assignees || []),
-  ]
-    .filter((value) => typeof value === 'string')
-    .join('\n')
-    .toLocaleLowerCase('en')
-}
-
-export function searchRoadmapTasks(roadmap, query, options = {}) {
-  const needle = query.trim().toLocaleLowerCase('en')
-  const maxResults = Number.isInteger(options.maxResults) ? options.maxResults : 20
-  const matches = []
-  for (const phase of roadmap.phases || []) {
-    for (const task of phase.tasks || []) {
-      if (!options.includeCompleted && task.done) continue
-      if (!searchableTaskText(phase, task).includes(needle)) continue
-      matches.push({
-        phase: { id: phase.id, num: phase.num, name: phase.name },
-        task: {
-          id: task.id,
-          title: task.title,
-          done: task.done,
-          next: Boolean(task.next),
-          tags: task.tags || [],
-          assignees: task.assignees || [],
-          claimedBy: task.claimedBy || null,
+    return normalizeMutation(
+      await request(await clientPath('/tags'), {
+        method: 'POST',
+        body: {
+          ...(id ? { id } : {}),
+          label,
+          ...(color ? { color } : {}),
+          last_updated_at: await currentRevision(expectedUpdatedAt),
         },
-      })
-    }
+      }),
+    )
   }
+
   return {
-    roadmapId: roadmap.id,
-    updatedAt: roadmap.updated_at,
-    query,
-    matchingTaskCount: matches.length,
-    returnedTaskCount: Math.min(matches.length, maxResults),
-    omittedTaskCount: Math.max(0, matches.length - maxResults),
-    truncated: matches.length > maxResults,
-    results: matches.slice(0, maxResults),
+    getRoadmap,
+    getSummary,
+    getRevision,
+    searchTasks,
+    getTask,
+    getContext,
+    updateTask,
+    setTaskDone,
+    createTask,
+    deleteTask,
+    setDependency,
+    createPhase,
+    updatePhase,
+    deletePhase,
+    renameRoadmap,
+    createTag,
   }
 }
 
-export function compactWriteResult(roadmap, taskId) {
-  const match = taskId ? findTask(roadmap, taskId) : null
-  return {
-    roadmapId: roadmap.id,
-    updatedAt: roadmap.updated_at,
-    ...(match
-      ? {
-          phase: { id: match.phase.id, name: match.phase.name, progress: match.phase.progress },
-          task: {
-            id: match.task.id,
-            title: match.task.title,
-            done: match.task.done,
-            next: Boolean(match.task.next),
-            tags: match.task.tags || [],
-            assignees: match.task.assignees || [],
-            claimedBy: match.task.claimedBy || null,
-          },
-        }
-      : {}),
+export function compactContextText(context) {
+  const lines = [
+    `# ${context.name}`,
+    `roadmap:${context.roadmapId} updated:${context.updatedAt} progress:${context.completedTaskCount}/${context.taskCount} matching:${context.matchingTaskCount} returned:${context.returnedTaskCount} omitted:${context.omittedTaskCount}`,
+  ]
+  let activePhase = null
+  for (const entry of context.results) {
+    if (entry.phase.id !== activePhase) {
+      activePhase = entry.phase.id
+      lines.push(
+        `## ${entry.phase.num} ${entry.phase.name} [${entry.phase.progress}%] id:${entry.phase.id}`,
+      )
+    }
+    const task = entry.task
+    const flags = []
+    if (task.next) flags.push('next')
+    if (task.complexity) flags.push(`complexity:${task.complexity}`)
+    if (task.est) flags.push(`est:${task.est}`)
+    if (task.parentId) flags.push(`parent:${task.parentId}`)
+    if (task.deps?.length) flags.push(`deps:${task.deps.join(',')}`)
+    if (task.tags?.length) flags.push(`tags:${task.tags.join(',')}`)
+    if (task.assignees?.length) flags.push(`owners:${task.assignees.join(',')}`)
+    lines.push(
+      `- [${task.done ? 'x' : ' '}] ${task.id} | ${task.title}`
+        + `${flags.length ? ` | ${flags.join(' | ')}` : ''}`,
+    )
+    if (task.descriptionPreview) lines.push(`  ${task.descriptionPreview}`)
   }
+  if (context.truncated) {
+    lines.push(
+      `… ${context.omittedTaskCount} matching task(s) omitted; `
+        + 'narrow filters or increase maxTasks.',
+    )
+  }
+  return lines.join('\n')
 }

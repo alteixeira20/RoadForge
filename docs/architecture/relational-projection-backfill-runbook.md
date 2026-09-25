@@ -111,7 +111,7 @@ asyncio.run(check("rm_your_roadmap_id"))
 
 ## Safety notes
 
-- `snapshot_json` is never modified by backfill — it is read-only input.
+- `snapshot_json` is never modified by backfill - it is read-only input.
 - Each roadmap is committed individually; a mid-run failure leaves previously
   processed roadmaps in a valid state.
 - **Partial failure**: if a roadmap's snapshot is malformed and triggers an

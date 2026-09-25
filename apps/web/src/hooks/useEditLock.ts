@@ -135,11 +135,11 @@ export function useEditLock({
     }
   }, [active, serverRoadmapId, sessionToken, target, release])
 
-  // Covers the case where active is false at unmount — the refresh effect above
+  // Covers the case where active is false at unmount - the refresh effect above
   // has an early return when inactive and so sets up no cleanup of its own.
   useEffect(() => {
     return () => { void releaseRef.current() }
-  }, []) // intentionally empty — runs only on unmount
+  }, []) // intentionally empty - runs only on unmount
 
   return { ownsLock, isAcquiring, isReleasing, tryAcquire, release }
 }

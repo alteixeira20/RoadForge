@@ -1,11 +1,11 @@
 """
-RF-1910 — Projection-read flag behavior tests.
+RF-1910 - Projection-read flag behavior tests.
 
 Groups:
   H  Flag disabled by default
-  I  Flag enabled with parity OK — GET returns same shape as snapshot path
-  J  Flag enabled with parity failure — falls back to canonical snapshot
-  K  Flag enabled with serialization failure — falls back to canonical snapshot
+  I  Flag enabled with parity OK - GET returns same shape as snapshot path
+  J  Flag enabled with parity failure - falls back to canonical snapshot
+  K  Flag enabled with serialization failure - falls back to canonical snapshot
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from tests.helpers_projection import auth, create_with_phases
 pytestmark = pytest.mark.asyncio
 
 
-# ─── Group H — Flag disabled by default ──────────────────────────────────────
+# ─── Group H - Flag disabled by default ──────────────────────────────────────
 
 
 async def test_projection_read_flag_is_disabled_by_default():
@@ -42,7 +42,7 @@ async def test_get_roadmap_reads_from_snapshot_when_flag_disabled(client):
     assert data["phases"][1]["id"] == "ph_b"
 
 
-# ─── Group I — Flag enabled with parity OK ───────────────────────────────────
+# ─── Group I - Flag enabled with parity OK ───────────────────────────────────
 
 
 async def test_get_roadmap_returns_same_shape_when_projection_read_enabled(
@@ -63,7 +63,7 @@ async def test_get_roadmap_returns_same_shape_when_projection_read_enabled(
     assert data["phases"][1]["id"] == "ph_b"
 
 
-# ─── Group K — Flag enabled, serialization failure falls back safely ─────────
+# ─── Group K - Flag enabled, serialization failure falls back safely ─────────
 
 
 async def test_get_roadmap_falls_back_to_snapshot_when_projection_serialization_fails(
@@ -94,7 +94,7 @@ async def test_get_roadmap_falls_back_to_snapshot_when_projection_serialization_
     assert len(data["phases"][1]["tasks"]) == 1
 
 
-# ─── Group J — Flag enabled, parity failure falls back safely ─────────────────
+# ─── Group J - Flag enabled, parity failure falls back safely ─────────────────
 
 
 async def test_get_roadmap_falls_back_to_snapshot_when_projection_cleared(
@@ -104,7 +104,7 @@ async def test_get_roadmap_falls_back_to_snapshot_when_projection_cleared(
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
 
-    # Clear projection rows — parity will fail (0 phases vs 2 in snapshot)
+    # Clear projection rows - parity will fail (0 phases vs 2 in snapshot)
     await clear_roadmap_projection(db_session, roadmap_id)
 
     monkeypatch.setattr(get_settings(), "roadmap_projection_read_enabled", True)

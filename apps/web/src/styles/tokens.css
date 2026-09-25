@@ -1,10 +1,10 @@
-/* ─── Design tokens — shared Anvilary design language ──────────────────────
+/* ─── Design tokens - shared Anvilary design language ──────────────────────
    Aligned with the Anvilary-Website token set (dark-only forge palette).
-   Copied and adapted, not imported — RoadForge builds independently. */
+   Copied and adapted, not imported - RoadForge builds independently. */
 
 :root {
   color-scheme: dark;
-  /* Dark forge palette — shared with Anvilary Tools */
+  /* Dark forge palette - shared with Anvilary Tools */
   --bg: #0e0e10;
   --bg-1: #0e0e10;
   --bg-2: #141417;
@@ -43,14 +43,14 @@
   --accent-border-strong: rgba(217, 116, 66, 0.56);
   --accent-shadow: rgba(127, 50, 20, 0.28);
 
-  /* Surface hierarchy — translucency via color-mix so content stays opaque */
+  /* Surface hierarchy - translucency via color-mix so content stays opaque */
   --surface-translucent: color-mix(in srgb, var(--panel) 58%, transparent);
   --surface-dense: color-mix(in srgb, var(--panel) 92%, transparent);
   --surface-workspace: color-mix(in srgb, var(--panel) 84%, transparent);
   --surface-workspace-soft: color-mix(in srgb, var(--bg-2) 76%, transparent);
   --surface-overlay: var(--panel);
 
-  /* Forge ambience — reflected heat, not literal flame */
+  /* Forge ambience - reflected heat, not literal flame */
   --forge-glow-1: rgba(236, 138, 74, 0.13);
   --forge-glow-2: rgba(168, 44, 26, 0.12);
   --forge-glow-3: rgba(217, 116, 66, 0.06);

@@ -5,8 +5,8 @@ reference, not a future design document.
 
 The Anvilary-hosted instance at `roadforge.anvilary.tools` is the official **demo/reference
 deployment**, not a managed production team service or backup service. Users should keep
-portable JSON exports of important roadmaps. Teams that depend on RoadForge operationally—
-especially larger teams—should fork the repository or maintain a controlled clone and run a
+portable JSON exports of important roadmaps. Teams that depend on RoadForge operationally,
+especially larger teams, should fork the repository or maintain a controlled clone and run a
 self-hosted deployment whose security, capacity, persistence, backups, monitoring, and
 recovery they control.
 

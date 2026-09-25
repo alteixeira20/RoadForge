@@ -1,6 +1,6 @@
 """
-RF-1904 — Roadmap version checkpoint / list / detail tests.
-RF-1905 — Roadmap version restore tests.
+RF-1904 - Roadmap version checkpoint / list / detail tests.
+RF-1905 - Roadmap version restore tests.
 
 Groups:
   A  Checkpoint creation
@@ -9,7 +9,7 @@ Groups:
   D  Viewer access denied (covers both 1904 and 1905)
   E  Restore
   F  Version trim boundary (PS-008)
-  G  Restore design contract — no stale check (PS-010)
+  G  Restore design contract - no stale check (PS-010)
 """
 
 from __future__ import annotations
@@ -147,7 +147,7 @@ async def _list_versions(client: AsyncClient, roadmap_id: str, owner_token: str)
     return resp.json()
 
 
-# ─── Group A — Checkpoint creation (RF-1904) ─────────────────────────────────
+# ─── Group A - Checkpoint creation (RF-1904) ─────────────────────────────────
 
 
 async def test_owner_can_create_manual_checkpoint(client: AsyncClient):
@@ -230,7 +230,7 @@ async def test_tag_only_change_creates_checkpoint(client: AsyncClient):
     assert checkpoint["created"] is True
 
 
-# ─── Group B — Version list (RF-1904) ────────────────────────────────────────
+# ─── Group B - Version list (RF-1904) ────────────────────────────────────────
 
 
 async def test_owner_can_list_versions(client: AsyncClient):
@@ -288,7 +288,7 @@ async def test_version_list_ordered_descending_by_version_number(client: AsyncCl
     assert numbers == sorted(numbers, reverse=True)
 
 
-# ─── Group C — Version detail (RF-1904) ──────────────────────────────────────
+# ─── Group C - Version detail (RF-1904) ──────────────────────────────────────
 
 
 async def test_owner_can_fetch_version_detail(client: AsyncClient):
@@ -387,7 +387,7 @@ async def test_version_detail_returns_404_for_unknown_version(client: AsyncClien
     assert resp.status_code == 404
 
 
-# ─── Group D — Viewer access denied (RF-1904 + RF-1905) ──────────────────────
+# ─── Group D - Viewer access denied (RF-1904 + RF-1905) ──────────────────────
 
 
 async def test_viewer_cannot_checkpoint(client: AsyncClient):
@@ -517,7 +517,7 @@ async def test_expired_editor_cannot_list_versions(
     assert resp.json()["detail"] == "Session expired"
 
 
-# ─── Group E — Restore (RF-1905) ─────────────────────────────────────────────
+# ─── Group E - Restore (RF-1905) ─────────────────────────────────────────────
 
 
 async def test_owner_can_restore_older_version(client: AsyncClient):
@@ -529,7 +529,7 @@ async def test_owner_can_restore_older_version(client: AsyncClient):
     versions = await _list_versions(client, roadmap_id, owner_token)
     v1_id = versions[0]["id"]
 
-    # Update name (no new version created — roadmap.updated is not version-worthy)
+    # Update name (no new version created - roadmap.updated is not version-worthy)
     modified = await _update_name(
         client, roadmap_id, owner_token, "Modified Name", body["updated_at"]
     )
@@ -608,7 +608,7 @@ async def test_restore_persists_historical_tag_registry(client: AsyncClient):
 
 async def test_legacy_tag_ids_survive_save_checkpoint_and_restore(client: AsyncClient):
     """Legacy tag ids such as `status:done` must survive the full save/checkpoint/
-    restore cycle unchanged — this reproduces the reported refresh-then-save rejection."""
+    restore cycle unchanged - this reproduces the reported refresh-then-save rejection."""
     legacy_registry = [
         {"id": "status:done", "label": "Done"},
         {"id": "status:planned", "label": "Planned"},
@@ -786,7 +786,7 @@ async def test_import_replace_has_distinct_activity_and_version(client: AsyncCli
     assert "import.replaced" in actions
 
 
-# ─── Group F — Version trim boundary (PS-008) ────────────────────────────────
+# ─── Group F - Version trim boundary (PS-008) ────────────────────────────────
 
 
 async def test_version_trim_removes_oldest_beyond_cap(db_session: AsyncSession):
@@ -836,7 +836,7 @@ async def test_version_trim_removes_oldest_beyond_cap(db_session: AsyncSession):
     assert max_result.scalar_one() == over_cap
 
 
-# ─── Group G — Conflict-safe restore (RF-045) ────────────────────────────────
+# ─── Group G - Conflict-safe restore (RF-045) ────────────────────────────────
 
 
 async def test_stale_restore_returns_409_and_changes_nothing(client: AsyncClient):
@@ -890,7 +890,7 @@ async def test_force_restore_overwrites_newer_revision_and_records_it(
 ):
     """Reproduces the real client sequence: the force retry must carry the
     exact server revision the 409 returned, not the caller's original stale
-    base — sending the original stale base (as this test used to) hits the
+    base - sending the original stale base (as this test used to) hits the
     same CAS rejection force is not allowed to bypass."""
     body = await create_roadmap(client, name="Restore Contract Test")
     roadmap_id = body["id"]
@@ -935,7 +935,7 @@ async def test_force_restore_overwrites_newer_revision_and_records_it(
 
 
 async def test_force_restore_with_stale_base_still_rejected(client: AsyncClient):
-    """`force=true` must not mean 'ignore concurrency' — a force request
+    """`force=true` must not mean 'ignore concurrency' - a force request
     carrying a base that no longer matches the current revision (e.g. a
     caller that never actually looked at the 409's revision) is rejected
     exactly like a normal restore, and nothing is written."""

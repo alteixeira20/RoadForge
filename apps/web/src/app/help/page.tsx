@@ -122,8 +122,8 @@ export default function HelpPage() {
               SLA, reserved per-team capacity, or guaranteed data-recovery service.
             </p>
             <p>
-              If RoadForge becomes part of your team&apos;s operating workflow—especially
-              for a larger team or long-running roadmap—fork the repository or
+              If RoadForge becomes part of your team&apos;s operating workflow, especially
+              for a larger team or long-running roadmap, fork the repository or
               maintain a controlled clone and self-host it. Your operator should
               own PostgreSQL backups and restores, retention, monitoring, capacity,
               upgrades, security configuration, and incident response. Load-test

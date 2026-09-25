@@ -93,7 +93,7 @@ async def fetch_participants(
     authorization: str | None = Header(default=None),
 ) -> list[ParticipantResponse] | list[ParticipantSummaryResponse]:
     # Owners see the full participant listing (timestamps, link linkage).
-    # Editors see a reduced projection — just enough for assignee suggestions.
+    # Editors see a reduced projection - just enough for assignee suggestions.
     # Viewers remain forbidden.
     participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
     await rate_limiter.enforce(

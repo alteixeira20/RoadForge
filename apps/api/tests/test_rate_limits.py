@@ -1,5 +1,5 @@
 """
-RF-1911 — Rate limit regression tests.
+RF-1911 - Rate limit regression tests.
 
 Groups:
   A  Unauthenticated IP-scoped rate limit (join)
@@ -37,11 +37,11 @@ def _expect_exhausted(resp) -> None:
     assert resp.status_code == 429, f"expected 429, got {resp.status_code}: {resp.text}"
 
 
-# ─── Group A — Unauthenticated join rate limit ────────────────────────────────
+# ─── Group A - Unauthenticated join rate limit ────────────────────────────────
 
 
 async def test_join_ip_rate_limit(client: AsyncClient):
-    # Schema-valid but nonexistent token — passes validation, hits business logic
+    # Schema-valid but nonexistent token - passes validation, hits business logic
     # (non-429), but the rate limiter counter still increments on every request.
     invalid_token = "invalid-token-00000000"
     for _ in range(_JOIN_LIMIT):
@@ -57,7 +57,7 @@ async def test_join_ip_rate_limit(client: AsyncClient):
     _expect_exhausted(resp)
 
 
-# ─── Group B — Share-link rotate rate limit ───────────────────────────────────
+# ─── Group B - Share-link rotate rate limit ───────────────────────────────────
 
 
 async def test_rotate_share_link_rate_limit(client: AsyncClient):
@@ -79,7 +79,7 @@ async def test_rotate_share_link_rate_limit(client: AsyncClient):
     _expect_exhausted(resp)
 
 
-# ─── Group C — Version checkpoint rate limit ──────────────────────────────────
+# ─── Group C - Version checkpoint rate limit ──────────────────────────────────
 
 
 async def test_checkpoint_rate_limit(client: AsyncClient):
@@ -101,7 +101,7 @@ async def test_checkpoint_rate_limit(client: AsyncClient):
     _expect_exhausted(resp)
 
 
-# ─── Group D — Roadmap update write rate limit ────────────────────────────────
+# ─── Group D - Roadmap update write rate limit ────────────────────────────────
 
 
 async def test_roadmap_update_rate_limit(client: AsyncClient):
@@ -128,7 +128,7 @@ async def test_roadmap_update_rate_limit(client: AsyncClient):
     _expect_exhausted(resp)
 
 
-# ─── Group E — Participant revoke rate limit ──────────────────────────────────
+# ─── Group E - Participant revoke rate limit ──────────────────────────────────
 
 
 async def test_revoke_participant_rate_limit(client: AsyncClient):
@@ -136,7 +136,7 @@ async def test_revoke_participant_rate_limit(client: AsyncClient):
     roadmap_id = body["id"]
     owner_token = body["owner_session_token"]
 
-    # Requests use a nonexistent participant_id — they return 404 from business
+    # Requests use a nonexistent participant_id - they return 404 from business
     # logic, but the rate limiter counter still increments on each request.
     for _ in range(_REVOKE_PARTICIPANT_LIMIT):
         await client.post(
@@ -151,7 +151,7 @@ async def test_revoke_participant_rate_limit(client: AsyncClient):
     _expect_exhausted(resp)
 
 
-# ─── Group F — Task done patch rate limit ────────────────────────────────────
+# ─── Group F - Task done patch rate limit ────────────────────────────────────
 
 
 async def test_task_done_patch_rate_limit(client: AsyncClient):

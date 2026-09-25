@@ -4,11 +4,11 @@
 // without any changes.
 //
 // No implementation lives here.  All logic is in:
-//   roadmap-http.ts             — HTTP helpers, ApiConnectionError, requestJson
-//   roadmap-crud.service.ts     — create/get/update/delete, versions, import/export
-//   roadmap-realtime.service.ts — SSE tickets, event subscriptions, activity log
-//   roadmap-locks.service.ts    — acquire/release/list locks
-//   roadmap-sharing.service.ts  — share links, participants, join
+//   roadmap-http.ts             - HTTP helpers, ApiConnectionError, requestJson
+//   roadmap-crud.service.ts     - create/get/update/delete, versions, import/export
+//   roadmap-realtime.service.ts - SSE tickets, event subscriptions, activity log
+//   roadmap-locks.service.ts    - acquire/release/list locks
+//   roadmap-sharing.service.ts  - share links, participants, join
 
 export {
   ApiConnectionError,

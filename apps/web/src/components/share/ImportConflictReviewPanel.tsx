@@ -71,7 +71,7 @@ export function ImportConflictReviewPanel({ conflicts }: ImportConflictReviewPan
         aria-expanded={listOpen}
       >
         <span className="conflict-panel-count">{count} {countLabel} skipped</span>
-        <span className="conflict-panel-hint">— existing values kept, imports differ</span>
+        <span className="conflict-panel-hint">(existing values kept, imports differ)</span>
         <span className="conflict-panel-action">{listOpen ? 'Hide details ▴' : 'Show details ▾'}</span>
       </button>
 

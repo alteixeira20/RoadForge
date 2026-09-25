@@ -2,8 +2,8 @@
 Tag registry CRUD endpoint tests.
 
 Covers:
-- GET /api/roadmaps/{id}/tags  — viewer, owner
-- POST /api/roadmaps/{id}/tags — owner/editor can create; viewer cannot
+- GET /api/roadmaps/{id}/tags  - viewer, owner
+- POST /api/roadmaps/{id}/tags - owner/editor can create; viewer cannot
 - PUT /api/roadmaps/{id}/tags/{tag_id}
 - DELETE /api/roadmaps/{id}/tags/{tag_id}
   - unused tag succeeds
@@ -308,7 +308,7 @@ async def test_create_tag_rejects_invalid_id_or_color(client: AsyncClient, paylo
 )
 async def test_roadmap_snapshot_accepts_legacy_tag_ids(client: AsyncClient, legacy_id: str):
     """Tag ids that predate the canonical kebab-case generator must remain loadable
-    and re-savable — this is the RF backward-compatibility contract for tag_registry."""
+    and re-savable - this is the RF backward-compatibility contract for tag_registry."""
     body = await _create_roadmap_with_tags(
         client, tag_registry=[{"id": legacy_id, "label": legacy_id}]
     )

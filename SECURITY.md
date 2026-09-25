@@ -30,7 +30,7 @@ Reports will be acknowledged after review. The maintainer will assess severity, 
 
 RoadForge does not currently operate a bug bounty program.
 
-## Design context — accountless and local-first
+## Design context - accountless and local-first
 
 RoadForge has no user account database. There are no passwords stored against user identities, no email addresses, and no OAuth credentials. This removes a global identity boundary but does not make shared roadmaps public.
 

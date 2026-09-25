@@ -110,7 +110,7 @@ Start architectural work with:
 | Schema evolution | `apps/api/alembic/versions/` |
 | Production/self-hosting | `deploy/`, `docker-compose.yml`, operational docs |
 | First-run starter example | `apps/web/src/data/roadforge-template.ts` |
-| RoadForge project-planning snapshot | `docs/roadforge-roadmap.json` — planning only, **not** the starter template |
+| RoadForge project-planning snapshot | `docs/roadforge-roadmap.json` - planning only, **not** the starter template |
 
 Keep API routers thin. Keep unrelated behavior out of `Workspace`. Components/hooks
 should consume service modules rather than creating ad-hoc fetch calls.

@@ -7,7 +7,7 @@ export const MAX_RECONNECT_DELAY_MS = 30_000
 
 /**
  * `attempt` is 0-based (first retry = attempt 0). Returns a delay in
- * [ceiling/2, ceiling], where ceiling = min(BASE * 2^attempt, MAX) — full
+ * [ceiling/2, ceiling], where ceiling = min(BASE * 2^attempt, MAX) - full
  * jitter over the lower half of the range, so the delay never collapses to
  * near-zero at high attempt counts while still varying attempt-to-attempt.
  */

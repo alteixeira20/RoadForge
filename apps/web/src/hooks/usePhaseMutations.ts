@@ -115,7 +115,7 @@ export function usePhaseMutationsCore({
       phaseId: phase.id,
       phaseName: phase.name,
       phaseNum: phase.num,
-      details: `${phase.num} — ${phase.name}`,
+      details: `${phase.num} - ${phase.name}`,
     }
     if (createSyncedPhase(phase, {
       onAggregateFallback: () => addPendingActivityChange(activity),
@@ -151,7 +151,7 @@ export function usePhaseMutationsCore({
       phaseField: 'color',
       previousValue: phase.color,
       nextValue: color,
-      details: `${phase.num} — ${phase.name}`,
+      details: `${phase.num} - ${phase.name}`,
     }
     if (patchSyncedPhase({
       phaseId,
@@ -192,7 +192,7 @@ export function usePhaseMutationsCore({
       phaseField: 'colorMode',
       previousValue: phase.colorMode,
       nextValue: colorMode,
-      details: `${phase.num} — ${phase.name}`,
+      details: `${phase.num} - ${phase.name}`,
     }
     if (patchSyncedPhase({
       phaseId,
@@ -229,7 +229,7 @@ export function usePhaseMutationsCore({
       phaseField: 'name',
       previousValue: phase.name,
       nextValue: name,
-      details: `${phase.num} — ${name}`,
+      details: `${phase.num} - ${name}`,
     }
     if (patchSyncedPhase({
       phaseId,
@@ -295,7 +295,7 @@ export function usePhaseMutationsCore({
       phaseId: phase.id,
       phaseName: phase.name,
       phaseNum: phase.num,
-      details: `${phase.num} — ${phase.name}`,
+      details: `${phase.num} - ${phase.name}`,
     }
     if (deleteSyncedPhase(phaseId, {
       onAggregateFallback: () => addPendingActivityChange(activity),

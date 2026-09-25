@@ -1,5 +1,5 @@
 """
-RF-044 — Immediate realtime revocation.
+RF-044 - Immediate realtime revocation.
 
 Groups:
   A  MemoryEventBus stream filtering / defense-in-depth revalidation
@@ -51,7 +51,7 @@ def _session_factory(session: AsyncSession):
     return factory
 
 
-# ─── Group A — MemoryEventBus ─────────────────────────────────────────────────
+# ─── Group A - MemoryEventBus ─────────────────────────────────────────────────
 
 
 async def test_memory_bus_closes_stream_on_own_revocation():
@@ -118,7 +118,7 @@ async def test_memory_subscribe_then_recheck_closes_before_forwarding_when_revok
     Reproduces the exact subscribe-then-recheck sequence the `/events` route
     uses: open a subscription, have a revocation publish while it is open
     but *before* authorization is rechecked, and prove the recheck sees it
-    and nothing is ever forwarded — the race the router used to have when it
+    and nothing is ever forwarded - the race the router used to have when it
     called `is_participant_revoked` before subscribing.
     """
     bus = MemoryEventBus()
@@ -152,7 +152,7 @@ async def test_memory_bus_reauthorizes_on_bounded_cadence_despite_continuous_tra
 ):
     """
     Continuous non-revocation traffic must not postpone the fallback
-    authorization recheck indefinitely — it must still fire on its bounded
+    authorization recheck indefinitely - it must still fire on its bounded
     cadence even though the stream is never idle.
     """
     monkeypatch.setattr(event_bus_module, "_HEARTBEAT_INTERVAL_SECONDS", 0.05)
@@ -212,7 +212,7 @@ async def test_memory_registry_blocks_normal_event_queued_before_control_publish
 
     The suppressed event is never yielded and never closes the stream by
     itself (the participant's own revocation notification could still be
-    queued behind it — see the "still delivers" test below), so this test
+    queued behind it - see the "still delivers" test below), so this test
     also supplies a failing `is_still_authorized` as the bounded fallback
     that ends the stream once the control event never shows up.
     """
@@ -271,7 +271,7 @@ async def test_memory_registry_still_delivers_the_participants_own_revocation_ev
 async def test_memory_registry_still_delivers_own_revocation_queued_behind_suppressed_event():
     """
     The own-revocation notification must be delivered even when unrelated
-    traffic that arrived around the same time is queued *ahead* of it —
+    traffic that arrived around the same time is queued *ahead* of it -
     e.g. another participant's concurrent edit publishes a `roadmap.updated`
     event after the fast-path registry is marked but before
     `revoke_participant()` gets to publish its own `participant.revoked`
@@ -337,7 +337,7 @@ async def test_memory_registry_blocks_continuous_traffic_after_revocation(monkey
     must never leak through the fast-path check, regardless of volume.
     Sequenced deterministically (no concurrent tasks, no scheduling
     dependence): 10 events are queued, then revocation becomes
-    authoritative, then 10 more events are queued — proving a full queue
+    authoritative, then 10 more events are queued - proving a full queue
     of traffic straddling the revocation point is never delivered once the
     registry is marked.
     """
@@ -418,7 +418,7 @@ async def test_memory_registry_mark_lifecycle():
     assert (await registry.get_mark("r1", "p1")) is RevocationMark.ACTIVE
 
 
-# ─── Group B — RedisPubSubEventBus (fake pubsub double) ───────────────────────
+# ─── Group B - RedisPubSubEventBus (fake pubsub double) ───────────────────────
 
 
 class _FakePubSub:
@@ -468,7 +468,7 @@ class _FakeRedis:
 
 
 def _wire_fake_redis(bus: RedisPubSubEventBus, fake_pubsub: _FakePubSub) -> _FakeRedis:
-    """Swap in a fake Redis client and rebuild `bus.revocations` against it —
+    """Swap in a fake Redis client and rebuild `bus.revocations` against it -
     the constructor already built one against the real client."""
     fake_redis = _FakeRedis(fake_pubsub)
     bus._redis = fake_redis
@@ -569,8 +569,8 @@ async def test_redis_subscribe_then_recheck_closes_before_forwarding_when_revoke
 async def test_redis_registry_blocks_normal_event_queued_before_control_publish(monkeypatch):
     """Redis-backed equivalent of the memory fast-path race test: the
     registry mark (mirroring the point just before `revoke_participant()`'s
-    database commit) must block a normal event queued ahead of — or
-    instead of, on publish failure — the `participant.revoked` control
+    database commit) must block a normal event queued ahead of - or
+    instead of, on publish failure - the `participant.revoked` control
     message, across every worker sharing the same Redis instance."""
     monkeypatch.setattr(event_bus_module, "_HEARTBEAT_INTERVAL_SECONDS", 0.01)
     fake_pubsub = _FakePubSub([])
@@ -644,8 +644,8 @@ async def test_redis_registry_still_delivers_the_participants_own_revocation_eve
 
 async def test_redis_registry_mark_applies_the_safety_net_ttl():
     """The fast-path mark must carry the bounded safety-net TTL so a stale
-    entry (e.g. left behind by a double failure — see the commit-failure
-    rollback test — that also fails to clear) self-heals instead of
+    entry (e.g. left behind by a double failure - see the commit-failure
+    rollback test - that also fails to clear) self-heals instead of
     permanently blocking a participant's realtime access."""
     fake_pubsub = _FakePubSub([])
     bus = RedisPubSubEventBus(
@@ -711,13 +711,13 @@ async def test_redis_registry_leaves_other_participants_unaffected():
     assert (await bus_b.revocations.get_mark("r1", "p2")) is RevocationMark.ACTIVE
 
 
-# ─── Group B.1 — Real Redis (opt-in, skipped when unreachable) ────────────────
+# ─── Group B.1 - Real Redis (opt-in, skipped when unreachable) ────────────────
 #
 # `REAL_REDIS_TEST_URL` points at a disposable Redis instance (e.g.
 # `redis://localhost:6390/0`). This is intentionally separate from the
 # repository's own docker-compose `redis` service / `REDIS_URL` so this
 # suite never touches a Redis instance also used for real application data.
-# Not wired into CI by default — CI has no Redis service defined, so this
+# Not wired into CI by default - CI has no Redis service defined, so this
 # test skips there rather than failing on a missing environment.
 
 _REAL_REDIS_URL = os.environ.get("REAL_REDIS_TEST_URL")
@@ -791,7 +791,7 @@ async def test_real_redis_registry_blocks_leaked_event_across_workers(monkeypatc
         # Real Redis's timeout granularity can interleave one harmless
         # keep-alive heartbeat before the bounded `is_still_authorized`
         # fallback fires (unlike the fake pubsub double, whose simulated
-        # wait is exactly the requested timeout) — heartbeats carry no
+        # wait is exactly the requested timeout) - heartbeats carry no
         # application data, so the only thing that matters here is that
         # the leaked event itself never appears.
         assert all("roadmap.updated" not in chunk for chunk in received)
@@ -971,7 +971,7 @@ async def test_real_redis_state_loss_after_revocation_leaks_no_event(
         await bus._redis.aclose()
 
 
-# ─── Group C — HTTP-level ──────────────────────────────────────────────────────
+# ─── Group C - HTTP-level ──────────────────────────────────────────────────────
 
 
 async def test_is_participant_revoked_helper(client: AsyncClient, db_session):
@@ -1031,7 +1031,7 @@ async def test_revocation_during_stream_startup_is_caught_by_post_subscribe_rech
     """
     Reproduces the confirmed defect at the route: a ticket is redeemed and
     passes the initial revocation check, but the participant is revoked
-    *while the route is opening the event subscription* — after that check
+    *while the route is opening the event subscription* - after that check
     but before the stream would start forwarding events. The route must
     still reject the request via its post-subscription recheck instead of
     opening a stream the client never gets a revocation event on.
@@ -1136,7 +1136,7 @@ async def test_revoke_participant_rolls_back_registry_mark_on_commit_failure(
 ):
     """
     If the database commit itself fails, the optimistic fast-path registry
-    mark made just before it must be rolled back — otherwise a participant
+    mark made just before it must be rolled back - otherwise a participant
     could be treated as revoked by every stream's fast-path check while the
     database still shows them active (the actual source of truth).
     """

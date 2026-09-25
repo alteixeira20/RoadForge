@@ -44,7 +44,7 @@ export function SortableTaskItem({
 }: SortableTaskItemProps) {
   const { task, expanded, readOnly, dragDisabled } = props
 
-  // Expanding a task only suppresses *initiating* a drag from it — it must
+  // Expanding a task only suppresses *initiating* a drag from it - it must
   // stay a valid drop target (droppable) so a sibling being keyboard-moved
   // can still land on/around it right after it collapses. A plain boolean
   // `disabled` here would drop both at once, deregistering it as a drop
@@ -75,7 +75,7 @@ export function SortableTaskItem({
   }
 
   // dnd-kit only auto-remeasures a droppable's rect via ResizeObserver while
-  // a drag is active — collapsing a task changes layout with no drag in
+  // a drag is active - collapsing a task changes layout with no drag in
   // progress, so nothing would normally pick that up before the *next*
   // drag starts. Ask the DndContext to remeasure every droppable as soon as
   // this task's expand state (and thus its height) actually changes, well

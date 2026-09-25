@@ -121,7 +121,7 @@ export function useSaveFlow({
       setPendingActivityChanges((pending) => (
         removeAcknowledgedActivityChanges(pending, acknowledgedActivityChanges)
       ))
-      // Skip if edits landed after this request captured its snapshot —
+      // Skip if edits landed after this request captured its snapshot -
       // marking saved here would hide those edits from the next autosync.
       if (!isCurrent) return
       setSaved(true)
@@ -156,7 +156,7 @@ export function useSaveFlow({
     const changeSummary = buildChangeSummary(pendingActivityChanges, serverRoadmapId)
     try {
       if (!serverRoadmapId) {
-        // First save: no bearer token needed — create returns a complete owner session.
+        // First save: no bearer token needed - create returns a complete owner session.
         const { roadmap, ownerParticipantId, ownerSessionToken } = await createRoadmap(
           roadmapName,
           displayName || 'Owner',

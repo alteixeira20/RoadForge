@@ -10,8 +10,8 @@ gives operators control over server persistence, backups, retention, monitoring,
 and infrastructure. Roadmap users should still keep **portable JSON exports** of important
 work.
 
-If RoadForge becomes part of a real team workflow—especially for a larger team, long-running
-roadmap, regulated environment, or workload that needs predictable recovery—fork the
+If RoadForge becomes part of a real team workflow, especially for a larger team, long-running
+roadmap, regulated environment, or workload that needs predictable recovery, fork the
 repository or maintain a controlled clone and run an instance the team owns. See
 [Hosted demo and self-hosting](hosted-demo-and-self-hosting.md).
 
@@ -182,8 +182,8 @@ Cloudflare/tunnel/CDN/proxy error logs and pre-hardening retained logs.
 
 ## Content Security Policy
 
-Production RoadForge uses enforced per-response nonce CSP by default. The application—not
-nginx—is authoritative for frontend CSP. Nonce-bearing HTML is private/no-store and must not
+Production RoadForge uses enforced per-response nonce CSP by default. The application, not
+nginx, is authoritative for frontend CSP. Nonce-bearing HTML is private/no-store and must not
 be cached at the edge.
 
 A bounded `report-only` observation window may be used for the same candidate after a

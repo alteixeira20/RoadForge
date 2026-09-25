@@ -15,7 +15,7 @@ interface VersionsPanelProps {
   // compare-and-swap contract, same as PUT/PATCH writes).
   currentUpdatedAt: string
   // True when this client has local edits that haven't reached the server
-  // yet — restoring would discard them, so the confirmation must say so.
+  // yet - restoring would discard them, so the confirmation must say so.
   hasUnsavedChanges: boolean
   onClose: () => void
   onRestored: (roadmap: Roadmap) => void
@@ -121,7 +121,7 @@ export function VersionsPanel({
   }
 
   // Shared restore attempt for both the normal confirm path and the
-  // owner-only force path. A 409 never surfaces as a generic failure toast —
+  // owner-only force path. A 409 never surfaces as a generic failure toast -
   // it opens the conflict confirmation instead, carrying the fresh server
   // revision the caller must use to force through it.
   const attemptRestore = async (
@@ -197,7 +197,7 @@ export function VersionsPanel({
       title="Someone else changed this roadmap"
       message={
         conflict
-          ? `The roadmap was updated to "${conflict.serverName}" after you opened Versions. Force restoring will replace that newer state — it will be saved as a recovery checkpoint first, so it can be brought back.`
+          ? `The roadmap was updated to "${conflict.serverName}" after you opened Versions. Force restoring will replace that newer state - it will be saved as a recovery checkpoint first, so it can be brought back.`
           : ''
       }
       confirmLabel="Force restore anyway"

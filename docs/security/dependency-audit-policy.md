@@ -1,6 +1,6 @@
 # Dependency Audit Policy
 
-The current hardening candidate is summarized in [Internet-facing security audit — 2026-08-12](./internet-facing-audit-2026-08-12.md).
+The current hardening candidate is summarized in [Internet-facing security audit - 2026-08-12](./internet-facing-audit-2026-08-12.md).
 
 ## Policy
 
@@ -28,11 +28,23 @@ An exception is allowed only when all of the following are true:
 5. the exception has a public tracking issue and explicit removal conditions;
 6. the exception is narrow in tooling and must not hide unrelated future advisories.
 
-## Current exception
+## Current exceptions
 
-The JavaScript audit gate contains a temporary exact-advisory exception for the tracked `nanoid` advisory documented by issue #12.
+None. The temporary `nanoid` exception tracked by issue #12 was removed once patched 3.x
+releases became installable; `nanoid@<3.3.17` is now raised by a `pnpm.overrides` floor.
 
-This exception is **not** a blanket approval for `nanoid`, moderate findings, or future advisories. It must be removed when a safe compatible dependency resolution is available or when RoadForge begins using the affected primitive on an attacker-controlled boundary.
+## Current overrides
+
+`pnpm.overrides` in the root `package.json` raises transitive packages that Next.js or PostCSS
+still pin at vulnerable versions. Overrides are version floors, not suppressions:
+
+| Override | Reason | Remove when |
+| --- | --- | --- |
+| `nanoid@<3.3.17` → `^3.3.17` | GHSA-2v37-7h3g-55p8 via PostCSS | PostCSS requires a patched `nanoid` |
+| `postcss` → `^8.5.26` | Next pins an older PostCSS | Next ships the patched PostCSS |
+| `sharp` → `^0.35.4` | GHSA-rgj7-g3m4-5g8c (libheif) via Next image optimization | Next ships `sharp` ≥ 0.35.4 |
+
+Recheck every override on each Next.js upgrade.
 
 ## Review requirements
 

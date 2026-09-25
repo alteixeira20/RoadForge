@@ -15,7 +15,7 @@ interface ColorPickerPopoverProps {
   presets?: ColorPreset[]
   customLabel?: string
   customPlaceholder?: string
-  /** When false, only `header` renders — used for phase Auto mode. */
+  /** When false, only `header` renders - used for phase Auto mode. */
   showPicker?: boolean
   header?: ReactNode
 }
