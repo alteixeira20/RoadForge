@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "pnpm --dir apps/web dev",
     "build": "pnpm --dir apps/web build",
-    "check:copy": "node tools/check-product-copy.mjs && node tools/check-release-contract.mjs",
+    "check:copy": "node tools/check-product-copy.mjs && node tools/check-release-contract.mjs && node tools/check-no-em-dash.mjs",
     "check:cycles": "node tools/check-web-import-cycles.mjs",
     "check:docs": "node tools/check-doc-links.mjs",
     "check:issues": "node tools/check-issue-forms.mjs",
@@ -16,7 +16,8 @@
     "lint": "pnpm --dir apps/web lint",
     "typecheck": "pnpm --dir apps/web typecheck",
     "test": "pnpm --dir apps/web test",
-    "test:web": "pnpm --dir apps/web test"
+    "test:web": "pnpm --dir apps/web test",
+    "check:em-dash": "node tools/check-no-em-dash.mjs"
   },
   "version": "0.1.0",
   "description": "Local-first, accountless roadmap planning for individuals and small teams.",

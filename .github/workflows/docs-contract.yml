@@ -14,6 +14,7 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
       - 'tools/check-product-copy.mjs'
       - 'tools/check-doc-links.mjs'
+      - 'tools/check-no-em-dash.mjs'
       - 'tools/check-issue-forms.mjs'
       - '.github/workflows/docs-contract.yml'
   push:
@@ -31,6 +32,7 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
       - 'tools/check-product-copy.mjs'
       - 'tools/check-doc-links.mjs'
+      - 'tools/check-no-em-dash.mjs'
       - 'tools/check-issue-forms.mjs'
       - '.github/workflows/docs-contract.yml'
 
