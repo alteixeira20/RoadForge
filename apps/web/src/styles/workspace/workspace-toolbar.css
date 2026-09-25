@@ -9,7 +9,7 @@
   border-radius: 12px;
 }
 
-/* Row 1 — section navigation */
+/* Row 1 - section navigation */
 .workspace-nav-row {
   display: flex;
   align-items: center;
@@ -31,7 +31,7 @@
 .workspace-view-tab[data-workspace-view='team'] { order: 4; }
 .workspace-versions-trigger { order: 5; }
 
-/* Row 2 — exploration tools. Search takes the slack; utilities stay compact. */
+/* Row 2 - exploration tools. Search takes the slack; utilities stay compact. */
 .workspace-tools-row {
   display: flex;
   align-items: center;
@@ -255,14 +255,14 @@
 }
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 900px — search takes its own line, utilities group on the next ─────── */
+/* ── 900px - search takes its own line, utilities group on the next ─────── */
 @media (max-width: 900px) {
   .workspace-tools-row { flex-wrap: wrap; }
   .workspace-tools-row > .search { flex: 1 1 100%; min-width: 0; }
   .toolbar-action { padding: 0 9px; }
 }
 
-/* ── 600px — mobile: full-width search, utilities share one compact row ─── */
+/* ── 600px - mobile: full-width search, utilities share one compact row ─── */
 @media (max-width: 600px) {
   .workspace-bar { gap: 6px; padding: 6px 8px; }
   .workspace-nav-row { margin: 0 -2px; }

@@ -157,13 +157,13 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 760px — tablet: tighten task row layout ────────────────────────────── */
+/* ── 760px - tablet: tighten task row layout ────────────────────────────── */
 @media (max-width: 760px) {
   .task-row { padding: 14px 16px; gap: 10px; flex-wrap: wrap; }
   .task-row .meta-pill { display: none; }
 }
 
-/* ── 600px — mobile: compact task density ───────────────────────────────── */
+/* ── 600px - mobile: compact task density ───────────────────────────────── */
 @media (max-width: 600px) {
   .task-row { padding: 12px 14px; gap: 10px; }
 }

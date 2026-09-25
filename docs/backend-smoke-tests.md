@@ -1,4 +1,4 @@
-# RoadForge — Backend Smoke Tests
+# RoadForge - Backend Smoke Tests
 
 Manual smoke guide for verifying the backend API after a fresh stack start, migration, or deployment. Run these steps top to bottom. Each step depends on state set by the previous one.
 
@@ -46,7 +46,7 @@ unset VIEWER_INVITE_URL JOIN_RESPONSE ROTATE_RESPONSE TICKET TICKET_RESPONSE
 
 ---
 
-## Step 1 — Health check
+## Step 1 - Health check
 
 ```bash
 curl -s http://localhost:7878/api/health | jq .
@@ -71,7 +71,7 @@ Then complete the realtime preflight below.
 
 ---
 
-## Step 1b — Realtime deployment preflight
+## Step 1b - Realtime deployment preflight
 
 Inspect the configured backend and worker count:
 
@@ -103,7 +103,7 @@ cross-worker event, ticket, lock, or rate-limit behavior.
 
 ---
 
-## Step 2 — Create a roadmap
+## Step 2 - Create a roadmap
 
 Extract `ROADMAP_ID` and `OWNER_TOKEN` from the response:
 
@@ -144,7 +144,7 @@ Expected:
 
 ---
 
-## Step 3 — Fetch roadmap with owner token
+## Step 3 - Fetch roadmap with owner token
 
 ```bash
 curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID \
@@ -158,7 +158,7 @@ Expected:
 
 ---
 
-## Step 4 — List share links
+## Step 4 - List share links
 
 ```bash
 curl -s http://localhost:7878/api/roadmaps/$ROADMAP_ID/share-links \
@@ -173,7 +173,7 @@ Expected:
 
 ---
 
-## Step 5 — Rotate editor link
+## Step 5 - Rotate editor link
 
 Rotating generates a new invite token and returns the full join URL. The previous editor token is invalidated immediately.
 
@@ -201,7 +201,7 @@ Expected:
 
 ---
 
-## Step 6 — Join as editor
+## Step 6 - Join as editor
 
 Extract the raw token from the invite URL and join:
 
@@ -240,7 +240,7 @@ Expected:
 
 ---
 
-## Step 7 — Editor update succeeds
+## Step 7 - Editor update succeeds
 
 An editor can update the roadmap name and phases:
 
@@ -268,7 +268,7 @@ Expected:
 
 ---
 
-## Step 8 — Owner-only actions rejected for non-owner roles
+## Step 8 - Owner-only actions rejected for non-owner roles
 
 **Editor cannot list share links (403):**
 
@@ -307,7 +307,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ---
 
-## Step 9 — Revoke participant then verify 401
+## Step 9 - Revoke participant then verify 401
 
 ```bash
 # Revoke the editor participant
@@ -325,7 +325,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ---
 
-## Step 10 — Stale update conflict (409)
+## Step 10 - Stale update conflict (409)
 
 Simulate two clients diverging by saving with an outdated `last_updated_at`:
 
@@ -343,7 +343,7 @@ curl -s -X PUT http://localhost:7878/api/roadmaps/$ROADMAP_ID \
     \"last_updated_at\": \"$CURRENT\"
   }" > /dev/null
 
-# Now attempt a save with the old timestamp — this should conflict
+# Now attempt a save with the old timestamp - this should conflict
 curl -s -X PUT http://localhost:7878/api/roadmaps/$ROADMAP_ID \
   -H "Authorization: Bearer $OWNER_TOKEN" \
   -H 'Content-Type: application/json' \
@@ -360,7 +360,7 @@ Expected:
 
 ---
 
-## Step 11 — Rate limit smoke note
+## Step 11 - Rate limit smoke note
 
 The API has in-process rate limiting on several operations. To observe it:
 
@@ -382,7 +382,7 @@ Do not run rapid-fire rate limit tests against production or shared staging envi
 
 ---
 
-## Step 12 — SSE event ticket smoke
+## Step 12 - SSE event ticket smoke
 
 ```bash
 # Request a ticket (requires a valid session)
@@ -439,7 +439,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ---
 
-## Step 13 — Migration drift check
+## Step 13 - Migration drift check
 
 Verify that all Alembic migrations have been applied and no pending upgrades exist:
 
@@ -461,17 +461,17 @@ Any other output indicates a pending migration. Run `make migrate` or `docker co
 
 ---
 
-## Step 14 — API tests
+## Step 14 - API tests
 
 ```bash
 make api-test
 ```
 
-This runs the backend pytest suite. Locally, `make api-test` automatically starts the `postgres` container and creates the `roadforge_test` database if missing — no manual Docker setup required. Use `make api-test-fast` to skip Docker preparation when the database is already running (the default for CI). All tests must pass. Failures here should be resolved before any deployment.
+This runs the backend pytest suite. Locally, `make api-test` automatically starts the `postgres` container and creates the `roadforge_test` database if missing - no manual Docker setup required. Use `make api-test-fast` to skip Docker preparation when the database is already running (the default for CI). All tests must pass. Failures here should be resolved before any deployment.
 
 ---
 
-## Step 15 — Dependency audit
+## Step 15 - Dependency audit
 
 ```bash
 make api-audit

@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 /* ============================================================
-   RoadForge Design System — entry point
+   RoadForge Design System - entry point
    CSS is split by concern into src/styles/*.css
-   Import order matters for cascade — do not reorder.
+   Import order matters for cascade - do not reorder.
    ============================================================ */
 
 @import '../styles/tokens.css';

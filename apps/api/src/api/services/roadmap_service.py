@@ -19,7 +19,7 @@ from api.schemas.roadmap import (
 )
 from api.services.activity_log_limit import enforce_activity_log_cap
 
-# PatchTaskClaimRequest is intentionally omitted — the claim endpoint has no body.
+# PatchTaskClaimRequest is intentionally omitted - the claim endpoint has no body.
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.password_service import hash_password

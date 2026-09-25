@@ -91,14 +91,14 @@ describe('roadmap sync error classification', () => {
     expect(classified.kind).toBe('validation')
     expect(classified.kind).not.toBe('connection')
     expect(classified.validationMessage).toBe(
-      'Save rejected: phases[8].tasks[4].desc — String should have at most 5000 characters',
+      'Save rejected: phases[8].tasks[4].desc - String should have at most 5000 characters',
     )
   })
 
   it('formats a validation message path from a FastAPI loc array', () => {
     expect(formatValidationMessage([
       { loc: ['body', 'phases', 0, 'tasks', 0, 'done'], msg: 'Input should be a valid boolean', type: 'bool_type' },
-    ])).toBe('Save rejected: phases[0].tasks[0].done — Input should be a valid boolean')
+    ])).toBe('Save rejected: phases[0].tasks[0].done - Input should be a valid boolean')
   })
 
   it('gives a friendly message for an unsupported tag id instead of the raw pattern error', () => {

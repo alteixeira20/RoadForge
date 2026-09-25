@@ -18,7 +18,7 @@
 .btn.sm { height: 36px; padding: 0 14px; font-size: 14px; }
 .btn.lg { height: 52px; padding: 0 22px; font-size: 16px; border-radius: 12px; }
 
-/* Anvilary accessible dark-orange action gradient — hover feedback comes from
+/* Anvilary accessible dark-orange action gradient - hover feedback comes from
    shadow, border, and lift, never from brightening the fill under white text. */
 .btn.primary {
   background: linear-gradient(180deg, var(--action-start) 0%, var(--action-end) 100%);
@@ -43,7 +43,7 @@
 .btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
 .btn.ghost:hover { background: var(--bg-2); color: var(--ink); }
 
-/* Destructive — red-leaning so it never reads as the orange primary action */
+/* Destructive - red-leaning so it never reads as the orange primary action */
 .btn.danger {
   background: linear-gradient(180deg, #b03a2a 0%, #7c2114 100%);
   border-color: #7c2114;

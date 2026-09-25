@@ -1,4 +1,4 @@
-# Post-hardening Internet-facing security audit — 2026-08-12
+# Post-hardening Internet-facing security audit - 2026-08-12
 
 Status: exact-head validation candidate
 
@@ -8,25 +8,25 @@ The audit did not identify a confirmed Critical vulnerability. It did identify f
 
 ## Findings and remediations
 
-### SEC-011 — Medium — production frontend origins could use plaintext HTTP
+### SEC-011 - Medium - production frontend origins could use plaintext HTTP
 
 **Finding:** production startup rejected wildcard or malformed CORS entries but still accepted an explicit `http://` origin. `ROADFORGE_WEB_BASE_URL` also lacked an HTTPS/canonical-origin requirement. Because generated invite links carry reveal-once bearer credentials in the fragment, a production operator could accidentally configure credential delivery through a plaintext frontend origin.
 
 **Remediation:** production startup now requires every CORS origin to be an explicit HTTPS origin without userinfo/path/query/fragment. `ROADFORGE_WEB_BASE_URL` must itself be an HTTPS origin and must appear in the configured CORS allowlist. Invite URL construction also normalizes a trailing slash.
 
-### SEC-012 — Medium — unbounded realtime streams and slow-consumer queues
+### SEC-012 - Medium - unbounded realtime streams and slow-consumer queues
 
 **Finding:** an authenticated participant could repeatedly mint short-lived event tickets and open long-lived SSE streams. Redis mode allocates one pub/sub subscription per stream, while memory mode previously allocated an unbounded `asyncio.Queue` for every subscriber. A slow or abusive credential holder could therefore multiply connection/state cost or accumulate queued events.
 
 **Remediation:** active realtime streams are capped per participant. Memory mode uses an in-process lease registry; Redis mode uses shared TTL-backed leases so multi-worker deployments enforce one global participant limit. Lease acquisition fails closed when Redis cannot enforce the bound. Memory subscriber queues are bounded; a slow consumer that overflows its queue is disconnected instead of accumulating unbounded memory. Stream leases are refreshed during periodic authorization checks and released on close.
 
-### SEC-013 — Medium — one invite could create unbounded active participant sessions
+### SEC-013 - Medium - one invite could create unbounded active participant sessions
 
 **Finding:** join attempts were rate-limited, but every successful join created a new participant/session row with no concurrent active-session ceiling. A valid leaked or intentionally shared invite could therefore produce continuing participant-row and activity-log growth over time.
 
 **Remediation:** each share link now has a configurable active-session ceiling. Concurrent joins are serialized by locking the share-link row, the locked row is force-refreshed from PostgreSQL to close a token-rotation race, and only non-revoked/non-expired sessions count toward the limit. Excess joins receive `429`.
 
-### SEC-014 — Medium — server storage growth lacked hard resource ceilings
+### SEC-014 - Medium - server storage growth lacked hard resource ceilings
 
 **Finding:** anonymous roadmap creation had an IP velocity limit, but active roadmaps are intentionally retained indefinitely. Soft-deleted roadmaps are only hard-purged later. Activity and version history had age/count policies but no overall server roadmap capacity, activity-row ceiling, or restore-history byte ceiling. An Internet-facing demo could therefore experience storage amplification despite per-request body/rate limits.
 
@@ -40,7 +40,7 @@ The audit did not identify a confirmed Critical vulnerability. It did identify f
 
 Roadmap creation takes a PostgreSQL advisory transaction lock before checking capacity, preventing concurrent anonymous creates from overshooting the configured global record ceiling. Restore-history trimming always preserves the newest three versions before applying the byte ceiling.
 
-### SEC-015 — Low/Medium — existing SSE authorization outlived roadmap deletion/session expiry
+### SEC-015 - Low/Medium - existing SSE authorization outlived roadmap deletion/session expiry
 
 **Finding:** the SSE authorization helper treated a missing/revoked participant as unauthorized but did not include roadmap soft deletion or participant expiry. Normal API requests already rejected deleted roadmaps and expired sessions, so an already-open event stream had a wider lifecycle boundary than REST access.
 

@@ -1,5 +1,5 @@
 """
-RF-1902 / RF-1903 — Roadmap PUT conflict and concurrency tests.
+RF-1902 / RF-1903 - Roadmap PUT conflict and concurrency tests.
 
 Groups:
   D  Stale conflict 409 contract (1902)
@@ -29,7 +29,7 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-# ─── Group D — Stale conflict 409 contract (RF-1902) ─────────────────────────
+# ─── Group D - Stale conflict 409 contract (RF-1902) ─────────────────────────
 
 
 async def test_stale_update_returns_409(client: AsyncClient):
@@ -119,7 +119,7 @@ async def test_stale_update_preserves_server_state(client: AsyncClient):
     assert get_resp.json()["name"] == "Canonical Name"
 
 
-# ─── Group E — Row-lock / stale-write contract (RF-1903) ─────────────────────
+# ─── Group E - Row-lock / stale-write contract (RF-1903) ─────────────────────
 
 
 async def test_sequential_stale_writes_reject_second_writer(client: AsyncClient):

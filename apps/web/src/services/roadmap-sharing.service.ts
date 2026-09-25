@@ -18,7 +18,7 @@ interface ApiShareLinkResponse {
 
 // Owners receive every field below; editors receive a reduced projection
 // with only id/display_name/role/is_current_participant (see backend
-// ParticipantSummaryResponse) — the rest are absent, not null, for editors.
+// ParticipantSummaryResponse) - the rest are absent, not null, for editors.
 interface ApiParticipantResponse {
   id: string
   display_name: string
@@ -44,7 +44,7 @@ interface ApiJoinResponse {
 // ─── Mappers ───────────────────────────────────────────────────────────────────
 
 const _LINK_META: Record<string, { icon: string; desc: string; recommended?: true }> = {
-  owner:  { icon: 'shield', desc: 'Full control — manage settings, links, and members.' },
+  owner:  { icon: 'shield', desc: 'Full control - manage settings, links, and members.' },
   editor: { icon: 'users',  desc: 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.', recommended: true },
   viewer: { icon: 'circle', desc: 'Read-only roadmap access. Treat this invite as a private credential.' },
 }
@@ -85,7 +85,7 @@ function toParticipant(r: ApiParticipantResponse): Participant {
 
 /**
  * Fetch share-link states for all roles on a roadmap.
- * url is empty string when null — raw tokens are not re-exposed after creation.
+ * url is empty string when null - raw tokens are not re-exposed after creation.
  */
 export async function getShareLinks(roadmapId: string, sessionToken: string): Promise<ShareLink[]> {
   const data = await requestJson<ApiShareLinkResponse[]>(

@@ -62,7 +62,7 @@ editing actions.
 ## 5. Avoid duplicate ways to perform the same structural action
 
 A second control is justified when it materially improves accessibility, recovery, or a
-distinct device mode—not merely because another UI pattern is possible.
+distinct device mode, not merely because another UI pattern is possible.
 
 Ordering currently uses a dedicated reorder interaction with pointer/touch and
 application-owned keyboard behavior. Do not reintroduce duplicate move-arrow rows unless

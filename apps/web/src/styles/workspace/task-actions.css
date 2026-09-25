@@ -110,12 +110,12 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 760px — keep the edit action aligned with compact detail padding ─── */
+/* ── 760px - keep the edit action aligned with compact detail padding ─── */
 @media (max-width: 760px) {
   .task-detail .actions .task-details-action { right: 16px; }
 }
 
-/* ── 600px — mobile: full-width task actions ───────────────────────────── */
+/* ── 600px - mobile: full-width task actions ───────────────────────────── */
 @media (max-width: 600px) {
   .task-action-area,
   .task-detail .actions { width: 100%; }

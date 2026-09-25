@@ -2,7 +2,7 @@
 Token utilities for invite links and participant sessions.
 
 Design:
-- Raw tokens are generated with secrets.token_urlsafe(32) — 256 bits of entropy.
+- Raw tokens are generated with secrets.token_urlsafe(32) - 256 bits of entropy.
 - Invite tokens for every role and participant session tokens are stored only
   as SHA-256 hex digests. Raw invite credentials are reveal-once on create/rotate.
 - token_prefix is a short non-secret display string (first 8 chars of the raw

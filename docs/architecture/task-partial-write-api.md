@@ -1,4 +1,4 @@
-# Task partial-write API — implementation record
+# Task partial-write API - implementation record
 
 **Status:** Implemented design record.
 **Original decision date:** 2026-07-04.
@@ -103,6 +103,6 @@ apps/web/src/services/
 For exact supported fields, limits, response shapes, and error behavior, use current code,
 `docs/backend-api.md`, and the contract tests.
 
-Historical values and rollout steps from the original implementation plan—such as the old
-512 KiB request ceiling or full-projection-rebuild assumptions—are intentionally not kept
+Historical values and rollout steps from the original implementation plan, such as the old
+512 KiB request ceiling or full-projection-rebuild assumptions, are intentionally not kept
 here because they no longer describe the runtime.

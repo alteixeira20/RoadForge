@@ -123,7 +123,7 @@ async def client(db_session: AsyncSession):
     app.dependency_overrides.clear()
 
 
-# ── 8. Helper — create a roadmap and return the full response body ────────────
+# ── 8. Helper - create a roadmap and return the full response body ────────────
 async def create_roadmap(client: AsyncClient, *, name: str = "Test Roadmap") -> dict:
     resp = await client.post(
         "/api/roadmaps",

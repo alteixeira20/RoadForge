@@ -1,6 +1,6 @@
 // ─── HTTP helpers ───────────────────────────────────────────────────────────────
 // Shared request infrastructure used by all domain service files.
-// No business logic lives here — only transport concerns.
+// No business logic lives here - only transport concerns.
 
 import type { RoadmapConflictMetadata } from '@/types/roadmap'
 
@@ -105,7 +105,7 @@ export async function requestJson<T>(
   } catch {
     throw new ApiConnectionError()
   }
-  // 204 No Content — no body to parse
+  // 204 No Content - no body to parse
   if (res.status === 204) return undefined as T
   if (!res.ok) {
     let detail = res.statusText

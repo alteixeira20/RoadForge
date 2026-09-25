@@ -391,7 +391,7 @@ describe('tags panel styling contract', () => {
     // A plain `.tag-registry-input:focus` block never sets `outline`, so the
     // trailing global `*:focus-visible { outline: 2px solid var(--ember) }`
     // rule in globals.css ties on specificity and wins on source order,
-    // re-enabling the browser ring alongside the box-shadow ring below — the
+    // re-enabling the browser ring alongside the box-shadow ring below - the
     // second orange line. Scoping with `:focus-visible` (specificity 0,2,0)
     // reliably beats it regardless of import order.
     const focusMatch = tagsCss.match(/\.tag-registry-input:focus-visible\s*{[^}]*}/)

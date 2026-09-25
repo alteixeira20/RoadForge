@@ -27,7 +27,7 @@ export function FeaturesSection() {
           </div>
           <p>
             Keep a canonical JSON backup, readable Markdown, and portable
-            import/export—without service lock-in.
+            import/export, without service lock-in.
           </p>
         </div>
         <div className="feature">

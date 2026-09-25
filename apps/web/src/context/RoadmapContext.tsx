@@ -69,7 +69,7 @@ interface RoadmapLifecycleContextValue {
   realtimeStatus: RealtimeConnectionStatus
 }
 
-// Legacy combined interface — kept for backward compatibility
+// Legacy combined interface - kept for backward compatibility
 interface RoadmapContextValue extends
   RoadmapDataContextValue,
   RoadmapSessionContextValue,

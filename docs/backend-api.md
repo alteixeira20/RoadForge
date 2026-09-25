@@ -44,9 +44,9 @@ separate authentication path and do not depend on browser cookies or `Origin`.
 
 Roles:
 
-- `owner` — full roadmap and access management;
-- `editor` — roadmap content editing and collaboration actions;
-- `viewer` — read-only roadmap access.
+- `owner` - full roadmap and access management;
+- `editor` - roadmap content editing and collaboration actions;
+- `viewer` - read-only roadmap access.
 
 Invite links are exchanged for participant sessions through the join endpoint. Display
 names are labels, not verified identity.

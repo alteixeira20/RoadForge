@@ -130,12 +130,12 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 760px — tablet: tighten task detail layout ─────────────────────────── */
+/* ── 760px - tablet: tighten task detail layout ─────────────────────────── */
 @media (max-width: 760px) {
   .task-detail { padding-left: 16px; padding-right: 16px; }
 }
 
-/* ── 600px — mobile: compact task detail density ────────────────────────── */
+/* ── 600px - mobile: compact task detail density ────────────────────────── */
 @media (max-width: 600px) {
   .task-detail { gap: 8px; }
   .task-detail > .task-links,

@@ -186,13 +186,13 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
         const phase = [metadata_json.phaseNum, metadata_json.phaseName]
           .filter(Boolean)
           .map(String)
-          .join(' — ')
+          .join(' - ')
         const change = `${String(metadata_json.previousValue)} to ${String(metadata_json.nextValue)}`
         return <span>{phase}{phase ? ' · ' : ''}{change}</span>
       }
       if (metadata_json?.details) return <span>{String(metadata_json.details)}</span>
       if (metadata_json?.phaseNum || metadata_json?.phaseName) {
-        return <span>{[metadata_json.phaseNum, metadata_json.phaseName].filter(Boolean).map(String).join(' — ')}</span>
+        return <span>{[metadata_json.phaseNum, metadata_json.phaseName].filter(Boolean).map(String).join(' - ')}</span>
       }
       return <span>{String(metadata_json?.phaseId || log.entity_id || 'Phase')}</span>
     }
@@ -203,7 +203,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
       return <span className="dim">Snapshot saved</span>
     }
     if (action === 'task.completed' || action === 'task.reopened' || action === 'task.created' || action === 'task.updated') {
-      const task = [metadata_json?.taskId, metadata_json?.taskTitle].filter(Boolean).map(String).join(' — ')
+      const task = [metadata_json?.taskId, metadata_json?.taskTitle].filter(Boolean).map(String).join(' - ')
       const phase = metadata_json?.phaseName ? ` · ${String(metadata_json.phaseName)}` : ''
       const fields = action === 'task.updated'
         ? getTaskUpdateFieldSummary(metadata_json)
@@ -218,7 +218,7 @@ export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: 
       if (metadata_json?.phaseId) {
         return <span>Phase {String(metadata_json?.phaseName || metadata_json?.phaseId)}</span>
       }
-      return <span>{String(metadata_json?.taskId)} — {String(metadata_json?.taskTitle)}</span>
+      return <span>{String(metadata_json?.taskId)} - {String(metadata_json?.taskTitle)}</span>
     }
     if (action === 'phase.reordered' || action === 'roadmap.phases_reordered') {
       return metadata_json?.details

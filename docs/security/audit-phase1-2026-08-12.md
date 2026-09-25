@@ -1,4 +1,4 @@
-# RoadForge security audit — Phase 1 ledger
+# RoadForge security audit - Phase 1 ledger
 
 Baseline audited: `ff338f664c3d0e5bd6ea867ab65ed75bdeae0516`
 

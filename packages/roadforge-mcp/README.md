@@ -34,9 +34,9 @@ Default configuration locations are:
 
 Existing environment-based configuration remains supported and overrides stored configuration:
 
-- `ROADFORGE_API_URL` — API origin;
-- `ROADFORGE_ROADMAP_ID` — configured roadmap;
-- `ROADFORGE_SESSION_TOKEN` — participant session token.
+- `ROADFORGE_API_URL` - API origin;
+- `ROADFORGE_ROADMAP_ID` - configured roadmap;
+- `ROADFORGE_SESSION_TOKEN` - participant session token.
 
 Invite-based process-local compatibility remains available through `ROADFORGE_INVITE_TOKEN` or `ROADFORGE_INVITE_URL`, plus optional `ROADFORGE_DISPLAY_NAME` and `ROADFORGE_PASSWORD`. Fragment-token invite links are canonical; legacy `?token=` links are accepted only as a migration fallback.
 
@@ -46,22 +46,22 @@ For non-interactive hosts, inject `ROADFORGE_SESSION_TOKEN` through the host env
 
 The advertised solo-oriented tool surface is:
 
-- `roadforge_summary` — roadmap counts, phase progress, revision, and bounded next tasks;
-- `roadforge_revision` — current `updatedAt` compare-and-swap token only;
-- `roadforge_task_search` — bounded server-side search over IDs, titles, descriptions, phase names/IDs, tags, and assignees;
-- `roadforge_task_get` — one full task plus compact phase context;
+- `roadforge_summary` - roadmap counts, phase progress, revision, and bounded next tasks;
+- `roadforge_revision` - current `updatedAt` compare-and-swap token only;
+- `roadforge_task_search` - bounded server-side search over IDs, titles, descriptions, phase names/IDs, tags, and assignees;
+- `roadforge_task_get` - one full task plus compact phase context;
 - `roadforge_task_create`;
 - `roadforge_task_update`;
-- `roadforge_task_done` — complete or reopen;
-- `roadforge_task_delete` — destructive;
+- `roadforge_task_done` - complete or reopen;
+- `roadforge_task_delete` - destructive;
 - `roadforge_dependency_add`;
 - `roadforge_dependency_remove`;
 - `roadforge_phase_create`;
 - `roadforge_phase_update`;
-- `roadforge_phase_delete` — destructive;
+- `roadforge_phase_delete` - destructive;
 - `roadforge_roadmap_rename`;
 - `roadforge_tag_create`;
-- `roadforge_get` — compatibility summary/compact reads and explicit `mode="full"` portable-roadmap escape hatch.
+- `roadforge_get` - compatibility summary/compact reads and explicit `mode="full"` portable-roadmap escape hatch.
 
 Task claim/unclaim remains implemented by RoadForge for compatibility, but it is intentionally not part of the primary MCP tool surface while the product is focused on solo/local roadmap work.
 

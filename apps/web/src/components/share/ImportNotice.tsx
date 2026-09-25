@@ -23,10 +23,10 @@ function MergeSummaryLines({ pendingImport }: { pendingImport: PendingImport }) 
       {p.phasesAdded > 0 && <li>{p.phasesAdded} new phase{p.phasesAdded !== 1 ? 's' : ''} will be added.</li>}
       {p.tasksAdded > 0 && <li>{p.tasksAdded} new task{p.tasksAdded !== 1 ? 's' : ''} will be added.</li>}
       {p.tagsAdded > 0 && <li>{p.tagsAdded} new tag{p.tagsAdded !== 1 ? 's' : ''} will be added.</li>}
-      {p.matchedPhases > 0 && <li>{p.matchedPhases} existing phase{p.matchedPhases !== 1 ? 's' : ''} matched — not modified.</li>}
-      {p.matchedTasks > 0 && <li>{p.matchedTasks} existing task{p.matchedTasks !== 1 ? 's' : ''} matched — not modified.</li>}
+      {p.matchedPhases > 0 && <li>{p.matchedPhases} existing phase{p.matchedPhases !== 1 ? 's' : ''} matched - not modified.</li>}
+      {p.matchedTasks > 0 && <li>{p.matchedTasks} existing task{p.matchedTasks !== 1 ? 's' : ''} matched - not modified.</li>}
       {p.phasesAdded === 0 && p.tasksAdded === 0 && p.tagsAdded === 0 && (
-        <li>No new content to add — everything already exists in the current roadmap.</li>
+        <li>No new content to add - everything already exists in the current roadmap.</li>
       )}
     </ul>
   )

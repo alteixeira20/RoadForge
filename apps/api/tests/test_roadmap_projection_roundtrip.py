@@ -1,5 +1,5 @@
 """
-RF-1906 — Projection serialization round-trip tests.
+RF-1906 - Projection serialization round-trip tests.
 
 Groups:
   A  Phase field ordering and scalar values
@@ -35,7 +35,7 @@ def _direct_roadmap(snapshot_phases: list) -> Roadmap:
     )
 
 
-# ─── Group A — Phase ordering and scalar values ───────────────────────────────
+# ─── Group A - Phase ordering and scalar values ───────────────────────────────
 
 
 async def test_round_trip_preserves_phase_ordering_and_scalars(client, db_session):
@@ -63,7 +63,7 @@ async def test_round_trip_preserves_phase_ordering_and_scalars(client, db_sessio
     assert phases[1]["progress"] == 0
 
 
-# ─── Group B — Task fields ────────────────────────────────────────────────────
+# ─── Group B - Task fields ────────────────────────────────────────────────────
 
 
 async def test_round_trip_preserves_task_scalars_and_relationships(client, db_session):
@@ -110,7 +110,7 @@ async def test_round_trip_preserves_task_scalars_and_relationships(client, db_se
     assert tk_b1["tags"] == ["tag-c"]
 
 
-# ─── Group C — source_json preserves extra keys ───────────────────────────────
+# ─── Group C - source_json preserves extra keys ───────────────────────────────
 
 
 async def test_round_trip_preserves_extra_phase_keys_via_source_json(db_session):
@@ -206,7 +206,7 @@ async def test_api_rejects_credential_shaped_task_link_query(client):
     assert response.status_code == 422
 
 
-# ─── Group D — Invalid dep/parent refs normalize consistently ─────────────────
+# ─── Group D - Invalid dep/parent refs normalize consistently ─────────────────
 
 
 async def test_self_dep_is_silently_dropped_during_rebuild(db_session):
@@ -279,7 +279,7 @@ async def test_invalid_parent_ref_is_silently_dropped_during_rebuild(db_session)
     assert "parentId" not in task
 
 
-# ─── Group E — Claim fields round-trip ────────────────────────────────────────
+# ─── Group E - Claim fields round-trip ────────────────────────────────────────
 
 
 async def test_round_trip_preserves_claim_fields(db_session):

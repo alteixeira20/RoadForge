@@ -179,7 +179,7 @@ export function TaskEditForm({
             onKeyDown={handleTitleKeyDown}
             placeholder="e.g. 2d, 5h…"
           />
-          <small>Heuristic only — complexity is the primary planning signal.</small>
+          <small>Heuristic only - complexity is the primary planning signal.</small>
         </div>
       )}
       <div className="field full">

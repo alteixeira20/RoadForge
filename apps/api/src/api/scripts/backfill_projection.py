@@ -10,7 +10,7 @@ Rebuilds projection rows from snapshot_json for each non-deleted roadmap and
 commits after each one. Verification mode checks projection parity after
 backfill, while verify-only checks the current projection rows without writing.
 
-snapshot_json remains canonical — this script only writes projection tables.
+snapshot_json remains canonical - this script only writes projection tables.
 """
 
 from __future__ import annotations

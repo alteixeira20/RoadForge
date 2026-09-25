@@ -275,7 +275,7 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 600px — mobile: compact task metadata ─────────────────────────────── */
+/* ── 600px - mobile: compact task metadata ─────────────────────────────── */
 @media (max-width: 600px) {
   .task-meta-stack { width: 100%; }
   .task-meta-group {

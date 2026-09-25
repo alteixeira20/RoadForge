@@ -1,4 +1,4 @@
-# RoadForge — Frontend Foundation Reference
+# RoadForge - Frontend Foundation Reference
 
 This document describes the current frontend boundaries. RoadForge is a local-first
 Next.js application: local roadmaps work without the API, while synced roadmaps use a
@@ -86,11 +86,11 @@ Canonical construction and validation boundaries:
 Only modules under `src/services/` call `fetch()`:
 
 - `roadmap-crud.service.ts` - roadmap CRUD, versions, task state, tags, and canonical JSON export;
-- `roadmap-sharing.service.ts` — join, share links, and participants;
-- `roadmap-locks.service.ts` — lock acquire/release/list;
-- `roadmap-realtime.service.ts` — event tickets and SSE setup;
-- `roadmap-http.ts` — shared request/error handling;
-- `roadmap.service.ts` — compatibility barrel for existing imports.
+- `roadmap-sharing.service.ts` - join, share links, and participants;
+- `roadmap-locks.service.ts` - lock acquire/release/list;
+- `roadmap-realtime.service.ts` - event tickets and SSE setup;
+- `roadmap-http.ts` - shared request/error handling;
+- `roadmap.service.ts` - compatibility barrel for existing imports.
 
 Components and hooks consume these services rather than calling the API directly.
 
@@ -129,7 +129,7 @@ The UI is dark-only and inherits the shared Anvilary design language. The
 Anvilary-Website repository is the source of truth for the forge palette, typography
 (Lexend / JetBrains Mono), the dark-orange action gradient, translucent surface
 treatment, and the ambient ember atmosphere. The aligned pieces were copied and
-adapted — not imported — so RoadForge builds independently:
+adapted - not imported - so RoadForge builds independently:
 
 - `styles/tokens.css` mirrors the Anvilary token set (palette, radii, shadows,
   action gradient, forge-glow, surface hierarchy).

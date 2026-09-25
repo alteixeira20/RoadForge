@@ -46,7 +46,7 @@ class RestoreRoadmapVersionRequest(BaseModel):
     # The revision the caller is confirming as current. Restore uses the
     # same compare-and-swap contract as PUT/PATCH writes: this must exactly
     # match the roadmap's current revision or the request is rejected with
-    # a 409 — `force` does not relax this. On a 409, the response carries
+    # a 409 - `force` does not relax this. On a 409, the response carries
     # the roadmap's actual current revision; a force restore resends that
     # exact value here.
     last_updated_at: datetime

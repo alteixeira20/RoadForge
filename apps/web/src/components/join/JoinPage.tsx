@@ -112,7 +112,7 @@ export function JoinPage() {
           isPasswordEnabled: !!roadmap.roadmap.isPasswordEnabled,
         })
       } catch {
-        // non-fatal — workspace will show whatever's cached
+        // non-fatal - workspace will show whatever's cached
       }
 
       const path = role === 'viewer' ? '/shared' : '/workspace'
@@ -125,7 +125,7 @@ export function JoinPage() {
       } else if (msg.includes('401') || msg.includes('Invalid')) {
         setError('This invite link is invalid or has expired. Ask the owner for a new one.')
       } else {
-        setError('Could not join — check your connection and try again.')
+        setError('Could not join - check your connection and try again.')
       }
       setJoining(false)
     }

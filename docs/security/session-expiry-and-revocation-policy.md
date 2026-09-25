@@ -1,4 +1,4 @@
-# RoadForge — Session Expiry and Revocation Policy
+# RoadForge - Session Expiry and Revocation Policy
 
 Status: implemented security contract for the accountless collaboration model.
 

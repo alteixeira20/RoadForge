@@ -87,7 +87,7 @@ export function useImportFlow({
       if (imported.roadmapName) setRoadmapName(imported.roadmapName)
       if (setTagRegistry) setTagRegistry(importedRegistry)
       setSaved(false)
-      onToast(serverRoadmapId ? 'Roadmap replaced — syncing after autosave' : 'Roadmap replaced from JSON')
+      onToast(serverRoadmapId ? 'Roadmap replaced - syncing after autosave' : 'Roadmap replaced from JSON')
     } else {
       const newId = createLocalRoadmap(nextName, imported.phases, importedRegistry)
       updateUrlForLocalRoadmap(newId)
@@ -100,7 +100,7 @@ export function useImportFlow({
 
   const applySafeAdditionsImport = useCallback((pending: PendingImport) => {
     // Recompute the merge against the roadmap's current state rather than
-    // the snapshot captured when the file was previewed — edits, a realtime
+    // the snapshot captured when the file was previewed - edits, a realtime
     // update, or another tab may have changed phases/tagRegistry since then.
     const importedPhases = pending.result.phases
     const importedRegistry = pending.result.tagRegistry ?? buildRegistryFromPhases(importedPhases)
@@ -111,7 +111,7 @@ export function useImportFlow({
     const pCount = mergeResult.preview.phasesAdded
     const tCount = mergeResult.preview.tasksAdded
     if (pCount === 0 && tCount === 0) {
-      onToast('No new content to merge — roadmap unchanged.')
+      onToast('No new content to merge - roadmap unchanged.')
     } else {
       const parts: string[] = []
       if (pCount > 0) parts.push(`${pCount} phase${pCount !== 1 ? 's' : ''}`)
@@ -127,7 +127,7 @@ export function useImportFlow({
     if (!file) return
 
     if (file.size > IMPORT_MAX_BYTES) {
-      onToast('Import failed — file is too large')
+      onToast('Import failed - file is too large')
       e.target.value = ''
       return
     }
@@ -168,7 +168,7 @@ export function useImportFlow({
         }
 
         // Always show preview before applying (task 2007). The preview merge
-        // above is display-only — handleConfirm recomputes the real merge
+        // above is display-only - handleConfirm recomputes the real merge
         // against current state so it can't apply a stale snapshot.
         setPendingImport({
           fileName: file.name,

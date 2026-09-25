@@ -1,10 +1,10 @@
-/* ─── modals.css — compatibility stub ──────────────────────────────────────────
+/* ─── modals.css - compatibility stub ──────────────────────────────────────────
    All modal styles have been moved to src/styles/modals/:
-     modal-shell.css    — overlay, wizard/modal base, head/body/foot, note-line
-     create-wizard.css  — form fields, option cards, local-note, bullet-list
-     share-modal.css    — share roles, link rows, participants section
-     io-modal.css       — import/export tab, action list, inline-reset
-     password-gate.css  — password field/toggle, bullet, save-illus
+     modal-shell.css    - overlay, wizard/modal base, head/body/foot, note-line
+     create-wizard.css  - form fields, option cards, local-note, bullet-list
+     share-modal.css    - share roles, link rows, participants section
+     io-modal.css       - import/export tab, action list, inline-reset
+     password-gate.css  - password field/toggle, bullet, save-illus
 
    This file is intentionally empty. Do not add active rules here.
    ─────────────────────────────────────────────────────────────────────────── */

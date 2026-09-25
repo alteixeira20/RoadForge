@@ -1,5 +1,5 @@
 """
-RF-1101 — Backend auth and share-link tests.
+RF-1101 - Backend auth and share-link tests.
 
 Groups:
   A  Create roadmap / auth basics
@@ -65,7 +65,7 @@ async def _rotate_link(
     return resp.json()["url"]
 
 
-# ─── Group A — Create roadmap / auth basics ───────────────────────────────────
+# ─── Group A - Create roadmap / auth basics ───────────────────────────────────
 
 
 async def test_create_roadmap_returns_owner_token(client: AsyncClient):
@@ -112,7 +112,7 @@ async def test_garbage_token_get_returns_401(client: AsyncClient):
     assert resp.status_code == 401
 
 
-# ─── Group B — Join flow ──────────────────────────────────────────────────────
+# ─── Group B - Join flow ──────────────────────────────────────────────────────
 
 
 @pytest.mark.parametrize("role", ["editor", "viewer"])
@@ -180,7 +180,7 @@ async def test_viewer_token_can_get_roadmap(client: AsyncClient):
     assert resp.status_code == 200
 
 
-# ─── Group C — Rotate / revoke share links ───────────────────────────────────
+# ─── Group C - Rotate / revoke share links ───────────────────────────────────
 
 
 async def test_viewer_cannot_rotate_share_links(client: AsyncClient):
@@ -286,7 +286,7 @@ async def test_revoking_invite_does_not_revoke_existing_session(client: AsyncCli
     assert resp.status_code == 200
 
 
-# ─── Group D — Revoke participant ────────────────────────────────────────────
+# ─── Group D - Revoke participant ────────────────────────────────────────────
 
 
 async def test_revoked_editor_session_returns_401(client: AsyncClient):
@@ -349,7 +349,7 @@ async def test_revoke_participant_publishes_sse_event(
     assert event.payload["revoked_at"]
 
 
-# ─── Group F — Participant list read (owner/editor/viewer) ──────────────────
+# ─── Group F - Participant list read (owner/editor/viewer) ──────────────────
 
 
 async def test_owner_gets_full_participant_fields(client: AsyncClient):
@@ -475,7 +475,7 @@ async def test_viewer_cannot_read_participants(client: AsyncClient):
     assert resp.status_code == 403
 
 
-# ─── Group E — Expired session ───────────────────────────────────────────────
+# ─── Group E - Expired session ───────────────────────────────────────────────
 
 
 async def test_expired_session_returns_401(client: AsyncClient, db_session: AsyncSession):

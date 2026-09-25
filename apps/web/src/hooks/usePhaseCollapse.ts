@@ -47,7 +47,7 @@ export function usePhaseCollapse(phases: Phase[], roadmapId: string | null) {
 
   // Single combined effect handles both roadmap switches and phase list changes.
   // Merging them ensures that when roadmapId and phases update in the same render
-  // (the common case — React 18 batches setState calls in the same callback),
+  // (the common case - React 18 batches setState calls in the same callback),
   // we reinitialize with the correct phase list rather than with stale phases.
   useEffect(() => {
     const phaseIdsChanged = previousPhaseIdsKeyRef.current !== phaseIdsKey
@@ -59,13 +59,13 @@ export function usePhaseCollapse(phases: Phase[], roadmapId: string | null) {
       .map(([id, status]) => ({ id, status }))
 
     if (roadmapIdChanged) {
-      // Roadmap switched — reinitialize from storage using current phases
+      // Roadmap switched - reinitialize from storage using current phases
       const saved = roadmapId ? loadOpenPhaseIds(roadmapId, phaseDefaults) : null
       setOpenPhases(saved ?? getDefaultOpenPhaseIds(phaseDefaults))
       return
     }
 
-    // Same roadmap — validate open phases against the updated phase list
+    // Same roadmap - validate open phases against the updated phase list
     setOpenPhases((prev) => {
       const phaseIds = new Set(phaseDefaults.map((phase) => phase.id))
       const validOpenPhases = prev.filter((id) => phaseIds.has(id))

@@ -6,7 +6,7 @@ export function HowItWorksSection() {
     <LandingSectionFrame
       id="how"
       title="Planning that stays in one place."
-      lede="Notes in one app, tickets in another, decisions lost in chat. RoadForge keeps the plan in a single structured file — local by default, portable always."
+      lede="Notes in one app, tickets in another, decisions lost in chat. RoadForge keeps the plan in a single structured file - local by default, portable always."
     >
       <div className="steps">
         <div className="step-card">
@@ -14,7 +14,7 @@ export function HowItWorksSection() {
           <span className="num">STEP 01</span>
           <h3>Start locally.</h3>
           <p>
-            Open RoadForge, name your roadmap. Everything saves to your device —
+            Open RoadForge, name your roadmap. Everything saves to your device -
             no account, no internet required.
           </p>
         </div>

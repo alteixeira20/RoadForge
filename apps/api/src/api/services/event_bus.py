@@ -100,7 +100,7 @@ async def forward_subscription(
 
     Callers that care about the revocation race (see `Subscription`) must
     open the subscription and perform their own post-subscription
-    authorization check *before* handing it to this function — this
+    authorization check *before* handing it to this function - this
     function assumes the subscription is already authorized and only
     re-validates periodically afterward as defense-in-depth.
 
@@ -347,17 +347,17 @@ class MemoryEventBus:
 
         When `participant_id` is set, the stream closes itself the moment it
         forwards a `participant.revoked` event targeting that same
-        participant — revocation must not depend on the client choosing to
+        participant - revocation must not depend on the client choosing to
         disconnect. `is_still_authorized`, when provided, is polled on a
         bounded cadence as defense-in-depth against a missed/dropped event.
         `is_participant_revoked_now`, when provided, is checked before every
-        event is forwarded — see `forward_subscription`.
+        event is forwarded - see `forward_subscription`.
 
         Callers that need to recheck authorization *after* subscribing but
         *before* forwarding any events (closing the revocation race at
         stream open) should call `open_subscription()` and
         `forward_subscription()` directly instead of this convenience
-        method — see the `/events` route.
+        method - see the `/events` route.
         """
         subscription = await self.open_subscription(roadmap_id)
         async for chunk in forward_subscription(
@@ -375,7 +375,7 @@ EventBus = MemoryEventBus
 
 # Safety-net TTL for a fast-path revocation mark in Redis. This bounds the
 # worst case where a commit failure's compensating `clear()` call itself
-# fails (e.g. a second, independent Redis outage) — the stale mark expires
+# fails (e.g. a second, independent Redis outage) - the stale mark expires
 # on its own rather than blocking the participant's events forever. It is
 # not load-bearing for correctness: the database remains the source of
 # truth for REST reads/writes and for the periodic `is_still_authorized`
@@ -512,11 +512,11 @@ class RedisPubSubEventBus:
         worker holds this participant's connection sees the published
         `participant.revoked` message on the shared channel and closes it.
         `is_participant_revoked_now`, when provided, is checked before every
-        event is forwarded — see `forward_subscription`.
+        event is forwarded - see `forward_subscription`.
 
         Callers that need to recheck authorization *after* subscribing but
         *before* forwarding any events should call `open_subscription()`
-        and `forward_subscription()` directly instead — see the
+        and `forward_subscription()` directly instead - see the
         `/events` route.
         """
         subscription = await self.open_subscription(roadmap_id)

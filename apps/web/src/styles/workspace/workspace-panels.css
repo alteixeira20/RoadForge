@@ -17,7 +17,7 @@
   to { transform: translateX(0); }
 }
 
-/* Panel header — flex row: title area, optional actions, close button */
+/* Panel header - flex row: title area, optional actions, close button */
 .slide-panel .panel-head {
   height: var(--header-h);
   padding: 0 22px;
@@ -60,7 +60,7 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 600px — mobile: full-width panel ──────────────────────────────────── */
+/* ── 600px - mobile: full-width panel ──────────────────────────────────── */
 @media (max-width: 600px) {
   .slide-panel {
     width: 100%;

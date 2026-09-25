@@ -5,7 +5,7 @@ purge. This document is the operator contract for final cleanup of server-side d
 
 The Anvilary-hosted instance is a **demo/reference deployment**. Users should keep JSON
 exports of important roadmaps they control; server history is not a substitute for a
-portable backup. Teams that self-host—especially larger or operationally important teams—
+portable backup. Teams that self-host, especially larger or operationally important teams,
 should choose, document, monitor, and test their own retention and backup lifecycles rather
 than treating the demo operator's defaults as a service guarantee.
 

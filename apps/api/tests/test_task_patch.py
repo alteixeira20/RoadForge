@@ -1,4 +1,4 @@
-"""RF-302 — task planning-field PATCH endpoint and snapshot helper tests."""
+"""RF-302 - task planning-field PATCH endpoint and snapshot helper tests."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 """
-RF-877 — PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}/done tests.
+RF-877 - PATCH /api/roadmaps/{roadmap_id}/tasks/{task_id}/done tests.
 """
 
 from __future__ import annotations

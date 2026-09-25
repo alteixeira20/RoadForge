@@ -314,7 +314,7 @@ function detectCompatibilityWarnings(raw: unknown): CompatibilityWarning[] {
     })
   }
 
-  // C: Missing assignment metadata — only relevant for older-format files
+  // C: Missing assignment metadata - only relevant for older-format files
   const hasOlderFormat = warnings.some((w) => w.code === 'schema_unknown')
   if (hasOlderFormat && Array.isArray(raw.phases)) {
     let hasTasks = false
@@ -429,19 +429,19 @@ function repairTaskRaw(
     t.complexity = DEFAULT_TASK_COMPLEXITY
   }
 
-  // est: optional string — null → remove
+  // est: optional string - null → remove
   if (t.est === null) {
     bump(counts, 'null_optional')
     delete t.est
   }
 
-  // desc: optional string — null → remove
+  // desc: optional string - null → remove
   if (t.desc === null) {
     bump(counts, 'null_optional')
     delete t.desc
   }
 
-  // parentId: optional string — null → remove (stale refs handled in pass 2)
+  // parentId: optional string - null → remove (stale refs handled in pass 2)
   if (t.parentId === null) {
     bump(counts, 'null_optional')
     delete t.parentId
@@ -495,7 +495,7 @@ function repairTaskRaw(
     }
   }
 
-  // claimedBy: optional string — null or non-string → remove
+  // claimedBy: optional string - null or non-string → remove
   if (t.claimedBy !== undefined) {
     if (t.claimedBy === null || typeof t.claimedBy !== 'string') {
       bump(counts, 'null_optional')
@@ -503,7 +503,7 @@ function repairTaskRaw(
     }
   }
 
-  // claimedById: optional string — null or non-string → remove
+  // claimedById: optional string - null or non-string → remove
   if (t.claimedById !== undefined) {
     if (t.claimedById === null || typeof t.claimedById !== 'string') {
       bump(counts, 'null_optional')
@@ -511,7 +511,7 @@ function repairTaskRaw(
     }
   }
 
-  // claimedAt: optional ISO timestamp string — null, non-string, or invalid → remove
+  // claimedAt: optional ISO timestamp string - null, non-string, or invalid → remove
   if (t.claimedAt !== undefined) {
     if (t.claimedAt === null || typeof t.claimedAt !== 'string' || isNaN(Date.parse(t.claimedAt as string))) {
       bump(counts, 'null_optional')
@@ -669,7 +669,7 @@ function repairImportedRoadmap(
       phasesArray = raw.phases as unknown[]
     }
   } else {
-    // Not recoverable at top level — let validator throw
+    // Not recoverable at top level - let validator throw
     return { repairedRaw: raw, repairs: [] }
   }
 
@@ -787,7 +787,7 @@ function tagRegistryFromPayload(value: unknown): {
 /**
  * Validates and returns a clean Phase[] from an unknown import payload.
  * Accepts { phases: [...] } or [...] directly.
- * Throws on any validation failure — caller should catch and show a toast.
+ * Throws on any validation failure - caller should catch and show a toast.
  */
 export function validateImportedPhases(value: unknown): Phase[] {
   let raw: unknown

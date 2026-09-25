@@ -97,7 +97,7 @@ class Settings(BaseSettings):
             raise ValueError("ROADFORGE_REALTIME_BACKEND must be 'memory' or 'redis'")
         return v
 
-    # Base URL of the Next.js frontend — used to build invite link join URLs.
+    # Base URL of the Next.js frontend - used to build invite link join URLs.
     web_base_url: str = Field(default="http://localhost:3020", alias="ROADFORGE_WEB_BASE_URL")
     roadmap_projection_read_enabled: bool = Field(
         default=False,
@@ -144,7 +144,7 @@ def _validate_production_cors_origins(cors_origins: list[str]) -> None:
     The API always sets `allow_credentials=True` because browser realtime
     bootstrap uses a short-lived HttpOnly cookie and session Bearer tokens
     may be sent cross-origin from an explicitly allowed frontend. A wildcard origin
-    combined with credentials must never reach a production deployment —
+    combined with credentials must never reach a production deployment -
     fail fast at startup with a diagnosable error rather than depend on the
     browser to refuse the combination.
     """

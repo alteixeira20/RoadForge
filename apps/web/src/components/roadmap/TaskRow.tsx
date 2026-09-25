@@ -306,7 +306,7 @@ export function TaskRow({
   const statusTitle = taskStatus === 'blocked'
     ? `Blocked by ${blockedBy.length} incomplete ${blockedBy.length === 1 ? 'dependency' : 'dependencies'}`
     : taskStatus === 'in-progress' && claimer
-      ? `In progress — ${claimer}`
+      ? `In progress - ${claimer}`
       : TASK_STATUS_LABELS[taskStatus]
 
   const subtasks = allTasks.filter((t) => t.parentId === task.id)

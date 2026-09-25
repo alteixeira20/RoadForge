@@ -15,15 +15,15 @@ credentials or private roadmap contents as proof artifacts.
 
 The normal PR/release evidence must be green on one exact candidate head:
 
-- **CI** — `make check`, MCP package checks, API lint/syntax/tests, migration drift, real-Redis
+- **CI** - `make check`, MCP package checks, API lint/syntax/tests, migration drift, real-Redis
   revocation tests, dependency audits, production container builds, Compose validation, web
   unit tests, development browser tests, and production browser smoke;
-- **API Locked Validation** — lock drift/export, locked runtime audit, migration drift, full API
+- **API Locked Validation** - lock drift/export, locked runtime audit, migration drift, full API
   tests, and real-Redis revocation tests;
-- **Web CSP Validation** — lint, typecheck, unit tests, Compose validation, and enforced
+- **Web CSP Validation** - lint, typecheck, unit tests, Compose validation, and enforced
   production nonce-CSP/browser tests;
-- **Documentation Contract** — local links, product copy, issue forms, and patch whitespace;
-- **Release Contract** — version/toolchain/release invariants.
+- **Documentation Contract** - local links, product copy, issue forms, and patch whitespace;
+- **Release Contract** - version/toolchain/release invariants.
 
 A green run from an older commit is not evidence for a newer candidate.
 

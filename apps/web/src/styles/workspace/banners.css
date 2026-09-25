@@ -43,13 +43,13 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
-/* ── 760px — banner polish ──────────────────────────────────────────────── */
+/* ── 760px - banner polish ──────────────────────────────────────────────── */
 @media (max-width: 760px) {
   .readonly-banner .who { font-size: 12px; }
   .readonly-banner, .conflict-banner { flex-wrap: wrap; gap: 8px; }
 }
 
-/* ── 600px — mobile: compact banners ───────────────────────────────────── */
+/* ── 600px - mobile: compact banners ───────────────────────────────────── */
 @media (max-width: 600px) {
   .readonly-banner, .conflict-banner { padding: 10px 16px; }
 }

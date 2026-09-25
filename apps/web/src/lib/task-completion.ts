@@ -5,7 +5,7 @@ import type { Task } from '@/types/roadmap'
  * Returns null when completing the task is allowed.
  * Returns the exact toast message string when completion must be blocked.
  *
- * Pure function — no side effects, no mutations.
+ * Pure function - no side effects, no mutations.
  */
 export function getTaskCompletionBlocker(task: Task, allTasks: Task[]): string | null {
   const complexityIssue = getTaskComplexityStructureIssue(task, allTasks)
@@ -44,7 +44,7 @@ export function getTaskCompletionBlocker(task: Task, allTasks: Task[]): string |
   }
 
   if (unfinishedDeps.length === 1) {
-    return `Complete ${unfinishedDeps[0].id} — ${unfinishedDeps[0].title} first.`
+    return `Complete ${unfinishedDeps[0].id} - ${unfinishedDeps[0].title} first.`
   }
 
   const count = unfinishedDeps.length

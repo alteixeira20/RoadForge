@@ -1,6 +1,6 @@
 # Dependency Audit Policy
 
-The current hardening candidate is summarized in [Internet-facing security audit — 2026-08-12](./internet-facing-audit-2026-08-12.md).
+The current hardening candidate is summarized in [Internet-facing security audit - 2026-08-12](./internet-facing-audit-2026-08-12.md).
 
 ## Policy
 

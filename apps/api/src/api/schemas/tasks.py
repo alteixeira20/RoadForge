@@ -1,4 +1,4 @@
-"""Task / Phase / Snapshot DTOs — mirror apps/web/src/types/roadmap.ts."""
+"""Task / Phase / Snapshot DTOs - mirror apps/web/src/types/roadmap.ts."""
 
 from __future__ import annotations
 

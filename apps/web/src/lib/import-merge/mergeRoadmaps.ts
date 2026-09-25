@@ -12,16 +12,16 @@ function fmtBool(v: boolean, trueLabel: string, falseLabel: string): string {
 }
 
 function fmtList(items: string[]): string {
-  return items.length > 0 ? items.join(', ') : '—'
+  return items.length > 0 ? items.join(', ') : '-'
 }
 
 function fmtClaim(task: Task): string {
-  if (!task.claimedBy) return '—'
+  if (!task.claimedBy) return '-'
   return task.claimedAt ? `${task.claimedBy} since ${task.claimedAt}` : task.claimedBy
 }
 
 function fmtLinks(task: Task): string {
-  return (task.links ?? []).map((link) => link.label ?? link.url).join(', ') || '—'
+  return (task.links ?? []).map((link) => link.label ?? link.url).join(', ') || '-'
 }
 
 function claimFieldsMatch(a: Task, b: Task): boolean {
@@ -44,10 +44,10 @@ function computeTaskFieldDiffs(a: Task, b: Task): TaskFieldDiff[] {
     diffs.push({ field: 'next', current: fmtBool(a.next ?? false, 'yes', 'no'), imported: fmtBool(b.next ?? false, 'yes', 'no') })
   }
   if ((a.est ?? '') !== (b.est ?? '')) {
-    diffs.push({ field: 'est', current: a.est ?? '—', imported: b.est ?? '—' })
+    diffs.push({ field: 'est', current: a.est ?? '-', imported: b.est ?? '-' })
   }
   if ((a.desc ?? '') !== (b.desc ?? '')) {
-    diffs.push({ field: 'desc', current: a.desc ? '(has description)' : '—', imported: b.desc ? '(has description)' : '—' })
+    diffs.push({ field: 'desc', current: a.desc ? '(has description)' : '-', imported: b.desc ? '(has description)' : '-' })
   }
   if (JSON.stringify(a.tags ?? []) !== JSON.stringify(b.tags ?? [])) {
     diffs.push({ field: 'tags', current: fmtList(a.tags ?? []), imported: fmtList(b.tags ?? []) })
@@ -99,7 +99,7 @@ function buildIdCollisionConflict(
     importedTitle: importedTask.title,
     currentId: existingById.task.id,
     phaseName: importedPhase.name,
-    message: `Task ID "${importedTask.id}" already exists in another phase — skipped.`,
+    message: `Task ID "${importedTask.id}" already exists in another phase - skipped.`,
     fieldDiffs: [{
       field: 'phase',
       current: existingById.phase.name,
@@ -119,7 +119,7 @@ export interface SafeMergeResult {
 // - Matched entities are never overwritten.
 // - Field differences on matched tasks are recorded as conflicts and skipped.
 // - Stale deps/parentId in added tasks are pruned after merge.
-// - Tag registries are merged (safe-additions only — existing tags preserved).
+// - Tag registries are merged (safe-additions only - existing tags preserved).
 export function applySafeAdditions(
   current: Phase[],
   imported: Phase[],
@@ -165,7 +165,7 @@ export function applySafeAdditions(
               importedTitle: importedTask.title,
               currentId: currentTaskEntry.task.id,
               phaseName: importedPhase.name,
-              message: `Task "${importedTask.title}" exists with different fields — skipped.`,
+              message: `Task "${importedTask.title}" exists with different fields - skipped.`,
               fieldDiffs,
             })
           }

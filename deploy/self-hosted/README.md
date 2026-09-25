@@ -2,7 +2,7 @@
 
 This deployment is the maintained **reference self-hosted topology** for RoadForge. The
 public Anvilary instance at `roadforge.anvilary.tools` is a hosted demo/reference deployment;
-teams that depend on RoadForge operationally—especially larger teams—should fork the
+teams that depend on RoadForge operationally, especially larger teams, should fork the
 repository or maintain a controlled clone and run infrastructure they control.
 
 This stack targets `roadforge.anvilary.tools` as the reference hostname with Docker Compose,

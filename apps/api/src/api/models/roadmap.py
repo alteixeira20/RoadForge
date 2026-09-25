@@ -19,7 +19,7 @@ class Roadmap(Base):
     id: Mapped[str] = mapped_column(sa.String, primary_key=True)
     name: Mapped[str] = mapped_column(sa.Text, nullable=False)
     owner_display_name: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    # Full phases snapshot stored as JSONB — shape: {"phases": [...]}
+    # Full phases snapshot stored as JSONB - shape: {"phases": [...]}
     snapshot_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     schema_version: Mapped[str] = mapped_column(sa.String(16), nullable=False, server_default="1.0")
     is_password_enabled: Mapped[bool] = mapped_column(

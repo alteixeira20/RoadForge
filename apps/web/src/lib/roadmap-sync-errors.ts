@@ -46,7 +46,7 @@ export function formatValidationMessage(errors: ApiValidationDetail[]): string {
   if (TAG_ID_PATH_RE.test(path) && first.type === 'string_pattern_mismatch') {
     return 'Save rejected: a tag ID uses unsupported characters. Tag IDs may only contain letters, numbers, hyphens, underscores, and colons.'
   }
-  return path ? `Save rejected: ${path} — ${first.msg}` : `Save rejected: ${first.msg}`
+  return path ? `Save rejected: ${path} - ${first.msg}` : `Save rejected: ${first.msg}`
 }
 
 export function getRoadmapErrorStatus(error: unknown): number | null {
@@ -93,7 +93,7 @@ function getRoadmapSaveErrorKind(
   if (isRoadmapSessionExpiredError(error)) return 'session-expired'
   if (status === 401) return 'unauthorized'
   if (status === 403) return 'forbidden'
-  // A 422 is a validation failure, never a connection problem — check this
+  // A 422 is a validation failure, never a connection problem - check this
   // before isApiConnectionError so it can never be misreported as offline.
   if (status === 422) return 'validation'
   if (isApiConnectionError(error)) return 'connection'

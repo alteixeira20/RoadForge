@@ -1,5 +1,5 @@
 """
-RF-1901 — Roadmap PUT /api/roadmaps/{roadmap_id} tests.
+RF-1901 - Roadmap PUT /api/roadmaps/{roadmap_id} tests.
 
 Groups:
   A  Role restrictions on PUT
@@ -52,7 +52,7 @@ async def _rotate_link(
     return resp.json()["url"]
 
 
-# ─── Group A — Role restrictions on PUT ──────────────────────────────────────
+# ─── Group A - Role restrictions on PUT ──────────────────────────────────────
 
 
 async def test_viewer_cannot_put_roadmap(client: AsyncClient):
@@ -90,7 +90,7 @@ async def test_editor_can_put_roadmap(client: AsyncClient):
     assert resp.json()["name"] == "Editor Renamed"
 
 
-# ─── Group B — Validation rejections ─────────────────────────────────────────
+# ─── Group B - Validation rejections ─────────────────────────────────────────
 
 
 async def test_put_roadmap_requires_last_updated_at(client: AsyncClient):
@@ -123,7 +123,7 @@ async def test_put_roadmap_rejects_unknown_change_summary_action(client: AsyncCl
     assert resp.status_code == 422
 
 
-# ─── Group C — Owner update success paths ────────────────────────────────────
+# ─── Group C - Owner update success paths ────────────────────────────────────
 
 
 async def test_owner_can_update_roadmap_name(client: AsyncClient):

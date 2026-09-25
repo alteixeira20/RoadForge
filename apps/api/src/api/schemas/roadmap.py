@@ -1,4 +1,4 @@
-"""Schema barrel — re-exports all domain schemas for backward compatibility.
+"""Schema barrel - re-exports all domain schemas for backward compatibility.
 
 All schema classes live in their domain modules. This module provides a
 single import surface so existing code continues to work unchanged.

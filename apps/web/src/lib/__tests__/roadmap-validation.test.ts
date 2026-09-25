@@ -107,7 +107,7 @@ describe('roadmap-validation', () => {
       const raw = JSON.parse(input) as { meta: { phaseCount: number; taskCount: number } }
       const result = parseImportedRoadmapJson(input)
 
-      // The roadmap's own declared counts are the source of truth here — not
+      // The roadmap's own declared counts are the source of truth here - not
       // a hand-maintained number that goes stale every time the canonical
       // roadmap is updated. This asserts the parser's output stays
       // internally consistent with what the file itself declares.
@@ -138,7 +138,7 @@ describe('roadmap-validation', () => {
       expect(new Set(phaseIds).size).toBe(phaseIds.length)
       expect(taskIdSet.size).toBe(taskIds.length)
       // Exactly one task is ever "next", and it must be a real, resolvable
-      // task ID — not a specific RF number, which moves every time the
+      // task ID - not a specific RF number, which moves every time the
       // roadmap advances.
       const nextTasks = tasks.filter((task) => task.next)
       expect(nextTasks).toHaveLength(1)
