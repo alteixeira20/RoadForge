@@ -79,33 +79,54 @@ async def get_events(
     if not event_ticket:
         raise HTTPException(status_code=401, detail="Invalid or expired event ticket")
 
-    if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
-        raise HTTPException(status_code=401, detail="Session revoked")
-
     try:
-        stream_lease = await realtime_stream_registry.acquire(
-            roadmap_id, event_ticket.participant_id
-        )
-    except RealtimeStreamLimitUnavailableError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Realtime stream limit temporarily unavailable",
-        ) from exc
-    if stream_lease is None:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many active realtime streams for this participant",
-        )
+        if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
+            raise HTTPException(status_code=401, detail="Session revoked")
 
-    try:
-        subscription = await event_bus.open_subscription(roadmap_id)
-    except Exception:
-        await stream_lease.release()
-        raise
-    if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
-        await subscription.close()
-        await stream_lease.release()
-        raise HTTPException(status_code=401, detail="Session revoked")
+        try:
+            stream_lease = await realtime_stream_registry.acquire(
+                roadmap_id, event_ticket.participant_id
+            )
+        except RealtimeStreamLimitUnavailableError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Realtime stream limit temporarily unavailable",
+            ) from exc
+        if stream_lease is None:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many active realtime streams for this participant",
+            )
+
+        lease_released = False
+
+        async def _safe_release_lease() -> None:
+            nonlocal lease_released
+            if not lease_released:
+                lease_released = True
+                await stream_lease.release()
+
+        subscription_closed = False
+
+        async def _safe_close_subscription() -> None:
+            nonlocal subscription_closed
+            if not subscription_closed and subscription is not None:
+                subscription_closed = True
+                await subscription.close()
+
+        subscription = None
+        setup_successful = False
+        try:
+            subscription = await event_bus.open_subscription(roadmap_id)
+            if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
+                raise HTTPException(status_code=401, detail="Session revoked")
+            setup_successful = True
+        finally:
+            if not setup_successful:
+                await _safe_close_subscription()
+                await _safe_release_lease()
+    finally:
+        await db.close()
 
     async def _is_still_authorized() -> bool:
         if not await stream_lease.refresh():
@@ -131,7 +152,8 @@ async def get_events(
             ):
                 yield chunk
         finally:
-            await stream_lease.release()
+            await _safe_close_subscription()
+            await _safe_release_lease()
 
     stream_response = StreamingResponse(
         _bounded_stream(),
