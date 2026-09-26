@@ -34,7 +34,7 @@ import {
   type RealtimePhaseField,
   type RealtimeRoadmapField,
 } from '@/lib/realtime-structure-merge'
-import { isOlderServerRevision } from '@/lib/server-revision'
+import { isNewerServerRevision, isOlderServerRevision } from '@/lib/server-revision'
 import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import {
@@ -113,7 +113,10 @@ export interface UseRoadmapRealtimeReturn {
 
 interface RealtimeRefreshRequest {
   full: boolean
+  isResync: boolean
+  maxEventUpdatedAt: string | null
   taskIds: Set<string>
+  taskFields: Map<string, Set<string>>
   createdTaskIds: Set<string>
   deletedTaskIds: Set<string>
   taskOrderScopes: Map<string, RealtimeTaskOrderScope>
@@ -129,10 +132,13 @@ function taskOrderScopeKey(phaseId: string, parentId: string | null): string {
   return `${phaseId}\u0000${parentId ?? ''}`
 }
 
-function createRefreshRequest(full = false): RealtimeRefreshRequest {
+function createRefreshRequest(full = false, isResync = false): RealtimeRefreshRequest {
   return {
     full,
+    isResync,
+    maxEventUpdatedAt: null,
     taskIds: new Set(),
+    taskFields: new Map(),
     createdTaskIds: new Set(),
     deletedTaskIds: new Set(),
     taskOrderScopes: new Map(),
@@ -146,7 +152,12 @@ function createRefreshRequest(full = false): RealtimeRefreshRequest {
 function cloneRefreshRequest(request: RealtimeRefreshRequest): RealtimeRefreshRequest {
   return {
     full: request.full,
+    isResync: request.isResync,
+    maxEventUpdatedAt: request.maxEventUpdatedAt,
     taskIds: new Set(request.taskIds),
+    taskFields: new Map(
+      [...request.taskFields].map(([taskId, fields]) => [taskId, new Set(fields)]),
+    ),
     createdTaskIds: new Set(request.createdTaskIds),
     deletedTaskIds: new Set(request.deletedTaskIds),
     taskOrderScopes: new Map(request.taskOrderScopes),
@@ -164,7 +175,13 @@ function mergeRefreshRequest(
   source: RealtimeRefreshRequest,
 ): void {
   target.full ||= source.full
+  target.isResync ||= source.isResync
   target.phaseOrderChanged ||= source.phaseOrderChanged
+  if (source.maxEventUpdatedAt) {
+    if (!target.maxEventUpdatedAt || isNewerServerRevision(source.maxEventUpdatedAt, target.maxEventUpdatedAt)) {
+      target.maxEventUpdatedAt = source.maxEventUpdatedAt
+    }
+  }
   source.taskIds.forEach((taskId) => target.taskIds.add(taskId))
   source.createdTaskIds.forEach((taskId) => target.createdTaskIds.add(taskId))
   source.deletedTaskIds.forEach((taskId) => target.deletedTaskIds.add(taskId))
@@ -175,6 +192,11 @@ function mergeRefreshRequest(
     const targetFields = target.phaseFields.get(phaseId) ?? new Set<RealtimePhaseField>()
     fields.forEach((field) => targetFields.add(field))
     target.phaseFields.set(phaseId, targetFields)
+  }
+  for (const [taskId, fields] of source.taskFields) {
+    const targetFields = target.taskFields.get(taskId) ?? new Set<string>()
+    fields.forEach((field) => targetFields.add(field))
+    target.taskFields.set(taskId, targetFields)
   }
 }
 
@@ -192,7 +214,8 @@ function hasScopedRefresh(request: RealtimeRefreshRequest): boolean {
 function refreshRequestFromEvent(
   payload: RoadmapUpdatedEventPayload,
 ): RealtimeRefreshRequest | null {
-  const request = createRefreshRequest(false)
+  const request = createRefreshRequest(false, false)
+  request.maxEventUpdatedAt = payload.updated_at
 
   if (payload.task_operation === 'created') {
     if (payload.task_id) request.createdTaskIds.add(payload.task_id)
@@ -214,6 +237,24 @@ function refreshRequestFromEvent(
     }
   } else if (payload.task_id) {
     request.taskIds.add(payload.task_id)
+    const taskFields = new Set<string>()
+    if (payload.action === 'task.completed' || payload.action === 'task.reopened') {
+      taskFields.add('done')
+      taskFields.add('claimedBy')
+      taskFields.add('claimedById')
+      taskFields.add('claimedAt')
+    } else if (payload.action === 'task.claimed' || payload.action === 'task.unclaimed') {
+      taskFields.add('claimedBy')
+      taskFields.add('claimedById')
+      taskFields.add('claimedAt')
+    } else if (payload.changed_fields?.length && !payload.phase_id) {
+      for (const field of payload.changed_fields) {
+        taskFields.add(field)
+      }
+    }
+    if (taskFields.size > 0) {
+      request.taskFields.set(payload.task_id, taskFields)
+    }
   }
 
   if (payload.phase_operation === 'created' || payload.phase_operation === 'deleted') {
@@ -237,6 +278,20 @@ function refreshRequestFromEvent(
   }
 
   return hasScopedRefresh(request) ? request : null
+}
+
+function eventDedupeKey(payload: RoadmapUpdatedEventPayload): string {
+  return [
+    payload.updated_at,
+    payload.participant_id,
+    payload.action ?? '',
+    payload.task_operation ?? '',
+    payload.phase_operation ?? '',
+    payload.task_id ?? (payload.task_ids ? payload.task_ids.join(',') : ''),
+    payload.phase_id ?? (payload.phase_ids ? payload.phase_ids.join(',') : ''),
+    payload.changed_fields ? payload.changed_fields.join(',') : '',
+    payload.roadmap_fields ? payload.roadmap_fields.join(',') : '',
+  ].join(':')
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -337,6 +392,7 @@ export function useRoadmapRealtime({
       // if a dirty draft later prevents full replacement, the safe scopes are
       // still eligible to rebase.
       pendingRequest: RealtimeRefreshRequest | null
+      seenEventKeys: Set<string>
     }
 
     let currentAttempt: ConnectionAttempt | null = null
@@ -539,6 +595,7 @@ export function useRoadmapRealtime({
             nextPhases,
             loaded.phases,
             effectiveTaskIds,
+            request.taskFields,
           )
           if (!mergedTasks) return 'unreconciled'
           nextPhases = mergedTasks
@@ -570,27 +627,27 @@ export function useRoadmapRealtime({
         nextRoadmapName = loaded.roadmap.name
       }
 
-      if (
-        request.taskIds.size > 0
-        || request.createdTaskIds.size > 0
-        || request.deletedTaskIds.size > 0
-        || request.taskOrderScopes.size > 0
-        || request.phaseFields.size > 0
-        || request.phaseStructureIds.size > 0
-        || request.phaseOrderChanged
-      ) {
+      const phasesChanged = nextPhases !== localBeforeStructure
+      const roadmapNameChanged = request.roadmapFields.has('name') && nextRoadmapName !== cached.roadmapName
+      const updatedAtChanged = loaded.updatedAt !== cached.updatedAt
+
+      if (phasesChanged) {
         setPhasesState(nextPhases)
       }
-      if (request.roadmapFields.has('name')) {
+      if (roadmapNameChanged) {
         setRoadmapNameState(nextRoadmapName)
       }
-      setUpdatedAtState(loaded.updatedAt)
-      storage.setRoadmapCache(activeId, {
-        ...cached,
-        roadmapName: nextRoadmapName,
-        phases: nextPhases,
-        updatedAt: loaded.updatedAt,
-      })
+      if (updatedAtChanged) {
+        setUpdatedAtState(loaded.updatedAt)
+      }
+      if (phasesChanged || roadmapNameChanged || updatedAtChanged) {
+        storage.setRoadmapCache(activeId, {
+          ...cached,
+          roadmapName: nextRoadmapName,
+          phases: nextPhases,
+          updatedAt: loaded.updatedAt,
+        })
+      }
       return 'applied'
     }
 
@@ -616,7 +673,9 @@ export function useRoadmapRealtime({
       request: RealtimeRefreshRequest,
     ) => {
       attempt.refreshInFlight = true
-      setRealtimeStatus('updating')
+      if (request.isResync) {
+        setRealtimeStatus('updating')
+      }
       const controller = new AbortController()
       attempt.refreshController = controller
       const timeoutId = setTimeout(() => controller.abort(), AUTHORITATIVE_REFRESH_TIMEOUT_MS)
@@ -707,6 +766,7 @@ export function useRoadmapRealtime({
         refreshInFlight: false,
         refreshController: null,
         pendingRequest: null,
+        seenEventKeys: new Set(),
       }
       currentAttempt = attempt
       clearRetryTimer()
@@ -737,11 +797,27 @@ export function useRoadmapRealtime({
           onOpen: () => {
             if (!isCurrentAttempt(attempt)) return
             connecting = false
-            requestAuthoritativeRefresh(attempt, createRefreshRequest(true))
+            requestAuthoritativeRefresh(attempt, createRefreshRequest(true, true))
           },
           onUpdated: (payload) => {
             if (payload.participant_id === participantId) return
             if (!isCurrentAttempt(attempt)) return
+
+            // Deduplicate exact duplicate events on this connection
+            const key = eventDedupeKey(payload)
+            if (attempt.seenEventKeys.has(key)) return
+            attempt.seenEventKeys.add(key)
+            if (attempt.seenEventKeys.size > 100) {
+              const firstKey = attempt.seenEventKeys.values().next().value
+              if (firstKey) attempt.seenEventKeys.delete(firstKey)
+            }
+
+            // Drop delayed or out-of-order events if local cache has already
+            // incorporated a strictly newer server revision.
+            const currentRevision = activeCache()?.cache.updatedAt ?? null
+            if (currentRevision !== null && isOlderServerRevision(payload.updated_at, currentRevision)) {
+              return
+            }
 
             // Focused task fields/structure, phase fields/structure, and
             // roadmap-name operations carry enough metadata to rebase only
@@ -760,7 +836,7 @@ export function useRoadmapRealtime({
             // mutation surfaces are converted to focused server operations.
             if (savedRef.current === false) return
 
-            requestAuthoritativeRefresh(attempt, createRefreshRequest(true))
+            requestAuthoritativeRefresh(attempt, createRefreshRequest(true, false))
           },
           onLockAcquired: (payload) => {
             if (!isCurrentAttempt(attempt)) return

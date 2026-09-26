@@ -1,4 +1,4 @@
-import { normalizePhasesProgress } from '@/lib/phase-progress'
+import { normalizePhaseProgress, normalizePhasesProgress } from '@/lib/phase-progress'
 import {
   addTaskToPhase,
   orderDirectSubtasksByPreference,
@@ -23,21 +23,36 @@ function withoutDeletedTasks(
 ): Phase[] {
   if (deletedTaskIds.size === 0) return phases
 
-  return normalizePhasesProgress(phases.map((phase) => ({
-    ...phase,
-    tasks: phase.tasks
-      .filter((task) => !deletedTaskIds.has(task.id))
-      .map((task) => {
-        const nextDeps = (task.deps ?? []).filter((taskId) => !deletedTaskIds.has(taskId))
-        const parentDeleted = task.parentId ? deletedTaskIds.has(task.parentId) : false
-        if (!parentDeleted && nextDeps.length === (task.deps ?? []).length) return task
+  let anyPhaseChanged = false
+  const nextPhases = phases.map((phase) => {
+    const hasDeletedTask = phase.tasks.some((task) => deletedTaskIds.has(task.id))
+    const hasAffectedDepOrParent = phase.tasks.some((task) =>
+      Boolean(
+        (task.parentId && deletedTaskIds.has(task.parentId)) ||
+        (task.deps && task.deps.some((depId) => deletedTaskIds.has(depId))),
+      ),
+    )
+    if (!hasDeletedTask && !hasAffectedDepOrParent) return phase
 
-        const nextTask = parentDeleted ? withoutParent(task) : task
-        return nextDeps.length === (task.deps ?? []).length
-          ? nextTask
-          : { ...nextTask, deps: nextDeps }
-      }),
-  })))
+    anyPhaseChanged = true
+    return normalizePhaseProgress({
+      ...phase,
+      tasks: phase.tasks
+        .filter((task) => !deletedTaskIds.has(task.id))
+        .map((task) => {
+          const nextDeps = (task.deps ?? []).filter((taskId) => !deletedTaskIds.has(taskId))
+          const parentDeleted = task.parentId ? deletedTaskIds.has(task.parentId) : false
+          if (!parentDeleted && nextDeps.length === (task.deps ?? []).length) return task
+
+          const nextTask = parentDeleted ? withoutParent(task) : task
+          return nextDeps.length === (task.deps ?? []).length
+            ? nextTask
+            : { ...nextTask, deps: nextDeps }
+        }),
+    })
+  })
+
+  return anyPhaseChanged ? nextPhases : phases
 }
 
 function taskLocation(
@@ -152,6 +167,13 @@ export function mergeAuthoritativeTaskStructureIntoLocalPhases(
     const ordered = applyAuthoritativeOrder(nextPhases, serverPhases, scope)
     if (!ordered) return null
     nextPhases = ordered
+  }
+
+  if (
+    nextPhases.length === localPhases.length &&
+    nextPhases.every((p, i) => p === localPhases[i])
+  ) {
+    return localPhases
   }
 
   return normalizePhasesProgress(nextPhases)

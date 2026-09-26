@@ -44,18 +44,27 @@ export function mergeAuthoritativePhaseFieldsIntoLocalPhases(
     if (!localById.has(phaseId) || !serverById.has(phaseId)) return null
   }
 
+  let anyPhaseChanged = false
   const nextPhases = localPhases.map((phase) => {
     const fields = phaseFields.get(phase.id)
     if (!fields || fields.size === 0) return phase
     const authoritative = serverById.get(phase.id)
     if (!authoritative) return phase
 
+    let changed = false
     const nextPhase = { ...phase }
     for (const field of fields) {
-      Object.assign(nextPhase, { [field]: authoritative[field] })
+      if (nextPhase[field] !== authoritative[field]) {
+        changed = true
+        Object.assign(nextPhase, { [field]: authoritative[field] })
+      }
     }
+    if (!changed) return phase
+
+    anyPhaseChanged = true
     return nextPhase
   })
 
+  if (!anyPhaseChanged) return localPhases
   return normalizePhasesProgress(nextPhases)
 }
