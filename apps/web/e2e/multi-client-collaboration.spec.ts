@@ -281,7 +281,7 @@ test.describe('Real Multi-Client Browser Collaboration', () => {
       await expect(settingsBtn).toBeVisible({ timeout: 5_000 })
       await settingsBtn.click()
 
-      const deleteBtn = ownerPage.getByRole('button', { name: /Delete phase/i })
+      const deleteBtn = ownerPage.getByRole('menuitem', { name: /Delete phase/i })
       await expect(deleteBtn).toBeVisible({ timeout: 3_000 })
       await deleteBtn.click()
 
