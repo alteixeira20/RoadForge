@@ -17,6 +17,7 @@ interface AutoSyncParams {
   updatedAt: string | null
   pendingActivityChanges: ActivityChange[]
   partialWriteInFlight: boolean
+  manualSaveInFlight?: boolean
   showActivity: boolean
   onSyncSuccess: (
     updatedAt: string,
@@ -38,6 +39,7 @@ interface AutoSyncResult {
   setIsConflict: (v: boolean) => void
   setConflictMetadata: (v: RoadmapConflictMetadata | null) => void
   syncStatus: SyncStatus
+  waitForSync: () => Promise<void>
 }
 
 export function useAutoSync({
@@ -51,6 +53,7 @@ export function useAutoSync({
   updatedAt,
   pendingActivityChanges,
   partialWriteInFlight,
+  manualSaveInFlight = false,
   showActivity,
   onSyncSuccess,
   onActivityRefresh,
@@ -67,6 +70,7 @@ export function useAutoSync({
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Ref prevents concurrent autosync calls without adding isSyncing to effect deps
   const isSyncingRef = useRef(false)
+  const activeSyncResolversRef = useRef<Array<() => void>>([])
   // Bumped whenever any shared roadmap data changes, so an in-flight request
   // cannot mark a newer phase, name, or tag edit as already saved.
   const revisionRef = useRef(0)
@@ -82,6 +86,7 @@ export function useAutoSync({
     sessionToken,
     saved,
     partialWriteInFlight,
+    manualSaveInFlight,
     showActivity,
     onSyncSuccess,
     onActivityRefresh,
@@ -101,6 +106,7 @@ export function useAutoSync({
     sessionToken,
     saved,
     partialWriteInFlight,
+    manualSaveInFlight,
     showActivity,
     onSyncSuccess,
     onActivityRefresh,
@@ -109,11 +115,18 @@ export function useAutoSync({
     onConflictMetadata,
   }
 
+  const waitForSync = () => {
+    if (!isSyncingRef.current) return Promise.resolve()
+    return new Promise<void>((resolve) => {
+      activeSyncResolversRef.current.push(resolve)
+    })
+  }
+
   useEffect(() => {
     if (saved) setHasSaveError(false)
   }, [saved])
 
-  // ─── Debounced autosync for server-backed roadmaps ─────────────────────────
+  // Debounced autosync for server-backed roadmaps
   useEffect(() => {
     const previous = lastEditedSnapshotRef.current
     if (
@@ -126,7 +139,7 @@ export function useAutoSync({
     }
 
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
-    if (!serverRoadmapId || !sessionToken || readOnly || saved || partialWriteInFlight) return
+    if (!serverRoadmapId || !sessionToken || readOnly || saved || partialWriteInFlight || manualSaveInFlight) return
 
     const requestRevision = revisionRef.current
     let cancelled = false
@@ -134,6 +147,9 @@ export function useAutoSync({
     const runSync = async () => {
       if (isSyncingRef.current) {
         if (!cancelled) syncTimerRef.current = setTimeout(runSync, 250)
+        return
+      }
+      if (syncParamsRef.current.manualSaveInFlight) {
         return
       }
       isSyncingRef.current = true
@@ -150,6 +166,7 @@ export function useAutoSync({
         sessionToken: tok,
         saved: currentSaved,
         partialWriteInFlight: currentPartialWriteInFlight,
+        manualSaveInFlight: currentManualSaveInFlight,
         showActivity: showAct,
         onSyncSuccess: syncSuccess,
         onActivityRefresh: activityRefresh,
@@ -158,14 +175,20 @@ export function useAutoSync({
         onConflictMetadata: openConflict,
       } = syncParamsRef.current
 
-      if (!rid || !tok || currentSaved || currentPartialWriteInFlight) {
+      if (!rid || !tok || currentSaved || currentPartialWriteInFlight || currentManualSaveInFlight) {
         isSyncingRef.current = false
         setIsSyncing(false)
+        const resolvers = activeSyncResolversRef.current
+        activeSyncResolversRef.current = []
+        resolvers.forEach((r) => r())
         return
       }
       if (!ua) {
         isSyncingRef.current = false
         setIsSyncing(false)
+        const resolvers = activeSyncResolversRef.current
+        activeSyncResolversRef.current = []
+        resolvers.forEach((r) => r())
         setIsOffline(true)
         toast('Reload the server roadmap before saving again')
         return
@@ -174,13 +197,22 @@ export function useAutoSync({
       const changeSummary = buildChangeSummary(pac, rid)
       try {
         const data = await saveToServer(rid, n, p, tok, ua, changeSummary, tr)
-        syncSuccess(data.updated_at, requestRevision === revisionRef.current, pac)
+        if (syncParamsRef.current.serverRoadmapId !== rid) {
+          return
+        }
+        const isCurrent = requestRevision === revisionRef.current
+        syncSuccess(data.updated_at, isCurrent, pac)
         setIsOffline(false)
-        setIsConflict(false)
+        if (isCurrent) {
+          setIsConflict(false)
+          setConflictMetadata(null)
+        }
         setHasSaveError(false)
-        setConflictMetadata(null)
         if (showAct) activityRefresh()
       } catch (err) {
+        if (syncParamsRef.current.serverRoadmapId !== rid) {
+          return
+        }
         const {
           kind,
           conflictMetadata: nextConflict,
@@ -216,6 +248,9 @@ export function useAutoSync({
       } finally {
         isSyncingRef.current = false
         setIsSyncing(false)
+        const resolvers = activeSyncResolversRef.current
+        activeSyncResolversRef.current = []
+        resolvers.forEach((r) => r())
       }
     }
 
@@ -232,6 +267,7 @@ export function useAutoSync({
     readOnly,
     saved,
     partialWriteInFlight,
+    manualSaveInFlight,
     phases,
     roadmapName,
     tagRegistry,
@@ -260,5 +296,6 @@ export function useAutoSync({
     setIsConflict,
     setConflictMetadata,
     syncStatus,
+    waitForSync,
   }
 }

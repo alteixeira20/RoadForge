@@ -229,14 +229,21 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     if (id && currentActiveId && currentActiveId !== id) {
       // Migrate from local draft to server ID
       const rc = storage.getRoadmapCache(currentActiveId)
-      if (rc) storage.setRoadmapCache(id, rc)
       const ac = storage.getAuthCache(currentActiveId)
-      if (ac) storage.setAuthCache(id, ac)
+      let writeSuccess = true
+      if (rc) {
+        writeSuccess = storage.setRoadmapCache(id, rc) && storage.getRoadmapCache(id) !== null
+      }
+      if (ac && writeSuccess) {
+        writeSuccess = storage.setAuthCache(id, ac) && storage.getAuthCache(id) !== null
+      }
 
-      storage.clearRoadmapStorage(currentActiveId)
-      storage.setActiveRoadmapId(id)
-      storage.setLastRoadmapId(id)
-      setActiveRoadmapIdState(id)
+      if (writeSuccess) {
+        storage.clearRoadmapStorage(currentActiveId)
+        storage.setActiveRoadmapId(id)
+        storage.setLastRoadmapId(id)
+        setActiveRoadmapIdState(id)
+      }
     }
 
     const targetId = storage.getActiveRoadmapId()

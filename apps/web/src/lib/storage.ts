@@ -125,14 +125,16 @@ function reportStorageWriteFailure(key: string, error: unknown): void {
   ))
 }
 
-function setLocal(key: string, value: string): void {
-  if (typeof window === 'undefined') return
+function setLocal(key: string, value: string): boolean {
+  if (typeof window === 'undefined') return false
   try {
     window.localStorage.setItem(key, value)
+    return true
   } catch (error) {
     // Local storage is canonical for browser-only roadmaps. Never represent a
     // rejected write as success: notify the UI without exposing the key or data.
     reportStorageWriteFailure(key, error)
+    return false
   }
 }
 
@@ -212,8 +214,8 @@ export const storage = {
       return null
     }
   },
-  setRoadmapCache(id: string, cache: RoadmapCache): void {
-    setLocal(`rf:roadmap:${id}`, JSON.stringify(cache))
+  setRoadmapCache(id: string, cache: RoadmapCache): boolean {
+    return setLocal(`rf:roadmap:${id}`, JSON.stringify(cache))
   },
 
   getAuthCache(id: string): AuthCache | null {
@@ -225,9 +227,12 @@ export const storage = {
       return null
     }
   },
-  setAuthCache(id: string, auth: AuthCache | null): void {
-    if (!auth) removeLocal(`rf:auth:${id}`)
-    else setLocal(`rf:auth:${id}`, JSON.stringify(auth))
+  setAuthCache(id: string, auth: AuthCache | null): boolean {
+    if (!auth) {
+      removeLocal(`rf:auth:${id}`)
+      return true
+    }
+    return setLocal(`rf:auth:${id}`, JSON.stringify(auth))
   },
 
   clearRoadmapCache(id: string): void {
@@ -369,7 +374,13 @@ export const storage = {
       updatedAt,
       isPasswordEnabled,
     }
-    this.setRoadmapCache(newId, roadmapCache)
+    const roadmapWritten = this.setRoadmapCache(newId, roadmapCache)
+    const verifiedRoadmap = this.getRoadmapCache(newId)
+
+    if (!roadmapWritten || !verifiedRoadmap) {
+      // Storage write failed (quota exceeded or blocked). Preserve legacy data!
+      return null
+    }
 
     if (serverRoadmapId) {
       const sessionToken = getLocal(LEGACY_KEYS.sessionToken)
@@ -384,14 +395,19 @@ export const storage = {
           participantId,
           role,
         }
-        this.setAuthCache(serverRoadmapId, authCache)
+        const authWritten = this.setAuthCache(serverRoadmapId, authCache)
+        const verifiedAuth = this.getAuthCache(serverRoadmapId)
+        if (!authWritten || !verifiedAuth || verifiedAuth.sessionToken !== sessionToken) {
+          // Auth write failed. Preserve legacy credentials!
+          return null
+        }
       }
     }
 
     this.setActiveRoadmapId(newId)
     this.setLastRoadmapId(newId)
 
-    // Clear legacy keys
+    // Clear legacy keys only after confirmed successful write and readback
     Object.values(LEGACY_KEYS).forEach(removeLocal)
 
     return newId

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRoadmapData } from '@/context/RoadmapContext'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { createRoadmap, getRoadmap, saveToServer } from '@/services/roadmap-crud.service'
@@ -72,6 +72,44 @@ export function useSaveFlow({
   const [confirmReload, setConfirmReload] = useState(false)
   const [showConflictReview, setShowConflictReview] = useState(false)
   const [keepLocalLoading, setKeepLocalLoading] = useState(false)
+  const [manualSaveInFlight, setManualSaveInFlight] = useState(false)
+  const manualSaveInFlightRef = useRef(false)
+
+  const revisionRef = useRef(0)
+  const lastEditedSnapshotRef = useRef({ phases, roadmapName, tagRegistry })
+  useEffect(() => {
+    const previous = lastEditedSnapshotRef.current
+    if (
+      phases !== previous.phases
+      || roadmapName !== previous.roadmapName
+      || tagRegistry !== previous.tagRegistry
+    ) {
+      revisionRef.current += 1
+      lastEditedSnapshotRef.current = { phases, roadmapName, tagRegistry }
+    }
+  }, [phases, roadmapName, tagRegistry])
+
+  const updatedAtRef = useRef(updatedAt)
+  updatedAtRef.current = updatedAt
+
+  const serverRoadmapIdRef = useRef(serverRoadmapId)
+  serverRoadmapIdRef.current = serverRoadmapId
+
+  const savedRef = useRef(saved)
+  savedRef.current = saved
+
+  const safeSetUpdatedAt = useCallback((next: string) => {
+    const current = updatedAtRef.current
+    if (!current) {
+      setUpdatedAt(next)
+      return
+    }
+    const nextTime = new Date(next).getTime()
+    const currentTime = new Date(current).getTime()
+    if (isNaN(nextTime) || isNaN(currentTime) || nextTime >= currentTime) {
+      setUpdatedAt(next)
+    }
+  }, [setUpdatedAt])
 
   const addPendingActivityChange = useCallback((change: ActivityChange) => {
     setPendingActivityChanges((prev) => mergePendingActivityChange(prev, change))
@@ -104,6 +142,8 @@ export function useSaveFlow({
     setIsConflict,
     setConflictMetadata,
     syncStatus,
+    waitForSync,
+    isSyncing,
   } = useAutoSync({
     serverRoadmapId,
     sessionToken,
@@ -115,15 +155,17 @@ export function useSaveFlow({
     updatedAt,
     pendingActivityChanges,
     partialWriteInFlight,
+    manualSaveInFlight,
     showActivity,
     onSyncSuccess: (newUpdatedAt, isCurrent, acknowledgedActivityChanges) => {
-      setUpdatedAt(newUpdatedAt)
+      safeSetUpdatedAt(newUpdatedAt)
       setPendingActivityChanges((pending) => (
         removeAcknowledgedActivityChanges(pending, acknowledgedActivityChanges)
       ))
-      // Skip if edits landed after this request captured its snapshot -
+      // Skip if edits landed after this request captured its snapshot:
       // marking saved here would hide those edits from the next autosync.
       if (!isCurrent) return
+      savedRef.current = true
       setSaved(true)
     },
     onActivityRefresh: refreshActivity,
@@ -153,10 +195,27 @@ export function useSaveFlow({
       showToast('Wait for the focused roadmap update to finish before saving.')
       return
     }
-    const changeSummary = buildChangeSummary(pendingActivityChanges, serverRoadmapId)
+    if (manualSaveInFlightRef.current) {
+      return
+    }
+    if (isSyncing) {
+      await waitForSync()
+      if (savedRef.current) {
+        showToast('Saved and ready to share.')
+        return
+      }
+    }
+    manualSaveInFlightRef.current = true
+    setManualSaveInFlight(true)
+
+    const requestRevision = revisionRef.current
+    const outgoingActivityChanges = [...pendingActivityChanges]
+    const targetRoadmapId = serverRoadmapId
+    const changeSummary = buildChangeSummary(outgoingActivityChanges, serverRoadmapId)
+
     try {
       if (!serverRoadmapId) {
-        // First save: no bearer token needed - create returns a complete owner session.
+        // First save: no bearer token needed, create returns a complete owner session.
         const { roadmap, ownerParticipantId, ownerSessionToken } = await createRoadmap(
           roadmapName,
           displayName || 'Owner',
@@ -165,14 +224,23 @@ export function useSaveFlow({
           password,
           changeSummary,
         )
+        if (serverRoadmapIdRef.current !== targetRoadmapId) return
         const nextRoadmapId = roadmap.roadmap.id
         setServerRoadmapId(nextRoadmapId)
         setSessionToken(ownerSessionToken)
         setParticipantId(ownerParticipantId)
         setRole('owner')
         setOwnerDisplayName(roadmap.ownerDisplayName)
-        setUpdatedAt(roadmap.updatedAt)
-        setPendingActivityChanges([])
+        safeSetUpdatedAt(roadmap.updatedAt)
+        setPendingActivityChanges((pending) => (
+          removeAcknowledgedActivityChanges(pending, outgoingActivityChanges)
+        ))
+        if (requestRevision === revisionRef.current) {
+          setSaved(true)
+          setIsOffline(false)
+          setIsConflict(false)
+          setConflictMetadata(null)
+        }
         routerReplace(`/workspace?roadmap=${encodeURIComponent(nextRoadmapId)}`)
       } else {
         if (!sessionToken) {
@@ -192,16 +260,22 @@ export function useSaveFlow({
           changeSummary,
           tagRegistry,
         )
-        setUpdatedAt(data.updated_at)
-        setPendingActivityChanges([])
+        if (serverRoadmapIdRef.current !== targetRoadmapId) return
+        safeSetUpdatedAt(data.updated_at)
+        setPendingActivityChanges((pending) => (
+          removeAcknowledgedActivityChanges(pending, outgoingActivityChanges)
+        ))
+        if (requestRevision === revisionRef.current) {
+          setSaved(true)
+          setIsOffline(false)
+          setIsConflict(false)
+          setConflictMetadata(null)
+        }
       }
-      setSaved(true)
-      setIsOffline(false)
-      setIsConflict(false)
-      setConflictMetadata(null)
       if (showActivity) setActivityRefreshKey((k) => k + 1)
       showToast('Saved and ready to share.')
     } catch (err) {
+      if (serverRoadmapIdRef.current !== targetRoadmapId) return
       const { kind, conflictMetadata: nextConflict, validationMessage } = classifyRoadmapSaveError(err)
       if (kind === 'conflict') {
         setIsConflict(true)
@@ -221,6 +295,9 @@ export function useSaveFlow({
       } else {
         showToast('Could not save to the server. Your work is still saved in this browser.')
       }
+    } finally {
+      manualSaveInFlightRef.current = false
+      setManualSaveInFlight(false)
     }
   }
 
@@ -240,8 +317,19 @@ export function useSaveFlow({
   const handleKeepLocalVersion = async (): Promise<string | null> => {
     if (!serverRoadmapId || !sessionToken || !conflictMetadata) return null
 
+    if (manualSaveInFlightRef.current) return null
+    if (isSyncing) {
+      await waitForSync()
+    }
+    manualSaveInFlightRef.current = true
+    setManualSaveInFlight(true)
     setKeepLocalLoading(true)
-    const changeSummary = buildChangeSummary(pendingActivityChanges, serverRoadmapId)
+
+    const requestRevision = revisionRef.current
+    const outgoingActivityChanges = [...pendingActivityChanges]
+    const targetRoadmapId = serverRoadmapId
+    const changeSummary = buildChangeSummary(outgoingActivityChanges, serverRoadmapId)
+
     try {
       const data = await saveToServer(
         serverRoadmapId,
@@ -252,17 +340,23 @@ export function useSaveFlow({
         changeSummary,
         tagRegistry,
       )
-      setUpdatedAt(data.updated_at)
-      setPendingActivityChanges([])
-      setSaved(true)
-      setIsConflict(false)
-      setConflictMetadata(null)
+      if (serverRoadmapIdRef.current !== targetRoadmapId) return null
+      safeSetUpdatedAt(data.updated_at)
+      setPendingActivityChanges((pending) => (
+        removeAcknowledgedActivityChanges(pending, outgoingActivityChanges)
+      ))
+      if (requestRevision === revisionRef.current) {
+        setSaved(true)
+        setIsConflict(false)
+        setConflictMetadata(null)
+      }
       setIsOffline(false)
       setShowConflictReview(false)
       if (showActivity) setActivityRefreshKey((k) => k + 1)
       showToast('Saved your local version.')
       return null
     } catch (err) {
+      if (serverRoadmapIdRef.current !== targetRoadmapId) return null
       const {
         kind,
         conflictMetadata: nextConflict,
@@ -292,15 +386,19 @@ export function useSaveFlow({
         return 'Could not keep your local version. Your local edits are still preserved in this browser.'
       }
     } finally {
+      manualSaveInFlightRef.current = false
+      setManualSaveInFlight(false)
       setKeepLocalLoading(false)
     }
   }
 
   const handleReloadConfirm = async () => {
     if (!serverRoadmapId || !sessionToken) return
+    const targetRoadmapId = serverRoadmapId
     setConfirmReload(false)
     try {
       const loaded = await getRoadmap(serverRoadmapId, sessionToken)
+      if (serverRoadmapIdRef.current !== targetRoadmapId) return
       const upgraded = upgradeRoadmapSnapshot({
         roadmapName: loaded.roadmap.name,
         phases: loaded.phases,
@@ -309,7 +407,7 @@ export function useSaveFlow({
       setPhases(normalizePhasesProgress(upgraded.phases))
       setTagRegistry(loaded.tagRegistry ?? [])
       setOwnerDisplayName(loaded.ownerDisplayName)
-      setUpdatedAt(loaded.updatedAt)
+      safeSetUpdatedAt(loaded.updatedAt)
       setPendingActivityChanges([])
       setSaved(!upgraded.changed)
       setIsConflict(false)
@@ -318,6 +416,7 @@ export function useSaveFlow({
       setIsOffline(false)
       showToast('Reloaded the server version.')
     } catch (err) {
+      if (serverRoadmapIdRef.current !== targetRoadmapId) return
       const { kind } = classifyRoadmapSaveError(err)
       if (kind === 'connection') {
         showToast('Could not reach the server. Try again later.')

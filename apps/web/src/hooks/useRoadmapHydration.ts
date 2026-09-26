@@ -101,6 +101,24 @@ function getRoadmapIdFromUrl(): string | null {
   }
 }
 
+function areSnapshotsEquivalent(
+  nameA: string,
+  phasesA: Phase[],
+  tagsA: TagDefinition[] | undefined,
+  nameB: string,
+  phasesB: Phase[],
+  tagsB: TagDefinition[] | undefined,
+): boolean {
+  if (nameA !== nameB) return false
+  if (JSON.stringify(normalizePhasesProgress(phasesA)) !== JSON.stringify(normalizePhasesProgress(phasesB))) {
+    return false
+  }
+  const tA = tagsA ?? []
+  const tB = tagsB ?? []
+  if (JSON.stringify(tA) !== JSON.stringify(tB)) return false
+  return true
+}
+
 function buildSampleCache(): RoadmapCache {
   const template = createRoadForgeTemplate()
   return {
@@ -303,6 +321,72 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
           } catch (err) {
             console.warn('Could not upgrade server roadmap snapshot:', err)
           }
+          const serverRegistry = loaded.tagRegistry ?? []
+          const nextRegistry = serverRegistry.length > 0
+            ? serverRegistry
+            : buildRegistryFromPhases(normalizedLoadedPhases)
+
+          const currentCache = storage.getRoadmapCache(targetId)
+          const isDirty = (rc && !rc.saved) || (currentCache && !currentCache.saved)
+
+          if (isDirty) {
+            const basePhases = currentCache ? currentCache.phases : (rc ? rc.phases : [])
+            const baseName = currentCache ? currentCache.roadmapName : (rc ? rc.roadmapName : '')
+            const baseTags = currentCache ? currentCache.tagRegistry : (rc ? rc.tagRegistry : [])
+            const matchesServer = areSnapshotsEquivalent(
+              baseName,
+              basePhases,
+              baseTags,
+              nextRoadmapName,
+              normalizedLoadedPhases,
+              nextRegistry,
+            )
+
+            if (matchesServer) {
+              // Safe reconciliation: server already matches local snapshot
+              setSavedState(true)
+              setUpdatedAtState(loaded.updatedAt)
+              setOwnerDisplayNameState(loaded.ownerDisplayName)
+              setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
+              const reconciledCache: RoadmapCache = {
+                ...(currentCache ?? rc ?? {
+                  roadmapName: nextRoadmapName,
+                  phases: normalizedLoadedPhases,
+                  saved: false,
+                  ownerDisplayName: null,
+                  updatedAt: null,
+                  isPasswordEnabled: false,
+                }),
+                saved: true,
+                updatedAt: loaded.updatedAt,
+                ownerDisplayName: loaded.ownerDisplayName,
+                isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
+              }
+              storage.setRoadmapCache(targetId, reconciledCache)
+            } else {
+              // Preserve local dirty draft: do not overwrite local phases, name, or tags.
+              // Local changes are preserved with saved = false and the base updatedAt.
+              setOwnerDisplayNameState(loaded.ownerDisplayName)
+              setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
+              const preservedCache: RoadmapCache = {
+                ...(currentCache ?? rc ?? {
+                  roadmapName: baseName,
+                  phases: basePhases,
+                  saved: false,
+                  ownerDisplayName: null,
+                  updatedAt: null,
+                  isPasswordEnabled: false,
+                }),
+                saved: false,
+                updatedAt: currentCache?.updatedAt ?? rc?.updatedAt ?? null,
+                ownerDisplayName: loaded.ownerDisplayName,
+                isPasswordEnabled: !!loaded.roadmap.isPasswordEnabled,
+              }
+              storage.setRoadmapCache(targetId, preservedCache)
+            }
+            return
+          }
+
           setRoadmapNameState(nextRoadmapName)
           setPhasesState(normalizedLoadedPhases)
           setOwnerDisplayNameState(loaded.ownerDisplayName)
@@ -310,10 +394,6 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
           setIsPasswordEnabledState(!!loaded.roadmap.isPasswordEnabled)
           setIsSampleState(false)
           setSavedState(nextSaved)
-          const serverRegistry = loaded.tagRegistry ?? []
-          const nextRegistry = serverRegistry.length > 0
-            ? serverRegistry
-            : buildRegistryFromPhases(normalizedLoadedPhases)
           setTagRegistryState(nextRegistry)
 
           storage.setRoadmapCache(targetId, {
@@ -440,9 +520,16 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
       tagRegistry: nextRegistry,
     }
 
+    const written = storage.setRoadmapCache(newId, cache)
+    const verified = storage.getRoadmapCache(newId)
+    if (!written || !verified) {
+      // Storage write failed (quota exceeded or blocked).
+      // Never switch away and discard the current draft!
+      return storage.getActiveRoadmapId() || newId
+    }
+
     storage.setActiveRoadmapId(newId)
     storage.setLastRoadmapId(newId)
-    storage.setRoadmapCache(newId, cache)
     storage.setAuthCache(newId, null)
 
     setLocks({})
@@ -457,11 +544,15 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
   const resetToSample = useCallback(() => {
     const newId = storage.createLocalDraftId()
     const cache = buildSampleCache()
+    const written = storage.setRoadmapCache(newId, cache)
+    const verified = storage.getRoadmapCache(newId)
+    if (!written || !verified) {
+      return
+    }
     storage.setActiveRoadmapId(newId)
     storage.setLastRoadmapId(newId)
-    storage.setRoadmapCache(newId, cache)
     storage.setAuthCache(newId, null)
-    resetAllState(cache)
+    resetAllState(cache, newId)
     setLocks({})
   }, [
     resetAllState,
