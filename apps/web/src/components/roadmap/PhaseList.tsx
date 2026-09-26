@@ -148,7 +148,9 @@ function PhaseListComponent({
     if (over && active.id !== over.id) {
       const oldIndex = phaseIds.indexOf(active.id as string)
       const newIndex = phaseIds.indexOf(over.id as string)
-      onReorderPhases(arrayMove(phaseIds, oldIndex, newIndex))
+      if (oldIndex !== -1 && newIndex !== -1) {
+        onReorderPhases(arrayMove(phaseIds, oldIndex, newIndex))
+      }
     }
   }
 

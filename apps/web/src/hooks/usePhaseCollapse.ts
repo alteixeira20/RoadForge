@@ -17,17 +17,17 @@ function getDefaultOpenPhaseIds(phases: PhaseCollapseDefault[]) {
 
 function loadOpenPhaseIds(roadmapId: string, phases: PhaseCollapseDefault[]): string[] | null {
   const uiState = storage.getRoadmapUiState(roadmapId)
-  if (!uiState || uiState.openPhaseIds.length === 0) return null
+  if (!uiState) return null
+  if (phases.length === 0) return uiState.openPhaseIds
   const phaseIds = new Set(phases.map((p) => p.id))
-  const valid = uiState.openPhaseIds.filter((id) => phaseIds.has(id))
-  return valid.length > 0 ? valid : null
+  return uiState.openPhaseIds.filter((id) => phaseIds.has(id))
 }
 
 export function usePhaseCollapse(phases: Phase[], roadmapId: string | null) {
   const [openPhases, setOpenPhases] = useState<string[]>(() => {
     if (roadmapId) {
       const saved = loadOpenPhaseIds(roadmapId, phases)
-      if (saved) return saved
+      if (saved !== null) return saved
     }
     return getDefaultOpenPhaseIds(phases)
   })
@@ -40,6 +40,16 @@ export function usePhaseCollapse(phases: Phase[], roadmapId: string | null) {
   // Track previous values to detect what changed each effect run
   const previousPhaseIdsKeyRef = useRef(phaseIdsKey)
   const previousRoadmapIdRef = useRef(roadmapId)
+  // Tracks whether a roadmap has completed its initial defaults expansion.
+  // Pre-seeded if UI state exists in storage or if phases were available at mount.
+  const initializedRoadmapsRef = useRef<Set<string>>(new Set())
+  const hasInitializedMountRef = useRef(false)
+  if (!hasInitializedMountRef.current) {
+    hasInitializedMountRef.current = true
+    if (roadmapId && (storage.getRoadmapUiState(roadmapId) !== null || phases.length > 0)) {
+      initializedRoadmapsRef.current.add(roadmapId)
+    }
+  }
   // Tracks which roadmap the current openPhases state belongs to.
   // Prevents writing previous-roadmap state into the new roadmap's UI cache
   // during the render where roadmapId changes but openPhases hasn't updated yet.
@@ -50,7 +60,6 @@ export function usePhaseCollapse(phases: Phase[], roadmapId: string | null) {
   // (the common case - React 18 batches setState calls in the same callback),
   // we reinitialize with the correct phase list rather than with stale phases.
   useEffect(() => {
-    const phaseIdsChanged = previousPhaseIdsKeyRef.current !== phaseIdsKey
     const roadmapIdChanged = previousRoadmapIdRef.current !== roadmapId
     previousPhaseIdsKeyRef.current = phaseIdsKey
     previousRoadmapIdRef.current = roadmapId
@@ -61,21 +70,40 @@ export function usePhaseCollapse(phases: Phase[], roadmapId: string | null) {
     if (roadmapIdChanged) {
       // Roadmap switched - reinitialize from storage using current phases
       const saved = roadmapId ? loadOpenPhaseIds(roadmapId, phaseDefaults) : null
-      setOpenPhases(saved ?? getDefaultOpenPhaseIds(phaseDefaults))
+      if (saved !== null) {
+        if (roadmapId) initializedRoadmapsRef.current.add(roadmapId)
+        setOpenPhases(saved)
+      } else {
+        if (roadmapId && phaseDefaults.length > 0) {
+          initializedRoadmapsRef.current.add(roadmapId)
+        }
+        setOpenPhases(getDefaultOpenPhaseIds(phaseDefaults))
+      }
       return
     }
 
-    // Same roadmap - validate open phases against the updated phase list
+    // Same roadmap - validate open phases against the updated phase list.
+    // Preserves deliberately collapsed phases (empty array) and does not
+    // automatically reopen panels on remote phase creation or synchronization.
     setOpenPhases((prev) => {
+      const isInitialized = roadmapId
+        ? initializedRoadmapsRef.current.has(roadmapId)
+        : true
+
+      if (!isInitialized) {
+        if (phaseDefaults.length === 0) return prev
+        if (roadmapId) initializedRoadmapsRef.current.add(roadmapId)
+        return getDefaultOpenPhaseIds(phaseDefaults)
+      }
+
       const phaseIds = new Set(phaseDefaults.map((phase) => phase.id))
       const validOpenPhases = prev.filter((id) => phaseIds.has(id))
 
-      if (validOpenPhases.length > 0) {
-        return validOpenPhases.length === prev.length ? prev : validOpenPhases
+      if (validOpenPhases.length === prev.length) {
+        return prev
       }
-      if (prev.length > 0) return validOpenPhases
-      if (!phaseIdsChanged) return prev
-      return getDefaultOpenPhaseIds(phaseDefaults)
+
+      return validOpenPhases
     })
   }, [phaseDefaultsKey, phaseIdsKey, roadmapId])
 
