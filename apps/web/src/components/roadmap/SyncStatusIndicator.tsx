@@ -46,6 +46,8 @@ function getTransientDelay(status: WorkspaceSyncStatus): number {
 export function SyncStatusIndicator({ status }: SyncStatusIndicatorProps) {
   const [displayedStatus, setDisplayedStatus] = useState(status)
   const transientShownAtRef = useRef<number | null>(null)
+  const statusRef = useRef(status)
+  statusRef.current = status
 
   useEffect(() => {
     if (status === displayedStatus) return
@@ -72,6 +74,7 @@ export function SyncStatusIndicator({ status }: SyncStatusIndicatorProps) {
     }
 
     const timer = window.setTimeout(() => {
+      if (statusRef.current !== status) return
       setDisplayedStatus(status)
       transientShownAtRef.current = isTransient(status) ? Date.now() : null
     }, delay)

@@ -10,6 +10,7 @@ import type {
 import { createRoadForgeTemplate } from '@/data/roadforge-template'
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
+import { isOlderServerRevision } from '@/lib/server-revision'
 import { useRoadmapHydration, type RoadmapUpgradeState } from '@/hooks/useRoadmapHydration'
 import { useRoadmapRealtime } from '@/hooks/useRoadmapRealtime'
 
@@ -36,6 +37,8 @@ interface RoadmapDataContextValue {
   setTagRegistry: (registry: TagDefinition[]) => void
   isSample: boolean
   setIsSample: (value: boolean) => void
+  registerDirtyDraft?: (taskId: string, dirty: boolean) => void
+  dirtyDraftCount?: number
 }
 
 interface RoadmapSessionContextValue {
@@ -103,8 +106,21 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [activeRoadmapId, setActiveRoadmapIdState] = useState<string | null>(null)
   const [roadmapUpgradeNotice, setRoadmapUpgradeNotice] = useState<RoadmapUpgradeState | null>(null)
 
-  // Keep ref current so SSE callbacks always read the latest value
-  savedRef.current = saved
+  const [dirtyTaskIds, setDirtyTaskIds] = useState<Set<string>>(new Set())
+  const registerDirtyDraft = useCallback((taskId: string, dirty: boolean) => {
+    setDirtyTaskIds((prev) => {
+      const next = new Set(prev)
+      if (dirty) next.add(taskId)
+      else next.delete(taskId)
+      return next
+    })
+  }, [])
+  const dirtyDraftCount = dirtyTaskIds.size
+
+  // Keep ref current so SSE callbacks always read the latest value.
+  // Active uncommitted form drafts count as unsaved state to protect them
+  // from incoming remote full snapshot overwrites.
+  savedRef.current = saved && dirtyDraftCount === 0
 
   const {
     isHydratingServer,
@@ -164,6 +180,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       savedRef,
       showUpgradeNoticeOnce,
       setBackendUnavailableRoadmapId,
+      isClean: saved && dirtyDraftCount === 0,
     },
     roadmapState: {
       setRoadmapNameState,
@@ -306,12 +323,26 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setUpdatedAt = useCallback((value: string | null) => {
-    setUpdatedAtState(value)
-    const id = storage.getActiveRoadmapId()
-    if (id) {
-      const rc = storage.getRoadmapCache(id)
-      if (rc) storage.setRoadmapCache(id, { ...rc, updatedAt: value })
+    if (!value) {
+      setUpdatedAtState(null)
+      const id = storage.getActiveRoadmapId()
+      if (id) {
+        const rc = storage.getRoadmapCache(id)
+        if (rc) storage.setRoadmapCache(id, { ...rc, updatedAt: null })
+      }
+      return
     }
+    setUpdatedAtState((current) => {
+      if (current && isOlderServerRevision(value, current)) {
+        return current
+      }
+      const id = storage.getActiveRoadmapId()
+      if (id) {
+        const rc = storage.getRoadmapCache(id)
+        if (rc) storage.setRoadmapCache(id, { ...rc, updatedAt: value })
+      }
+      return value
+    })
   }, [])
 
   const setTagRegistry = useCallback((registry: TagDefinition[]) => {
@@ -348,6 +379,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     updatedAt, setUpdatedAt,
     tagRegistry, setTagRegistry,
     isSample, setIsSample,
+    registerDirtyDraft,
+    dirtyDraftCount,
   }), [
     displayName,
     setDisplayName,
@@ -367,6 +400,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setTagRegistry,
     isSample,
     setIsSample,
+    registerDirtyDraft,
+    dirtyDraftCount,
   ])
 
   const sessionValue = useMemo<RoadmapSessionContextValue>(() => ({

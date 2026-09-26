@@ -2,7 +2,7 @@
 // SSE ticket acquisition, event stream subscription, and activity log fetching.
 
 import type { ActivityLogList } from '@/types/roadmap'
-import { API_BASE_URL, requestJson } from './roadmap-http'
+import { getApiBaseUrl, requestJson } from './roadmap-http'
 
 // ─── Realtime handler types ────────────────────────────────────────────────────
 
@@ -62,7 +62,7 @@ export function subscribeToRoadmapEvents(
   roadmapId: string,
   handlers: RealtimeHandlers,
 ): () => void {
-  const url = `${API_BASE_URL}/api/roadmaps/${encodeURIComponent(roadmapId)}/events`
+  const url = `${getApiBaseUrl()}/api/roadmaps/${encodeURIComponent(roadmapId)}/events`
   const es = new EventSource(url, { withCredentials: true })
 
   es.onopen = () => {

@@ -9,6 +9,7 @@ import { requestJson } from '@/services/roadmap-http'
 
 vi.mock('@/services/roadmap-http', () => ({
   API_BASE_URL: 'https://roadforge.test',
+  getApiBaseUrl: () => 'https://roadforge.test',
   requestJson: vi.fn(),
 }))
 

@@ -25,6 +25,9 @@ export default defineConfig({
   },
   webServer: {
     command: `corepack pnpm dev --hostname 127.0.0.1 --port ${port}`,
+    env: {
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:7878',
+    },
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

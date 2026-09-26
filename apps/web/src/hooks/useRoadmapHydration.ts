@@ -252,12 +252,11 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
           phases: rc.phases,
         })
         if (upgraded.changed) {
-          const canPersistCachedUpgrade = ac?.role === 'owner' || ac?.role === 'editor'
           cacheToLoad = {
             ...rc,
             roadmapName: upgraded.roadmapName || rc.roadmapName,
             phases: upgraded.phases,
-            saved: canPersistCachedUpgrade ? false : rc.saved,
+            saved: rc.saved,
           }
           storage.setRoadmapCache(targetId, cacheToLoad)
           showUpgradeNoticeOnce(targetId, rc.updatedAt, upgraded)
@@ -315,8 +314,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
             })
             nextRoadmapName = upgraded.roadmapName || loaded.roadmap.name
             normalizedLoadedPhases = normalizePhasesProgress(upgraded.phases)
-            const canPersistUpgrade = ac.role === 'owner' || ac.role === 'editor'
-            nextSaved = !(upgraded.changed && canPersistUpgrade)
+            nextSaved = true
             showUpgradeNoticeOnce(targetId, loaded.updatedAt, upgraded)
           } catch (err) {
             console.warn('Could not upgrade server roadmap snapshot:', err)

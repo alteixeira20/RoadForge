@@ -13,6 +13,7 @@ import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { classifyRoadmapSaveError } from '@/lib/roadmap-sync-errors'
 import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { storage } from '@/lib/storage'
+import type { ToastTone } from '@/hooks/useToastState'
 import type { ActivityChange, Phase, RoadmapConflictMetadata, ShareRole, TagDefinition } from '@/types/roadmap'
 
 interface UseSaveFlowParams {
@@ -37,7 +38,7 @@ interface UseSaveFlowParams {
   partialWriteInFlight: boolean
   showActivity: boolean
   closeSave: () => void
-  showToast: (message: string) => void
+  showToast: (message: string, tone?: ToastTone) => void
   routerReplace: (href: string) => void
 }
 
@@ -281,19 +282,19 @@ export function useSaveFlow({
         setIsConflict(true)
         setConflictMetadata(nextConflict)
         if (nextConflict) setShowConflictReview(true)
-        showToast('The roadmap changed elsewhere. Your edits are preserved locally.')
+        showToast('The roadmap changed elsewhere. Your edits are preserved locally.', 'warning')
       } else if (kind === 'session-expired') {
         handleSessionExpired()
       } else if (kind === 'unauthorized') {
         handleSessionExpired()
       } else if (kind === 'forbidden') {
-        showToast('You do not have permission for this action.')
+        showToast('You do not have permission for this action.', 'error')
       } else if (kind === 'validation') {
-        showToast(validationMessage ?? 'RoadForge could not save this roadmap because some data is invalid.')
+        showToast(validationMessage ?? 'RoadForge could not save this roadmap because some data is invalid.', 'error')
       } else if (kind === 'connection') {
-        showToast('Could not reach RoadForge. Your work is still saved in this browser.')
+        showToast('Could not reach RoadForge. Your work is still saved in this browser.', 'error')
       } else {
-        showToast('Could not save to the server. Your work is still saved in this browser.')
+        showToast('Could not save to the server. Your work is still saved in this browser.', 'error')
       }
     } finally {
       manualSaveInFlightRef.current = false
@@ -365,24 +366,24 @@ export function useSaveFlow({
       if (kind === 'conflict') {
         setIsConflict(true)
         if (nextConflict) setConflictMetadata(nextConflict)
-        showToast('The server changed again. Review the latest conflict.')
+        showToast('The server changed again. Review the latest conflict.', 'warning')
         return 'The server changed again. Review the latest conflict.'
       } else if (kind === 'session-expired' || kind === 'unauthorized') {
         handleSessionExpired()
         return 'Session expired. Rejoin through an active invite link before resolving this conflict.'
       } else if (kind === 'forbidden') {
-        showToast('You do not have permission to replace the server version.')
+        showToast('You do not have permission to replace the server version.', 'error')
         return 'You do not have permission to replace the server version. Your local edits are unchanged.'
       } else if (kind === 'validation') {
         const message = validationMessage ?? 'The server rejected this roadmap.'
-        showToast(message)
+        showToast(message, 'error')
         return `${message} Your local edits are unchanged.`
       } else if (kind === 'connection') {
         setIsOffline(true)
-        showToast('Could not reach the server. Try again later.')
+        showToast('Could not reach the server. Try again later.', 'error')
         return 'Could not reach the server. Your local edits are still preserved in this browser.'
       } else {
-        showToast('Could not keep your local version.')
+        showToast('Could not keep your local version.', 'error')
         return 'Could not keep your local version. Your local edits are still preserved in this browser.'
       }
     } finally {

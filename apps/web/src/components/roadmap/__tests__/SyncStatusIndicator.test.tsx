@@ -175,4 +175,32 @@ describe('SyncStatusIndicator', () => {
     expect(getIndicator().textContent).toBe('Conflict')
     expect(getIndicator().getAttribute('role')).toBe('alert')
   })
+
+  it('never displays stale status when status changes while a timer is in flight', () => {
+    renderIndicator('live')
+    renderIndicator('updating')
+
+    // Wait until updating is displayed after 2000ms
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(getIndicator().textContent).toBe('Updating…')
+
+    // Status transitions to live (transient min visible delay begins)
+    renderIndicator('live')
+
+    // Before min visible timer completes, status transitions to offline
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    renderIndicator('offline')
+
+    // Offline must show immediately and never be overwritten by stale live timer
+    expect(getIndicator().textContent).toBe('Offline')
+
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(getIndicator().textContent).toBe('Offline')
+  })
 })

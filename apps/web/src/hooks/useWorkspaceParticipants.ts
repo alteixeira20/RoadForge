@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getParticipants } from '@/services/roadmap-sharing.service'
 import type { Participant } from '@/types/roadmap'
 
@@ -53,14 +53,14 @@ export function useWorkspaceParticipants({
     return () => { cancelled = true }
   }, [serverRoadmapId, sessionToken, role])
 
-  const refreshParticipants = async () => {
+  const refreshParticipants = useCallback(async () => {
     if (!serverRoadmapId || !sessionToken) return
     try {
       setParticipants(await getParticipants(serverRoadmapId, sessionToken))
     } catch {
       setParticipantsError('Could not refresh team members.')
     }
-  }
+  }, [serverRoadmapId, sessionToken])
 
   return {
     participants,

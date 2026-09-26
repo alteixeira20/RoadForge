@@ -86,6 +86,7 @@ export function TaskRow({
     displayName,
     tagRegistry,
     setTagRegistry,
+    registerDirtyDraft,
   } = useRoadmapData()
   const {
     locks,
@@ -197,8 +198,11 @@ export function TaskRow({
 
   useEffect(() => {
     onDirtyChange?.(task.id, editDirty)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editDirty])
+    registerDirtyDraft?.(task.id, editDirty)
+    return () => {
+      registerDirtyDraft?.(task.id, false)
+    }
+  }, [editDirty, onDirtyChange, registerDirtyDraft, task.id])
 
   const handleResumeEditing = useCallback(async () => {
     if (readOnly || resumeInFlightRef.current) return
@@ -214,11 +218,13 @@ export function TaskRow({
 
   const handleEditorInteraction = useCallback(() => {
     if (!activeForm) return
-    if (isIdlePaused || !ownsLock) {
+    if (isIdlePaused) {
       void handleResumeEditing()
       return
     }
-    recordInteraction()
+    if (ownsLock) {
+      recordInteraction()
+    }
   }, [
     activeForm,
     handleResumeEditing,
@@ -239,11 +245,9 @@ export function TaskRow({
   } else if (expanded) {
     dragHandleTitle = 'Collapse task to reorder'
   }
-  const unavailableActionsMessage = isLockedByOther
-    ? `${lockHolderName} is editing this task. Actions are temporarily locked.`
-    : readOnly
-      ? 'Read-only view. Task actions are unavailable.'
-      : null
+  const unavailableActionsMessage = readOnly
+    ? 'Read-only view. Task actions are unavailable.'
+    : null
   const checkTitle = isTaskDonePending
     ? 'Task update is saving'
     : effectivelyReadOnly
@@ -258,8 +262,8 @@ export function TaskRow({
   // ─── Actions ──────────────────────────────────────────────────────────────
 
   const handleOpenEditDetails = async () => {
-    const success = await tryAcquireEditLock()
-    if (success) setIsEditing(true)
+    setIsEditing(true)
+    await tryAcquireEditLock()
   }
 
   const handleOpenSubtaskForm = async () => {
@@ -368,7 +372,7 @@ export function TaskRow({
               </span>
               <button
                 type="button"
-                className="btn sm ghost"
+                className="btn sm ghost task-row-lock-resume"
                 onClick={() => {
                   void handleResumeEditing()
                 }}
@@ -476,12 +480,20 @@ export function TaskRow({
                     {unavailableActionsMessage}
                   </div>
                 ) : (
-                  <TaskDetailActions
-                    showChildActions={!isNested}
-                    onEditDetails={() => { void handleOpenEditDetails() }}
-                    onAddSubtask={() => { void handleOpenSubtaskForm() }}
-                    onLinkDependency={() => { void handleOpenDependencyPicker() }}
-                  />
+                  <>
+                    {isLockedByOther && (
+                      <div className="task-action-note">
+                        <Icon name="shield" size={14} />
+                        {lockHolderName} is editing this task. Edits will be held as drafts until released.
+                      </div>
+                    )}
+                    <TaskDetailActions
+                      showChildActions={!isNested && !isLockedByOther}
+                      onEditDetails={() => { void handleOpenEditDetails() }}
+                      onAddSubtask={() => { void handleOpenSubtaskForm() }}
+                      onLinkDependency={() => { void handleOpenDependencyPicker() }}
+                    />
+                  </>
                 )}
               </div>
 

@@ -37,6 +37,7 @@ export function JoinPage() {
     setPhases,
     setSaved,
     setOwnerDisplayName,
+    setUpdatedAt,
   } = useRoadmap()
 
   const [name, setName] = useState('')
@@ -96,12 +97,12 @@ export function JoinPage() {
           phases: roadmap.phases,
         })
         const nextRoadmapName = upgraded.roadmapName || roadmap.roadmap.name
-        const canPersistUpgrade = role === 'owner' || role === 'editor'
-        const nextSaved = !(upgraded.changed && canPersistUpgrade)
+        const nextSaved = true
         setRoadmapName(nextRoadmapName)
         setPhases(upgraded.phases)
         setSaved(nextSaved)
         setOwnerDisplayName(roadmap.ownerDisplayName)
+        setUpdatedAt(roadmap.updatedAt)
         
         storage.setRoadmapCache(roadmapId, {
           roadmapName: nextRoadmapName,
