@@ -34,14 +34,14 @@ const VALID_STATUSES = new Set<PhaseStatus>(['done', 'active', 'next', 'future']
 
 export function getRoadmapUpgradeNoticeSignature({
   roadmapId,
-  updatedAt,
+  updatedAt: _updatedAt,
   notices,
 }: RoadmapUpgradeNoticeSignatureInput): string {
   const noticeParts = notices
     .map(({ code, severity, message }) => [code, severity, message])
     .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
 
-  return JSON.stringify([roadmapId, updatedAt, noticeParts])
+  return JSON.stringify([roadmapId, noticeParts])
 }
 
 export function isRoadmapUpgradeNoticeDismissed(

@@ -38,7 +38,7 @@ describe('roadmap-upgrade', () => {
       expect(isRoadmapUpgradeNoticeDismissed(signature, signature)).toBe(true)
     })
 
-    it('does not suppress a notice from a different update event', () => {
+    it('suppresses notices across subsequent updates when updatedAt changes', () => {
       const dismissedSignature = getRoadmapUpgradeNoticeSignature({
         roadmapId: 'rm-1',
         updatedAt: '2026-07-01T10:00:00Z',
@@ -48,6 +48,30 @@ describe('roadmap-upgrade', () => {
         roadmapId: 'rm-1',
         updatedAt: '2026-07-02T10:00:00Z',
         notices,
+      })
+
+      expect(
+        isRoadmapUpgradeNoticeDismissed(dismissedSignature, currentSignature),
+      ).toBe(true)
+    })
+
+    it('does not suppress a notice when new or different upgrade notices are issued', () => {
+      const dismissedSignature = getRoadmapUpgradeNoticeSignature({
+        roadmapId: 'rm-1',
+        updatedAt: '2026-07-01T10:00:00Z',
+        notices,
+      })
+      const currentSignature = getRoadmapUpgradeNoticeSignature({
+        roadmapId: 'rm-1',
+        updatedAt: '2026-07-02T10:00:00Z',
+        notices: [
+          ...notices,
+          {
+            code: 'phase_color_repaired',
+            message: 'Phase color was repaired.',
+            severity: 'info',
+          },
+        ],
       })
 
       expect(

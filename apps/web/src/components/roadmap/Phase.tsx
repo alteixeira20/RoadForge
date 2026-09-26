@@ -342,8 +342,10 @@ export function Phase({
     if (over && active.id !== over.id) {
       const oldIndex = taskIds.indexOf(active.id as string)
       const newIndex = taskIds.indexOf(over.id as string)
-      const newOrder = arrayMove(taskIds, oldIndex, newIndex)
-      onReorderTasks(phase.id, newOrder)
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(taskIds, oldIndex, newIndex)
+        onReorderTasks(phase.id, newOrder)
+      }
     }
   }
 
