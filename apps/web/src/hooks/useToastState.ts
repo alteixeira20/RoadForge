@@ -32,6 +32,9 @@ export function classifyToastTone(message: string, explicitTone?: ToastTone): To
     lower.includes('forbidden') ||
     lower.includes('unauthorized') ||
     lower.includes('needs attention') ||
+    lower.includes('quota') ||
+    lower.includes('storage full') ||
+    lower.includes('access lost') ||
     (lower.includes('revoked') && !lower.includes('participant revoked') && !lower.includes('link revoked'))
   ) {
     return 'error'
@@ -50,7 +53,9 @@ export function classifyToastTone(message: string, explicitTone?: ToastTone): To
     lower.includes('reload the server') ||
     lower.includes('reload or review') ||
     lower.includes('require at least') ||
-    lower.includes('circular dependency')
+    lower.includes('circular dependency') ||
+    lower.includes('changed elsewhere') ||
+    lower.includes('storage')
   ) {
     return 'warning'
   }

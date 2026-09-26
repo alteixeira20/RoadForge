@@ -22,7 +22,7 @@ export function createTaskEditDraft(task: Task): TaskEditDraft {
   }
 }
 
-function itemsMatch(left: string[], right: string[]): boolean {
+export function itemsMatch(left: string[], right: string[]): boolean {
   return left.length === right.length
     && left.every((item, index) => item === right[index])
 }

@@ -211,6 +211,12 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
   } = useExpandedTaskState({ activeRoadmapId, allTasks })
 
   useEffect(() => {
+    if (workspaceView === 'team') {
+      void refreshParticipants()
+    }
+  }, [workspaceView, refreshParticipants])
+
+  useEffect(() => {
     const title = getShortRoadmapTitle(roadmapName)
     document.title = title
       ? `${title} · RoadForge`

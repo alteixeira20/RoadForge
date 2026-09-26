@@ -2,6 +2,7 @@
 
 import {
   useState,
+  useRef,
   useCallback,
   useEffect,
   type Dispatch,
@@ -70,6 +71,7 @@ interface RealtimeLifecycleParams {
     result: { changed: boolean; notices: RoadmapUpgradeNotice[] },
   ) => void
   setBackendUnavailableRoadmapId: Dispatch<SetStateAction<string | null>>
+  isClean?: boolean
 }
 
 interface RealtimeRoadmapStateParams {
@@ -261,6 +263,9 @@ function refreshRequestFromEvent(
     if (payload.phase_id) {
       request.phaseStructureIds.add(payload.phase_id)
       request.phaseOrderChanged = true
+    } else if (payload.phase_ids?.length) {
+      payload.phase_ids.forEach((id) => request.phaseStructureIds.add(id))
+      request.phaseOrderChanged = true
     }
   } else if (payload.phase_operation === 'reordered') {
     request.phaseOrderChanged = true
@@ -281,16 +286,32 @@ function refreshRequestFromEvent(
 }
 
 function eventDedupeKey(payload: RoadmapUpdatedEventPayload): string {
+  const taskIds = payload.task_ids
+    ? [...payload.task_ids].sort().join(',')
+    : (payload.task_id ?? '')
+  const phaseIds = payload.phase_ids
+    ? [...payload.phase_ids].sort().join(',')
+    : (payload.phase_id ?? '')
+  const changedFields = payload.changed_fields
+    ? [...payload.changed_fields].sort().join(',')
+    : ''
+  const roadmapFields = payload.roadmap_fields
+    ? [...payload.roadmap_fields].sort().join(',')
+    : ''
+
   return [
+    payload.roadmap_id ?? '',
     payload.updated_at,
     payload.participant_id,
     payload.action ?? '',
     payload.task_operation ?? '',
     payload.phase_operation ?? '',
-    payload.task_id ?? (payload.task_ids ? payload.task_ids.join(',') : ''),
-    payload.phase_id ?? (payload.phase_ids ? payload.phase_ids.join(',') : ''),
-    payload.changed_fields ? payload.changed_fields.join(',') : '',
-    payload.roadmap_fields ? payload.roadmap_fields.join(',') : '',
+    taskIds,
+    phaseIds,
+    payload.parent_id ?? '',
+    payload.dependency_id ?? '',
+    changedFields,
+    roadmapFields,
   ].join(':')
 }
 
@@ -334,6 +355,13 @@ export function useRoadmapRealtime({
     'revoked' | 'deleted' | 'expired' | null
   >(null)
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>('local')
+  const flushDeferredRefreshRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    if (lifecycle.isClean && lifecycle.savedRef.current !== false) {
+      flushDeferredRefreshRef.current?.()
+    }
+  }, [lifecycle.isClean, lifecycle.savedRef])
 
   useEffect(() => {
     if (!serverRoadmapId || !sessionToken) {
@@ -392,6 +420,7 @@ export function useRoadmapRealtime({
       // if a dirty draft later prevents full replacement, the safe scopes are
       // still eligible to rebase.
       pendingRequest: RealtimeRefreshRequest | null
+      hasDeferredFullRefresh: boolean
       seenEventKeys: Set<string>
     }
 
@@ -487,8 +516,7 @@ export function useRoadmapRealtime({
         })
         nextRoadmapName = upgraded.roadmapName || loaded.roadmap.name
         normalizedSsePhases = normalizePhasesProgress(upgraded.phases)
-        const canPersistUpgrade = role === 'owner' || role === 'editor'
-        nextSaved = !(upgraded.changed && canPersistUpgrade)
+        nextSaved = true
         if (activeRoadmapId) {
           showUpgradeNoticeOnce(activeRoadmapId, loaded.updatedAt, upgraded)
         }
@@ -696,6 +724,10 @@ export function useRoadmapRealtime({
           stale = scopedResult === 'stale'
         }
 
+        if (!stale && request.full && savedRef.current === false) {
+          attempt.hasDeferredFullRefresh = true
+        }
+
         if (!applied && !stale && hasScopedRefresh(request)) {
           console.warn(
             'Could not safely rebase a scoped realtime update onto the local draft; preserving the draft and its current server revision.',
@@ -752,6 +784,19 @@ export function useRoadmapRealtime({
       void runAuthoritativeRefresh(attempt, cloneRefreshRequest(request))
     }
 
+    const flushDeferredFullRefresh = () => {
+      if (
+        currentAttempt &&
+        !currentAttempt.aborted &&
+        currentAttempt.hasDeferredFullRefresh &&
+        savedRef.current !== false
+      ) {
+        currentAttempt.hasDeferredFullRefresh = false
+        requestAuthoritativeRefresh(currentAttempt, createRefreshRequest(true, false))
+      }
+    }
+    flushDeferredRefreshRef.current = flushDeferredFullRefresh
+
     const startSync = async (isReconnect = false) => {
       if (stopped || cancelled || connecting) return
       connecting = true
@@ -766,6 +811,7 @@ export function useRoadmapRealtime({
         refreshInFlight: false,
         refreshController: null,
         pendingRequest: null,
+        hasDeferredFullRefresh: false,
         seenEventKeys: new Set(),
       }
       currentAttempt = attempt
@@ -834,7 +880,10 @@ export function useRoadmapRealtime({
             // Aggregate operations still cannot be proven safe to merge
             // field-by-field. Preserve a dirty aggregate draft until those
             // mutation surfaces are converted to focused server operations.
-            if (savedRef.current === false) return
+            if (savedRef.current === false) {
+              attempt.hasDeferredFullRefresh = true
+              return
+            }
 
             requestAuthoritativeRefresh(attempt, createRefreshRequest(true, false))
           },
@@ -937,6 +986,7 @@ export function useRoadmapRealtime({
     window.addEventListener('online', handleOnline)
 
     return () => {
+      flushDeferredRefreshRef.current = null
       cancelled = true
       stopped = true
       clearRetryTimer()

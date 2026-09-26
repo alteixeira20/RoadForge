@@ -15,6 +15,16 @@ export const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:7878'
 ).replace(/\/$/, '')
 
+export function getApiBaseUrl(): string {
+  if (API_BASE_URL !== 'http://localhost:7878') {
+    return API_BASE_URL
+  }
+  if (typeof window !== 'undefined' && window.location.hostname === '127.0.0.1') {
+    return 'http://127.0.0.1:7878'
+  }
+  return API_BASE_URL
+}
+
 // ─── Connection error ──────────────────────────────────────────────────────────
 
 export class ApiConnectionError extends Error {
@@ -97,7 +107,7 @@ export async function requestJson<T>(
 
   let res: Response
   try {
-    res = await fetch(API_BASE_URL + path, {
+    res = await fetch(getApiBaseUrl() + path, {
       ...options,
       ...(credentials ? { credentials } : {}),
       headers: { ...headers, ...(options.headers as Record<string, string> | undefined) },

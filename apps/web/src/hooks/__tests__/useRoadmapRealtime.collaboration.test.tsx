@@ -1018,4 +1018,186 @@ describe('useRoadmapRealtime seamless collaborative editing', () => {
     expect(cached?.saved).toBe(false)
     expect(cached?.phases[0].tasks[0].title).toBe('Local draft task')
   })
+
+  it('11. does not discard distinct operations sharing equal timestamps as duplicates', async () => {
+    const { params } = setupTestEnvironment(true)
+    const phase: Phase = {
+      id: 'phase-1',
+      num: '01',
+      name: 'Phase 1',
+      color: '#76746e',
+      status: 'active',
+      progress: 0,
+      tasks: [
+        { id: 'task-1', title: 'Task 1', done: false },
+        { id: 'task-2', title: 'Task 2', done: false },
+      ],
+    }
+
+    storage.setActiveRoadmapId('local_1')
+    storage.setRoadmapCache('local_1', {
+      roadmapName: 'Test Roadmap',
+      phases: [phase],
+      saved: true,
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-09-01T10:00:00Z',
+      isPasswordEnabled: false,
+    })
+
+    mockedGetRoadmap.mockResolvedValue({
+      project: { id: 'rm_1', name: 'Test Roadmap' },
+      roadmap: { id: 'rm_1', name: 'Test Roadmap', isPasswordEnabled: false },
+      phases: [phase],
+      tagRegistry: [],
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-09-01T10:05:00Z',
+    })
+
+    act(() => {
+      root.render(<Harness params={params} onResult={() => {}} />)
+    })
+    await flushAsync()
+    act(() => handlers.onOpen?.())
+    await flushAsync()
+
+    mockedGetRoadmap.mockClear()
+    mockedGetRoadmap.mockResolvedValue({
+      project: { id: 'rm_1', name: 'Test Roadmap' },
+      roadmap: { id: 'rm_1', name: 'Test Roadmap', isPasswordEnabled: false },
+      phases: [{
+        ...phase,
+        tasks: [
+          { id: 'task-1', title: 'Task 1', done: true },
+          { id: 'task-2', title: 'Task 2', done: true },
+        ],
+      }],
+      tagRegistry: [],
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-09-01T10:10:00Z',
+    })
+
+    const sharedTimestamp = '2026-09-01T10:10:00Z'
+
+    // First operation on task-1
+    act(() => handlers.onUpdated?.({
+      roadmap_id: 'rm_1',
+      participant_id: 'pt_other',
+      updated_at: sharedTimestamp,
+      action: 'task.completed',
+      task_id: 'task-1',
+    }))
+
+    // Distinct second operation on task-2 with the exact same timestamp
+    act(() => handlers.onUpdated?.({
+      roadmap_id: 'rm_1',
+      participant_id: 'pt_other',
+      updated_at: sharedTimestamp,
+      action: 'task.completed',
+      task_id: 'task-2',
+    }))
+
+    await flushAsync()
+
+    // Both distinct operations must have been requested, not deduplicated away
+    expect(mockedGetRoadmap).toHaveBeenCalled()
+    const cached = storage.getRoadmapCache('local_1')
+    expect(cached?.phases[0].tasks.find((t) => t.id === 'task-1')?.done).toBe(true)
+    expect(cached?.phases[0].tasks.find((t) => t.id === 'task-2')?.done).toBe(true)
+  })
+
+  it('12. defers aggregate updates while local roadmap is dirty and reconciles them when draft becomes clean', async () => {
+    const { params, savedRef } = setupTestEnvironment(false)
+    const setPhasesState = params.roadmapState.setPhasesState
+    const phase: Phase = {
+      id: 'phase-1',
+      num: '01',
+      name: 'Phase 1',
+      color: '#76746e',
+      status: 'active',
+      progress: 0,
+      tasks: [{ id: 'task-1', title: 'Dirty local draft', done: false }],
+    }
+
+    storage.setActiveRoadmapId('local_1')
+    storage.setRoadmapCache('local_1', {
+      roadmapName: 'Local Roadmap',
+      phases: [phase],
+      saved: false,
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-09-01T10:00:00Z',
+      isPasswordEnabled: false,
+    })
+
+    mockedGetRoadmap.mockResolvedValue({
+      project: { id: 'rm_1', name: 'Server Imported Roadmap' },
+      roadmap: { id: 'rm_1', name: 'Server Imported Roadmap', isPasswordEnabled: false },
+      phases: [{
+        id: 'phase-imported',
+        num: '01',
+        name: 'Imported Phase',
+        color: '#2563eb',
+        status: 'active',
+        progress: 0,
+        tasks: [{ id: 'task-imported', title: 'Imported Task', done: false }],
+      }],
+      tagRegistry: [],
+      ownerDisplayName: 'Owner',
+      updatedAt: '2026-09-01T10:05:00Z',
+    })
+
+    savedRef.current = false
+    const dirtyParams = {
+      ...params,
+      lifecycle: {
+        ...params.lifecycle,
+        savedRef,
+        isClean: false,
+      },
+    }
+
+    act(() => {
+      root.render(<Harness params={dirtyParams} onResult={() => {}} />)
+    })
+    await flushAsync()
+    act(() => handlers.onOpen?.())
+    await flushAsync()
+
+    // Local dirty draft must NOT have been replaced by the open resync
+    expect(setPhasesState).not.toHaveBeenCalled()
+    expect(storage.getRoadmapCache('local_1')?.phases[0].tasks[0].title).toBe('Dirty local draft')
+
+    // Remote aggregate event arrives (import/reset) while local state is dirty
+    act(() => handlers.onUpdated?.({
+      roadmap_id: 'rm_1',
+      participant_id: 'pt_other',
+      updated_at: '2026-09-01T10:15:00Z',
+      action: 'roadmap.imported',
+    }))
+    await flushAsync()
+
+    // Still must not overwrite dirty draft
+    expect(setPhasesState).not.toHaveBeenCalled()
+
+    // User saves or discards: local roadmap becomes clean
+    savedRef.current = true
+    const cleanParams = {
+      ...params,
+      lifecycle: {
+        ...params.lifecycle,
+        savedRef,
+        isClean: true,
+      },
+    }
+
+    act(() => {
+      root.render(<Harness params={cleanParams} onResult={() => {}} />)
+    })
+    await flushAsync()
+
+    // Deferred aggregate refresh must have been triggered and applied
+    expect(setPhasesState).toHaveBeenCalled()
+    const lastPhasesCall = vi.mocked(setPhasesState).mock.calls[vi.mocked(setPhasesState).mock.calls.length - 1][0]
+    const appliedPhases = typeof lastPhasesCall === 'function' ? lastPhasesCall([]) : lastPhasesCall
+    expect(appliedPhases[0].id).toBe('phase-imported')
+  })
 })
