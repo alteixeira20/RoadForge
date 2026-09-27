@@ -105,7 +105,7 @@ test.describe('Real Multi-Client Browser Collaboration', () => {
       const editorTasks = editorFirstPhase.locator('.task')
       const targetTask = editorTasks.nth(1)
       const targetTaskId = await targetTask.evaluate((el) => el.id.replace('task-', ''))
-      
+
       // Expand task if needed
       const expandBtn = targetTask.getByRole('button', { name: /Expand task/i })
       if (await expandBtn.isVisible()) {
