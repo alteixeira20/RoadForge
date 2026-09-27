@@ -132,4 +132,3 @@ export function mergeAuthoritativeTasksIntoLocalPhases(
 
   return anyPhaseChanged ? nextPhases : localPhases
 }
-
