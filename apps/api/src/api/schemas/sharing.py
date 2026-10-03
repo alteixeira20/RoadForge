@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_validator
 
+from api.schemas.limits import PASSWORD_MAX, PASSWORD_MIN
 from api.schemas.shared import ShareRole
 
 
@@ -48,3 +49,29 @@ class ParticipantSummaryResponse(BaseModel):
     display_name: str
     role: ShareRole
     is_current_participant: bool = False
+
+
+class UpdatePasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password: str | None = None
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def _validate_password(cls, v: object) -> object:
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise ValueError("password must be a string or null")
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("password cannot be blank; use null to disable password protection")
+        if len(stripped) > PASSWORD_MAX:
+            raise ValueError(f"password exceeds {PASSWORD_MAX} characters")
+        if len(stripped) < PASSWORD_MIN:
+            raise ValueError(f"password must be at least {PASSWORD_MIN} characters")
+        return stripped
+
+
+class RoadmapPasswordResponse(BaseModel):
+    is_password_enabled: bool

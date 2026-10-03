@@ -61,10 +61,13 @@ and recovery invariants.
 
 Focused writes do **not** all need the same optimistic-concurrency mechanism.
 
-- Task planning/completion writes currently use the exact observed roadmap revision.
-- Roadmap rename and phase-field writes are safe to apply to the latest row-locked server
-  state because they mutate only explicitly declared fields. They therefore do not
-  require a whole-roadmap `last_updated_at` token.
+- Task planning and completion writes operate directly on the latest row-locked canonical
+  snapshot without requiring a whole-roadmap `last_updated_at` token. Simultaneous writes to
+  different tasks or fields serialize safely under database row locking. For simultaneous
+  writes to the same field, the later accepted write wins.
+- Roadmap rename, phase-field writes, tag registry mutations, and password updates are safe
+  to apply to the latest row-locked server state because they mutate only explicitly declared
+  entities/fields. They therefore do not require a whole-roadmap `last_updated_at` token.
 - Task/subtask create and task-subtree delete are entity-intent operations against the
   latest row-locked canonical task graph. Create accepts only stable identity/title plus an
   optional parent relationship; the server owns every other initial task field. Delete

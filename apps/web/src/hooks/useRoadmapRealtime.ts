@@ -126,6 +126,7 @@ interface RealtimeRefreshRequest {
   phaseStructureIds: Set<string>
   phaseOrderChanged: boolean
   roadmapFields: Set<RealtimeRoadmapField>
+  tagChanged: boolean
 }
 
 type ScopedApplyResult = 'applied' | 'stale' | 'unreconciled'
@@ -148,6 +149,7 @@ function createRefreshRequest(full = false, isResync = false): RealtimeRefreshRe
     phaseStructureIds: new Set(),
     phaseOrderChanged: false,
     roadmapFields: new Set(),
+    tagChanged: false,
   }
 }
 
@@ -169,6 +171,7 @@ function cloneRefreshRequest(request: RealtimeRefreshRequest): RealtimeRefreshRe
     phaseStructureIds: new Set(request.phaseStructureIds),
     phaseOrderChanged: request.phaseOrderChanged,
     roadmapFields: new Set(request.roadmapFields),
+    tagChanged: request.tagChanged,
   }
 }
 
@@ -179,6 +182,7 @@ function mergeRefreshRequest(
   target.full ||= source.full
   target.isResync ||= source.isResync
   target.phaseOrderChanged ||= source.phaseOrderChanged
+  target.tagChanged ||= source.tagChanged
   if (source.maxEventUpdatedAt) {
     if (!target.maxEventUpdatedAt || isNewerServerRevision(source.maxEventUpdatedAt, target.maxEventUpdatedAt)) {
       target.maxEventUpdatedAt = source.maxEventUpdatedAt
@@ -211,6 +215,7 @@ function hasScopedRefresh(request: RealtimeRefreshRequest): boolean {
     || request.phaseStructureIds.size > 0
     || request.phaseOrderChanged
     || request.roadmapFields.size > 0
+    || request.tagChanged
 }
 
 function refreshRequestFromEvent(
@@ -280,6 +285,15 @@ function refreshRequestFromEvent(
 
   for (const field of getRealtimeRoadmapFields(payload.roadmap_fields)) {
     request.roadmapFields.add(field)
+  }
+
+  if (
+    payload.tag_id
+    || (payload.tag_ids && payload.tag_ids.length > 0)
+    || payload.action?.startsWith('tag.')
+    || payload.action === 'tags.reordered'
+  ) {
+    request.tagChanged = true
   }
 
   return hasScopedRefresh(request) ? request : null
@@ -517,9 +531,6 @@ export function useRoadmapRealtime({
         nextRoadmapName = upgraded.roadmapName || loaded.roadmap.name
         normalizedSsePhases = normalizePhasesProgress(upgraded.phases)
         nextSaved = true
-        if (activeRoadmapId) {
-          showUpgradeNoticeOnce(activeRoadmapId, loaded.updatedAt, upgraded)
-        }
       } catch (err) {
         console.warn('Could not upgrade realtime roadmap snapshot:', err)
       }
@@ -655,8 +666,14 @@ export function useRoadmapRealtime({
         nextRoadmapName = loaded.roadmap.name
       }
 
+      let nextTagRegistry = cached.tagRegistry ?? []
+      if (request.tagChanged && loaded.tagRegistry) {
+        nextTagRegistry = loaded.tagRegistry
+      }
+
       const phasesChanged = nextPhases !== localBeforeStructure
       const roadmapNameChanged = request.roadmapFields.has('name') && nextRoadmapName !== cached.roadmapName
+      const tagsChanged = request.tagChanged && nextTagRegistry !== (cached.tagRegistry ?? [])
       const updatedAtChanged = loaded.updatedAt !== cached.updatedAt
 
       if (phasesChanged) {
@@ -665,14 +682,18 @@ export function useRoadmapRealtime({
       if (roadmapNameChanged) {
         setRoadmapNameState(nextRoadmapName)
       }
+      if (tagsChanged) {
+        setTagRegistryState(nextTagRegistry)
+      }
       if (updatedAtChanged) {
         setUpdatedAtState(loaded.updatedAt)
       }
-      if (phasesChanged || roadmapNameChanged || updatedAtChanged) {
+      if (phasesChanged || roadmapNameChanged || updatedAtChanged || tagsChanged) {
         storage.setRoadmapCache(activeId, {
           ...cached,
           roadmapName: nextRoadmapName,
           phases: nextPhases,
+          tagRegistry: nextTagRegistry,
           updatedAt: loaded.updatedAt,
         })
       }
@@ -862,6 +883,22 @@ export function useRoadmapRealtime({
             // incorporated a strictly newer server revision.
             const currentRevision = activeCache()?.cache.updatedAt ?? null
             if (currentRevision !== null && isOlderServerRevision(payload.updated_at, currentRevision)) {
+              return
+            }
+
+            if (payload.action === 'roadmap.password_changed') {
+              if (typeof payload.is_password_enabled === 'boolean') {
+                setIsPasswordEnabledState(payload.is_password_enabled)
+                const current = activeCache()
+                if (current) {
+                  storage.setRoadmapCache(current.activeId, {
+                    ...current.cache,
+                    isPasswordEnabled: payload.is_password_enabled,
+                    updatedAt: payload.updated_at,
+                  })
+                  setUpdatedAtState(payload.updated_at)
+                }
+              }
               return
             }
 

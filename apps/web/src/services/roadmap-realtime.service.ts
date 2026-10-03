@@ -24,6 +24,9 @@ export interface RoadmapUpdatedEventPayload {
   action?: string
   changed_fields?: string[]
   roadmap_fields?: string[]
+  tag_id?: string
+  tag_ids?: string[]
+  is_password_enabled?: boolean
 }
 
 export interface RealtimeHandlers {

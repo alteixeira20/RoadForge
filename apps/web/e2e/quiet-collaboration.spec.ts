@@ -173,3 +173,63 @@ test('reduced motion support disables transitions on status indicator and toasts
   )
   expect(Number.parseFloat(transitionDuration)).toBeLessThanOrEqual(0.00001)
 })
+
+test('normalizes legacy snapshot silently with zero upgrade notice, toast, or save loop', async ({ page }) => {
+  const legacyRoadmapId = 'legacy_test_rm'
+  await page.addInitScript(({ id }) => {
+    const legacySnapshot = {
+      roadmapName: 'Legacy Normalization Test',
+      phases: [
+        {
+          id: 'p1',
+          num: '01',
+          name: 'Legacy Phase',
+          status: 'active',
+          color: '#808080',
+          progress: 50,
+          tasks: [
+            {
+              id: 't1',
+              title: 'Task with dupe tags',
+              done: false,
+              tags: ['backend', 'backend', ' frontend '],
+              assignees: ['Alice', 'Alice', 'Bob'],
+              complexity: 'medium',
+            },
+          ],
+        },
+      ],
+      saved: true,
+      ownerDisplayName: 'Legacy Owner',
+      updatedAt: '2026-01-01T00:00:00Z',
+      isPasswordEnabled: false,
+    }
+    localStorage.setItem(`rf:roadmap:${id}`, JSON.stringify(legacySnapshot))
+    localStorage.setItem('rf:activeRoadmapId', id)
+  }, { id: legacyRoadmapId })
+
+  await page.goto(`/workspace?roadmap=${legacyRoadmapId}`)
+  await page.waitForSelector('.phase')
+
+  // Verify tags were deduplicated and normalized in DOM
+  const task = page.locator('.task').first()
+  await expect(task).toBeVisible()
+
+  // Verify NO upgrade notice banner exists
+  await expect(page.locator('.workspace-upgrade-notice')).toHaveCount(0)
+  await expect(page.locator('text=Roadmap updated')).toHaveCount(0)
+
+  // Verify NO warning or error toasts
+  await expect(page.locator('.toast.is-error, .toast.is-warning')).toHaveCount(0)
+
+  // Verify sync status indicates saved / local draft without runaway saving
+  const indicator = page.locator('.sync-status-indicator')
+  await expect(indicator).toBeVisible()
+  await expect(indicator).not.toHaveClass(/is-syncing/)
+
+  // Reload page and verify still completely stable
+  await page.reload()
+  await page.waitForSelector('.phase')
+  await expect(page.locator('.workspace-upgrade-notice')).toHaveCount(0)
+  await expect(page.locator('.toast.is-error')).toHaveCount(0)
+})

@@ -398,29 +398,20 @@ async def test_viewer_cannot_patch_task(client: AsyncClient):
     assert response.status_code == 403
 
 
-async def test_stale_patch_returns_structured_conflict(client: AsyncClient):
+async def test_focused_patch_succeeds_without_global_revision_conflict(client: AsyncClient):
     roadmap = await create_with_phases(client)
     first = await _patch(client, roadmap, title="First update")
     assert first.status_code == 200, first.text
 
-    stale = await _patch(client, roadmap, title="Stale update")
-
-    assert stale.status_code == 409
-    body = stale.json()
-    assert body["code"] == "roadmap_conflict"
-    assert body["conflict"]["roadmap_id"] == roadmap["id"]
-    assert body["conflict"]["server_updated_at"] == first.json()["updated_at"]
-    assert body["conflict"]["client_last_updated_at"] == roadmap["updated_at"]
-    assert body["conflict"]["summary"]["phase_ids"] == []
-    assert body["conflict"]["summary"]["task_ids"] == []
-    assert _task(body["conflict"]["server"])["title"] == "First update"
+    second = await _patch(client, roadmap, title="Second update")
+    assert second.status_code == 200, second.text
 
     current = await client.get(
         f"/api/roadmaps/{roadmap['id']}",
         headers=auth(roadmap["owner_session_token"]),
     )
     assert current.status_code == 200, current.text
-    assert _task(current.json())["title"] == "First update"
+    assert _task(current.json())["title"] == "Second update"
 
 
 async def test_missing_task_returns_project_not_found_shape(client: AsyncClient):

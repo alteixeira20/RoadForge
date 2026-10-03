@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
-import { getParticipants, getShareLinks, regenerateShareLink, revokeParticipant, revokeShareLink } from '@/services/roadmap-sharing.service'
+import { getParticipants, getShareLinks, regenerateShareLink, revokeParticipant, revokeShareLink, updateRoadmapPassword } from '@/services/roadmap-sharing.service'
 import { useRoadmapData, useRoadmapSession } from '@/context/RoadmapContext'
 import { ShareRoleSection } from '@/components/share/ShareRoleSection'
 import { isApiError, isAuthError } from '@/services/roadmap-http'
@@ -25,13 +25,17 @@ interface ShareModalProps {
 
 export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
   const { serverRoadmapId, sessionToken, role } = useRoadmapSession()
-  const { isPasswordEnabled } = useRoadmapData()
+  const { isPasswordEnabled, setIsPasswordEnabled } = useRoadmapData()
   const [links, setLinks] = useState<ShareLink[]>([])
   const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState(false)
   const [participantsLoading, setParticipantsLoading] = useState(false)
   const [ownerOnly, setOwnerOnly] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [passwordInput, setPasswordInput] = useState('')
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [expandedRoles, setExpandedRoles] = useState<Record<ShareRole, boolean>>({
     owner: true,
     editor: true,
@@ -46,6 +50,10 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
     if (!open) return
     setOwnerOnly(false)
     setParticipants([])
+    setPasswordInput('')
+    setShowPasswordForm(false)
+    setPasswordLoading(false)
+    setPasswordError(null)
     if (!canManageShare) {
       setLinks([])
       setLoading(false)
@@ -228,6 +236,62 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
     }
   }
 
+  const handleSavePassword = async () => {
+    if (!serverRoadmapId || !sessionToken) return
+    const trimmed = passwordInput.trim()
+    if (!trimmed || trimmed.length < 6) {
+      setPasswordError('Password must be at least 6 characters.')
+      return
+    }
+    if (trimmed.length > 128) {
+      setPasswordError('Password must be at most 128 characters.')
+      return
+    }
+    setPasswordLoading(true)
+    setPasswordError(null)
+    try {
+      const res = await updateRoadmapPassword(serverRoadmapId, trimmed, sessionToken)
+      setIsPasswordEnabled(res.isPasswordEnabled)
+      const wasEnabled = isPasswordEnabled
+      setPasswordInput('')
+      setShowPasswordForm(false)
+      onToast(wasEnabled ? 'Password changed' : 'Password set')
+    } catch (err: unknown) {
+      if (isAuthError(err)) {
+        onToast('Only the owner can manage the roadmap password.')
+      } else if (err instanceof Error) {
+        setPasswordError(err.message)
+      } else {
+        setPasswordError('Failed to update password')
+      }
+    } finally {
+      setPasswordLoading(false)
+    }
+  }
+
+  const handleRemovePassword = async () => {
+    if (!serverRoadmapId || !sessionToken) return
+    setPasswordLoading(true)
+    setPasswordError(null)
+    try {
+      const res = await updateRoadmapPassword(serverRoadmapId, null, sessionToken)
+      setIsPasswordEnabled(res.isPasswordEnabled)
+      setPasswordInput('')
+      setShowPasswordForm(false)
+      onToast('Password removed')
+    } catch (err: unknown) {
+      if (isAuthError(err)) {
+        onToast('Only the owner can manage the roadmap password.')
+      } else if (err instanceof Error) {
+        setPasswordError(err.message)
+      } else {
+        setPasswordError('Failed to remove password')
+      }
+    } finally {
+      setPasswordLoading(false)
+    }
+  }
+
   return (
     <Modal
       open={open}
@@ -252,54 +316,159 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
       }
     >
       {!ownerOnly && serverRoadmapId && (
-        <div className="owner-access">
-          <div className="note-line compact">
-            <span className="ic">
-              <Icon name="shield" size={14} />
-            </span>
-            <span>
-              This browser is connected as owner. To access as owner from another
-              browser, save or generate an owner invite link.
-            </span>
+        <>
+          <div className="owner-access">
+            <div className="note-line compact">
+              <span className="ic">
+                <Icon name="shield" size={14} />
+              </span>
+              <span>
+                This browser is connected as owner. To access as owner from another
+                browser, save or generate an owner invite link.
+              </span>
+            </div>
+            {roadmapUrl && (
+              <div className="share-row compact">
+                <div className="ic">
+                  <Icon name="link" size={15} />
+                </div>
+                <div className="meta">
+                  <div className="h">Current roadmap URL</div>
+                  <div className="d">Use this URL with an owner session in this browser.</div>
+                </div>
+                <div className="link-line">
+                  <code>{roadmapUrl}</code>
+                  <button
+                    className={`copy ${copied === 'roadmap-url' ? 'copied' : ''}`}
+                    onClick={() => copy('roadmap-url', roadmapUrl)}
+                  >
+                    {copied === 'roadmap-url' ? (
+                      <>
+                        <Icon name="check" size={13} /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="link" size={13} /> Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="note-line compact warning">
+              <span className="ic">
+                <Icon name="lock" size={14} />
+              </span>
+              <span>
+                Owner links grant full control. Store carefully. Rotate/generate an
+                owner link to reveal a new owner invite.
+              </span>
+            </div>
           </div>
-          {roadmapUrl && (
-            <div className="share-row compact">
-              <div className="ic">
-                <Icon name="link" size={15} />
+
+          <div className="roadmap-password-section">
+            <div className="roadmap-password-header">
+              <div className="roadmap-password-title">
+                <Icon name="lock" size={15} />
+                <span>Roadmap password</span>
+                <span className={`badge ${isPasswordEnabled ? 'ember' : ''}`}>
+                  {isPasswordEnabled ? 'Password protected' : 'No password required'}
+                </span>
               </div>
-              <div className="meta">
-                <div className="h">Current roadmap URL</div>
-                <div className="d">Use this URL with an owner session in this browser.</div>
-              </div>
-              <div className="link-line">
-                <code>{roadmapUrl}</code>
-                <button
-                  className={`copy ${copied === 'roadmap-url' ? 'copied' : ''}`}
-                  onClick={() => copy('roadmap-url', roadmapUrl)}
-                >
-                  {copied === 'roadmap-url' ? (
+              {!showPasswordForm && (
+                <div className="roadmap-password-actions">
+                  {isPasswordEnabled ? (
                     <>
-                      <Icon name="check" size={13} /> Copied
+                      <button
+                        type="button"
+                        className="mini"
+                        onClick={() => {
+                          setShowPasswordForm(true)
+                          setPasswordError(null)
+                        }}
+                        disabled={passwordLoading}
+                      >
+                        Change password
+                      </button>
+                      <button
+                        type="button"
+                        className="mini danger"
+                        onClick={handleRemovePassword}
+                        disabled={passwordLoading}
+                      >
+                        {passwordLoading ? 'Removing...' : 'Remove password'}
+                      </button>
                     </>
                   ) : (
-                    <>
-                      <Icon name="link" size={13} /> Copy
-                    </>
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => {
+                        setShowPasswordForm(true)
+                        setPasswordError(null)
+                      }}
+                      disabled={passwordLoading}
+                    >
+                      Set password
+                    </button>
                   )}
-                </button>
-              </div>
+                </div>
+              )}
             </div>
-          )}
-          <div className="note-line compact warning">
-            <span className="ic">
-              <Icon name="lock" size={14} />
-            </span>
-            <span>
-              Owner links grant full control. Store carefully. Rotate/generate an
-              owner link to reveal a new owner invite.
-            </span>
+            <div className="roadmap-password-desc">
+              {isPasswordEnabled
+                ? 'Collaborators must provide this password when accessing via invite links.'
+                : 'Require a password in addition to invite links to access this roadmap.'}
+            </div>
+            {showPasswordForm && (
+              <div className="roadmap-password-form">
+                <div className="roadmap-password-inputs">
+                  <input
+                    type="password"
+                    className="roadmap-password-input"
+                    placeholder={isPasswordEnabled ? 'Enter new password (min. 6 characters)' : 'Enter password (min. 6 characters)'}
+                    value={passwordInput}
+                    onChange={(e) => {
+                      setPasswordInput(e.target.value)
+                      setPasswordError(null)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleSavePassword()
+                      }
+                    }}
+                    disabled={passwordLoading}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="mini primary"
+                    onClick={handleSavePassword}
+                    disabled={passwordLoading || !passwordInput.trim()}
+                  >
+                    {passwordLoading ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    type="button"
+                    className="mini"
+                    onClick={() => {
+                      setShowPasswordForm(false)
+                      setPasswordInput('')
+                      setPasswordError(null)
+                    }}
+                    disabled={passwordLoading}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {passwordError && (
+                  <div className="roadmap-password-error">{passwordError}</div>
+                )}
+              </div>
+            )}
           </div>
-        </div>
+        </>
       )}
 
       <div className="share-list">

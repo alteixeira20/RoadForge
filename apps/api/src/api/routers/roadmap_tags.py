@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.database import get_db
 from api.schemas.roadmap import (
     CreateTagRequest,
+    ReorderTagsRequest,
     RoadmapConflictResponse,
     RoadmapResponse,
     TagResponse,
@@ -19,6 +20,7 @@ from api.services.roadmap_tag_service import (
     create_tag,
     delete_tag,
     list_tags,
+    reorder_tags,
     update_tag,
 )
 
@@ -101,6 +103,26 @@ async def put_tag(
         return JSONResponse(status_code=409, content=exc.response.model_dump(mode="json"))
 
 
+@router.put(
+    "/{roadmap_id}/tags/order",
+    response_model=RoadmapResponse,
+)
+async def put_reorder_tags(
+    roadmap_id: str,
+    payload: ReorderTagsRequest,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
+    await rate_limiter.enforce(
+        "tag.reorder",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=60,
+        window_seconds=60,
+    )
+    return await reorder_tags(db, roadmap_id, payload.tag_ids, participant)
+
+
 @router.delete(
     "/{roadmap_id}/tags/{tag_id}",
     response_model=RoadmapResponse,
@@ -109,7 +131,7 @@ async def put_tag(
 async def remove_tag(
     roadmap_id: str,
     tag_id: str,
-    last_updated_at: datetime = Query(...),
+    last_updated_at: datetime | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse | JSONResponse:

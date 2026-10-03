@@ -6,8 +6,10 @@ from api.database import get_db
 from api.schemas.roadmap import (
     ParticipantResponse,
     ParticipantSummaryResponse,
+    RoadmapPasswordResponse,
     ShareLinkResponse,
     ShareRole,
+    UpdatePasswordRequest,
 )
 from api.services.auth_service import require_participant
 from api.services.event_bus import RevocationRegistryUnavailableError
@@ -19,6 +21,7 @@ from api.services.sharing_service import (
     revoke_participant,
     revoke_share_link,
     rotate_share_link,
+    update_roadmap_password,
 )
 
 router = APIRouter(tags=["roadmaps"])
@@ -84,6 +87,27 @@ async def delete_share_link(
     )
     await revoke_share_link(db, roadmap_id, role, participant)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{roadmap_id}/password",
+    response_model=RoadmapPasswordResponse,
+)
+async def put_roadmap_password(
+    roadmap_id: str,
+    payload: UpdatePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapPasswordResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
+    await rate_limiter.enforce(
+        "roadmap.password.update",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=10,
+        window_seconds=60,
+    )
+    enabled = await update_roadmap_password(db, roadmap_id, payload.password, participant)
+    return RoadmapPasswordResponse(is_password_enabled=enabled)
 
 
 @router.get("/{roadmap_id}/participants")

@@ -359,7 +359,7 @@ async def test_roadmap_snapshot_rejects_unsafe_tag_ids(client: AsyncClient, bad_
     assert resp.status_code == 422, resp.text
 
 
-async def test_create_tag_rejects_stale_roadmap_timestamp(client: AsyncClient):
+async def test_create_tag_succeeds_without_global_revision_conflict(client: AsyncClient):
     body = await create_roadmap(client)
     first = await _post_tag(
         client,
@@ -370,7 +370,7 @@ async def test_create_tag_rejects_stale_roadmap_timestamp(client: AsyncClient):
     )
     assert first.status_code == 201
 
-    stale = await _post_tag(
+    second = await _post_tag(
         client,
         body["id"],
         body["owner_session_token"],
@@ -378,8 +378,10 @@ async def test_create_tag_rejects_stale_roadmap_timestamp(client: AsyncClient):
         {"label": "Second"},
     )
 
-    assert stale.status_code == 409
-    assert stale.json()["code"] == "roadmap_conflict"
+    assert second.status_code == 201
+    labels = [t["label"] for t in second.json()["tag_registry"]]
+    assert "First" in labels
+    assert "Second" in labels
 
 
 # ─── PUT /tags/{tag_id} ───────────────────────────────────────────────────────
