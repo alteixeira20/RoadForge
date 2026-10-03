@@ -340,13 +340,13 @@ class PatchTaskDoneRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     done: bool
-    last_updated_at: datetime
+    last_updated_at: datetime | None = None
 
 
 class PatchTaskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    last_updated_at: datetime
+    last_updated_at: datetime | None = None
     title: str | None = Field(default=None, max_length=TASK_TITLE_MAX)
     desc: str | None = Field(default=None, max_length=TASK_DESC_MAX)
     est: str | None = Field(default=None, max_length=TASK_EST_MAX)

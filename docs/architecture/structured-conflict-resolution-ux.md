@@ -1,22 +1,24 @@
 # Structured Conflict Resolution UX
 
-## Current Conflict Behavior
+## Conflict Scope and Exceptional Recovery
 
-Server-backed roadmaps use optimistic concurrency. The client sends the last
-observed `updated_at` value as `last_updated_at` on full-roadmap saves. If the
-server has a newer roadmap timestamp, the API returns `409 Conflict`.
+Normal collaborative editing does not use whole-roadmap compare-and-swap (CAS) checks.
+Ordinary mutations (task planning edits, task completion, phase structure and field writes,
+tag management, and task claims) flow through focused APIs serialized by database row locks.
+Because focused writes do not require a global `last_updated_at` CAS precondition, concurrent
+edits to different entities converge automatically without producing HTTP 409 conflicts.
 
-Today the frontend marks the workspace as `CONFLICT`, shows a banner, preserves
-the local unsynced copy, and offers a reload action. Reloading fetches the latest
-server snapshot and discards local unsynced edits only after confirmation.
+Structured conflict resolution is reserved strictly for exceptional aggregate operations:
 
-## Problem
+- initial server creation or explicit full-roadmap replacement;
+- full JSON import/restore operations;
+- restoring a past checkpoint from version history;
+- recovering an unrecoverable offline local draft against an advanced server state.
 
-Reload-only recovery is safe but blunt. Users can avoid silent data loss, but
-they cannot inspect what changed elsewhere or make an informed choice about
-whether to keep local work or accept the server state.
-
-## First Structured Scope
+When an exceptional aggregate write encounters a newer server timestamp, the API returns
+`409 Conflict` with structured conflict metadata. The UI displays an informational conflict
+banner without auto-opening disruptive modals, allowing the user to inspect differences and
+explicitly choose between reloading the server version or retrying the local snapshot.
 
 The first version adds structured review around the existing full-snapshot save
 model:

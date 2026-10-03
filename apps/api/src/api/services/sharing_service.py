@@ -27,6 +27,8 @@ from api.services.event_bus import (
     event_bus,
 )
 from api.services.id_service import generate_id
+from api.services.password_service import hash_password
+from api.services.roadmap_query import fetch_active_roadmap_for_update
 from api.services.token_service import generate_token, hash_token
 from api.services.token_service import token_prefix as make_token_prefix
 
@@ -474,3 +476,49 @@ async def resolve_realtime_revocation(
             "Failed to clear abandoned fast-path revocation registry mark",
         )
     return False
+
+
+async def update_roadmap_password(
+    db: AsyncSession,
+    roadmap_id: str,
+    password: str | None,
+    actor: Participant,
+) -> bool:
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
+    enabled = password is not None
+    roadmap.is_password_enabled = enabled
+    roadmap.password_hash = hash_password(password) if enabled else None
+    roadmap.updated_at = datetime.now(timezone.utc)
+
+    db.add(
+        ActivityLog(
+            id=generate_id("al_"),
+            roadmap_id=roadmap.id,
+            participant_id=actor.id,
+            actor_name=actor.display_name,
+            action="roadmap.password_changed",
+            entity_type="roadmap",
+            entity_id=roadmap.id,
+            metadata_json={"enabled": enabled},
+        )
+    )
+
+    await enforce_activity_log_cap(db, roadmap.id)
+    await db.commit()
+    await db.refresh(roadmap)
+
+    await event_bus.publish(
+        Event(
+            roadmap_id=roadmap.id,
+            action="roadmap.updated",
+            payload={
+                "roadmap_id": roadmap.id,
+                "updated_at": roadmap.updated_at.isoformat(),
+                "participant_id": actor.id,
+                "action": "roadmap.password_changed",
+                "is_password_enabled": enabled,
+            },
+        )
+    )
+
+    return enabled

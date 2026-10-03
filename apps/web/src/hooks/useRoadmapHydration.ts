@@ -6,8 +6,6 @@ import { createRoadForgeTemplate } from '@/data/roadforge-template'
 import { storage, type RoadmapCache } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import {
-  getRoadmapUpgradeNoticeSignature,
-  isRoadmapUpgradeNoticeDismissed,
   upgradeRoadmapSnapshot,
   type RoadmapUpgradeNotice,
 } from '@/lib/roadmap-upgrade'
@@ -170,28 +168,15 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
   const [isHydratingServer, setIsHydratingServer] = useState(false)
   const [backendUnavailableRoadmapId, setBackendUnavailableRoadmapId] = useState<string | null>(null)
   const [sessionExpiredRoadmapId, setSessionExpiredRoadmapId] = useState<string | null>(null)
-  const shownUpgradeNoticeSignaturesRef = useRef<Set<string>>(new Set())
   const currentLoadTokenRef = useRef<{ value: boolean } | null>(null)
 
   const showUpgradeNoticeOnce = useCallback((
-    targetId: string,
-    updatedAt: string | null,
-    result: { changed: boolean; notices: RoadmapUpgradeNotice[] },
+    _targetId: string,
+    _updatedAt: string | null,
+    _result: { changed: boolean; notices: RoadmapUpgradeNotice[] },
   ) => {
-    if (!result.changed || result.notices.length === 0) return
-    const signature = getRoadmapUpgradeNoticeSignature({
-      roadmapId: targetId,
-      updatedAt,
-      notices: result.notices,
-    })
-    const dismissedSignature = storage
-      .getRoadmapUiState(targetId)
-      ?.dismissedUpgradeNoticeSignature
-    if (isRoadmapUpgradeNoticeDismissed(dismissedSignature, signature)) return
-    if (shownUpgradeNoticeSignaturesRef.current.has(signature)) return
-    shownUpgradeNoticeSignaturesRef.current.add(signature)
-    setRoadmapUpgradeNotice({ roadmapId: targetId, signature })
-  }, [setRoadmapUpgradeNotice])
+    // No-op: upgrade notices are removed completely from the collaboration UI
+  }, [])
 
   const resetAllState = useCallback((
     cache: RoadmapCache,

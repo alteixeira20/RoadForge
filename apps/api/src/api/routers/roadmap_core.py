@@ -41,10 +41,12 @@ async def post_roadmap(
     payload: CreateRoadmapRequest,
     db: AsyncSession = Depends(get_db),
 ) -> CreateRoadmapResponse:
-    await rate_limiter.enforce(
-        "roadmap.create.ip", extract_client_ip(request), limit=10, window_seconds=3600
-    )
     settings = get_settings()
+    is_dev = getattr(settings, "is_development", False)
+    limit = 1000 if is_dev else getattr(settings, "max_roadmaps_created_per_hour", 10)
+    await rate_limiter.enforce(
+        "roadmap.create.ip", extract_client_ip(request), limit=limit, window_seconds=3600
+    )
     return await create_roadmap(
         db, payload, settings.web_base_url, settings.max_server_roadmaps
     )

@@ -82,6 +82,7 @@ _SHARING_ROUTES = {
     ("DELETE", "/{roadmap_id}/share-links/{role}"),
     ("GET", "/{roadmap_id}/participants"),
     ("POST", "/{roadmap_id}/participants/{participant_id}/revoke"),
+    ("PUT", "/{roadmap_id}/password"),
 }
 _REALTIME_ROUTES = {
     ("POST", "/{roadmap_id}/events/ticket"),
@@ -91,6 +92,7 @@ _TAG_ROUTES = {
     ("GET", "/{roadmap_id}/tags"),
     ("POST", "/{roadmap_id}/tags"),
     ("PUT", "/{roadmap_id}/tags/{tag_id}"),
+    ("PUT", "/{roadmap_id}/tags/order"),
     ("DELETE", "/{roadmap_id}/tags/{tag_id}"),
 }
 
@@ -122,7 +124,7 @@ def _route_keys(router) -> list[tuple[str, str]]:
 
 def test_composed_router_matches_public_method_path_contract() -> None:
     assert set(_route_keys(roadmaps.router)) == _EXPECTED_PUBLIC_ROUTES
-    assert len(_EXPECTED_PUBLIC_ROUTES) == 55
+    assert len(_EXPECTED_PUBLIC_ROUTES) == 57
 
 
 def test_composed_router_has_no_duplicate_method_path_routes() -> None:

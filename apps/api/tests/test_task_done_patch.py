@@ -145,7 +145,7 @@ async def test_missing_task_returns_404(client: AsyncClient):
     assert resp.status_code == 404
 
 
-async def test_stale_task_done_patch_returns_409_and_does_not_mutate(client: AsyncClient):
+async def test_focused_task_done_patch_succeeds_without_global_revision_conflict(client: AsyncClient):
     body = await create_with_phases(client)
     roadmap_id = body["id"]
     token = body["owner_session_token"]
@@ -154,13 +154,12 @@ async def test_stale_task_done_patch_returns_409_and_does_not_mutate(client: Asy
     first = await _patch_done(client, roadmap_id, token, "tk_a1", True, original_updated_at)
     assert first.status_code == 200, first.text
 
-    stale = await _patch_done(client, roadmap_id, token, "tk_a1", False, original_updated_at)
-    assert stale.status_code == 409
-    assert stale.json()["code"] == "roadmap_conflict"
+    second = await _patch_done(client, roadmap_id, token, "tk_a1", False, original_updated_at)
+    assert second.status_code == 200, second.text
 
     get_resp = await client.get(f"/api/roadmaps/{roadmap_id}", headers=auth(token))
     assert get_resp.status_code == 200
-    assert _task_done(get_resp.json(), "tk_a1") is True
+    assert _task_done(get_resp.json(), "tk_a1") is False
 
 
 async def test_successful_patch_creates_completed_activity(client: AsyncClient):
@@ -247,7 +246,7 @@ async def test_noop_same_done_value_returns_200_without_task_activity(client: As
     assert await _task_actions(client, body["id"], body["owner_session_token"]) == []
 
 
-async def test_patch_task_done_requires_last_updated_at(client: AsyncClient):
+async def test_patch_task_done_allows_omitting_last_updated_at(client: AsyncClient):
     body = await create_with_phases(client)
 
     resp = await client.patch(
@@ -256,7 +255,8 @@ async def test_patch_task_done_requires_last_updated_at(client: AsyncClient):
         json={"done": True},
     )
 
-    assert resp.status_code == 422
+    assert resp.status_code == 200
+    assert _task_done(resp.json(), "tk_a1") is True
 
 
 async def test_patch_task_done_unauthenticated_returns_401(client: AsyncClient):

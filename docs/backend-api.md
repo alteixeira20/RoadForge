@@ -100,10 +100,12 @@ creates `roadmap.renamed` activity and publishes `roadmap.updated` with
 | `DELETE` | `/api/roadmaps/{id}/tasks/{task_id}/claim` | owner/editor | release/clear a claim according to role rules |
 
 Focused writes modify the same canonical roadmap document as aggregate saves. They do
-not create a second source of truth. Task planning PATCH supports title, description, time
-estimate, complexity, assignees, tags, and supported links. `very_high` complexity is only
-valid for top-level tasks with at least two direct subtasks; the domain validator rejects
-writes that would violate that structure.
+not create a second source of truth. Task planning and completion PATCH endpoints operate on
+the latest row-locked canonical snapshot and intentionally do not require `last_updated_at`,
+allowing concurrent focused edits to different entities or fields to serialize and succeed without
+conflict. Task planning PATCH supports title, description, time estimate, complexity, assignees,
+tags, and supported links. `very_high` complexity is only valid for top-level tasks with at least
+two direct subtasks; the domain validator rejects writes that would violate that structure.
 
 ## Focused task structure and dependency writes
 
@@ -179,24 +181,37 @@ reconcile it without treating the whole roadmap as a conflicting snapshot.
 ## Tag registry
 
 | Method | Path | Access |
-| --- | --- |
+| --- | --- | --- |
 | `GET` | `/api/roadmaps/{id}/tags` | owner/editor/viewer |
 | `POST` | `/api/roadmaps/{id}/tags` | owner/editor |
 | `PUT` | `/api/roadmaps/{id}/tags/{tag_id}` | owner/editor |
 | `DELETE` | `/api/roadmaps/{id}/tags/{tag_id}` | owner/editor |
+| `PUT` | `/api/roadmaps/{id}/tags/order` | owner/editor |
 
 Tasks reference stable tag IDs. The registry remains canonical roadmap data rather than
-a separate identity/access system.
+a separate identity/access system. Tag mutations operate on the latest row-locked canonical
+snapshot and intentionally do not require `last_updated_at` compare-and-swap preconditions
+(`last_updated_at` is accepted as an optional query param on DELETE for backward compatibility).
 
 ## Sharing and participants
 
 | Method | Path | Access |
-| --- | --- |
+| --- | --- | --- |
 | `GET` | `/api/roadmaps/{id}/share-links` | owner |
 | `POST` | `/api/roadmaps/{id}/share-links/{role}/rotate` | owner |
 | `DELETE` | `/api/roadmaps/{id}/share-links/{role}` | owner |
 | `GET` | `/api/roadmaps/{id}/participants` | owner/editor, role-scoped response |
 | `POST` | `/api/roadmaps/{id}/participants/{participant_id}/revoke` | owner |
+| `PUT` | `/api/roadmaps/{id}/password` | owner |
+
+Owner password management (`PUT /api/roadmaps/{id}/password`) accepts `{"password": "secret"}`
+(6 to 128 characters) to set or change the password, or `{"password": null}` to remove password
+protection. The endpoint returns `{"is_password_enabled": bool}`. The password is stored using
+salted PBKDF2-SHA256 (100k iterations). The raw password is never stored, logged, or returned.
+Setting, changing, or removing the password writes `roadmap.password_changed` activity with
+`{"enabled": bool}` and emits a `roadmap.updated` realtime event with `action="roadmap.password_changed"`
+and `is_password_enabled`. Existing participant sessions remain valid. Rate-limited to 10 requests
+per minute per participant/roadmap.
 
 Raw invite URLs for every role are one-time response material after creation/rotation;
 normal listing never recovers a raw token. Generated links place the invite in the URL

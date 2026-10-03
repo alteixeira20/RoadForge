@@ -15,7 +15,7 @@ import {
 import { PhaseList } from './PhaseList'
 import { GlobalKeyboardReorderAnnouncer } from './KeyboardReorderAnnouncer'
 import { KeyboardReorderCoordinatorProvider } from '@/hooks/useKeyboardReorderCoordinator'
-import { WorkspaceBanners, WorkspaceUpgradeNotice, WorkspaceWelcomeBanner } from './WorkspaceBanners'
+import { WorkspaceBanners, WorkspaceWelcomeBanner } from './WorkspaceBanners'
 import { WorkspaceModals } from './WorkspaceModals'
 import { SyncConflictReviewPanel } from './SyncConflictReviewPanel'
 import { ActivityPanel } from './ActivityPanel'
@@ -102,8 +102,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     clearAccessRevokedEvent,
     sessionExpiredRoadmapId,
     clearSessionExpiredNotice,
-    roadmapUpgradeNotice,
-    dismissRoadmapUpgradeNotice,
     realtimeStatus,
   } = useRoadmapLifecycle()
   const readOnly = mode === 'viewer' || role === 'viewer'
@@ -477,7 +475,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
     setTagRegistry(restored.tagRegistry ?? [])
     setOwnerDisplayName(restored.ownerDisplayName)
     setUpdatedAt(restored.updatedAt)
-    setSaved(!upgraded.changed)
+    setSaved(true)
     markServerStateHealthy()
     if (showActivity) refreshActivity()
   }
@@ -518,10 +516,6 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             onCreateOwn={handleCreateOwn}
           />
         )}
-        <WorkspaceUpgradeNotice
-          roadmapUpgradeNotice={roadmapUpgradeNotice}
-          onDismissUpgradeNotice={dismissRoadmapUpgradeNotice}
-        />
         <WorkspaceHead
           roadmapName={roadmapName}
           totalDone={totalDone}
@@ -584,7 +578,7 @@ export function Workspace({ mode = 'owner', onCreateOwn }: WorkspaceProps) {
             }, {})}
           />
         ) : workspaceView === 'tags' ? (
-          <TagsPanel readOnly={readOnly} />
+          <TagsPanel readOnly={readOnly} onToast={showToast} />
         ) : (
           <PhaseList
             phases={visiblePhases}

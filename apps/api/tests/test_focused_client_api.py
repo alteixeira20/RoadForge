@@ -209,19 +209,15 @@ async def test_client_task_patch_is_compact_and_browser_route_stays_unchanged(
     assert browser.json()["phases"][0]["tasks"][0]["est"] == "3d"
     assert "affected_entity_type" not in browser.json()
 
-    conflict = await client.patch(
+    subsequent = await client.patch(
         compact_url,
         headers=headers,
-        json={"title": "Stale", "last_updated_at": body["updated_at"]},
+        json={"title": "Updated intent", "last_updated_at": body["updated_at"]},
     )
-    assert conflict.status_code == 409, conflict.text
-    conflict_payload = conflict.json()
-    assert conflict_payload["code"] == "roadmap_conflict"
-    assert conflict_payload["conflict"]["roadmap_id"] == body["id"]
-    assert conflict_payload["conflict"]["server_updated_at"] == browser.json()["updated_at"]
-    assert conflict_payload["conflict"]["client_last_updated_at"] == body["updated_at"]
-    assert "summary" in conflict_payload["conflict"]
-    assert "server" not in conflict_payload["conflict"]
+    assert subsequent.status_code == 200, subsequent.text
+    subsequent_payload = subsequent.json()
+    assert subsequent_payload["affected_entity_type"] == "task"
+    assert subsequent_payload["task"]["title"] == "Updated intent"
 
 
 async def test_client_openapi_contract_is_unambiguous_and_typed(client: AsyncClient):
@@ -356,7 +352,7 @@ async def test_focused_permissions_allow_viewer_reads_but_require_editor_for_wri
     assert allowed.status_code == 200, allowed.text
 
 
-def test_compact_example_serializes_well_under_target():
+async def test_compact_example_serializes_well_under_target():
     sample = {
         "roadmap_id": "rm_test",
         "updated_at": "2026-09-01T10:00:00Z",

@@ -36,10 +36,13 @@ from api.schemas.shared import (
 from api.schemas.sharing import (
     ParticipantResponse,
     ParticipantSummaryResponse,
+    RoadmapPasswordResponse,
     ShareLinkResponse,
+    UpdatePasswordRequest,
 )
 from api.schemas.tags import (
     CreateTagRequest,
+    ReorderTagsRequest,
     TagDefinitionDTO,
     TagResponse,
     UpdateTagRequest,
@@ -97,9 +100,12 @@ __all__ = [
     # Sharing
     "ParticipantResponse",
     "ParticipantSummaryResponse",
+    "RoadmapPasswordResponse",
     "ShareLinkResponse",
+    "UpdatePasswordRequest",
     # Tags
     "CreateTagRequest",
+    "ReorderTagsRequest",
     "TagDefinitionDTO",
     "TagResponse",
     "UpdateTagRequest",

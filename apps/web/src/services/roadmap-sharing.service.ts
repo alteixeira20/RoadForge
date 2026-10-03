@@ -190,3 +190,26 @@ export async function joinRoadmap(
     participantId: data.participant_id,
   }
 }
+
+interface ApiPasswordResponse {
+  is_password_enabled: boolean
+}
+
+/**
+ * Set, change, or remove the roadmap password. Passing null disables protection.
+ */
+export async function updateRoadmapPassword(
+  roadmapId: string,
+  password: string | null,
+  sessionToken: string,
+): Promise<{ isPasswordEnabled: boolean }> {
+  const data = await requestJson<ApiPasswordResponse>(
+    `/api/roadmaps/${roadmapId}/password`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ password }),
+    },
+    sessionToken,
+  )
+  return { isPasswordEnabled: data.is_password_enabled }
+}

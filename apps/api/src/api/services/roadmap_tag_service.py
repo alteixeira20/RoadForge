@@ -25,7 +25,6 @@ from api.schemas.roadmap import (
 from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
-from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
     _phases_from_snapshot,
     _roadmap_response,
@@ -67,12 +66,6 @@ def _unique_tag_id(base: str, registry: list[dict]) -> str:
             return candidate
     raise HTTPException(status_code=422, detail="Could not generate a unique tag ID")
 
-
-def _ensure_tag_mutation_is_current(
-    roadmap: Roadmap,
-    last_updated_at: datetime,
-) -> None:
-    ensure_roadmap_is_current(roadmap, last_updated_at)
 
 
 def _ensure_unique_tag_label(
@@ -152,7 +145,6 @@ async def create_tag(
     participant: Participant,
 ) -> RoadmapResponse:
     roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
-    _ensure_tag_mutation_is_current(roadmap, payload.last_updated_at)
     registry: list[dict] = list(roadmap.tag_registry_json or [])
 
     label = payload.label.strip()
@@ -193,7 +185,6 @@ async def update_tag(
     participant: Participant,
 ) -> RoadmapResponse:
     roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
-    _ensure_tag_mutation_is_current(roadmap, payload.last_updated_at)
     registry: list[dict] = list(roadmap.tag_registry_json or [])
 
     tag_index = next((i for i, t in enumerate(registry) if t.get("id") == tag_id), None)
@@ -229,11 +220,10 @@ async def delete_tag(
     db: AsyncSession,
     roadmap_id: str,
     tag_id: str,
-    last_updated_at: datetime,
+    last_updated_at: datetime | None,
     participant: Participant,
 ) -> RoadmapResponse:
     roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
-    _ensure_tag_mutation_is_current(roadmap, last_updated_at)
     registry: list[dict] = list(roadmap.tag_registry_json or [])
 
     existing_tag = next((tag for tag in registry if tag.get("id") == tag_id), None)
@@ -254,4 +244,33 @@ async def delete_tag(
         action="tag.deleted",
         tag_id=tag_id,
         before_json=existing_tag,
+    )
+
+
+async def reorder_tags(
+    db: AsyncSession,
+    roadmap_id: str,
+    tag_ids: list[str],
+    participant: Participant,
+) -> RoadmapResponse:
+    roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
+    registry: list[dict] = list(roadmap.tag_registry_json or [])
+    tag_map = {t["id"]: t for t in registry if isinstance(t, dict) and "id" in t}
+    reordered: list[dict] = []
+    seen = set()
+    for tid in tag_ids:
+        if tid in tag_map and tid not in seen:
+            reordered.append(tag_map[tid])
+            seen.add(tid)
+    for t in registry:
+        if isinstance(t, dict) and t.get("id") not in seen:
+            reordered.append(t)
+            seen.add(t.get("id"))
+    roadmap.tag_registry_json = reordered
+    return await _commit_tag_mutation(
+        db,
+        roadmap,
+        participant,
+        action="tag.reordered",
+        tag_id="order",
     )

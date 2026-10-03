@@ -173,7 +173,8 @@ export function useSaveFlow({
     onToast: showToast,
     onSessionExpired: handleSessionExpired,
     onConflictMetadata: () => {
-      setShowConflictReview(true)
+      // Do not auto-open conflict review modal during background sync;
+      // the banner allows reviewing if manual resolution is desired.
     },
   })
 
@@ -186,7 +187,6 @@ export function useSaveFlow({
   const handlePartialWriteConflict = (metadata: RoadmapConflictMetadata | null) => {
     setIsConflict(true)
     setConflictMetadata(metadata)
-    if (metadata) setShowConflictReview(true)
     setIsOffline(false)
   }
 
@@ -410,7 +410,7 @@ export function useSaveFlow({
       setOwnerDisplayName(loaded.ownerDisplayName)
       safeSetUpdatedAt(loaded.updatedAt)
       setPendingActivityChanges([])
-      setSaved(!upgraded.changed)
+      setSaved(true)
       setIsConflict(false)
       setConflictMetadata(null)
       setShowConflictReview(false)
