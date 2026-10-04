@@ -104,6 +104,50 @@ def test_direct_child_reorder_keeps_nested_descendants_with_child_root() -> None
 def test_phase_dicts_fails_closed_on_malformed_stored_task_array() -> None:
     with pytest.raises(HTTPException) as exc_info:
         phase_dicts({"phases": [{"id": "phase-a", "tasks": [{"id": "ok"}, "corrupt"]}]})
-
+    
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Stored roadmap task snapshot is invalid"
+
+
+def test_reorder_direct_children_rejects_invalid_task_ids() -> None:
+    tasks = [
+        _task("parent"),
+        _task("child-a", parent_id="parent"),
+        _task("child-b", parent_id="parent"),
+        _task("grandchild", parent_id="child-a"),
+        _task("other-root"),
+    ]
+
+    with pytest.raises(HTTPException) as exc_info:
+        reorder_direct_children(tasks, "parent", ["child-a", "invalid-id"])
+    
+    assert exc_info.value.status_code == 400
+    assert "invalid-id" in exc_info.value.detail
+
+
+def test_reorder_top_level_tasks_rejects_invalid_task_ids() -> None:
+    tasks = [
+        _task("root-a"),
+        _task("root-b"),
+        _task("child", parent_id="root-a"),
+    ]
+    
+    with pytest.raises(HTTPException) as exc_info:
+        reorder_top_level_tasks(tasks, ["root-a", "invalid-id"])
+    
+    assert exc_info.value.status_code == 400
+    assert "invalid-id" in exc_info.value.detail
+
+
+def test_reorder_direct_children_rejects_grandchild_id() -> None:
+    tasks = [
+        _task("parent"),
+        _task("child-a", parent_id="parent"),
+        _task("grandchild", parent_id="child-a"),
+    ]
+    
+    with pytest.raises(HTTPException) as exc_info:
+        reorder_direct_children(tasks, "parent", ["grandchild"])
+    
+    assert exc_info.value.status_code == 400
+    assert "grandchild" in exc_info.value.detail

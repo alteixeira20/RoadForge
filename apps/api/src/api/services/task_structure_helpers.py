@@ -165,6 +165,14 @@ def reorder_top_level_tasks(
         for task in tasks
         if not task.get("parentId") and isinstance(task.get("id"), str)
     ]
+
+    invalid_ids = [tid for tid in requested_ids if tid not in top_level_ids]
+    if invalid_ids:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid task IDs for reorder: {invalid_ids}. Must be top-level tasks (no parentId)."
+        )
+
     final_ids = preferred_known_order(top_level_ids, requested_ids)
     if final_ids == top_level_ids:
         return tasks, top_level_ids, final_ids
@@ -187,6 +195,14 @@ def reorder_direct_children(
     requested_ids: list[str],
 ) -> tuple[list[TaskDict], list[str], list[str]]:
     child_ids = direct_child_ids(tasks, parent_id)
+
+    invalid_ids = [tid for tid in requested_ids if tid not in child_ids]
+    if invalid_ids:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid task IDs for reorder: {invalid_ids}. Must be direct children of parent {parent_id}."
+        )
+
     final_ids = preferred_known_order(child_ids, requested_ids)
     if final_ids == child_ids:
         return tasks, child_ids, final_ids
