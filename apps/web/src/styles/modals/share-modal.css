@@ -7,6 +7,106 @@
   gap: 10px;
 }
 
+/* ─── Roadmap password section ─────────────────────────────────────────────── */
+.roadmap-password-section {
+  background: var(--bg-2);
+  border: 1px solid var(--border-faint);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.roadmap-password-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.roadmap-password-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.roadmap-password-desc {
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.4;
+}
+.roadmap-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.roadmap-password-inputs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.roadmap-password-input {
+  flex: 1;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-faint);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+}
+.roadmap-password-input:focus {
+  border-color: var(--ember);
+}
+.roadmap-password-error {
+  font-size: 12px;
+  color: var(--danger, #ef4444);
+}
+.roadmap-password-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.roadmap-password-section .mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  background: transparent;
+  border: 1px solid var(--border-faint);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+.roadmap-password-section .mini:hover:not(:disabled) {
+  color: var(--ink-2);
+  border-color: var(--border);
+}
+.roadmap-password-section .mini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.roadmap-password-section .mini.primary {
+  background: var(--ember);
+  border-color: var(--ember);
+  color: #fff;
+}
+.roadmap-password-section .mini.primary:hover:not(:disabled) {
+  background: var(--action-start, #d97442);
+}
+.roadmap-password-section .mini.danger {
+  color: var(--danger, #ef4444);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.roadmap-password-section .mini.danger:hover:not(:disabled) {
+  border-color: var(--danger, #ef4444);
+}
+
 /* ─── Share role sections ──────────────────────────────────────────────────── */
 .share-list { display: flex; flex-direction: column; gap: 10px; }
 .share-role-section {

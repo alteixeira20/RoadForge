@@ -5,15 +5,20 @@ Status: current pre-release contract
 Shared roadmaps treat the server revision as authoritative while preserving local-only
 work that can be safely rebased.
 
-- With no local edits, remote roadmap updates refresh local state and may show one
-  informational notification.
-- Task-scoped remote operations (`task.updated`, completion/reopen, claim/unclaim) are
-  fetched from the authoritative server snapshot and rebased immediately onto the
-  current browser draft. Unrelated local roadmap, phase, and task edits remain intact.
-- Shared phase name/color/color-mode and roadmap-name operations are also field-scoped.
-  Their realtime metadata identifies the affected phase/roadmap fields, so another
-  collaborator's accepted change is rebased directly onto the current browser draft
-  even when unrelated aggregate work is dirty.
+- Ordinary remote collaborator edits are silent. Edits from collaborators appear automatically
+  without page reloads, visible refreshes, flashing, focus loss, conflict modals, banners,
+  or repetitive toasts. No toasts or modals are shown for successful local saves or remote edits.
+- Remote authoritative updates are applied non-dirtily: applying received
+  state does not mark the roadmap unsaved (`saved: false`) and does not schedule aggregate autosync.
+- Own-event echo suppression: originating clients use participant IDs, operation generations,
+  and monotonic timestamps to safely ignore their own SSE events, avoiding secondary writes,
+  full-document refetches, or oscillation between saving and live states.
+- Task-scoped remote operations (`task.updated`, completion/reopen, claim/unclaim) and
+  tag-scoped remote operations (`tag_id`, `tag_ids`) are fetched from the authoritative
+  server snapshot and rebased immediately onto the current browser draft without replacing
+  unrelated entities. Unrelated local roadmap, phase, and task edits remain intact.
+- Password change events (`action="roadmap.password_changed"`, `is_password_enabled`) update
+  the local state and auth cache directly without refetching the full document.
 - Phase create/delete/reorder is structure-scoped. Realtime metadata identifies affected
   phase IDs and/or an order change, while one authoritative GET supplies the final server
   phase set/order. A remote create adds/replaces only the affected entity, a remote delete

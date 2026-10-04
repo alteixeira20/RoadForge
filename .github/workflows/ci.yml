@@ -356,6 +356,39 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: roadforge
+          POSTGRES_PASSWORD: roadforge
+          POSTGRES_DB: roadforge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U roadforge -d roadforge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@127.0.0.1:5432/roadforge
+      REDIS_URL: redis://127.0.0.1:6379/0
+      ROADFORGE_REALTIME_BACKEND: redis
+      ROADFORGE_WEB_BASE_URL: http://127.0.0.1:4173
+      ROADFORGE_CORS_ORIGINS: 'http://127.0.0.1:4173,http://localhost:4173'
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:7878
+      ROADFORGE_MAX_ROADMAPS_PER_HOUR: 1000
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -371,14 +404,49 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install browser-test API
+        working-directory: apps/api
+        run: pip install -e .
+
+      - name: Run browser-test migrations
+        working-directory: apps/api
+        run: python -m alembic upgrade head
+
+      - name: Start browser-test API
+        working-directory: apps/api
+        run: |
+          python -m uvicorn api.main:app --host 127.0.0.1 --port 7878 > "$RUNNER_TEMP/roadforge-api.log" 2>&1 &
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:7878/api/health/ready; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/roadforge-api.log"
+          exit 1
 
       - name: Install Chromium
         run: pnpm --dir apps/web exec playwright install --with-deps chromium
 
       - name: Run browser suite
         run: pnpm --dir apps/web test:browser
+
+      - name: Upload browser-test API log
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: browser-test-api-log
+          path: ${{ runner.temp }}/roadforge-api.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload browser artifacts
         if: failure()

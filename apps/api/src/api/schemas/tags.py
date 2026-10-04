@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from api.schemas.limits import TAG_COLOR_MAX, TAG_LABEL_MAX, TAG_MAX
+from api.schemas.limits import TAG_COLOR_MAX, TAG_LABEL_MAX, TAG_MAX, TAG_REGISTRY_MAX
 from api.schemas.validators import clean_optional_text, clean_required_text
 
 # Strict grammar for newly generated tag ids (see _generated_tag_id in
@@ -61,7 +61,7 @@ class CreateTagRequest(BaseModel):
         max_length=TAG_COLOR_MAX,
         pattern=r"^#[0-9a-fA-F]{6}$",
     )
-    last_updated_at: datetime
+    last_updated_at: datetime | None = None
 
     @field_validator("id", "label", mode="before")
     @classmethod
@@ -90,7 +90,7 @@ class UpdateTagRequest(BaseModel):
         max_length=TAG_COLOR_MAX,
         pattern=r"^#[0-9a-fA-F]{6}$",
     )
-    last_updated_at: datetime
+    last_updated_at: datetime | None = None
 
     @field_validator("label", mode="before")
     @classmethod
@@ -106,6 +106,12 @@ class UpdateTagRequest(BaseModel):
             return v
         cleaned = clean_optional_text(v, "color", TAG_COLOR_MAX)
         return cleaned.lower() if cleaned else cleaned
+
+
+class ReorderTagsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tag_ids: list[str] = Field(min_length=0, max_length=TAG_REGISTRY_MAX)
 
 
 class TagResponse(BaseModel):

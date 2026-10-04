@@ -55,11 +55,22 @@ export async function createServerPhase(
   phase: CreatePhaseFields,
   sessionToken: string,
 ): Promise<PhaseMutationResult> {
+  // Explicitly pick only the four fields permitted by the server's
+  // CreatePhaseRequest schema (extra="forbid"). The caller may pass a full
+  // Phase object whose structural subtype satisfies CreatePhaseFields; blindly
+  // serializing it would include num, tasks, progress, and status, which the
+  // backend rejects with HTTP 422.
+  const payload = {
+    id: phase.id,
+    name: phase.name,
+    color: phase.color,
+    colorMode: phase.colorMode,
+  }
   const response = await requestJson<ApiPhaseMutationResponse>(
     `/api/roadmaps/${roadmapId}/phases`,
     {
       method: 'POST',
-      body: JSON.stringify(phase),
+      body: JSON.stringify(payload),
     },
     sessionToken,
   )

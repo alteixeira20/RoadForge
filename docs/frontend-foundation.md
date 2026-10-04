@@ -57,9 +57,10 @@ Canonical construction and validation boundaries:
 - `TaskRow` and task-claim behavior subscribe to the roadmap data/session slices
   they use rather than the combined compatibility context, so lifecycle-only
   updates do not invalidate active task editors.
-- `useAutoSync` handles aggregate saves; task done/claim and tag registry changes have
-  focused service calls.
-- `useRoadmapRealtime` obtains a short-lived ticket and reconciles SSE events.
+- `useAutoSync` handles exceptional aggregate saves (creation, imports, restores); ordinary
+  task, phase, claim, and tag mutations use focused service calls and do not trigger whole-roadmap PUTs.
+- `useRoadmapRealtime` obtains a short-lived ticket and reconciles SSE events silently without
+  triggering secondary writes or notification spam.
 - `useEditLock` manages 30-second soft locks with 20-second refresh.
 - `useIdleEditPause` pauses lock refresh after 90 seconds without interaction while
   preserving the local edit draft.
@@ -86,7 +87,7 @@ Canonical construction and validation boundaries:
 Only modules under `src/services/` call `fetch()`:
 
 - `roadmap-crud.service.ts` - roadmap CRUD, versions, task state, tags, and canonical JSON export;
-- `roadmap-sharing.service.ts` - join, share links, and participants;
+- `roadmap-sharing.service.ts` - join, share links, password management, and participants;
 - `roadmap-locks.service.ts` - lock acquire/release/list;
 - `roadmap-realtime.service.ts` - event tickets and SSE setup;
 - `roadmap-http.ts` - shared request/error handling;
@@ -109,14 +110,20 @@ JSON remains the canonical portable and importable format.
 
 ## Collaboration behavior
 
-- Owner/editor roadmap saves use `last_updated_at`; stale writes enter the conflict
-  review flow without discarding local edits.
-- Task title, estimate, description, tags, and assignees support lock-aware inline
-  editing. Task completion and claims use focused API routes.
-- Editors can read active participant name/role summaries and version history. Their
-  Versions UI is read-only.
-- Only owners can manage share links, revoke participants, delete roadmaps, and restore
-  versions.
+- Quiet collaboration model: ordinary collaborative edits appear automatically and converge
+  without whole-roadmap conflict modals, banners, page reloads, or repetitive toasts.
+- Focused intent writes: task planning edits, task completion, phase creation/deletion/renaming/reordering,
+  and tag mutations bypass whole-roadmap compare-and-swap checks, serializing safely under database
+  row locking where later accepted writes win.
+- Aggregate saves with `last_updated_at` CAS checks are reserved strictly for exceptional bulk operations
+  such as initial server roadmap creation, explicit JSON import, or version checkpoint restore.
+- Remote authoritative updates are applied non-dirtily: applying received
+  updates does not mark the roadmap unsaved (`saved: false`) and never triggers echo writes or autosync loops.
+- Snapshot normalization happens silently in memory without user-facing upgrade notice banners or
+  cascading saves.
+- Active task editor focus and uncommitted user drafts are preserved across remote updates to unrelated entities.
+- Only owners can manage share links, set/change/remove roadmap passwords in `ShareModal.tsx`, revoke
+  participants, delete roadmaps, and restore versions.
 - Viewers cannot mutate roadmap state.
 
 ## Styling

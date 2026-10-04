@@ -30,6 +30,12 @@ import {
   TAG_REGISTRY_MAX,
   uniqueTagId,
 } from '@/lib/tag-registry'
+import {
+  createServerTag,
+  updateServerTag,
+  deleteServerTag,
+  reorderServerTags,
+} from '@/services/roadmap-crud.service'
 import type { TagDefinition } from '@/types/roadmap'
 import { SortableTagRow } from './SortableTagRow'
 import { TagChip } from './TagChip'
@@ -44,10 +50,19 @@ interface TagFormState {
 
 interface TagsPanelProps {
   readOnly?: boolean
+  onToast?: (message: string) => void
 }
 
-export function TagsPanel({ readOnly = false }: TagsPanelProps) {
-  const { tagRegistry, setTagRegistry, setSaved, phases } = useRoadmap()
+export function TagsPanel({ readOnly = false, onToast }: TagsPanelProps) {
+  const {
+    tagRegistry,
+    setTagRegistry,
+    setSaved,
+    phases,
+    serverRoadmapId,
+    sessionToken,
+    setUpdatedAt,
+  } = useRoadmap()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [addingNew, setAddingNew] = useState(false)
   const [form, setForm] = useState<TagFormState>({
@@ -101,7 +116,7 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
     )
   }
 
-  const handleSaveNew = () => {
+  const handleSaveNew = async () => {
     const label = normalizeTagLabel(form.label)
     if (!label) return
     if (tagRegistry.length >= TAG_REGISTRY_MAX) {
@@ -125,12 +140,29 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
       createdAt: now,
       updatedAt: now,
     }
-    setTagRegistry([...tagRegistry, newTag])
-    setSaved(false)
+    const nextRegistry = [...tagRegistry, newTag]
+    setTagRegistry(nextRegistry)
     resetForm()
+
+    if (serverRoadmapId && sessionToken && !readOnly) {
+      try {
+        const res = await createServerTag(serverRoadmapId, {
+          id: newTag.id,
+          label: newTag.label,
+          color: newTag.color,
+        }, sessionToken)
+        if (res.tagRegistry) setTagRegistry(res.tagRegistry)
+        if (res.updatedAt) setUpdatedAt(res.updatedAt)
+      } catch (err) {
+        console.error('Failed to create tag on server:', err)
+        onToast?.('Could not save tag to server')
+      }
+    } else {
+      setSaved(false)
+    }
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingId) return
     const label = normalizeTagLabel(form.label)
     if (!label) return
@@ -138,32 +170,66 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
       setFormError('A tag with this label already exists.')
       return
     }
-    setTagRegistry(
-      tagRegistry.map((tag) =>
-        tag.id === editingId
-          ? {
-              ...tag,
-              label,
-              color: normalizeTagColor(form.color),
-              updatedAt: new Date().toISOString(),
-            }
-          : tag,
-      ),
+    const prevRegistry = tagRegistry
+    const nextRegistry = tagRegistry.map((tag) =>
+      tag.id === editingId
+        ? {
+            ...tag,
+            label,
+            color: normalizeTagColor(form.color),
+            updatedAt: new Date().toISOString(),
+          }
+        : tag,
     )
-    setSaved(false)
+    setTagRegistry(nextRegistry)
+    const tagIdToUpdate = editingId
+    const updatedColor = normalizeTagColor(form.color)
     resetForm()
+
+    if (serverRoadmapId && sessionToken && !readOnly) {
+      try {
+        const res = await updateServerTag(serverRoadmapId, tagIdToUpdate, {
+          label,
+          color: updatedColor,
+        }, sessionToken)
+        if (res.tagRegistry) setTagRegistry(res.tagRegistry)
+        if (res.updatedAt) setUpdatedAt(res.updatedAt)
+      } catch (err) {
+        console.error('Failed to update tag on server:', err)
+        setTagRegistry(prevRegistry)
+        onToast?.('Could not update tag on server')
+      }
+    } else {
+      setSaved(false)
+    }
   }
 
   const pendingDeleteTag = pendingDeleteId
     ? tagRegistry.find((tag) => tag.id === pendingDeleteId) ?? null
     : null
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!pendingDeleteId) return
-    setTagRegistry(tagRegistry.filter((tag) => tag.id !== pendingDeleteId))
-    setSaved(false)
-    if (editingId === pendingDeleteId) resetForm()
+    const deleteId = pendingDeleteId
+    const prevRegistry = tagRegistry
+    const nextRegistry = tagRegistry.filter((tag) => tag.id !== deleteId)
+    setTagRegistry(nextRegistry)
+    if (editingId === deleteId) resetForm()
     setPendingDeleteId(null)
+
+    if (serverRoadmapId && sessionToken && !readOnly) {
+      try {
+        const res = await deleteServerTag(serverRoadmapId, deleteId, sessionToken)
+        if (res.tagRegistry) setTagRegistry(res.tagRegistry)
+        if (res.updatedAt) setUpdatedAt(res.updatedAt)
+      } catch (err) {
+        console.error('Failed to delete tag on server:', err)
+        setTagRegistry(prevRegistry)
+        onToast?.('Could not delete tag on server')
+      }
+    } else {
+      setSaved(false)
+    }
   }
 
   const tagIds = tagRegistry.map((tag) => tag.id)
@@ -175,12 +241,23 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
   const keyboardReorder = useCoordinatedKeyboardReorder('roadmap-tags', tagIds, {
     disabled: readOnly,
     itemLabel: (id) => `tag ${tagRegistry.find((tag) => tag.id === id)?.label ?? ''}`,
-    onCommit: (orderedIds) => {
+    onCommit: async (orderedIds) => {
       const reordered = orderedIds
         .map((id) => tagRegistry.find((tag) => tag.id === id))
         .filter((tag): tag is TagDefinition => tag !== undefined)
       setTagRegistry(reordered)
-      setSaved(false)
+      if (serverRoadmapId && sessionToken && !readOnly) {
+        try {
+          const res = await reorderServerTags(serverRoadmapId, orderedIds, sessionToken)
+          if (res.tagRegistry) setTagRegistry(res.tagRegistry)
+          if (res.updatedAt) setUpdatedAt(res.updatedAt)
+        } catch (err) {
+          console.error('Failed to reorder tags on server:', err)
+          onToast?.('Could not save tag order to server')
+        }
+      } else {
+        setSaved(false)
+      }
     },
   })
 
@@ -204,15 +281,28 @@ export function TagsPanel({ readOnly = false }: TagsPanelProps) {
     coordinator.cancelActive()
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveTagId(null)
     if (!over || active.id === over.id) return
     const oldIndex = tagIds.indexOf(active.id as string)
     const newIndex = tagIds.indexOf(over.id as string)
     if (oldIndex < 0 || newIndex < 0) return
-    setTagRegistry(arrayMove(tagRegistry, oldIndex, newIndex))
-    setSaved(false)
+    const nextRegistry = arrayMove(tagRegistry, oldIndex, newIndex)
+    setTagRegistry(nextRegistry)
+    const nextIds = nextRegistry.map((t) => t.id)
+    if (serverRoadmapId && sessionToken && !readOnly) {
+      try {
+        const res = await reorderServerTags(serverRoadmapId, nextIds, sessionToken)
+        if (res.tagRegistry) setTagRegistry(res.tagRegistry)
+        if (res.updatedAt) setUpdatedAt(res.updatedAt)
+      } catch (err) {
+        console.error('Failed to reorder tags on server:', err)
+        onToast?.('Could not save tag order to server')
+      }
+    } else {
+      setSaved(false)
+    }
   }
 
   const handleDragCancel = () => {

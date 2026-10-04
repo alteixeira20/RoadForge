@@ -9,6 +9,24 @@ import { TagsPanel } from '@/components/roadmap/TagsPanel'
 import { KeyboardReorderCoordinatorProvider } from '@/hooks/useKeyboardReorderCoordinator'
 import type { Phase, TagDefinition } from '@/types/roadmap'
 
+const createServerTagMock = vi.hoisted(() => vi.fn())
+const updateServerTagMock = vi.hoisted(() => vi.fn())
+const deleteServerTagMock = vi.hoisted(() => vi.fn())
+const reorderServerTagsMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/services/roadmap-crud.service', async () => {
+  const actual = await vi.importActual<typeof import('@/services/roadmap-crud.service')>(
+    '@/services/roadmap-crud.service',
+  )
+  return {
+    ...actual,
+    createServerTag: createServerTagMock,
+    updateServerTag: updateServerTagMock,
+    deleteServerTag: deleteServerTagMock,
+    reorderServerTags: reorderServerTagsMock,
+  }
+})
+
 const roadmapContext = vi.hoisted(() => ({
   current: {} as Record<string, unknown>,
 }))
@@ -353,6 +371,132 @@ describe('TagsPanel', () => {
       tagRegistry[1],
       tagRegistry[2],
     ])
+  })
+})
+
+describe('TagsPanel server-backed focused mutations', () => {
+  let container: HTMLDivElement
+  let root: Root
+  let setTagRegistry: ReturnType<typeof vi.fn>
+  let setSaved: ReturnType<typeof vi.fn>
+  let setUpdatedAt: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    setTagRegistry = vi.fn()
+    setSaved = vi.fn()
+    setUpdatedAt = vi.fn()
+    createServerTagMock.mockReset().mockResolvedValue({
+      roadmap: { id: 'road-test-123', name: 'Roadmap' },
+      phases,
+      tagRegistry: [...tagRegistry, { id: 'focus-test', label: 'Focus tag', color: '#d97706' }],
+      updatedAt: '2026-10-03T18:00:00Z',
+    })
+    updateServerTagMock.mockReset().mockResolvedValue({
+      roadmap: { id: 'road-test-123', name: 'Roadmap' },
+      phases,
+      tagRegistry,
+      updatedAt: '2026-10-03T18:01:00Z',
+    })
+    deleteServerTagMock.mockReset().mockResolvedValue({
+      roadmap: { id: 'road-test-123', name: 'Roadmap' },
+      phases,
+      tagRegistry: tagRegistry.slice(1),
+      updatedAt: '2026-10-03T18:02:00Z',
+    })
+    reorderServerTagsMock.mockReset().mockResolvedValue({
+      roadmap: { id: 'road-test-123', name: 'Roadmap' },
+      phases,
+      tagRegistry,
+      updatedAt: '2026-10-03T18:03:00Z',
+    })
+    roadmapContext.current = {
+      tagRegistry,
+      phases,
+      setTagRegistry,
+      setSaved,
+      setUpdatedAt,
+      serverRoadmapId: 'road-test-123',
+      sessionToken: 'token-abc',
+      role: 'editor',
+    }
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it('creates tags through focused endpoint and preserves saved status without calling setSaved(false)', async () => {
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
+    const newTagBtn = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent?.includes('New tag'),
+    )!
+    act(() => newTagBtn.click())
+
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="New tag label"]')!
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value',
+      )!.set!
+      setter.call(input, 'Focus tag')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    const addBtn = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent === 'Add',
+    )!
+    await act(async () => {
+      addBtn.click()
+    })
+
+    expect(createServerTagMock).toHaveBeenCalledWith(
+      'road-test-123',
+      expect.objectContaining({ label: 'Focus tag' }),
+      'token-abc',
+    )
+    expect(setSaved).not.toHaveBeenCalled()
+    expect(setUpdatedAt).toHaveBeenCalledWith('2026-10-03T18:00:00Z')
+  })
+
+  it('updates tags through focused endpoint and does not call setSaved(false)', async () => {
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
+    const editBtn = container.querySelector<HTMLButtonElement>('button[aria-label="Edit tag Unused"]')!
+    act(() => editBtn.click())
+
+    const saveBtn = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent?.includes('Save'),
+    )!
+    await act(async () => {
+      saveBtn.click()
+    })
+
+    expect(updateServerTagMock).toHaveBeenCalledWith(
+      'road-test-123',
+      'unused',
+      expect.objectContaining({ label: 'Unused' }),
+      'token-abc',
+    )
+    expect(setSaved).not.toHaveBeenCalled()
+  })
+
+  it('deletes tags through focused endpoint and does not call setSaved(false)', async () => {
+    act(() => root.render(<KeyboardReorderCoordinatorProvider><TagsPanel /></KeyboardReorderCoordinatorProvider>))
+    const deleteBtn = container.querySelector<HTMLButtonElement>('button[aria-label="Delete tag Unused"]')!
+    act(() => deleteBtn.click())
+
+    const confirmBtn = Array.from(document.body.querySelectorAll('button')).find(
+      (b) => b.textContent?.includes('Delete tag'),
+    )!
+    await act(async () => {
+      confirmBtn.click()
+    })
+
+    expect(deleteServerTagMock).toHaveBeenCalledWith('road-test-123', 'unused', 'token-abc')
+    expect(setSaved).not.toHaveBeenCalled()
   })
 })
 

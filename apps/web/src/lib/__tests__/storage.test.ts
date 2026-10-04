@@ -210,15 +210,14 @@ describe('storage', () => {
       })
     })
 
-    it('persists an upgrade dismissal marker without replacing existing UI state', () => {
-      const state = {
-        schemaVersion: 1 as const,
+    it('safely parses legacy UI state containing dismissed upgrade notice signature', () => {
+      window.localStorage.setItem('rf:ui:rm-1', JSON.stringify({
+        schemaVersion: 1,
         openPhaseIds: ['ph-1'],
         expandedTaskId: 'task-1',
+        dismissedUpgradeNoticeSignature: 'upgrade-signature',
         updatedAt: '2025-01-01T00:00:00Z',
-      }
-      storage.setRoadmapUiState('rm-1', state)
-      storage.setDismissedUpgradeNoticeSignature('rm-1', 'upgrade-signature')
+      }))
 
       expect(storage.getRoadmapUiState('rm-1')).toMatchObject({
         openPhaseIds: ['ph-1'],

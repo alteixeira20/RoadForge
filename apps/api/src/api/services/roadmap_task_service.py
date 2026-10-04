@@ -25,7 +25,6 @@ from api.services.activity_log_limit import enforce_activity_log_cap
 from api.services.event_bus import Event, event_bus
 from api.services.id_service import generate_id
 from api.services.projection import sync_task_projection_best_effort
-from api.services.roadmap_concurrency import ensure_roadmap_is_current
 from api.services.roadmap_helpers import (
     _patch_task_claim_snapshot,
     _patch_task_done_snapshot,
@@ -56,7 +55,6 @@ async def patch_task(
     participant: Participant,
 ) -> RoadmapResponse:
     roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
-    ensure_roadmap_is_current(roadmap, payload.last_updated_at)
 
     updates = payload.model_dump(
         exclude={"last_updated_at"},
@@ -126,7 +124,6 @@ async def patch_task_done(
     participant: Participant,
 ) -> RoadmapResponse:
     roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
-    ensure_roadmap_is_current(roadmap, payload.last_updated_at)
 
     patched = _patch_task_done_snapshot(roadmap.snapshot_json, task_id, payload.done)
     if patched is None:

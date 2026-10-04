@@ -85,33 +85,6 @@ export function WorkspaceBanners({
   )
 }
 
-interface WorkspaceUpgradeNoticeProps {
-  roadmapUpgradeNotice: unknown
-  onDismissUpgradeNotice: () => void
-}
-
-export function WorkspaceUpgradeNotice({
-  roadmapUpgradeNotice,
-  onDismissUpgradeNotice,
-}: WorkspaceUpgradeNoticeProps) {
-  if (!roadmapUpgradeNotice) return null
-  return (
-    <div className="upgrade-notice" role="status">
-      <div className="upgrade-notice-icon">
-        <Icon name="shield" size={16} />
-      </div>
-      <div className="upgrade-notice-copy">
-        <strong>Roadmap updated</strong>
-        <span>RoadForge updated this roadmap so it works with the latest version. No action is required.</span>
-      </div>
-      <div className="upgrade-notice-actions">
-        <button type="button" className="iconbtn" aria-label="Dismiss schema upgrade notice" onClick={onDismissUpgradeNotice}>
-          <Icon name="x" size={15} />
-        </button>
-      </div>
-    </div>
-  )
-}
 
 interface WorkspaceWelcomeBannerProps {
   onDismiss: () => void

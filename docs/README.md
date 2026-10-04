@@ -46,6 +46,7 @@ or team-scale SLA.
 | Understand the browser application | [`frontend-foundation.md`](frontend-foundation.md) |
 | Understand API semantics | [`backend-api.md`](backend-api.md) |
 | Review merge/release readiness | [`release-readiness.md`](release-readiness.md) |
+| Follow the production/freeze plan (proposal) | [`production-plan.md`](production-plan.md) |
 | Run release QA | [`manual-qa.md`](manual-qa.md) |
 | Self-host | [`self-hosting.md`](self-hosting.md) and [`../deploy/self-hosted/README.md`](../deploy/self-hosted/README.md) |
 | Review public-deployment security | [`public-deployment-security.md`](public-deployment-security.md) |

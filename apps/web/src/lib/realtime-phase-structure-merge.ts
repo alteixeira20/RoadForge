@@ -34,20 +34,22 @@ export function mergeAuthoritativePhaseStructureIntoLocalPhases(
       continue
     }
 
-    // A `phase.created`/delete+recreate scope means this entity itself was
-    // structurally established by another participant. Replacing only that
-    // affected phase also resolves the vanishingly rare client-ID collision
-    // without touching unrelated dirty phases/tasks.
+    if (nextPhases[localIndex] === authoritativePhase) continue
+
     nextPhases = nextPhases.map((phase, index) => (
       index === localIndex ? authoritativePhase : phase
     ))
   }
 
   if (!applyServerOrder) return nextPhases
-  return orderPhasesByPreference(
+  const ordered = orderPhasesByPreference(
     nextPhases,
     serverPhases.map((phase) => phase.id),
   )
+  if (ordered.length === nextPhases.length && ordered.every((p, i) => p === nextPhases[i])) {
+    return nextPhases
+  }
+  return ordered
 }
 
 export function phaseIdsInSnapshot(phases: Phase[]): Set<string> {

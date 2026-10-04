@@ -104,12 +104,20 @@ assignee to be a joined participant.
 A synced roadmap may require a password in addition to an invite before a participant
 session is issued.
 
-Current server behavior:
+Current server and client behavior:
 
-- minimum/maximum password constraints are defined by API schema limits;
-- the password is stored as a salted PBKDF2-SHA256 hash;
-- verification uses a timing-safe comparison;
-- join errors do not reveal whether the invite or password was the failing secret.
+- Owners can set, change, or remove the password at any time via `PUT /api/roadmaps/{roadmap_id}/password`
+  or the roadmap password controls in the Share modal;
+- Passwords must be between 6 and 128 characters; passing `null` removes password protection;
+- The password is stored as a salted PBKDF2-SHA256 hash (100k iterations); raw passwords are never
+  stored, logged, or returned in API responses;
+- Verification uses timing-safe comparison; join errors return a generic 401 without revealing
+  whether the invite token or the password was incorrect;
+- Changing or removing the password does not revoke existing participant sessions: collaborators
+  who have already joined continue to collaborate without interruption;
+- Realtime events broadcast `roadmap.password_changed` with `is_password_enabled`, updating collaborator
+  client state silently without full-document refetches;
+- The password management endpoint is rate-limited to 10 requests per minute per participant/roadmap.
 
 A roadmap password is not a user account password and has no email recovery mechanism.
 

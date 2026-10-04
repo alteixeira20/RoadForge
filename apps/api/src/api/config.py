@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     max_server_roadmaps: int = Field(
         default=500, ge=1, le=100_000, alias="ROADFORGE_MAX_SERVER_ROADMAPS"
     )
+    max_roadmaps_created_per_hour: int = Field(
+        default=10, ge=1, le=100_000, alias="ROADFORGE_MAX_ROADMAPS_PER_HOUR"
+    )
     max_active_sessions_per_share_link: int = Field(
         default=128, ge=1, le=10_000, alias="ROADFORGE_MAX_ACTIVE_SESSIONS_PER_SHARE_LINK"
     )

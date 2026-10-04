@@ -10,7 +10,8 @@ import type {
 import { createRoadForgeTemplate } from '@/data/roadforge-template'
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
-import { useRoadmapHydration, type RoadmapUpgradeState } from '@/hooks/useRoadmapHydration'
+import { isOlderServerRevision } from '@/lib/server-revision'
+import { useRoadmapHydration } from '@/hooks/useRoadmapHydration'
 import { useRoadmapRealtime } from '@/hooks/useRoadmapRealtime'
 
 // ─── Domain-sliced context types ──────────────────────────────────────────────
@@ -36,6 +37,8 @@ interface RoadmapDataContextValue {
   setTagRegistry: (registry: TagDefinition[]) => void
   isSample: boolean
   setIsSample: (value: boolean) => void
+  registerDirtyDraft?: (taskId: string, dirty: boolean) => void
+  dirtyDraftCount?: number
 }
 
 interface RoadmapSessionContextValue {
@@ -64,8 +67,6 @@ interface RoadmapLifecycleContextValue {
   clearAccessRevokedEvent: () => void
   sessionExpiredRoadmapId: string | null
   clearSessionExpiredNotice: () => void
-  roadmapUpgradeNotice: RoadmapUpgradeState | null
-  dismissRoadmapUpgradeNotice: () => void
   realtimeStatus: RealtimeConnectionStatus
 }
 
@@ -101,16 +102,27 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [isSample, setIsSample] = useState(false)
   const [locks, setLocks] = useState<Record<string, { participantId: string; displayName: string }>>({})
   const [activeRoadmapId, setActiveRoadmapIdState] = useState<string | null>(null)
-  const [roadmapUpgradeNotice, setRoadmapUpgradeNotice] = useState<RoadmapUpgradeState | null>(null)
 
-  // Keep ref current so SSE callbacks always read the latest value
-  savedRef.current = saved
+  const [dirtyTaskIds, setDirtyTaskIds] = useState<Set<string>>(new Set())
+  const registerDirtyDraft = useCallback((taskId: string, dirty: boolean) => {
+    setDirtyTaskIds((prev) => {
+      const next = new Set(prev)
+      if (dirty) next.add(taskId)
+      else next.delete(taskId)
+      return next
+    })
+  }, [])
+  const dirtyDraftCount = dirtyTaskIds.size
+
+  // Keep ref current so SSE callbacks always read the latest value.
+  // Active uncommitted form drafts count as unsaved state to protect them
+  // from incoming remote full snapshot overwrites.
+  savedRef.current = saved && dirtyDraftCount === 0
 
   const {
     isHydratingServer,
     backendUnavailableRoadmapId,
     sessionExpiredRoadmapId,
-    showUpgradeNoticeOnce,
     activateRoadmap,
     createLocalRoadmap,
     resetToSample,
@@ -140,7 +152,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     },
     lifecycleState: {
       setLocks,
-      setRoadmapUpgradeNotice,
     },
   })
 
@@ -162,8 +173,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       isHydratingServer,
       backendUnavailableRoadmapId,
       savedRef,
-      showUpgradeNoticeOnce,
       setBackendUnavailableRoadmapId,
+      isClean: saved && dirtyDraftCount === 0,
     },
     roadmapState: {
       setRoadmapNameState,
@@ -229,14 +240,21 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     if (id && currentActiveId && currentActiveId !== id) {
       // Migrate from local draft to server ID
       const rc = storage.getRoadmapCache(currentActiveId)
-      if (rc) storage.setRoadmapCache(id, rc)
       const ac = storage.getAuthCache(currentActiveId)
-      if (ac) storage.setAuthCache(id, ac)
+      let writeSuccess = true
+      if (rc) {
+        writeSuccess = storage.setRoadmapCache(id, rc) && storage.getRoadmapCache(id) !== null
+      }
+      if (ac && writeSuccess) {
+        writeSuccess = storage.setAuthCache(id, ac) && storage.getAuthCache(id) !== null
+      }
 
-      storage.clearRoadmapStorage(currentActiveId)
-      storage.setActiveRoadmapId(id)
-      storage.setLastRoadmapId(id)
-      setActiveRoadmapIdState(id)
+      if (writeSuccess) {
+        storage.clearRoadmapStorage(currentActiveId)
+        storage.setActiveRoadmapId(id)
+        storage.setLastRoadmapId(id)
+        setActiveRoadmapIdState(id)
+      }
     }
 
     const targetId = storage.getActiveRoadmapId()
@@ -299,12 +317,26 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setUpdatedAt = useCallback((value: string | null) => {
-    setUpdatedAtState(value)
-    const id = storage.getActiveRoadmapId()
-    if (id) {
-      const rc = storage.getRoadmapCache(id)
-      if (rc) storage.setRoadmapCache(id, { ...rc, updatedAt: value })
+    if (!value) {
+      setUpdatedAtState(null)
+      const id = storage.getActiveRoadmapId()
+      if (id) {
+        const rc = storage.getRoadmapCache(id)
+        if (rc) storage.setRoadmapCache(id, { ...rc, updatedAt: null })
+      }
+      return
     }
+    setUpdatedAtState((current) => {
+      if (current && isOlderServerRevision(value, current)) {
+        return current
+      }
+      const id = storage.getActiveRoadmapId()
+      if (id) {
+        const rc = storage.getRoadmapCache(id)
+        if (rc) storage.setRoadmapCache(id, { ...rc, updatedAt: value })
+      }
+      return value
+    })
   }, [])
 
   const setTagRegistry = useCallback((registry: TagDefinition[]) => {
@@ -315,15 +347,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       if (rc) storage.setRoadmapCache(id, { ...rc, tagRegistry: registry })
     }
   }, [])
-
-  const dismissRoadmapUpgradeNotice = useCallback(() => {
-    if (!roadmapUpgradeNotice) return
-    storage.setDismissedUpgradeNoticeSignature(
-      roadmapUpgradeNotice.roadmapId,
-      roadmapUpgradeNotice.signature,
-    )
-    setRoadmapUpgradeNotice(null)
-  }, [roadmapUpgradeNotice])
 
   const clearSessionExpiredNotice = useCallback(() => {
     setSessionExpiredRoadmapId(null)
@@ -341,6 +364,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     updatedAt, setUpdatedAt,
     tagRegistry, setTagRegistry,
     isSample, setIsSample,
+    registerDirtyDraft,
+    dirtyDraftCount,
   }), [
     displayName,
     setDisplayName,
@@ -360,6 +385,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     setTagRegistry,
     isSample,
     setIsSample,
+    registerDirtyDraft,
+    dirtyDraftCount,
   ])
 
   const sessionValue = useMemo<RoadmapSessionContextValue>(() => ({
@@ -390,8 +417,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     clearAccessRevokedEvent,
     sessionExpiredRoadmapId,
     clearSessionExpiredNotice,
-    roadmapUpgradeNotice,
-    dismissRoadmapUpgradeNotice,
     realtimeStatus,
   }), [
     activeRoadmapId,
@@ -403,8 +428,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     clearAccessRevokedEvent,
     sessionExpiredRoadmapId,
     clearSessionExpiredNotice,
-    roadmapUpgradeNotice,
-    dismissRoadmapUpgradeNotice,
     realtimeStatus,
   ])
 
