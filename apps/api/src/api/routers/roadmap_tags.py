@@ -79,6 +79,26 @@ async def post_tag(
 
 
 @router.put(
+    "/{roadmap_id}/tags/order",
+    response_model=RoadmapResponse,
+)
+async def put_reorder_tags(
+    roadmap_id: str,
+    payload: ReorderTagsRequest,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None),
+) -> RoadmapResponse:
+    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
+    await rate_limiter.enforce(
+        "tag.reorder",
+        _participant_rate_key(participant.id, roadmap_id),
+        limit=60,
+        window_seconds=60,
+    )
+    return await reorder_tags(db, roadmap_id, payload.tag_ids, participant)
+
+
+@router.put(
     "/{roadmap_id}/tags/{tag_id}",
     response_model=RoadmapResponse,
     responses={409: {"model": RoadmapConflictResponse}},
@@ -101,26 +121,6 @@ async def put_tag(
         return await update_tag(db, roadmap_id, tag_id, payload, participant)
     except RoadmapConflictError as exc:
         return JSONResponse(status_code=409, content=exc.response.model_dump(mode="json"))
-
-
-@router.put(
-    "/{roadmap_id}/tags/order",
-    response_model=RoadmapResponse,
-)
-async def put_reorder_tags(
-    roadmap_id: str,
-    payload: ReorderTagsRequest,
-    db: AsyncSession = Depends(get_db),
-    authorization: str | None = Header(default=None),
-) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "tag.reorder",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=60,
-        window_seconds=60,
-    )
-    return await reorder_tags(db, roadmap_id, payload.tag_ids, participant)
 
 
 @router.delete(

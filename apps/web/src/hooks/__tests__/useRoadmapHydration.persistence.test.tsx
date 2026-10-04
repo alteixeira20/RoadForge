@@ -58,7 +58,6 @@ function createSetters(): {
     setUpdatedAtState: ReturnType<typeof vi.fn>
     setIsSampleState: ReturnType<typeof vi.fn>
     setLocks: ReturnType<typeof vi.fn>
-    setRoadmapUpgradeNotice: ReturnType<typeof vi.fn>
   }
 } {
   const spies = {
@@ -77,7 +76,6 @@ function createSetters(): {
     setUpdatedAtState: vi.fn(),
     setIsSampleState: vi.fn(),
     setLocks: vi.fn(),
-    setRoadmapUpgradeNotice: vi.fn(),
   }
 
   const setters: HydrationSetters = {
@@ -103,7 +101,6 @@ function createSetters(): {
     },
     lifecycleState: {
       setLocks: spies.setLocks,
-      setRoadmapUpgradeNotice: spies.setRoadmapUpgradeNotice,
     },
   }
 

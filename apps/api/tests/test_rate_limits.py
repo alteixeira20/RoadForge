@@ -181,3 +181,49 @@ async def test_task_done_patch_rate_limit(client: AsyncClient):
         json={"done": True, "last_updated_at": updated_at},
     )
     _expect_exhausted(resp)
+
+
+# ─── Group G - Roadmap create IP rate limit ───────────────────────────────────
+
+
+async def test_roadmap_create_ip_rate_limit_respects_settings(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    from api.config import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "max_roadmaps_created_per_hour", 3)
+
+    for i in range(3):
+        resp = await client.post(
+            "/api/roadmaps",
+            json={
+                "name": f"Roadmap {i}",
+                "owner_display_name": "Owner",
+                "phases": [],
+            },
+        )
+        assert resp.status_code == 201, resp.text
+
+    resp = await client.post(
+        "/api/roadmaps",
+        json={
+            "name": "Roadmap Exceeded",
+            "owner_display_name": "Owner",
+            "phases": [],
+        },
+    )
+    _expect_exhausted(resp)
+
+
+async def test_settings_max_roadmaps_created_per_hour_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from api.config import Settings
+
+    default_settings = Settings()
+    assert default_settings.max_roadmaps_created_per_hour == 10
+
+    monkeypatch.setenv("ROADFORGE_MAX_ROADMAPS_PER_HOUR", "1000")
+    configured_settings = Settings()
+    assert configured_settings.max_roadmaps_created_per_hour == 1000

@@ -151,7 +151,6 @@ describe('useRoadmapRealtime server-authoritative task updates', () => {
         isHydratingServer: false,
         backendUnavailableRoadmapId: null,
         savedRef,
-        showUpgradeNoticeOnce: vi.fn(),
         setBackendUnavailableRoadmapId: vi.fn(),
       },
       roadmapState: {

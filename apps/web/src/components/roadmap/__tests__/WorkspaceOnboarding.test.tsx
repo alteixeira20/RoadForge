@@ -50,8 +50,6 @@ vi.mock('@/context/RoadmapContext', () => ({
     clearAccessRevokedEvent: vi.fn(),
     sessionExpiredRoadmapId: null,
     clearSessionExpiredNotice: vi.fn(),
-    roadmapUpgradeNotice: null,
-    dismissRoadmapUpgradeNotice: vi.fn(),
     realtimeStatus: 'disconnected',
   }),
   useRoadmap: () => ({
@@ -82,8 +80,6 @@ vi.mock('@/context/RoadmapContext', () => ({
     clearAccessRevokedEvent: vi.fn(),
     sessionExpiredRoadmapId: null,
     clearSessionExpiredNotice: vi.fn(),
-    roadmapUpgradeNotice: null,
-    dismissRoadmapUpgradeNotice: vi.fn(),
     realtimeStatus: 'disconnected',
     activateRoadmap: vi.fn(),
     removeRoadmapFromBrowser: vi.fn(),

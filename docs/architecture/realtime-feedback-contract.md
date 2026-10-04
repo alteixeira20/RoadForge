@@ -8,8 +8,8 @@ work that can be safely rebased.
 - Ordinary remote collaborator edits are silent. Edits from collaborators appear automatically
   without page reloads, visible refreshes, flashing, focus loss, conflict modals, banners,
   or repetitive toasts. No toasts or modals are shown for successful local saves or remote edits.
-- Remote updates are applied under `CaptureUpdateAction.NEVER` semantics: applying received
-  state never marks the roadmap dirty (`saved: false`) and never triggers aggregate autosave.
+- Remote authoritative updates are applied non-dirtily: applying received
+  state does not mark the roadmap unsaved (`saved: false`) and does not schedule aggregate autosync.
 - Own-event echo suppression: originating clients use participant IDs, operation generations,
   and monotonic timestamps to safely ignore their own SSE events, avoiding secondary writes,
   full-document refetches, or oscillation between saving and live states.

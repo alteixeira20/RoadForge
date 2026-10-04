@@ -11,7 +11,7 @@ import { createRoadForgeTemplate } from '@/data/roadforge-template'
 import { storage } from '@/lib/storage'
 import { normalizePhasesProgress } from '@/lib/phase-progress'
 import { isOlderServerRevision } from '@/lib/server-revision'
-import { useRoadmapHydration, type RoadmapUpgradeState } from '@/hooks/useRoadmapHydration'
+import { useRoadmapHydration } from '@/hooks/useRoadmapHydration'
 import { useRoadmapRealtime } from '@/hooks/useRoadmapRealtime'
 
 // ─── Domain-sliced context types ──────────────────────────────────────────────
@@ -67,8 +67,6 @@ interface RoadmapLifecycleContextValue {
   clearAccessRevokedEvent: () => void
   sessionExpiredRoadmapId: string | null
   clearSessionExpiredNotice: () => void
-  roadmapUpgradeNotice: RoadmapUpgradeState | null
-  dismissRoadmapUpgradeNotice: () => void
   realtimeStatus: RealtimeConnectionStatus
 }
 
@@ -104,7 +102,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const [isSample, setIsSample] = useState(false)
   const [locks, setLocks] = useState<Record<string, { participantId: string; displayName: string }>>({})
   const [activeRoadmapId, setActiveRoadmapIdState] = useState<string | null>(null)
-  const [roadmapUpgradeNotice, setRoadmapUpgradeNotice] = useState<RoadmapUpgradeState | null>(null)
 
   const [dirtyTaskIds, setDirtyTaskIds] = useState<Set<string>>(new Set())
   const registerDirtyDraft = useCallback((taskId: string, dirty: boolean) => {
@@ -126,7 +123,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     isHydratingServer,
     backendUnavailableRoadmapId,
     sessionExpiredRoadmapId,
-    showUpgradeNoticeOnce,
     activateRoadmap,
     createLocalRoadmap,
     resetToSample,
@@ -156,7 +152,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     },
     lifecycleState: {
       setLocks,
-      setRoadmapUpgradeNotice,
     },
   })
 
@@ -178,7 +173,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       isHydratingServer,
       backendUnavailableRoadmapId,
       savedRef,
-      showUpgradeNoticeOnce,
       setBackendUnavailableRoadmapId,
       isClean: saved && dirtyDraftCount === 0,
     },
@@ -354,15 +348,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const dismissRoadmapUpgradeNotice = useCallback(() => {
-    if (!roadmapUpgradeNotice) return
-    storage.setDismissedUpgradeNoticeSignature(
-      roadmapUpgradeNotice.roadmapId,
-      roadmapUpgradeNotice.signature,
-    )
-    setRoadmapUpgradeNotice(null)
-  }, [roadmapUpgradeNotice])
-
   const clearSessionExpiredNotice = useCallback(() => {
     setSessionExpiredRoadmapId(null)
   }, [setSessionExpiredRoadmapId])
@@ -432,8 +417,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     clearAccessRevokedEvent,
     sessionExpiredRoadmapId,
     clearSessionExpiredNotice,
-    roadmapUpgradeNotice,
-    dismissRoadmapUpgradeNotice,
     realtimeStatus,
   }), [
     activeRoadmapId,
@@ -445,8 +428,6 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     clearAccessRevokedEvent,
     sessionExpiredRoadmapId,
     clearSessionExpiredNotice,
-    roadmapUpgradeNotice,
-    dismissRoadmapUpgradeNotice,
     realtimeStatus,
   ])
 

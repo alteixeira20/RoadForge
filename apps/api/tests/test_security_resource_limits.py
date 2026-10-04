@@ -80,6 +80,7 @@ async def test_global_server_roadmap_capacity_blocks_further_anonymous_creation(
         lambda: SimpleNamespace(
             web_base_url="http://localhost:3020",
             max_server_roadmaps=1,
+            max_roadmaps_created_per_hour=10,
         ),
     )
 
@@ -117,6 +118,7 @@ async def test_global_server_roadmap_capacity_is_exact_under_concurrent_requests
         lambda: SimpleNamespace(
             web_base_url="http://localhost:3020",
             max_server_roadmaps=baseline + 1,
+            max_roadmaps_created_per_hour=10,
         ),
     )
 

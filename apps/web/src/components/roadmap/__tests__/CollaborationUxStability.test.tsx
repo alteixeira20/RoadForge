@@ -7,12 +7,6 @@ import { SyncStatusIndicator } from '@/components/roadmap/SyncStatusIndicator'
 import { TaskEditForm } from '@/components/roadmap/TaskEditForm'
 import { usePhaseCollapse } from '@/hooks/usePhaseCollapse'
 import { useToastState } from '@/hooks/useToastState'
-import { storage } from '@/lib/storage'
-import {
-  getRoadmapUpgradeNoticeSignature,
-  isRoadmapUpgradeNoticeDismissed,
-  type RoadmapUpgradeNotice,
-} from '@/lib/roadmap-upgrade'
 import type { WorkspaceSyncStatus } from '@/lib/sync-status'
 import type { Phase, Task } from '@/types/roadmap'
 
@@ -160,37 +154,6 @@ describe('Collaboration UX Stability', () => {
       render(updatedPhases)
       // Original open phases stay open, new remote phase is NOT auto-opened
       expect(collapseState.openPhases).toEqual(['p-1', 'p-2'])
-    })
-  })
-
-  describe('Upgrade notice dismiss stability', () => {
-    const notices: RoadmapUpgradeNotice[] = [
-      {
-        code: 'color_migration',
-        message: 'Repaired phase color mode',
-        severity: 'info',
-      },
-    ]
-
-    it('keeps upgrade notice dismissed across routine saves that update updatedAt', () => {
-      const initialSignature = getRoadmapUpgradeNoticeSignature({
-        roadmapId: 'rm-collab',
-        updatedAt: '2026-09-01T12:00:00Z',
-        notices,
-      })
-
-      // User dismisses the notice
-      storage.setDismissedUpgradeNoticeSignature('rm-collab', initialSignature)
-
-      // Another user saves changes, advancing updatedAt
-      const nextSignature = getRoadmapUpgradeNoticeSignature({
-        roadmapId: 'rm-collab',
-        updatedAt: '2026-09-01T12:05:00Z',
-        notices,
-      })
-
-      const dismissed = storage.getRoadmapUiState('rm-collab')?.dismissedUpgradeNoticeSignature
-      expect(isRoadmapUpgradeNoticeDismissed(dismissed, nextSignature)).toBe(true)
     })
   })
 

@@ -52,6 +52,7 @@ export interface RoadmapUiState {
   schemaVersion: 1
   openPhaseIds: string[]
   expandedTaskId: string | null
+  /** Retained inert for backward-compatible parsing of legacy stored localStorage payloads */
   dismissedUpgradeNoticeSignature?: string
   isOnboardingDismissed?: boolean
   updatedAt: string
@@ -290,19 +291,6 @@ export const storage = {
   setRoadmapUiState(id: string, state: RoadmapUiState): void {
     const parsed = parseRoadmapUiState(state)
     if (parsed) setLocal(`rf:ui:${id}`, JSON.stringify(parsed))
-  },
-  setDismissedUpgradeNoticeSignature(id: string, signature: string): void {
-    const current = this.getRoadmapUiState(id) ?? {
-      schemaVersion: 1,
-      openPhaseIds: [],
-      expandedTaskId: null,
-      updatedAt: new Date().toISOString(),
-    }
-    this.setRoadmapUiState(id, {
-      ...current,
-      dismissedUpgradeNoticeSignature: signature,
-      updatedAt: new Date().toISOString(),
-    })
   },
   clearRoadmapUiState(id: string): void {
     removeLocal(`rf:ui:${id}`)
