@@ -77,7 +77,6 @@ function setupTestEnvironment(initialSaved = true) {
       isHydratingServer: false,
       backendUnavailableRoadmapId: null,
       savedRef,
-      showUpgradeNoticeOnce: vi.fn(),
       setBackendUnavailableRoadmapId: vi.fn(),
     },
     roadmapState: {

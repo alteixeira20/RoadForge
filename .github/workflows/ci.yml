@@ -387,6 +387,7 @@ jobs:
       ROADFORGE_WEB_BASE_URL: http://127.0.0.1:4173
       ROADFORGE_CORS_ORIGINS: 'http://127.0.0.1:4173,http://localhost:4173'
       NEXT_PUBLIC_API_URL: http://127.0.0.1:7878
+      ROADFORGE_MAX_ROADMAPS_PER_HOUR: 1000
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -131,7 +131,6 @@ describe('useRoadmapRealtime task structure events', () => {
         isHydratingServer: false,
         backendUnavailableRoadmapId: null,
         savedRef: { current: false },
-        showUpgradeNoticeOnce: vi.fn(),
         setBackendUnavailableRoadmapId: vi.fn(),
       },
       roadmapState: {

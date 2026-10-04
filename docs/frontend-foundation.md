@@ -117,8 +117,8 @@ JSON remains the canonical portable and importable format.
   row locking where later accepted writes win.
 - Aggregate saves with `last_updated_at` CAS checks are reserved strictly for exceptional bulk operations
   such as initial server roadmap creation, explicit JSON import, or version checkpoint restore.
-- Realtime events are applied under `CaptureUpdateAction.NEVER` semantics: remote collaborator updates
-  do not set `saved: false` and never trigger echo writes or autosave loops.
+- Remote authoritative updates are applied non-dirtily: applying received
+  updates does not mark the roadmap unsaved (`saved: false`) and never triggers echo writes or autosync loops.
 - Snapshot normalization happens silently in memory without user-facing upgrade notice banners or
   cascading saves.
 - Active task editor focus and uncommitted user drafts are preserved across remote updates to unrelated entities.

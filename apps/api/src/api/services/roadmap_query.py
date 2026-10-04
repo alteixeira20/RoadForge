@@ -22,6 +22,7 @@ async def fetch_active_roadmap_for_update(db: AsyncSession, roadmap_id: str) -> 
         select(Roadmap)
         .where(Roadmap.id == roadmap_id, Roadmap.deleted_at.is_(None))
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
     roadmap = result.scalar_one_or_none()
     if roadmap is None:

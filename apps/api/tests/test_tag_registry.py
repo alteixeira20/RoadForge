@@ -16,6 +16,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
+import api.services.roadmap_tag_service as tag_service
 from tests.conftest import create_roadmap
 from tests.helpers_projection import auth
 
@@ -132,6 +133,19 @@ def _delete_tag(
         f"/api/roadmaps/{roadmap_id}/tags/{tag_id}",
         headers=auth(token),
         params={"last_updated_at": updated_at},
+    )
+
+
+def _put_tag_order(
+    client: AsyncClient,
+    roadmap_id: str,
+    token: str,
+    tag_ids: list[str],
+):
+    return client.put(
+        f"/api/roadmaps/{roadmap_id}/tags/order",
+        headers=auth(token),
+        json={"tag_ids": tag_ids},
     )
 
 
@@ -520,3 +534,182 @@ async def test_viewer_cannot_delete_tag(client: AsyncClient):
         body["updated_at"],
     )
     assert resp.status_code == 403
+
+
+# ─── PUT /tags/order ─────────────────────────────────────────────────────────
+
+
+async def test_owner_can_reorder_tags_and_persists_on_get(client: AsyncClient):
+    initial_tags = [
+        {"id": "t1", "label": "Tag 1"},
+        {"id": "t2", "label": "Tag 2"},
+        {"id": "t3", "label": "Tag 3"},
+    ]
+    body = await _create_roadmap_with_tags(client, tag_registry=initial_tags)
+    token = body["owner_session_token"]
+    roadmap_id = body["id"]
+
+    resp = await _put_tag_order(client, roadmap_id, token, ["t3", "t1", "t2"])
+    assert resp.status_code == 200, resp.text
+    ordered_ids = [t["id"] for t in resp.json()["tag_registry"]]
+    assert ordered_ids == ["t3", "t1", "t2"]
+
+    # Verify persisted on subsequent GET
+    get_resp = await client.get(f"/api/roadmaps/{roadmap_id}/tags", headers=auth(token))
+    assert get_resp.status_code == 200
+    assert [t["id"] for t in get_resp.json()] == ["t3", "t1", "t2"]
+
+
+async def test_editor_can_reorder_tags(client: AsyncClient):
+    initial_tags = [
+        {"id": "t1", "label": "Tag 1"},
+        {"id": "t2", "label": "Tag 2"},
+        {"id": "t3", "label": "Tag 3"},
+    ]
+    body = await _create_roadmap_with_tags(client, tag_registry=initial_tags)
+    editor_url = await _rotate_link(client, body["id"], body["owner_session_token"], "editor")
+    editor = await _join_as(client, editor_url, "Editor")
+
+    resp = await _put_tag_order(
+        client, body["id"], editor["session_token"], ["t2", "t3", "t1"]
+    )
+    assert resp.status_code == 200, resp.text
+    assert [t["id"] for t in resp.json()["tag_registry"]] == ["t2", "t3", "t1"]
+
+
+async def test_viewer_cannot_reorder_tags(client: AsyncClient):
+    initial_tags = [
+        {"id": "t1", "label": "Tag 1"},
+        {"id": "t2", "label": "Tag 2"},
+    ]
+    body = await _create_roadmap_with_tags(client, tag_registry=initial_tags)
+    viewer_url = await _rotate_link(client, body["id"], body["owner_session_token"], "viewer")
+    viewer = await _join_as(client, viewer_url, "Viewer")
+
+    resp = await _put_tag_order(
+        client, body["id"], viewer["session_token"], ["t2", "t1"]
+    )
+    assert resp.status_code == 403
+
+
+async def test_reorder_tags_retains_omitted_existing_tags_without_loss(client: AsyncClient):
+    initial_tags = [
+        {"id": "t1", "label": "Tag 1"},
+        {"id": "t2", "label": "Tag 2"},
+        {"id": "t3", "label": "Tag 3"},
+        {"id": "t4", "label": "Tag 4"},
+    ]
+    body = await _create_roadmap_with_tags(client, tag_registry=initial_tags)
+    token = body["owner_session_token"]
+    roadmap_id = body["id"]
+
+    # Reorder specifies only t3 and t1; t2 and t4 are omitted
+    resp = await _put_tag_order(client, roadmap_id, token, ["t3", "t1"])
+    assert resp.status_code == 200, resp.text
+    # Omitted tags must be retained at the end in their original relative order
+    assert [t["id"] for t in resp.json()["tag_registry"]] == ["t3", "t1", "t2", "t4"]
+
+    # Completely empty reorder request still retains all original tags
+    empty_resp = await _put_tag_order(client, roadmap_id, token, [])
+    assert empty_resp.status_code == 200
+    assert [t["id"] for t in empty_resp.json()["tag_registry"]] == ["t3", "t1", "t2", "t4"]
+
+
+async def test_reorder_tags_handles_duplicate_input_ids(client: AsyncClient):
+    initial_tags = [
+        {"id": "t1", "label": "Tag 1"},
+        {"id": "t2", "label": "Tag 2"},
+        {"id": "t3", "label": "Tag 3"},
+    ]
+    body = await _create_roadmap_with_tags(client, tag_registry=initial_tags)
+    token = body["owner_session_token"]
+    roadmap_id = body["id"]
+
+    # Duplicates in request: ["t2", "t1", "t2", "t1"]
+    resp = await _put_tag_order(client, roadmap_id, token, ["t2", "t1", "t2", "t1"])
+    assert resp.status_code == 200, resp.text
+    # First occurrence determines order, duplicates ignored, omitted t3 retained
+    assert [t["id"] for t in resp.json()["tag_registry"]] == ["t2", "t1", "t3"]
+
+
+async def test_reorder_tags_ignores_foreign_nonexistent_ids(client: AsyncClient):
+    initial_tags = [
+        {"id": "t1", "label": "Tag 1"},
+        {"id": "t2", "label": "Tag 2"},
+        {"id": "t3", "label": "Tag 3"},
+    ]
+    body = await _create_roadmap_with_tags(client, tag_registry=initial_tags)
+    token = body["owner_session_token"]
+    roadmap_id = body["id"]
+
+    # Request includes nonexistent ids mixed with valid ids
+    resp = await _put_tag_order(
+        client,
+        roadmap_id,
+        token,
+        ["nonexistent-a", "t2", "nonexistent-b", "t1"],
+    )
+    assert resp.status_code == 200, resp.text
+    # Nonexistent ids are ignored; valid ids ordered; omitted t3 retained
+    assert [t["id"] for t in resp.json()["tag_registry"]] == ["t2", "t1", "t3"]
+
+
+async def test_reorder_tags_emits_activity_log(client: AsyncClient):
+    initial_tags = [
+        {"id": "t1", "label": "Tag 1"},
+        {"id": "t2", "label": "Tag 2"},
+    ]
+    body = await _create_roadmap_with_tags(client, tag_registry=initial_tags)
+    token = body["owner_session_token"]
+    roadmap_id = body["id"]
+
+    resp = await _put_tag_order(client, roadmap_id, token, ["t2", "t1"])
+    assert resp.status_code == 200
+
+    activity_resp = await client.get(
+        f"/api/roadmaps/{roadmap_id}/activity", headers=auth(token)
+    )
+    assert activity_resp.status_code == 200
+    tag_logs = [
+        log for log in activity_resp.json()["logs"]
+        if log["entity_type"] == "tag" and log["action"] == "tag.reordered"
+    ]
+    assert len(tag_logs) == 1
+    log = tag_logs[0]
+    assert log["entity_id"] == "order"
+    assert log["actor_name"] == "Owner"
+
+
+async def test_reorder_tags_publishes_realtime_event_with_bounded_metadata(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    initial_tags = [
+        {"id": "t1", "label": "Tag 1"},
+        {"id": "t2", "label": "Tag 2"},
+    ]
+    body = await _create_roadmap_with_tags(client, tag_registry=initial_tags)
+    token = body["owner_session_token"]
+    roadmap_id = body["id"]
+
+    published_events = []
+
+    async def record_publish(event):
+        published_events.append(event)
+
+    monkeypatch.setattr(tag_service.event_bus, "publish", record_publish)
+
+    resp = await _put_tag_order(client, roadmap_id, token, ["t2", "t1"])
+    assert resp.status_code == 200
+
+    assert len(published_events) == 1
+    event = published_events[0]
+    assert event.action == "roadmap.updated"
+    assert event.roadmap_id == roadmap_id
+    assert event.payload["action"] == "tag.reordered"
+    assert event.payload["tag_id"] == "order"
+    assert event.payload["roadmap_id"] == roadmap_id
+    assert "updated_at" in event.payload
+    assert "participant_id" in event.payload
+    # Event payload is bounded metadata only (no full roadmap or registry dump)
+    assert "phases" not in event.payload
+    assert "tag_registry" not in event.payload

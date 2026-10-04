@@ -135,7 +135,6 @@ function createParams(savedRef: { current: boolean }): UseRoadmapRealtimeParams 
       isHydratingServer: false,
       backendUnavailableRoadmapId: null,
       savedRef,
-      showUpgradeNoticeOnce: vi.fn(),
       setBackendUnavailableRoadmapId: vi.fn(),
     },
     roadmapState: {

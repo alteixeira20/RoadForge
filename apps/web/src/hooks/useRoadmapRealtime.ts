@@ -36,7 +36,7 @@ import {
   type RealtimeRoadmapField,
 } from '@/lib/realtime-structure-merge'
 import { isNewerServerRevision, isOlderServerRevision } from '@/lib/server-revision'
-import { upgradeRoadmapSnapshot, type RoadmapUpgradeNotice } from '@/lib/roadmap-upgrade'
+import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
 import { getRoadmap } from '@/services/roadmap-crud.service'
 import {
   getEventTicket,
@@ -65,11 +65,6 @@ interface RealtimeLifecycleParams {
   isHydratingServer: boolean
   backendUnavailableRoadmapId: string | null
   savedRef: MutableRefObject<boolean>
-  showUpgradeNoticeOnce: (
-    targetId: string,
-    updatedAt: string | null,
-    result: { changed: boolean; notices: RoadmapUpgradeNotice[] },
-  ) => void
   setBackendUnavailableRoadmapId: Dispatch<SetStateAction<string | null>>
   isClean?: boolean
 }
@@ -344,7 +339,6 @@ export function useRoadmapRealtime({
     isHydratingServer,
     backendUnavailableRoadmapId,
     savedRef,
-    showUpgradeNoticeOnce,
     setBackendUnavailableRoadmapId,
   } = lifecycle
   const {
@@ -1038,7 +1032,6 @@ export function useRoadmapRealtime({
     role,
     activeRoadmapId,
     isHydratingServer,
-    showUpgradeNoticeOnce,
     setBackendUnavailableRoadmapId,
     savedRef,
     setLocks,
