@@ -34,6 +34,27 @@ beforeEach(() => {
 })
 
 describe('storage', () => {
+  it('updates existing cache fields without overwriting neighboring fields', () => {
+    const roadmap = makeRoadmapCache({ isSample: true, saved: true })
+    const auth = makeAuthCache()
+    storage.setRoadmapCache('rm-1', roadmap)
+    storage.setAuthCache('rm-1', auth)
+
+    expect(storage.updateRoadmapCache('rm-1', { saved: false })).toBe(true)
+    expect(storage.updateAuthCache('rm-1', (current) => ({
+      participantId: `${current.participantId}-updated`,
+    }))).toBe(true)
+    expect(storage.getRoadmapCache('rm-1')).toEqual({ ...roadmap, saved: false })
+    expect(storage.getAuthCache('rm-1')).toEqual({ ...auth, participantId: 'p-001-updated' })
+  })
+
+  it('does not create missing cache entries from a partial patch', () => {
+    expect(storage.updateRoadmapCache('missing', { saved: true })).toBe(false)
+    expect(storage.updateAuthCache('missing', { role: 'viewer' })).toBe(false)
+    expect(storage.getRoadmapCache('missing')).toBeNull()
+    expect(storage.getAuthCache('missing')).toBeNull()
+  })
+
   describe('getDisplayName / setDisplayName', () => {
     it('returns null when not set', () => {
       expect(storage.getDisplayName()).toBeNull()

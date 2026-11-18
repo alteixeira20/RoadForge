@@ -149,29 +149,20 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const setRoadmapName = useCallback((name: string) => {
     setRoadmapNameState(name)
     const id = storage.getActiveRoadmapId()
-    if (id) {
-      const rc = storage.getRoadmapCache(id)
-      if (rc) storage.setRoadmapCache(id, { ...rc, roadmapName: name })
-    }
+    if (id) storage.updateRoadmapCache(id, { roadmapName: name })
   }, [])
 
   const setPhases = useCallback((p: Phase[]) => {
     const normalized = normalizePhasesProgress(p)
     setPhasesState(normalized)
     const id = storage.getActiveRoadmapId()
-    if (id) {
-      const rc = storage.getRoadmapCache(id)
-      if (rc) storage.setRoadmapCache(id, { ...rc, phases: normalized })
-    }
+    if (id) storage.updateRoadmapCache(id, { phases: normalized })
   }, [])
 
   const setSaved = useCallback((s: boolean) => {
     setSavedState(s)
     const id = storage.getActiveRoadmapId()
-    if (id) {
-      const rc = storage.getRoadmapCache(id)
-      if (rc) storage.setRoadmapCache(id, { ...rc, saved: s })
-    }
+    if (id) storage.updateRoadmapCache(id, { saved: s })
   }, [])
 
   const setServerRoadmapId = useCallback((id: string | null) => {
@@ -224,47 +215,34 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const setParticipantId = useCallback((value: string | null) => {
     setParticipantIdState(value)
     const id = storage.getActiveRoadmapId()
-    if (id) {
-      const ac = storage.getAuthCache(id)
-      if (ac) storage.setAuthCache(id, { ...ac, participantId: value })
-    }
+    if (id) storage.updateAuthCache(id, { participantId: value })
   }, [])
 
   const setRole = useCallback((value: ShareRole | null) => {
     setRoleState(value)
     const id = storage.getActiveRoadmapId()
     if (id && value) {
-      const ac = storage.getAuthCache(id)
-      if (ac) storage.setAuthCache(id, { ...ac, role: value })
+      storage.updateAuthCache(id, { role: value })
     }
   }, [])
 
   const setIsPasswordEnabled = useCallback((value: boolean) => {
     setIsPasswordEnabledState(value)
     const id = storage.getActiveRoadmapId()
-    if (id) {
-      const rc = storage.getRoadmapCache(id)
-      if (rc) storage.setRoadmapCache(id, { ...rc, isPasswordEnabled: value })
-    }
+    if (id) storage.updateRoadmapCache(id, { isPasswordEnabled: value })
   }, [])
 
   const setOwnerDisplayName = useCallback((value: string | null) => {
     setOwnerDisplayNameState(value)
     const id = storage.getActiveRoadmapId()
-    if (id) {
-      const rc = storage.getRoadmapCache(id)
-      if (rc) storage.setRoadmapCache(id, { ...rc, ownerDisplayName: value })
-    }
+    if (id) storage.updateRoadmapCache(id, { ownerDisplayName: value })
   }, [])
 
   const setUpdatedAt = useCallback((value: string | null) => {
     if (!value) {
       setUpdatedAtState(null)
       const id = storage.getActiveRoadmapId()
-      if (id) {
-        const rc = storage.getRoadmapCache(id)
-        if (rc) storage.setRoadmapCache(id, { ...rc, updatedAt: null })
-      }
+      if (id) storage.updateRoadmapCache(id, { updatedAt: null })
       return
     }
     setUpdatedAtState((current) => {
@@ -272,10 +250,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
         return current
       }
       const id = storage.getActiveRoadmapId()
-      if (id) {
-        const rc = storage.getRoadmapCache(id)
-        if (rc) storage.setRoadmapCache(id, { ...rc, updatedAt: value })
-      }
+      if (id) storage.updateRoadmapCache(id, { updatedAt: value })
       return value
     })
   }, [])
@@ -283,10 +258,7 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
   const setTagRegistry = useCallback((registry: TagDefinition[]) => {
     setTagRegistryState(registry)
     const id = storage.getActiveRoadmapId()
-    if (id) {
-      const rc = storage.getRoadmapCache(id)
-      if (rc) storage.setRoadmapCache(id, { ...rc, tagRegistry: registry })
-    }
+    if (id) storage.updateRoadmapCache(id, { tagRegistry: registry })
   }, [])
 
   const clearSessionExpiredNotice = useCallback(() => {

@@ -364,8 +364,7 @@ export function useRoadmapHydration(setters: HydrationSetters): UseRoadmapHydrat
           }
           if (isSessionExpiredError(err)) {
             storage.setAuthCache(targetId, null)
-            const cached = storage.getRoadmapCache(targetId)
-            if (cached) storage.setRoadmapCache(targetId, { ...cached, saved: false })
+            storage.updateRoadmapCache(targetId, { saved: false })
             setServerRoadmapIdState(null)
             setSessionTokenState(null)
             setParticipantIdState(null)

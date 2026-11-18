@@ -287,8 +287,7 @@ export function useRoadmapRealtime({
       if (currentAttempt) closeAttempt(currentAttempt)
       if (subscribedActiveId) {
         storage.setAuthCache(subscribedActiveId, null)
-        const rc = storage.getRoadmapCache(subscribedActiveId)
-        if (rc) storage.setRoadmapCache(subscribedActiveId, { ...rc, saved: false })
+        storage.updateRoadmapCache(subscribedActiveId, { saved: false })
       }
       setServerRoadmapIdState(null)
       setSessionTokenState(null)
@@ -331,8 +330,7 @@ export function useRoadmapRealtime({
 
       const current = activeCache()
       if (current) {
-        storage.setRoadmapCache(current.activeId, {
-          ...current.cache,
+        storage.updateRoadmapCache(current.activeId, {
           roadmapName: nextRoadmapName,
           phases: normalizedSsePhases,
           tagRegistry: nextRegistry,
@@ -472,8 +470,7 @@ export function useRoadmapRealtime({
         setUpdatedAtState(loaded.updatedAt)
       }
       if (phasesChanged || roadmapNameChanged || updatedAtChanged || tagsChanged) {
-        storage.setRoadmapCache(activeId, {
-          ...cached,
+        storage.updateRoadmapCache(activeId, {
           roadmapName: nextRoadmapName,
           phases: nextPhases,
           tagRegistry: nextTagRegistry,
@@ -674,8 +671,7 @@ export function useRoadmapRealtime({
                 setIsPasswordEnabledState(payload.is_password_enabled)
                 const current = activeCache()
                 if (current) {
-                  storage.setRoadmapCache(current.activeId, {
-                    ...current.cache,
+                  storage.updateRoadmapCache(current.activeId, {
                     isPasswordEnabled: payload.is_password_enabled,
                     updatedAt: payload.updated_at,
                   })

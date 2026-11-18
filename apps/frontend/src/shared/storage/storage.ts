@@ -48,6 +48,8 @@ export interface AuthCache {
   role: ShareRole
 }
 
+type CachePatch<T> = Partial<T> | ((current: Readonly<T>) => Partial<T>)
+
 export interface RoadmapUiState {
   schemaVersion: 1
   openPhaseIds: string[]
@@ -218,6 +220,12 @@ export const storage = {
   setRoadmapCache(id: string, cache: RoadmapCache): boolean {
     return setLocal(`rf:roadmap:${id}`, JSON.stringify(cache))
   },
+  updateRoadmapCache(id: string, patch: CachePatch<RoadmapCache>): boolean {
+    const current = this.getRoadmapCache(id)
+    if (!current) return false
+    const updates = typeof patch === 'function' ? patch(current) : patch
+    return this.setRoadmapCache(id, { ...current, ...updates })
+  },
 
   getAuthCache(id: string): AuthCache | null {
     const raw = getLocal(`rf:auth:${id}`)
@@ -234,6 +242,12 @@ export const storage = {
       return true
     }
     return setLocal(`rf:auth:${id}`, JSON.stringify(auth))
+  },
+  updateAuthCache(id: string, patch: CachePatch<AuthCache>): boolean {
+    const current = this.getAuthCache(id)
+    if (!current) return false
+    const updates = typeof patch === 'function' ? patch(current) : patch
+    return this.setAuthCache(id, { ...current, ...updates })
   },
 
   clearRoadmapCache(id: string): void {
