@@ -312,19 +312,20 @@ uses its dedicated no-cache/no-store behavior.
 
 ## Payload and field limits
 
-The authoritative shared API limits live in:
+Roadmap field and collection limits live in:
 
 ```text
 apps/backend/src/api/features/roadmaps/limit_schemas.py
 ```
 
-The supported roadmap request ceiling is **5 MiB** and is aligned with the maintained
-browser import and nginx limits. The ASGI body limiter counts actual streamed bytes, so a
-missing or dishonest `Content-Length` cannot bypass the limit.
+The roadmap request ceiling is **5 MiB**, defined in
+`apps/backend/src/api/shared/security/request_limits.py`. It matches the browser
+import and nginx limits. The ASGI body limiter counts actual streamed bytes, including
+requests with missing or inaccurate `Content-Length`.
 
 Frontend import validation mirrors the relevant roadmap shape limits in
-`apps/frontend/src/features/roadmaps/lib/roadmap-validation.ts`. When changing a shared limit, update both
-sides and add contract tests rather than relying on prose.
+`apps/frontend/src/features/roadmaps/lib/roadmap-validation.ts`. `pnpm check:contracts`
+checks parity across those limits and the request ceiling.
 
 ## Error details
 

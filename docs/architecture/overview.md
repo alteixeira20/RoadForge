@@ -49,8 +49,8 @@ The roadmap tag registry remains canonical JSONB on the roadmap row.
 
 Server-Sent Events notify clients of roadmap changes. Memory mode supports one API
 worker. Redis mode shares events, locks, tickets, and rate limits across workers.
-Task completion, claims, and tag registry operations have focused partial-write paths;
-other edits use aggregate roadmap saves.
+Focused requests handle task, phase, tag, and roadmap metadata changes. Aggregate
+writes cover full snapshot saves, imports, and restores.
 
 The realtime stream service consumes the ticket, checks authorization before and
 after subscription, and releases the request database connection before streaming.

@@ -40,6 +40,7 @@ or team-scale SLA.
 | Understand hosted demo vs self-hosting | [`hosted-demo-and-self-hosting.md`](hosted-demo-and-self-hosting.md) |
 | Make a contribution | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) and [`contributor-guide.md`](contributor-guide.md) |
 | Understand architecture | [`architecture/overview.md`](architecture/overview.md) |
+| Review modernization changes and validation | [`architecture/anvilary-modernization-implementation-report.md`](architecture/anvilary-modernization-implementation-report.md) |
 | Understand canonical data ownership | [`architecture/source-of-truth-rules.md`](architecture/source-of-truth-rules.md) |
 | Understand task complexity and decomposition | [`task-complexity.md`](task-complexity.md) |
 | Understand shared access | [`access-model.md`](access-model.md) |
