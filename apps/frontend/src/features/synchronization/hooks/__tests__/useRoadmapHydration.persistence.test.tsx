@@ -303,6 +303,46 @@ describe('useRoadmapHydration persistence invariants', () => {
     expect(cached?.updatedAt).toBe('2026-07-25T16:00:00Z')
   })
 
+  it.each([
+    [500, 'Upstream rejected job 401-403', false],
+    [401, 'Invalid session token', true],
+    [403, 'Access forbidden', true],
+  ])('uses HTTP status %i to decide whether to clear cached credentials', async (status, detail, cleared) => {
+    const id = 'rm-auth-status'
+    const cache = {
+      roadmapName: 'Preserved content',
+      phases: [offlinePhase],
+      saved: false,
+      ownerDisplayName: 'Owner',
+      updatedAt: null,
+      isPasswordEnabled: false,
+    }
+    const auth = {
+      serverRoadmapId: id,
+      sessionToken: BROWSER_SESSION_TOKEN,
+      participantId: 'pt_editor',
+      role: 'editor' as const,
+    }
+    storage.setRoadmapCache(id, cache)
+    storage.setAuthCache(id, auth)
+    storage.setActiveRoadmapId(id)
+    mockedGetRoadmap.mockRejectedValueOnce(new ApiError(status, detail))
+
+    const { setters, spies } = createSetters()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await act(async () => {
+        root.render(<Harness setters={setters} />)
+      })
+
+      expect(storage.getAuthCache(id)).toEqual(cleared ? null : auth)
+      expect(spies.setSessionTokenState).toHaveBeenLastCalledWith(cleared ? null : BROWSER_SESSION_TOKEN)
+      expect(storage.getRoadmapCache(id)).toEqual(cache)
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
   it('session expiration during dirty local editing preserves local work', async () => {
     storage.setRoadmapCache('rm-session-exp', {
       roadmapName: 'My Draft with Unsaved Work',

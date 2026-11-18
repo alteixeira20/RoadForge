@@ -12,6 +12,7 @@ import {
   BROWSER_SESSION_TOKEN,
   establishBrowserSession,
   isApiConnectionError,
+  isAuthError,
   isSessionExpiredError,
 } from '@/shared/http/roadmap-http'
 
@@ -69,12 +70,6 @@ export interface UseRoadmapHydrationReturn {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function isAuthError(error: unknown): boolean {
-  return error instanceof Error && (
-    error.message.includes('401') || error.message.includes('403')
-  )
-}
 
 function getRoadmapIdFromUrl(): string | null {
   if (typeof window === 'undefined') return null
