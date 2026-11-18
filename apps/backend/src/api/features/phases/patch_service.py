@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.features.phases.schemas import PatchPhaseRequest, PatchRoadmapNameRequest
 from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
 from api.features.roadmaps.core_schemas import RoadmapResponse
-from api.features.roadmaps.projection import sync_roadmap_projection_best_effort
+from api.features.roadmaps.mutation_pipeline import commit_roadmap_snapshot_mutation
 from api.features.roadmaps.queries import fetch_active_roadmap_for_update
 from api.features.roadmaps.snapshot import phases_from_snapshot, roadmap_response
 from api.features.roadmaps.tag_schemas import TagDefinitionDTO
@@ -130,9 +130,12 @@ async def patch_phase(
     validate_roadmap_domain(phases, _stored_tag_registry(roadmap))
 
     roadmap.snapshot_json = snapshot_json
-    roadmap.updated_at = datetime.now(timezone.utc)
-    db.add(
-        ActivityLog(
+    await commit_roadmap_snapshot_mutation(
+        db,
+        roadmap,
+        participant,
+        action="phase.updated",
+        activity=ActivityLog(
             id=generate_id("al_"),
             roadmap_id=roadmap_id,
             participant_id=participant.id,
@@ -148,27 +151,12 @@ async def patch_phase(
                 "phaseNum": after_phase.get("num"),
                 "changedFields": changed_fields,
             },
-        )
-    )
-
-    await sync_roadmap_projection_best_effort(db, roadmap, "phase.updated")
-    await enforce_activity_log_cap(db, roadmap_id)
-    await db.commit()
-    await db.refresh(roadmap)
-
-    await event_bus.publish(
-        Event(
-            roadmap_id=roadmap_id,
-            action="roadmap.updated",
-            payload={
-                "roadmap_id": roadmap_id,
-                "updated_at": roadmap.updated_at.isoformat(),
-                "participant_id": participant.id,
-                "phase_id": phase_id,
-                "action": "phase.updated",
-                "changed_fields": changed_fields,
-            },
-        )
+        ),
+        projection="full",
+        event_payload={
+            "phase_id": phase_id,
+            "changed_fields": changed_fields,
+        },
     )
 
     return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))

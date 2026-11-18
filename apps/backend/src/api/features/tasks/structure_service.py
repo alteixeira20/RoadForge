@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
 from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.roadmaps.limit_schemas import TASKS_PER_PHASE_MAX
-from api.features.roadmaps.projection import sync_roadmap_projection_best_effort
+from api.features.roadmaps.mutation_pipeline import commit_roadmap_snapshot_mutation
 from api.features.roadmaps.queries import fetch_active_roadmap_for_update
 from api.features.roadmaps.snapshot import phases_from_snapshot, roadmap_response
 from api.features.roadmaps.tag_schemas import TagDefinitionDTO
@@ -36,7 +34,6 @@ from api.features.tasks.structure_schemas import (
 )
 from api.models.roadmap import ActivityLog, Participant, Roadmap
 from api.shared.ids import generate_id
-from api.shared.realtime.event_bus import Event, event_bus
 
 
 def _stored_tag_registry(roadmap: Roadmap) -> list[TagDefinitionDTO] | None:
@@ -64,25 +61,14 @@ async def _persist_task_structure_change(
     validate_roadmap_domain(phases, _stored_tag_registry(roadmap))
 
     roadmap.snapshot_json = snapshot_json
-    roadmap.updated_at = datetime.now(timezone.utc)
-    db.add(activity)
-    await sync_roadmap_projection_best_effort(db, roadmap, action)
-    await enforce_activity_log_cap(db, roadmap.id)
-    await db.commit()
-    await db.refresh(roadmap)
-
-    await event_bus.publish(
-        Event(
-            roadmap_id=roadmap.id,
-            action="roadmap.updated",
-            payload={
-                "roadmap_id": roadmap.id,
-                "updated_at": roadmap.updated_at.isoformat(),
-                "participant_id": participant.id,
-                "action": action,
-                **event_payload,
-            },
-        )
+    await commit_roadmap_snapshot_mutation(
+        db,
+        roadmap,
+        participant,
+        action=action,
+        activity=activity,
+        projection="full",
+        event_payload=event_payload,
     )
     return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
