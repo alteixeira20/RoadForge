@@ -5,7 +5,7 @@ services:
     container_name: roadforge-web
     build:
       context: ../..
-      dockerfile: apps/web/Dockerfile
+      dockerfile: apps/frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
     environment:
@@ -34,7 +34,7 @@ services:
       - /tmp:rw,noexec,nosuid,nodev,size=64m
       # next/image writes its optimized-image cache at runtime. Keep that one
       # cache writable without making the application filesystem mutable.
-      - /app/apps/web/.next/cache:rw,nosuid,nodev,size=128m,uid=1001,gid=1001,mode=0750
+      - /app/apps/frontend/.next/cache:rw,nosuid,nodev,size=128m,uid=1001,gid=1001,mode=0750
     healthcheck:
       test:
         [

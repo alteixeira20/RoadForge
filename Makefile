@@ -115,7 +115,7 @@ ensure-pnpm:
 	fi
 
 ensure-deps: ensure-pnpm
-	@if [ ! -d node_modules ] || [ ! -d apps/web/node_modules ]; then \
+	@if [ ! -d node_modules ] || [ ! -d apps/frontend/node_modules ]; then \
 		echo "node_modules missing. Installing workspace dependencies..."; \
 		pnpm install --frozen-lockfile; \
 	else \
@@ -125,13 +125,13 @@ ensure-deps: ensure-pnpm
 # ─── Foreground Development ───────────────────────────────────────────────────
 
 dev: ensure-deps
-	NEXT_PUBLIC_API_URL=$(API_URL) pnpm --dir apps/web dev --hostname $(WEB_HOST) --port $(WEB_PORT)
+	NEXT_PUBLIC_API_URL=$(API_URL) pnpm --dir apps/frontend dev --hostname $(WEB_HOST) --port $(WEB_PORT)
 
 check: ensure-deps
 	pnpm check:copy && pnpm check:cycles && pnpm check:docs && pnpm check:issues && pnpm lint && pnpm typecheck && pnpm build
 
 web-test: ensure-deps
-	pnpm --dir apps/web test
+	pnpm --dir apps/frontend test
 
 release-check:
 	$(MAKE) web-test
@@ -350,7 +350,7 @@ web-start: ensure-deps
 	fi
 	@echo "Starting Web in background on $(WEB_URL)..."
 	@echo "Using API: $(API_URL)"
-	@setsid sh -c 'exec env NEXT_PUBLIC_API_URL=$(API_URL) pnpm --dir apps/web dev --hostname $(WEB_HOST) --port $(WEB_PORT) > .logs/web.log 2>&1' & echo $$! > .pids/web.pid
+	@setsid sh -c 'exec env NEXT_PUBLIC_API_URL=$(API_URL) pnpm --dir apps/frontend dev --hostname $(WEB_HOST) --port $(WEB_PORT) > .logs/web.log 2>&1' & echo $$! > .pids/web.pid
 	@sleep 2
 	@if kill -0 $$(cat .pids/web.pid) 2>/dev/null; then \
 		echo "Web started (PID $$(cat .pids/web.pid))"; \
@@ -428,7 +428,7 @@ logs-web:
 deploy-check:
 	@test -f "$(COMPOSE_FILE)" || (echo "Missing $(COMPOSE_FILE)" && exit 1)
 	@test -f "$(ENV_FILE)" || (echo "Missing $(ENV_FILE). Copy deploy/self-hosted/.env.example to $(ENV_FILE) and set POSTGRES_PASSWORD." && exit 1)
-	@test -f "apps/web/Dockerfile" || (echo "Missing apps/web/Dockerfile" && exit 1)
+	@test -f "apps/frontend/Dockerfile" || (echo "Missing apps/frontend/Dockerfile" && exit 1)
 	@test -f "apps/api/Dockerfile" || (echo "Missing apps/api/Dockerfile" && exit 1)
 
 deploy: deploy-check

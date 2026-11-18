@@ -13,7 +13,7 @@ accepted only because the product is explicitly pre-release.
 3. Inspect canonical writes in `apps/api/src/api/services/roadmap_service.py`,
    task writes in `roadmap_task_service.py`, and compare-and-swap enforcement in
    `roadmap_concurrency.py`.
-4. Inspect browser hydration/persistence in `apps/web/src/lib/storage.ts`,
+4. Inspect browser hydration/persistence in `apps/frontend/src/lib/storage.ts`,
    `useRoadmapHydration.ts`, and `RoadmapContext.tsx`.
 5. Review projection parity and backfill logic before enabling projection reads.
 6. Review the bounded MCP surface in `packages/roadforge-mcp`.

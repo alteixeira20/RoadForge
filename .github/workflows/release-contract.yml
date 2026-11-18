@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - 'package.json'
-      - 'apps/web/package.json'
+      - 'apps/frontend/package.json'
       - 'packages/roadforge-mcp/package.json'
       - 'apps/api/src/api/config.py'
       - 'CHANGELOG.md'
@@ -19,7 +19,7 @@ on:
       - dev
     paths:
       - 'package.json'
-      - 'apps/web/package.json'
+      - 'apps/frontend/package.json'
       - 'packages/roadforge-mcp/package.json'
       - 'apps/api/src/api/config.py'
       - 'CHANGELOG.md'

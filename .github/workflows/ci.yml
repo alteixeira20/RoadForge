@@ -258,7 +258,7 @@ jobs:
         run: docker build --pull -t roadforge-api:ci apps/api
 
       - name: Build web image
-        run: docker build --pull -f apps/web/Dockerfile -t roadforge-web:ci .
+        run: docker build --pull -f apps/frontend/Dockerfile -t roadforge-web:ci .
 
       - name: Verify containers run as non-root
         run: |
@@ -349,7 +349,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - run: pnpm --dir apps/web test
+      - run: pnpm --dir apps/frontend test
 
   web-browser-smoke:
     name: Web Development Browser Suite
@@ -434,10 +434,10 @@ jobs:
           exit 1
 
       - name: Install Chromium
-        run: pnpm --dir apps/web exec playwright install --with-deps chromium
+        run: pnpm --dir apps/frontend exec playwright install --with-deps chromium
 
       - name: Run browser suite
-        run: pnpm --dir apps/web test:browser
+        run: pnpm --dir apps/frontend test:browser
 
       - name: Upload browser-test API log
         if: failure()
@@ -454,8 +454,8 @@ jobs:
         with:
           name: playwright-development-report
           path: |
-            apps/web/playwright-report
-            apps/web/test-results
+            apps/frontend/playwright-report
+            apps/frontend/test-results
           if-no-files-found: ignore
           retention-days: 7
 
@@ -483,10 +483,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Chromium
-        run: pnpm --dir apps/web exec playwright install --with-deps chromium
+        run: pnpm --dir apps/frontend exec playwright install --with-deps chromium
 
       - name: Run production browser smoke
-        run: pnpm --dir apps/web test:browser:production
+        run: pnpm --dir apps/frontend test:browser:production
 
       - name: Upload production browser artifacts
         if: failure()
@@ -494,7 +494,7 @@ jobs:
         with:
           name: playwright-production-report
           path: |
-            apps/web/playwright-report
-            apps/web/test-results
+            apps/frontend/playwright-report
+            apps/frontend/test-results
           if-no-files-found: ignore
           retention-days: 7

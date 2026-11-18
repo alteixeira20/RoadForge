@@ -11,13 +11,13 @@ const expect = (condition, message) => {
 }
 
 const rootPackage = json('package.json')
-const webPackage = json('apps/web/package.json')
+const webPackage = json('apps/frontend/package.json')
 const mcpPackage = json('packages/roadforge-mcp/package.json')
 const apiConfig = read('apps/api/src/api/config.py')
 const changelog = read('CHANGELOG.md')
 const makefile = read('Makefile')
 const nvmrc = read('.nvmrc').trim()
-const webRootLayout = read('apps/web/src/app/layout.tsx')
+const webRootLayout = read('apps/frontend/src/app/layout.tsx')
 
 const productVersion = rootPackage.version
 expect(typeof productVersion === 'string' && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(productVersion),

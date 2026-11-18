@@ -6,14 +6,14 @@ measured before speculative architecture is introduced.
 Run the complete benchmark from the repository root:
 
 ```bash
-corepack pnpm --dir apps/web benchmark:roadmap
+corepack pnpm --dir apps/frontend benchmark:roadmap
 ```
 
 Focused entry points:
 
 ```bash
-corepack pnpm --dir apps/web benchmark:roadmap:cpu
-corepack pnpm --dir apps/web benchmark:roadmap:browser
+corepack pnpm --dir apps/frontend benchmark:roadmap:cpu
+corepack pnpm --dir apps/frontend benchmark:roadmap:browser
 ```
 
 The benchmark uses deterministic fixtures and the real RoadForge import/parser path.

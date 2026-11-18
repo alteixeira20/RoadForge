@@ -95,7 +95,7 @@ Exports exclude session tokens, invite tokens, passwords, edit locks, and transi
 collaboration state.
 
 The maintained import/parser contract lives in
-`apps/web/src/lib/roadmap-validation.ts`; TypeScript interfaces and historical design
+`apps/frontend/src/lib/roadmap-validation.ts`; TypeScript interfaces and historical design
 documents do not override the parser.
 
 ## Stack
@@ -153,11 +153,11 @@ browser, Redis, dependency, container, deployment, CSP, and MCP checks.
 Focused commands:
 
 ```bash
-pnpm --dir apps/web test
-pnpm --dir apps/web lint
-pnpm --dir apps/web typecheck
-pnpm --dir apps/web build
-pnpm --dir apps/web test:browser:production
+pnpm --dir apps/frontend test
+pnpm --dir apps/frontend lint
+pnpm --dir apps/frontend typecheck
+pnpm --dir apps/frontend build
+pnpm --dir apps/frontend test:browser:production
 pnpm --dir packages/roadforge-mcp check
 
 make api-lock

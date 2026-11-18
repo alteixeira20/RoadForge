@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const standaloneRoot = path.join(webRoot, '.next', 'standalone')
-const appRoot = path.join(standaloneRoot, 'apps', 'web')
+const appRoot = path.join(standaloneRoot, 'apps', 'frontend')
 const serverEntry = path.join(appRoot, 'server.js')
 
 async function assertBuilt() {
@@ -29,7 +29,7 @@ async function stageStaticAssets() {
 }
 
 function startServer() {
-  const child = spawn(process.execPath, [path.join('apps', 'web', 'server.js')], {
+  const child = spawn(process.execPath, [path.join('apps', 'frontend', 'server.js')], {
     cwd: standaloneRoot,
     stdio: 'inherit',
     env: {

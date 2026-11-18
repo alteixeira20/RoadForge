@@ -23,16 +23,16 @@ const currentSurfaces = [
   'docs/architecture/overview.md',
   'docs/architecture/source-of-truth-rules.md',
   'deploy/self-hosted/README.md',
-  'apps/web/src/app/help/page.tsx',
-  'apps/web/src/app/layout.tsx',
-  'apps/web/src/components/home/HeroSection.tsx',
-  'apps/web/src/components/home/FeaturesSection.tsx',
-  'apps/web/src/components/home/HowItWorksSection.tsx',
-  'apps/web/src/components/layout/SiteFooter.tsx',
-  'apps/web/src/components/roadmap/Workspace.tsx',
-  'apps/web/src/components/share/ShareModal.tsx',
-  'apps/web/src/components/share/ShareRoleSection.tsx',
-  'apps/web/src/services/roadmap-sharing.service.ts',
+  'apps/frontend/src/app/help/page.tsx',
+  'apps/frontend/src/app/layout.tsx',
+  'apps/frontend/src/components/home/HeroSection.tsx',
+  'apps/frontend/src/components/home/FeaturesSection.tsx',
+  'apps/frontend/src/components/home/HowItWorksSection.tsx',
+  'apps/frontend/src/components/layout/SiteFooter.tsx',
+  'apps/frontend/src/components/roadmap/Workspace.tsx',
+  'apps/frontend/src/components/share/ShareModal.tsx',
+  'apps/frontend/src/components/share/ShareRoleSection.tsx',
+  'apps/frontend/src/services/roadmap-sharing.service.ts',
 ]
 
 const stalePatterns = [
@@ -117,7 +117,7 @@ const requiredStatements = new Map([
     'especially larger teams',
     'load-testing',
   ]],
-  ['apps/web/src/app/help/page.tsx', [
+  ['apps/frontend/src/app/help/page.tsx', [
     'hosted demo',
     'larger team',
     'fork the repository',
@@ -125,48 +125,48 @@ const requiredStatements = new Map([
     'Owner, editor, and viewer links are access credentials',
     'not public publishing links',
   ]],
-  ['apps/web/src/components/home/HeroSection.tsx', [
+  ['apps/frontend/src/components/home/HeroSection.tsx', [
     'Export JSON backups',
     'Hosted demo',
     'larger-team use',
     'fork and self-host',
   ]],
-  ['apps/web/src/components/home/FeaturesSection.tsx', [
+  ['apps/frontend/src/components/home/FeaturesSection.tsx', [
     'Fork and self-host',
     'larger-team',
   ]],
-  ['apps/web/src/components/home/HowItWorksSection.tsx', [
+  ['apps/frontend/src/components/home/HowItWorksSection.tsx', [
     'without choosing your next action',
     'fork and self-host RoadForge',
   ]],
-  ['apps/web/src/components/layout/SiteFooter.tsx', [
+  ['apps/frontend/src/components/layout/SiteFooter.tsx', [
     'Hosted demo',
     'Non-commercial source available',
     'Fork/self-host for team use',
   ]],
-  ['apps/web/src/components/share/ShareModal.tsx', [
+  ['apps/frontend/src/components/share/ShareModal.tsx', [
     'Read-only viewer invite',
     'not public publishing links',
   ]],
-  ['apps/web/src/components/share/ShareRoleSection.tsx', [
+  ['apps/frontend/src/components/share/ShareRoleSection.tsx', [
     'not a public publishing URL',
   ]],
-  ['apps/web/src/services/roadmap-sharing.service.ts', [
+  ['apps/frontend/src/services/roadmap-sharing.service.ts', [
     'Treat this invite as a private credential',
   ]],
 ])
 
 const forbiddenStatements = new Map([
-  ['apps/web/src/components/share/ShareModal.tsx', [
+  ['apps/frontend/src/components/share/ShareModal.tsx', [
     'Public viewer link',
     'public read-only link',
     'Generate public link',
     'public viewer URL',
   ]],
-  ['apps/web/src/components/share/ShareRoleSection.tsx', [
+  ['apps/frontend/src/components/share/ShareRoleSection.tsx', [
     'README, portfolio, or live demo',
   ]],
-  ['apps/web/src/services/roadmap-sharing.service.ts', [
+  ['apps/frontend/src/services/roadmap-sharing.service.ts', [
     'Good for public demos',
   ]],
 ])

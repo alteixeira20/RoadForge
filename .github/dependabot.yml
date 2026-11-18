@@ -56,7 +56,7 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: docker
-    directory: /apps/web
+    directory: /apps/frontend
     schedule:
       interval: weekly
       day: monday

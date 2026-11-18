@@ -98,18 +98,18 @@ Start architectural work with:
 
 | Area | Primary implementation boundary |
 | --- | --- |
-| Route/page composition | `apps/web/src/app/` |
-| Workspace/feature UI | `apps/web/src/components/` |
-| Client state and mutation orchestration | `apps/web/src/hooks/`, `apps/web/src/context/` |
-| Portable roadmap parsing/repair | `apps/web/src/lib/roadmap-validation.ts`, `roadmap-upgrade.ts` |
-| Browser persistence | `apps/web/src/lib/storage.ts` |
-| Browser/API calls | `apps/web/src/services/` |
+| Route/page composition | `apps/frontend/src/app/` |
+| Workspace/feature UI | `apps/frontend/src/components/` |
+| Client state and mutation orchestration | `apps/frontend/src/hooks/`, `apps/frontend/src/context/` |
+| Portable roadmap parsing/repair | `apps/frontend/src/lib/roadmap-validation.ts`, `roadmap-upgrade.ts` |
+| Browser persistence | `apps/frontend/src/lib/storage.ts` |
+| Browser/API calls | `apps/frontend/src/services/` |
 | API transport and schemas | `apps/api/src/api/routers/`, `schemas/` |
 | API domain/authorization behavior | `apps/api/src/api/services/` |
 | Database mapping | `apps/api/src/api/models/` |
 | Schema evolution | `apps/api/alembic/versions/` |
 | Production/self-hosting | `deploy/`, `docker-compose.yml`, operational docs |
-| First-run starter example | `apps/web/src/data/roadforge-template.ts` |
+| First-run starter example | `apps/frontend/src/data/roadforge-template.ts` |
 | RoadForge project-planning snapshot | `docs/roadforge-roadmap.json` - planning only, **not** the starter template |
 
 Keep API routers thin. Keep unrelated behavior out of `Workspace`. Components/hooks
@@ -120,7 +120,7 @@ should consume service modules rather than creating ad-hoc fetch calls.
 The real browser import contract is owned by:
 
 ```text
-apps/web/src/lib/roadmap-validation.ts
+apps/frontend/src/lib/roadmap-validation.ts
 ```
 
 with historical normalization/upgrade behavior in the relevant upgrade helpers and
@@ -172,17 +172,17 @@ owner-path coverage.
 Frontend unit/static checks:
 
 ```bash
-pnpm --dir apps/web test
-pnpm --dir apps/web lint
-pnpm --dir apps/web typecheck
-pnpm --dir apps/web build
+pnpm --dir apps/frontend test
+pnpm --dir apps/frontend lint
+pnpm --dir apps/frontend typecheck
+pnpm --dir apps/frontend build
 ```
 
 Browser tests:
 
 ```bash
-pnpm --dir apps/web test:browser
-pnpm --dir apps/web test:browser:production
+pnpm --dir apps/frontend test:browser
+pnpm --dir apps/frontend test:browser:production
 ```
 
 API:
@@ -202,7 +202,7 @@ pnpm --dir packages/roadforge-mcp check
 Performance-sensitive roadmap/import/filter/hydration changes should also run:
 
 ```bash
-pnpm --dir apps/web benchmark:roadmap
+pnpm --dir apps/frontend benchmark:roadmap
 ```
 
 Use [performance.md](performance.md) for the budget contract.

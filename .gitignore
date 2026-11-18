@@ -13,8 +13,8 @@ build/
 coverage/
 .turbo/
 .vercel/
-apps/web/playwright-report/
-apps/web/test-results/
+apps/frontend/playwright-report/
+apps/frontend/test-results/
 
 # TypeScript
 *.tsbuildinfo

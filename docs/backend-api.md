@@ -323,7 +323,7 @@ browser import and nginx limits. The ASGI body limiter counts actual streamed by
 missing or dishonest `Content-Length` cannot bypass the limit.
 
 Frontend import validation mirrors the relevant roadmap shape limits in
-`apps/web/src/lib/roadmap-validation.ts`. When changing a shared limit, update both
+`apps/frontend/src/lib/roadmap-validation.ts`. When changing a shared limit, update both
 sides and add contract tests rather than relying on prose.
 
 ## Error details

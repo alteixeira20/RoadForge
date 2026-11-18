@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'apps/web/**'
+      - 'apps/frontend/**'
       - 'deploy/self-hosted/**'
       - 'docs/security/security-headers-policy.md'
       - 'docs/security/README.md'
@@ -18,7 +18,7 @@ on:
       - main
       - dev
     paths:
-      - 'apps/web/**'
+      - 'apps/frontend/**'
       - 'deploy/self-hosted/**'
       - 'docs/security/security-headers-policy.md'
       - 'docs/security/README.md'
@@ -61,13 +61,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint web application
-        run: pnpm --dir apps/web lint
+        run: pnpm --dir apps/frontend lint
 
       - name: Typecheck web application
-        run: pnpm --dir apps/web typecheck
+        run: pnpm --dir apps/frontend typecheck
 
       - name: Run web unit tests
-        run: pnpm --dir apps/web test
+        run: pnpm --dir apps/frontend test
 
       - name: Validate self-hosted Compose wiring
         run: >-
@@ -77,10 +77,10 @@ jobs:
           config --quiet
 
       - name: Install Chromium
-        run: pnpm --dir apps/web exec playwright install --with-deps chromium
+        run: pnpm --dir apps/frontend exec playwright install --with-deps chromium
 
       - name: Run production CSP and core-flow browser suite
-        run: pnpm --dir apps/web test:browser:production
+        run: pnpm --dir apps/frontend test:browser:production
 
       - name: Upload production browser artifacts
         if: failure()
@@ -88,7 +88,7 @@ jobs:
         with:
           name: web-csp-production-report
           path: |
-            apps/web/playwright-report
-            apps/web/test-results
+            apps/frontend/playwright-report
+            apps/frontend/test-results
           if-no-files-found: ignore
           retention-days: 7

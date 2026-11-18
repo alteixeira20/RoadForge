@@ -1,10 +1,10 @@
 import { readFile, readdir } from 'node:fs/promises'
 import { dirname, extname, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
-import ts from '../apps/web/node_modules/typescript/lib/typescript.js'
+import ts from '../apps/frontend/node_modules/typescript/lib/typescript.js'
 
 const repositoryRoot = process.cwd()
-const sourceRoot = resolve(repositoryRoot, 'apps/web/src')
+const sourceRoot = resolve(repositoryRoot, 'apps/frontend/src')
 const sourceExtensions = new Set(['.ts', '.tsx'])
 
 async function collectSourceFiles(directory) {

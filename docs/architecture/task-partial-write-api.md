@@ -97,7 +97,7 @@ apps/api/src/api/routers/
 apps/api/src/api/schemas/
 apps/api/src/api/services/roadmap_task_service.py
 apps/api/tests/test_task_patch.py
-apps/web/src/services/
+apps/frontend/src/services/
 ```
 
 For exact supported fields, limits, response shapes, and error behavior, use current code,
