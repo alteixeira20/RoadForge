@@ -14,9 +14,8 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
 from api.features.roadmaps.core_schemas import RoadmapResponse
-from api.features.roadmaps.projection import sync_task_projection_best_effort
+from api.features.roadmaps.mutation_pipeline import commit_roadmap_snapshot_mutation
 from api.features.roadmaps.queries import fetch_active_roadmap_for_update
 from api.features.roadmaps.snapshot import phases_from_snapshot, roadmap_response
 from api.features.roadmaps.tag_schemas import TagDefinitionDTO
@@ -29,7 +28,6 @@ from api.features.tasks.snapshot_patch import (
 from api.features.tasks.task_schemas import PatchTaskDoneRequest, PatchTaskRequest
 from api.models.roadmap import ActivityLog, Participant, Roadmap
 from api.shared.ids import generate_id
-from api.shared.realtime.event_bus import Event, event_bus
 
 logger = logging.getLogger(__name__)
 
@@ -70,44 +68,36 @@ async def patch_task(
         field: patched.after_task.get(field) for field in patched.changed_fields
     }
     roadmap.snapshot_json = patched.snapshot_json
-    roadmap.updated_at = datetime.now(timezone.utc)
-
-    db.add(ActivityLog(
-        id=generate_id("al_"),
-        roadmap_id=roadmap_id,
-        participant_id=participant.id,
-        actor_name=participant.display_name,
+    await commit_roadmap_snapshot_mutation(
+        db,
+        roadmap,
+        participant,
         action="task.updated",
-        entity_type="task",
-        entity_id=task_id,
-        before_json=before_json,
-        after_json=after_json,
-        metadata_json={
-            "taskId": task_id,
-            "taskTitle": patched.after_task.get("title"),
-            "phaseId": patched.phase.get("id"),
-            "phaseName": patched.phase.get("name"),
-            "changedFields": patched.changed_fields,
-        },
-    ))
-
-    await sync_task_projection_best_effort(db, roadmap, task_id, "task.updated")
-    await enforce_activity_log_cap(db, roadmap_id)
-    await db.commit()
-    await db.refresh(roadmap)
-
-    await event_bus.publish(Event(
-        roadmap_id=roadmap_id,
-        action="roadmap.updated",
-        payload={
-            "roadmap_id": roadmap_id,
-            "updated_at": roadmap.updated_at.isoformat(),
-            "participant_id": participant.id,
+        activity=ActivityLog(
+            id=generate_id("al_"),
+            roadmap_id=roadmap_id,
+            participant_id=participant.id,
+            actor_name=participant.display_name,
+            action="task.updated",
+            entity_type="task",
+            entity_id=task_id,
+            before_json=before_json,
+            after_json=after_json,
+            metadata_json={
+                "taskId": task_id,
+                "taskTitle": patched.after_task.get("title"),
+                "phaseId": patched.phase.get("id"),
+                "phaseName": patched.phase.get("name"),
+                "changedFields": patched.changed_fields,
+            },
+        ),
+        projection="task",
+        task_id=task_id,
+        event_payload={
             "task_id": task_id,
-            "action": "task.updated",
             "changed_fields": patched.changed_fields,
         },
-    ))
+    )
 
     return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
@@ -133,40 +123,32 @@ async def patch_task_done(
     _validate_snapshot(roadmap, snapshot_json)
     action = "task.completed" if payload.done else "task.reopened"
     roadmap.snapshot_json = snapshot_json
-    roadmap.updated_at = datetime.now(timezone.utc)
-
-    db.add(ActivityLog(
-        id=generate_id("al_"),
-        roadmap_id=roadmap_id,
-        participant_id=participant.id,
-        actor_name=participant.display_name,
+    await commit_roadmap_snapshot_mutation(
+        db,
+        roadmap,
+        participant,
         action=action,
-        entity_type="task",
-        entity_id=task_id,
-        before_json={"done": before_done},
-        after_json={"done": payload.done},
-        metadata_json={
-            "phase_id": phase.get("id"),
-            "task_title": task.get("title"),
-        },
-    ))
-
-    await sync_task_projection_best_effort(db, roadmap, task_id, action)
-    await enforce_activity_log_cap(db, roadmap_id)
-    await db.commit()
-    await db.refresh(roadmap)
-
-    await event_bus.publish(Event(
-        roadmap_id=roadmap_id,
-        action="roadmap.updated",
-        payload={
-            "roadmap_id": roadmap_id,
-            "updated_at": roadmap.updated_at.isoformat(),
-            "participant_id": participant.id,
+        activity=ActivityLog(
+            id=generate_id("al_"),
+            roadmap_id=roadmap_id,
+            participant_id=participant.id,
+            actor_name=participant.display_name,
+            action=action,
+            entity_type="task",
+            entity_id=task_id,
+            before_json={"done": before_done},
+            after_json={"done": payload.done},
+            metadata_json={
+                "phase_id": phase.get("id"),
+                "task_title": task.get("title"),
+            },
+        ),
+        projection="task",
+        task_id=task_id,
+        event_payload={
             "task_id": task_id,
-            "action": action,
-        }
-    ))
+        },
+    )
 
     return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
@@ -212,41 +194,34 @@ async def patch_task_claim(
             )
 
     roadmap.snapshot_json = snapshot_json
-    roadmap.updated_at = now
-
-    db.add(ActivityLog(
-        id=generate_id("al_"),
-        roadmap_id=roadmap_id,
-        participant_id=participant.id,
-        actor_name=participant.display_name,
+    await commit_roadmap_snapshot_mutation(
+        db,
+        roadmap,
+        participant,
         action="task.claimed",
-        entity_type="task",
-        entity_id=task_id,
-        metadata_json={
-            "phase_id": phase.get("id"),
-            "task_title": task.get("title"),
-            "claimed_by": participant.display_name,
-            "override": is_owner_override,
-            "previous_claimed_by": previous_claimed_by if is_owner_override else None,
-        },
-    ))
-
-    await sync_task_projection_best_effort(db, roadmap, task_id, "task.claimed")
-    await enforce_activity_log_cap(db, roadmap_id)
-    await db.commit()
-    await db.refresh(roadmap)
-
-    await event_bus.publish(Event(
-        roadmap_id=roadmap_id,
-        action="roadmap.updated",
-        payload={
-            "roadmap_id": roadmap_id,
-            "updated_at": roadmap.updated_at.isoformat(),
-            "participant_id": participant.id,
+        activity=ActivityLog(
+            id=generate_id("al_"),
+            roadmap_id=roadmap_id,
+            participant_id=participant.id,
+            actor_name=participant.display_name,
+            action="task.claimed",
+            entity_type="task",
+            entity_id=task_id,
+            metadata_json={
+                "phase_id": phase.get("id"),
+                "task_title": task.get("title"),
+                "claimed_by": participant.display_name,
+                "override": is_owner_override,
+                "previous_claimed_by": previous_claimed_by if is_owner_override else None,
+            },
+        ),
+        projection="task",
+        task_id=task_id,
+        event_payload={
             "task_id": task_id,
-            "action": "task.claimed",
-        }
-    ))
+        },
+        updated_at=now,
+    )
 
     return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
@@ -292,39 +267,32 @@ async def delete_task_claim(
         )
 
     roadmap.snapshot_json = snapshot_json
-    roadmap.updated_at = now
-
-    db.add(ActivityLog(
-        id=generate_id("al_"),
-        roadmap_id=roadmap_id,
-        participant_id=participant.id,
-        actor_name=participant.display_name,
+    await commit_roadmap_snapshot_mutation(
+        db,
+        roadmap,
+        participant,
         action="task.unclaimed",
-        entity_type="task",
-        entity_id=task_id,
-        metadata_json={
-            "phase_id": phase.get("id"),
-            "task_title": task.get("title"),
-            "was_claimed_by": before_claimed_by,
-            "override": is_owner_override,
-        },
-    ))
-
-    await sync_task_projection_best_effort(db, roadmap, task_id, "task.unclaimed")
-    await enforce_activity_log_cap(db, roadmap_id)
-    await db.commit()
-    await db.refresh(roadmap)
-
-    await event_bus.publish(Event(
-        roadmap_id=roadmap_id,
-        action="roadmap.updated",
-        payload={
-            "roadmap_id": roadmap_id,
-            "updated_at": roadmap.updated_at.isoformat(),
-            "participant_id": participant.id,
+        activity=ActivityLog(
+            id=generate_id("al_"),
+            roadmap_id=roadmap_id,
+            participant_id=participant.id,
+            actor_name=participant.display_name,
+            action="task.unclaimed",
+            entity_type="task",
+            entity_id=task_id,
+            metadata_json={
+                "phase_id": phase.get("id"),
+                "task_title": task.get("title"),
+                "was_claimed_by": before_claimed_by,
+                "override": is_owner_override,
+            },
+        ),
+        projection="task",
+        task_id=task_id,
+        event_payload={
             "task_id": task_id,
-            "action": "task.unclaimed",
-        }
-    ))
+        },
+        updated_at=now,
+    )
 
     return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))

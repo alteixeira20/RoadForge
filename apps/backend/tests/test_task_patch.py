@@ -10,15 +10,15 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import api.features.tasks.service as task_service
-from api.models.roadmap import ActivityLog, Roadmap, RoadmapVersion
-from api.features.roadmaps.snapshot_schemas import TaskDTO
-from api.features.tasks.task_schemas import PatchTaskRequest
+from api.features.roadmaps import mutation_pipeline
 from api.features.roadmaps.projection import (
     serialize_projection_to_snapshot,
     validate_projection_parity,
 )
+from api.features.roadmaps.snapshot_schemas import TaskDTO
 from api.features.tasks.snapshot_patch import patch_task_fields_in_snapshot
+from api.features.tasks.task_schemas import PatchTaskRequest
+from api.models.roadmap import ActivityLog, Roadmap, RoadmapVersion
 from tests.helpers_projection import PHASES_WITH_TASKS, auth, create_with_phases
 
 
@@ -455,8 +455,8 @@ async def test_same_value_patch_has_no_write_side_effects(
     async def record_publish(event):
         published_events.append(event)
 
-    monkeypatch.setattr(task_service, "sync_task_projection_best_effort", record_projection)
-    monkeypatch.setattr(task_service.event_bus, "publish", record_publish)
+    monkeypatch.setattr(mutation_pipeline, "sync_task_projection_best_effort", record_projection)
+    monkeypatch.setattr(mutation_pipeline.event_bus, "publish", record_publish)
 
     response = await _patch(client, roadmap, title="  Alpha task one  ")
 
@@ -554,7 +554,7 @@ async def test_successful_patch_publishes_changed_fields(
     async def record_publish(event):
         published_events.append(event)
 
-    monkeypatch.setattr(task_service.event_bus, "publish", record_publish)
+    monkeypatch.setattr(mutation_pipeline.event_bus, "publish", record_publish)
 
     response = await _patch(client, roadmap, desc="Changed")
 
