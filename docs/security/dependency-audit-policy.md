@@ -42,7 +42,8 @@ still pin at vulnerable versions. Overrides are version floors, not suppressions
 | --- | --- | --- |
 | `nanoid@<3.3.17` → `^3.3.17` | GHSA-2v37-7h3g-55p8 via PostCSS | PostCSS requires a patched `nanoid` |
 | `postcss` → `^8.5.26` | Next pins an older PostCSS | Next ships the patched PostCSS |
-| `sharp` → `^0.35.4` | GHSA-rgj7-g3m4-5g8c (libheif) via Next image optimization | Next ships `sharp` ≥ 0.35.4 |
+| `sharp` → `^0.35.5` | GHSA-wq5f-xc86-pv6w via Next image optimization | Next ships `sharp` ≥ 0.35.5 |
+| `source-map-js@<1.2.2` → `^1.2.2` | GHSA-68fv-2mgg-jv7q via PostCSS | PostCSS requires a patched `source-map-js` |
 
 Recheck every override on each Next.js upgrade.
 
