@@ -14,9 +14,9 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
 from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.roadmaps.limit_schemas import TAG_REGISTRY_MAX
+from api.features.roadmaps.mutation_pipeline import commit_roadmap_snapshot_mutation
 from api.features.roadmaps.queries import (
     fetch_active_roadmap,
     fetch_active_roadmap_for_update,
@@ -25,7 +25,6 @@ from api.features.roadmaps.snapshot import phases_from_snapshot, roadmap_respons
 from api.features.tags.schemas import CreateTagRequest, TagResponse, UpdateTagRequest
 from api.models.roadmap import ActivityLog, Participant, Roadmap
 from api.shared.ids import generate_id
-from api.shared.realtime.event_bus import Event, event_bus
 
 logger = logging.getLogger(__name__)
 
@@ -87,32 +86,27 @@ async def _commit_tag_mutation(
     before_json: dict | None = None,
     after_json: dict | None = None,
 ) -> RoadmapResponse:
-    roadmap.updated_at = datetime.now(timezone.utc)
-    db.add(ActivityLog(
-        id=generate_id("al_"),
-        roadmap_id=roadmap.id,
-        participant_id=participant.id,
-        actor_name=participant.display_name,
+    await commit_roadmap_snapshot_mutation(
+        db,
+        roadmap,
+        participant,
         action=action,
-        entity_type="tag",
-        entity_id=tag_id,
-        before_json=before_json,
-        after_json=after_json,
-    ))
-    await enforce_activity_log_cap(db, roadmap.id)
-    await db.commit()
-    await db.refresh(roadmap)
-    await event_bus.publish(Event(
-        roadmap_id=roadmap.id,
-        action="roadmap.updated",
-        payload={
-            "roadmap_id": roadmap.id,
-            "updated_at": roadmap.updated_at.isoformat(),
-            "participant_id": participant.id,
+        activity=ActivityLog(
+            id=generate_id("al_"),
+            roadmap_id=roadmap.id,
+            participant_id=participant.id,
+            actor_name=participant.display_name,
+            action=action,
+            entity_type="tag",
+            entity_id=tag_id,
+            before_json=before_json,
+            after_json=after_json,
+        ),
+        projection="none",
+        event_payload={
             "tag_id": tag_id,
-            "action": action,
         },
-    ))
+    )
     return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
 

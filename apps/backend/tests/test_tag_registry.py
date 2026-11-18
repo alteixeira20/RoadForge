@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-import api.features.tags.service as tag_service
+from api.features.roadmaps import mutation_pipeline
 from tests.conftest import create_roadmap
 from tests.helpers_projection import auth
 
@@ -696,7 +696,7 @@ async def test_reorder_tags_publishes_realtime_event_with_bounded_metadata(
     async def record_publish(event):
         published_events.append(event)
 
-    monkeypatch.setattr(tag_service.event_bus, "publish", record_publish)
+    monkeypatch.setattr(mutation_pipeline.event_bus, "publish", record_publish)
 
     resp = await _put_tag_order(client, roadmap_id, token, ["t2", "t1"])
     assert resp.status_code == 200

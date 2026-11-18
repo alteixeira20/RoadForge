@@ -12,6 +12,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
+from api.features.roadmaps.mutation_pipeline import commit_roadmap_snapshot_mutation
 from api.features.roadmaps.queries import fetch_active_roadmap_for_update
 from api.features.sharing.sharing_schemas import ParticipantResponse, ParticipantSummaryResponse
 from api.models.roadmap import ActivityLog, Participant, ShareLink
@@ -400,10 +401,12 @@ async def update_roadmap_password(
     enabled = password is not None
     roadmap.is_password_enabled = enabled
     roadmap.password_hash = hash_password(password) if enabled else None
-    roadmap.updated_at = datetime.now(timezone.utc)
-
-    db.add(
-        ActivityLog(
+    await commit_roadmap_snapshot_mutation(
+        db,
+        roadmap,
+        actor,
+        action="roadmap.password_changed",
+        activity=ActivityLog(
             id=generate_id("al_"),
             roadmap_id=roadmap.id,
             participant_id=actor.id,
@@ -412,25 +415,11 @@ async def update_roadmap_password(
             entity_type="roadmap",
             entity_id=roadmap.id,
             metadata_json={"enabled": enabled},
-        )
-    )
-
-    await enforce_activity_log_cap(db, roadmap.id)
-    await db.commit()
-    await db.refresh(roadmap)
-
-    await event_bus.publish(
-        Event(
-            roadmap_id=roadmap.id,
-            action="roadmap.updated",
-            payload={
-                "roadmap_id": roadmap.id,
-                "updated_at": roadmap.updated_at.isoformat(),
-                "participant_id": actor.id,
-                "action": "roadmap.password_changed",
-                "is_password_enabled": enabled,
-            },
-        )
+        ),
+        projection="none",
+        event_payload={
+            "is_password_enabled": enabled,
+        },
     )
 
     return enabled

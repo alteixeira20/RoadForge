@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.features.phases.schemas import PatchPhaseRequest, PatchRoadmapNameRequest
-from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
 from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.roadmaps.mutation_pipeline import commit_roadmap_snapshot_mutation
 from api.features.roadmaps.queries import fetch_active_roadmap_for_update
@@ -18,7 +16,6 @@ from api.features.roadmaps.tag_schemas import TagDefinitionDTO
 from api.features.roadmaps.validation import validate_roadmap_domain
 from api.models.roadmap import ActivityLog, Participant, Roadmap
 from api.shared.ids import generate_id
-from api.shared.realtime.event_bus import Event, event_bus
 
 
 def _stored_tag_registry(roadmap: Roadmap) -> list[TagDefinitionDTO] | None:
@@ -39,9 +36,12 @@ async def patch_roadmap_name(
 
     previous_name = roadmap.name
     roadmap.name = payload.name
-    roadmap.updated_at = datetime.now(timezone.utc)
-    db.add(
-        ActivityLog(
+    await commit_roadmap_snapshot_mutation(
+        db,
+        roadmap,
+        participant,
+        action="roadmap.renamed",
+        activity=ActivityLog(
             id=generate_id("al_"),
             roadmap_id=roadmap_id,
             participant_id=participant.id,
@@ -52,25 +52,11 @@ async def patch_roadmap_name(
             before_json={"name": previous_name},
             after_json={"name": payload.name},
             metadata_json={"changedFields": ["name"]},
-        )
-    )
-
-    await enforce_activity_log_cap(db, roadmap_id)
-    await db.commit()
-    await db.refresh(roadmap)
-
-    await event_bus.publish(
-        Event(
-            roadmap_id=roadmap_id,
-            action="roadmap.updated",
-            payload={
-                "roadmap_id": roadmap_id,
-                "updated_at": roadmap.updated_at.isoformat(),
-                "participant_id": participant.id,
-                "action": "roadmap.renamed",
-                "roadmap_fields": ["name"],
-            },
-        )
+        ),
+        projection="none",
+        event_payload={
+            "roadmap_fields": ["name"],
+        },
     )
 
     return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
