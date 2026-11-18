@@ -1,5 +1,6 @@
 'use client'
 
+import { formatShortDateTime } from '@/shared/lib/format-date'
 import { useState, useEffect } from 'react'
 import { Modal } from '@/shared/ui/Modal'
 import { Icon } from '@/shared/ui/Icon'
@@ -108,16 +109,6 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
     if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {})
     setCopied(role)
     setTimeout(() => setCopied(null), 1600)
-  }
-
-  const formatDate = (value: string | null | undefined) => {
-    if (!value) return 'Never'
-    return new Date(value).toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
   }
 
   const toggleRole = (targetRole: ShareRole) => {
@@ -496,7 +487,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
               onRegenerate={handleRegenerate}
               onRevokeLink={handleRevoke}
               onRevokeParticipant={handleRevokeParticipant}
-              formatDate={formatDate}
+              formatDate={formatShortDateTime}
               linkStateLabel={linkStateLabel}
               linkHint={linkHint}
               rotateLabel={rotateLabel}

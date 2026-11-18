@@ -128,7 +128,7 @@ dev: ensure-deps
 	NEXT_PUBLIC_API_URL=$(API_URL) pnpm --dir apps/frontend dev --hostname $(WEB_HOST) --port $(WEB_PORT)
 
 check: ensure-deps
-	pnpm check:copy && pnpm check:cycles && pnpm check:docs && pnpm check:issues && pnpm lint && pnpm typecheck && pnpm build
+	pnpm check:copy && pnpm check:cycles && pnpm check:contracts && pnpm check:docs && pnpm check:issues && pnpm lint && pnpm typecheck && pnpm build
 
 web-test: ensure-deps
 	pnpm --dir apps/frontend test

@@ -10,6 +10,7 @@
     "build": "pnpm --dir apps/frontend build",
     "check:copy": "node tools/check-product-copy.mjs && node tools/check-release-contract.mjs && node tools/check-no-em-dash.mjs",
     "check:cycles": "node tools/check-web-import-cycles.mjs",
+    "check:contracts": "node tools/check-contract-limits.mjs",
     "check:docs": "node tools/check-doc-links.mjs",
     "check:issues": "node tools/check-issue-forms.mjs",
     "check:release": "node tools/check-release-contract.mjs",

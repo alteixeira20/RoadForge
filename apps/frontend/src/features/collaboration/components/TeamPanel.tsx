@@ -1,5 +1,6 @@
 'use client'
 
+import { formatShortDateTime } from '@/shared/lib/format-date'
 import { Icon } from '@/shared/ui/Icon'
 import type { Participant } from '@/shared/types/roadmap'
 
@@ -28,20 +29,6 @@ export function TeamPanel({
   const accessLabelFor = (participant: Participant) => (
     participant.accessSourceLabel ||
     (participant.joinedViaRole ? `${participant.joinedViaRole} link` : null)
-  )
-
-  const formatDate = (value: string | null | undefined) => {
-    if (!value) return 'Never'
-    return new Date(value).toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
-  const formatSessionExpiry = (value: string | null | undefined) => (
-    value ? formatDate(value) : 'not set'
   )
 
   // Editors receive a reduced participant projection (no timestamps/link
@@ -114,7 +101,7 @@ export function TeamPanel({
               <div className="team-meta">
                 {hasFullDetails(participant) && (
                   <>
-                    Joined {formatDate(participant.createdAt)} · Last seen {formatDate(participant.lastSeenAt)} · Session expires: {formatSessionExpiry(participant.sessionExpiresAt)}
+                    Joined {formatShortDateTime(participant.createdAt)} · Last seen {formatShortDateTime(participant.lastSeenAt)} · Session expires: {formatShortDateTime(participant.sessionExpiresAt, 'not set')}
                   </>
                 )}
                 {(claimedCountByParticipantId[participant.id] ?? 0) > 0 && (

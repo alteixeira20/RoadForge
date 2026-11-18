@@ -1,5 +1,6 @@
 'use client'
 
+import { formatShortDateTime } from '@/shared/lib/format-date'
 import { useEffect, useState } from 'react'
 import { Icon } from '@/shared/ui/Icon'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
@@ -51,15 +52,6 @@ function actionLabel(action: string | null): string {
       return 'Legacy snapshot'
     default: return action ? 'Legacy snapshot' : 'Updated'
   }
-}
-
-function formatTime(value: string): string {
-  return new Date(value).toLocaleString([], {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 export function VersionsPanel({
@@ -259,7 +251,7 @@ export function VersionsPanel({
                     {actionLabel(version.action)}
                   </div>
                   <div className="version-meta">
-                    {formatTime(version.createdAt)} · {version.actorName || 'System'}
+                    {formatShortDateTime(version.createdAt)} · {version.actorName || 'System'}
                   </div>
                   <div className="version-counts">
                     {version.phaseCount} phases · {version.taskCount} tasks
