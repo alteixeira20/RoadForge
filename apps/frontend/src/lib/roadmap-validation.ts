@@ -91,7 +91,7 @@ const REPAIR_MESSAGES: Record<ImportRepairCode, string> = {
 
 export const IMPORT_MAX_BYTES = 5 * 1024 * 1024
 
-// Validation limits mirrored from apps/api/src/api/schemas/limits.py.
+// Validation limits mirrored from apps/backend/src/api/schemas/limits.py.
 const PHASES_MAX = 50
 const TASKS_PER_PHASE_MAX = 200
 const TASK_TITLE_MAX = 160

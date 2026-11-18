@@ -46,7 +46,7 @@ RF-821 is complete when all of the following are true:
 
 ## Completed in RF-1906–1910 and Phase 22
 
-- Operator backfill script: `apps/api/src/api/scripts/backfill_projection.py`.
+- Operator backfill script: `apps/backend/src/api/scripts/backfill_projection.py`.
   Makefile target: `make api-backfill-projection`.
   Runbook: `docs/architecture/relational-projection-backfill-runbook.md`.
 - Operator verification modes:
@@ -57,12 +57,12 @@ RF-821 is complete when all of the following are true:
   - The report includes checked roadmaps, successful parity count, drift/error
     count, and whether projection reads can be considered safe to enable.
 - Automated projection suites and focused write tests cover:
-  - `apps/api/tests/test_roadmap_projection_roundtrip.py` - phase/task field preservation,
+  - `apps/backend/tests/test_roadmap_projection_roundtrip.py` - phase/task field preservation,
     source_json passthrough, invalid dep/parent normalization (RF-1906).
-  - `apps/api/tests/test_roadmap_projection_parity.py` - parity after create,
+  - `apps/backend/tests/test_roadmap_projection_parity.py` - parity after create,
     full update/import-style replacement, restore, claim-field drift reporting,
     and backfill verification reporting (RF-1907).
-  - `apps/api/tests/test_roadmap_projection_read_flag.py` - disabled-by-default check,
+  - `apps/backend/tests/test_roadmap_projection_read_flag.py` - disabled-by-default check,
     parity-OK path, parity-failure fallback, and serialization-failure fallback (RF-1910).
   - Task PATCH, done PATCH, and claim/unclaim tests verify title, description,
     estimate, tags, ordered assignees, completion, claim identity/time,

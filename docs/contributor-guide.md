@@ -29,7 +29,7 @@ pnpm install --frozen-lockfile
 For direct API development:
 
 ```bash
-cd apps/api
+cd apps/backend
 uv venv --python 3.12
 uv pip install --python .venv/bin/python3 -e ".[dev,test,audit]"
 cd ../..
@@ -104,10 +104,10 @@ Start architectural work with:
 | Portable roadmap parsing/repair | `apps/frontend/src/lib/roadmap-validation.ts`, `roadmap-upgrade.ts` |
 | Browser persistence | `apps/frontend/src/lib/storage.ts` |
 | Browser/API calls | `apps/frontend/src/services/` |
-| API transport and schemas | `apps/api/src/api/routers/`, `schemas/` |
-| API domain/authorization behavior | `apps/api/src/api/services/` |
-| Database mapping | `apps/api/src/api/models/` |
-| Schema evolution | `apps/api/alembic/versions/` |
+| API transport and schemas | `apps/backend/src/api/routers/`, `schemas/` |
+| API domain/authorization behavior | `apps/backend/src/api/services/` |
+| Database mapping | `apps/backend/src/api/models/` |
+| Schema evolution | `apps/backend/alembic/versions/` |
 | Production/self-hosting | `deploy/`, `docker-compose.yml`, operational docs |
 | First-run starter example | `apps/frontend/src/data/roadforge-template.ts` |
 | RoadForge project-planning snapshot | `docs/roadforge-roadmap.json` - planning only, **not** the starter template |

@@ -47,4 +47,4 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
-apps/api/.venv/
+apps/backend/.venv/

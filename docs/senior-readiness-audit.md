@@ -10,7 +10,7 @@ accepted only because the product is explicitly pre-release.
 1. Read this document and [`architecture/overview.md`](architecture/overview.md).
 2. Review the access and threat model in [`access-model.md`](access-model.md) and
    [`public-deployment-security.md`](public-deployment-security.md).
-3. Inspect canonical writes in `apps/api/src/api/services/roadmap_service.py`,
+3. Inspect canonical writes in `apps/backend/src/api/services/roadmap_service.py`,
    task writes in `roadmap_task_service.py`, and compare-and-swap enforcement in
    `roadmap_concurrency.py`.
 4. Inspect browser hydration/persistence in `apps/frontend/src/lib/storage.ts`,

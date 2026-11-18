@@ -30,7 +30,7 @@ updates:
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: pip
-    directory: /apps/api
+    directory: /apps/backend
     schedule:
       interval: weekly
       day: monday
@@ -41,7 +41,7 @@ updates:
       prefix: "chore(api-deps)"
 
   - package-ecosystem: docker
-    directory: /apps/api
+    directory: /apps/backend
     schedule:
       interval: weekly
       day: monday

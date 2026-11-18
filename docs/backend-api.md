@@ -315,7 +315,7 @@ uses its dedicated no-cache/no-store behavior.
 The authoritative shared API limits live in:
 
 ```text
-apps/api/src/api/schemas/limits.py
+apps/backend/src/api/schemas/limits.py
 ```
 
 The supported roadmap request ceiling is **5 MiB** and is aligned with the maintained

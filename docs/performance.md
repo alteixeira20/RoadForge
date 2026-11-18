@@ -50,7 +50,7 @@ state, a next task, and credential-free links.
 
 The **384 KiB autosync value is a performance regression budget, not the API request
 limit**. The supported browser/API/nginx roadmap payload ceiling is **5 MiB**, defined
-by `REQUEST_BODY_MAX_BYTES` in `apps/api/src/api/schemas/limits.py`.
+by `REQUEST_BODY_MAX_BYTES` in `apps/backend/src/api/schemas/limits.py`.
 
 ## Recorded development baseline
 

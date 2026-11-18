@@ -93,10 +93,10 @@ Those require separate evidence and decisions if ever needed.
 Review the current endpoint through:
 
 ```text
-apps/api/src/api/routers/
-apps/api/src/api/schemas/
-apps/api/src/api/services/roadmap_task_service.py
-apps/api/tests/test_task_patch.py
+apps/backend/src/api/routers/
+apps/backend/src/api/schemas/
+apps/backend/src/api/services/roadmap_task_service.py
+apps/backend/tests/test_task_patch.py
 apps/frontend/src/services/
 ```
 

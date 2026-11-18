@@ -13,7 +13,7 @@ pnpm audit --audit-level high --prod
 make api-audit
 ```
 
-The API gate audits the deterministic runtime export from `apps/api/uv.lock`; CI must not audit a separately resolved environment and call it equivalent.
+The API gate audits the deterministic runtime export from `apps/backend/uv.lock`; CI must not audit a separately resolved environment and call it equivalent.
 
 Maintained GitHub Actions are pinned to immutable upstream commit SHAs so the workflow supply chain is reviewed independently from package-manager lockfiles.
 

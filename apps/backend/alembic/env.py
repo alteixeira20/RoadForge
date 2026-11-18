@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# Make src/ importable when running alembic from apps/api/ locally.
+# Make src/ importable when running alembic from apps/backend/ locally.
 # In Docker, PYTHONPATH=/app/src handles this.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 

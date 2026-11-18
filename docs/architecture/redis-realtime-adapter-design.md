@@ -9,21 +9,21 @@ Related roadmap tasks: RF-822, RF-881, RF-882, RF-883, RF-884, RF-885, RF-886, R
 The default realtime backend remains `memory`, which holds realtime state in
 process-local Python objects:
 
-- `EventBus` in `apps/api/src/api/services/event_bus.py`
+- `EventBus` in `apps/backend/src/api/services/event_bus.py`
   - Keeps `roadmap_id -> set[asyncio.Queue]` subscribers in memory.
   - `publish()` serializes the event into current SSE wire format and pushes it into queues for the same process only.
   - `stream()` owns SSE heartbeats and closes when the participant session expiry timestamp is reached.
-- `TicketService` in `apps/api/src/api/services/ticket_service.py`
+- `TicketService` in `apps/backend/src/api/services/ticket_service.py`
   - Keeps one-time SSE tickets in an in-memory dict.
   - Tickets have a 30 second TTL and are removed by `consume_ticket()`.
   - Ticket payload currently contains `roadmap_id`, `participant_id`, ticket expiry, and `session_expires_at`.
-- `LockService` in `apps/api/src/api/services/lock_service.py`
+- `LockService` in `apps/backend/src/api/services/lock_service.py`
   - Keeps `(roadmap_id, target) -> Lock` in an in-memory dict.
   - Locks have a 30 second TTL.
   - A participant may refresh their own lock by acquiring the same target again.
   - Release is owner-only by participant ID.
   - Lock acquire/release publishes `lock.acquired` and `lock.released` through `event_bus`.
-- `InMemoryRateLimiter` in `apps/api/src/api/services/rate_limit_service.py`
+- `InMemoryRateLimiter` in `apps/backend/src/api/services/rate_limit_service.py`
   - Keeps fixed-window buckets in memory.
   - Returns `RateLimitResult` with `allowed`, `remaining`, and `retry_after`.
   - `enforce()` raises FastAPI `429` with generic detail `"Too many requests. Try again later."` and a `Retry-After` header.
@@ -68,7 +68,7 @@ Multiple workers break current correctness:
 
 ## 4. Redis configuration boundary
 
-Implemented settings in `apps/api/src/api/config.py`:
+Implemented settings in `apps/backend/src/api/config.py`:
 
 - `REDIS_URL`
   - Redis connection string. Example local value after RF-881: `redis://localhost:6379/0`.
@@ -354,7 +354,7 @@ Likely files touched:
 - `deploy/self-hosted/compose.yaml`
 - `deploy/self-hosted/.env.example`
 - `deploy/self-hosted/README.md`
-- `apps/api/src/api/config.py`
+- `apps/backend/src/api/config.py`
 - API dependency files only to add the Redis client dependency if RF-881 owns that dependency change.
 
 Validation:
@@ -381,9 +381,9 @@ Redis Pub/Sub event bus selected by `ROADFORGE_REALTIME_BACKEND=redis`, while
 
 Likely files touched:
 
-- `apps/api/src/api/services/event_bus.py`
-- Possibly new adapter modules under `apps/api/src/api/services/`.
-- `apps/api/src/api/config.py`
+- `apps/backend/src/api/services/event_bus.py`
+- Possibly new adapter modules under `apps/backend/src/api/services/`.
+- `apps/backend/src/api/config.py`
 - Focused tests or manual checks for event fan-out.
 
 Validation:
@@ -409,7 +409,7 @@ Redis TTL ticket storage selected by `ROADFORGE_REALTIME_BACKEND=redis`, while
 
 Likely files touched:
 
-- `apps/api/src/api/services/ticket_service.py`
+- `apps/backend/src/api/services/ticket_service.py`
 - New Redis ticket adapter module if separate from the current service.
 - Config/dependency wiring.
 
@@ -439,7 +439,7 @@ release use Redis Lua operations.
 
 Likely files touched:
 
-- `apps/api/src/api/services/lock_service.py`
+- `apps/backend/src/api/services/lock_service.py`
 - New Redis lock adapter module if separate.
 - Possibly event bus injection/wiring so lock events still publish through the configured event bus.
 
@@ -469,7 +469,7 @@ with warning logs.
 
 Likely files touched:
 
-- `apps/api/src/api/services/rate_limit_service.py`
+- `apps/backend/src/api/services/rate_limit_service.py`
 - Config/dependency wiring.
 - `docs/security/rate-limiting-policy.md` if behavior or failure mode changes.
 
@@ -527,7 +527,7 @@ successful startup ping.
 
 Likely files touched:
 
-- `apps/api/Dockerfile`
+- `apps/backend/Dockerfile`
 - `deploy/self-hosted/compose.yaml`
 - `deploy/self-hosted/README.md`
 - README/manual QA docs.

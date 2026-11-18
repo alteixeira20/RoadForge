@@ -13,7 +13,7 @@ const expect = (condition, message) => {
 const rootPackage = json('package.json')
 const webPackage = json('apps/frontend/package.json')
 const mcpPackage = json('packages/roadforge-mcp/package.json')
-const apiConfig = read('apps/api/src/api/config.py')
+const apiConfig = read('apps/backend/src/api/config.py')
 const changelog = read('CHANGELOG.md')
 const makefile = read('Makefile')
 const nvmrc = read('.nvmrc').trim()
@@ -28,7 +28,7 @@ expect(mcpPackage.version === productVersion,
   `MCP package version ${mcpPackage.version} does not match the 0.1.x product baseline ${productVersion}`)
 
 const apiVersionMatch = apiConfig.match(/app_version:\s*str\s*=\s*"([^"]+)"/)
-expect(Boolean(apiVersionMatch), 'could not find Settings.app_version default in apps/api/src/api/config.py')
+expect(Boolean(apiVersionMatch), 'could not find Settings.app_version default in apps/backend/src/api/config.py')
 if (apiVersionMatch) {
   expect(apiVersionMatch[1] === productVersion,
     `API version ${apiVersionMatch[1]} does not match product version ${productVersion}`)

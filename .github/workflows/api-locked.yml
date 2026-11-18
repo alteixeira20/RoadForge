@@ -4,16 +4,15 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'apps/api/**'
+      - 'apps/backend/**'
       - 'Makefile'
       - 'docs/security/dependency-audit-policy.md'
       - '.github/workflows/api-locked.yml'
   push:
     branches:
       - main
-      - dev
     paths:
-      - 'apps/api/**'
+      - 'apps/backend/**'
       - 'Makefile'
       - 'docs/security/dependency-audit-policy.md'
       - '.github/workflows/api-locked.yml'
@@ -41,19 +40,19 @@ jobs:
           python-version: '3.12'
 
       - name: Verify lock drift and deterministic export
-        working-directory: apps/api
+        working-directory: apps/backend
         run: bash scripts/check-lock.sh
 
       - name: Sync locked development environment
-        working-directory: apps/api
+        working-directory: apps/backend
         run: bash scripts/sync-locked-env.sh dev
 
       - name: Run ruff from the locked environment
-        working-directory: apps/api
+        working-directory: apps/backend
         run: uv run --no-sync ruff check src/
 
       - name: Audit the locked runtime dependency set
-        working-directory: apps/api
+        working-directory: apps/backend
         run: bash scripts/audit-locked-runtime.sh
 
   migration-drift:
@@ -86,17 +85,17 @@ jobs:
           python-version: '3.12'
 
       - name: Sync locked runtime environment
-        working-directory: apps/api
+        working-directory: apps/backend
         run: bash scripts/sync-locked-env.sh
 
       - name: Run migrations
-        working-directory: apps/api
+        working-directory: apps/backend
         env:
           DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge
         run: uv run --no-sync alembic upgrade head
 
       - name: Check ORM/migration drift
-        working-directory: apps/api
+        working-directory: apps/backend
         env:
           DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge
         run: uv run --no-sync alembic check
@@ -140,17 +139,17 @@ jobs:
           python-version: '3.12'
 
       - name: Sync locked test environment
-        working-directory: apps/api
+        working-directory: apps/backend
         run: bash scripts/sync-locked-env.sh test
 
       - name: Run API test suite
-        working-directory: apps/api
+        working-directory: apps/backend
         env:
           TEST_DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge_test
         run: uv run --no-sync python -m pytest -q --junitxml=pytest-report.xml
 
       - name: Run real-Redis revocation suite
-        working-directory: apps/api
+        working-directory: apps/backend
         env:
           TEST_DATABASE_URL: postgresql+asyncpg://roadforge:roadforge@localhost:5432/roadforge_test
           REAL_REDIS_TEST_URL: redis://localhost:6379/0
@@ -161,6 +160,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: api-locked-pytest-report
-          path: apps/api/pytest-report.xml
+          path: apps/backend/pytest-report.xml
           if-no-files-found: ignore
           retention-days: 7

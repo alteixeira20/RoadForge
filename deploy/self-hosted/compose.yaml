@@ -49,7 +49,7 @@ services:
   roadforge-api:
     container_name: roadforge-api
     build:
-      context: ../../apps/api
+      context: ../../apps/backend
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://roadforge:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@roadforge-postgres:5432/roadforge

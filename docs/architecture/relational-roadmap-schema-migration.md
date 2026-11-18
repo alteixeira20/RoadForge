@@ -8,13 +8,13 @@ current product behavior first.
 
 RoadForge currently stores the editable roadmap body as a full JSONB snapshot on
 `roadmaps.snapshot_json`. The shape is `{"phases": [...]}` and mirrors the API
-DTOs in `apps/api/src/api/schemas/roadmap.py`: phases contain task arrays, and
+DTOs in `apps/backend/src/api/schemas/roadmap.py`: phases contain task arrays, and
 tasks contain fields such as `id`, `title`, `done`, `next`, `est`, `assignees`,
 `tags`, `deps`, `desc`, and `parentId`.
 
 The main write path is `PUT /api/roadmaps/{id}` in
-`apps/api/src/api/routers/roadmaps.py`, implemented by `update_roadmap()` in
-`apps/api/src/api/services/roadmap_service.py`. It replaces the whole `phases`
+`apps/backend/src/api/routers/roadmaps.py`, implemented by `update_roadmap()` in
+`apps/backend/src/api/services/roadmap_service.py`. It replaces the whole `phases`
 snapshot when `payload.phases` is present, writes one activity row, optionally
 writes a version row, commits, and broadcasts a `roadmap.updated` SSE event.
 
@@ -238,9 +238,9 @@ The later canonical switch should happen only after projection parity is proven:
 
 Likely files touched:
 
-- `apps/api/alembic/versions/<new_revision>_add_relational_roadmap_projection.py`
+- `apps/backend/alembic/versions/<new_revision>_add_relational_roadmap_projection.py`
   (proposed).
-- `apps/api/src/api/models/roadmap.py`.
+- `apps/backend/src/api/models/roadmap.py`.
 
 Validation:
 
@@ -262,7 +262,7 @@ Risk:
 
 Likely files touched:
 
-- `apps/api/src/api/scripts/backfill_projection.py` operator command.
+- `apps/backend/src/api/scripts/backfill_projection.py` operator command.
 - Possibly an Alembic data migration only if the team accepts longer migration
   runtime; prefer an explicit command for safer operations.
 
@@ -291,9 +291,9 @@ Risk:
 
 Likely files touched:
 
-- `apps/api/src/api/services/roadmap_service.py`.
-- `apps/api/src/api/models/roadmap.py`.
-- `apps/api/src/api/services/roadmap_projection_service.py`.
+- `apps/backend/src/api/services/roadmap_service.py`.
+- `apps/backend/src/api/models/roadmap.py`.
+- `apps/backend/src/api/services/roadmap_projection_service.py`.
 
 Validation:
 
@@ -320,8 +320,8 @@ Risk:
 
 Likely files touched:
 
-- `apps/api/src/api/services/roadmap_service.py`.
-- `apps/api/src/api/schemas/roadmap.py` only if response helpers need internal
+- `apps/backend/src/api/services/roadmap_service.py`.
+- `apps/backend/src/api/schemas/roadmap.py` only if response helpers need internal
   schema helpers; public response shape should stay stable.
 
 Validation:
@@ -348,10 +348,10 @@ Risk:
 
 Likely files touched:
 
-- `apps/api/src/api/routers/roadmaps.py` for new partial endpoints.
-- `apps/api/src/api/services/roadmap_service.py` or new task/phase service
+- `apps/backend/src/api/routers/roadmaps.py` for new partial endpoints.
+- `apps/backend/src/api/services/roadmap_service.py` or new task/phase service
   modules (proposed).
-- `apps/api/src/api/schemas/roadmap.py` for partial request/response DTOs.
+- `apps/backend/src/api/schemas/roadmap.py` for partial request/response DTOs.
 - `docs/backend-api.md` after behavior changes.
 
 Validation:
@@ -377,7 +377,7 @@ Risk:
 
 Likely files touched:
 
-- `apps/api/src/api/models/roadmap.py`.
+- `apps/backend/src/api/models/roadmap.py`.
 - Future Alembic revisions if dropping columns or constraints.
 - `docs/backend-api.md`, `docs/manual-qa.md`, and import/export docs after the
   product behavior changes.
@@ -533,7 +533,7 @@ coverage, and the RF-821 completion criteria. Public API behavior remains
 snapshot-first unless the flag is enabled and parity passes.
 
 The backfill and verification workflow is operator-only through
-`apps/api/src/api/scripts/backfill_projection.py`. There is no public route
+`apps/backend/src/api/scripts/backfill_projection.py`. There is no public route
 because there is no existing admin-only endpoint framework.
 
 The partial write endpoint contract is documented in

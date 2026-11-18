@@ -40,7 +40,7 @@ VERIFY=1 make api-backfill-projection
 VERIFY_ONLY=1 make api-backfill-projection
 
 # Direct invocation (if running outside of the Makefile)
-cd apps/api
+cd apps/backend
 DATABASE_URL=postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge \
   python -m api.scripts.backfill_projection
 
