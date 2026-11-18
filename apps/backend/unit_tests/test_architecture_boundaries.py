@@ -30,7 +30,7 @@ ALLOWED = {
     "agent_client": FOUNDATION | {"phases", "tasks", "tags", "roadmaps"},
     "routers": DOMAIN,
     "scripts": FOUNDATION | {"roadmaps", "retention"},
-    "main": FOUNDATION | {"routers", "middleware"},
+    "main": FOUNDATION | {"routers", "middleware", "collaboration", "realtime"},
 }
 
 

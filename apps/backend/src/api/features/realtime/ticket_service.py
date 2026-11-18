@@ -43,6 +43,8 @@ class EventTicketStore(Protocol):
 
     async def consume_ticket(self, ticket_id: str, roadmap_id: str) -> Ticket | None: ...
 
+    async def aclose(self) -> None: ...
+
 
 class MemoryTicketService:
     def __init__(self, ttl: int = EVENT_TICKET_TTL_SECONDS):
@@ -82,6 +84,9 @@ class MemoryTicketService:
         expired = [tid for tid, t in self._tickets.items() if now > t.expires_at]
         for tid in expired:
             del self._tickets[tid]
+
+    async def aclose(self) -> None:
+        """The in-memory store has no external connection to close."""
 
 
 class RedisTicketService:
@@ -158,6 +163,9 @@ class RedisTicketService:
             )
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             return None
+
+    async def aclose(self) -> None:
+        await self._redis.aclose()
 
 
 TicketService = MemoryTicketService

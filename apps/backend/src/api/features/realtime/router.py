@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.types import Receive, Scope, Send
 
 from api.config import get_settings
 from api.database import get_db
 from api.features.realtime.schemas import EventTicketResponse
-from api.features.realtime.stream_service import prepare_event_stream
+from api.features.realtime.stream_service import AuthorizedEventStream, prepare_event_stream
 from api.features.realtime.ticket_service import (
     EVENT_TICKET_COOKIE_NAME,
     EVENT_TICKET_TTL_SECONDS,
@@ -50,6 +51,26 @@ async def post_event_ticket(
     return EventTicketResponse(expires_in=EVENT_TICKET_TTL_SECONDS)
 
 
+class _EventStreamResponse(StreamingResponse):
+    def __init__(self, stream: AuthorizedEventStream) -> None:
+        self._stream = stream
+        super().__init__(
+            stream.stream_chunks(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache, no-store",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            await self._stream.aclose()
+
+
 @router.get("/{roadmap_id}/events")
 async def get_events(
     request: Request,
@@ -59,20 +80,16 @@ async def get_events(
     ticket = request.cookies.get(EVENT_TICKET_COOKIE_NAME)
     stream = await prepare_event_stream(db, roadmap_id, ticket)
 
-    stream_response = StreamingResponse(
-        stream.stream_chunks(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache, no-store",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
-    stream_response.delete_cookie(
-        EVENT_TICKET_COOKIE_NAME,
-        path=event_ticket_cookie_path(roadmap_id),
-        secure=get_settings().is_production_like,
-        httponly=True,
-        samesite="strict",
-    )
+    try:
+        stream_response = _EventStreamResponse(stream)
+        stream_response.delete_cookie(
+            EVENT_TICKET_COOKIE_NAME,
+            path=event_ticket_cookie_path(roadmap_id),
+            secure=get_settings().is_production_like,
+            httponly=True,
+            samesite="strict",
+        )
+    except BaseException:
+        await stream.aclose()
+        raise
     return stream_response

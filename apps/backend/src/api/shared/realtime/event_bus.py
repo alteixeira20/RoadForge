@@ -84,6 +84,8 @@ class RealtimeEventBus(Protocol):
         is_participant_revoked_now: RevocationCheck | None = None,
     ) -> AsyncIterator[str]: ...
 
+    async def aclose(self) -> None: ...
+
 
 async def forward_subscription(
     subscription: Subscription,
@@ -92,6 +94,7 @@ async def forward_subscription(
     close_at: float | None = None,
     is_still_authorized: AuthorizationCheck | None = None,
     is_participant_revoked_now: RevocationCheck | None = None,
+    close_subscription: bool = True,
 ) -> AsyncIterator[str]:
     """
     Forwards events from an already-open `subscription` as SSE chunks until
@@ -194,7 +197,8 @@ async def forward_subscription(
 
             yield event.to_sse()
     finally:
-        await subscription.close()
+        if close_subscription:
+            await subscription.close()
 
 
 class MemorySubscription:
@@ -369,6 +373,9 @@ class MemoryEventBus:
         ):
             yield chunk
 
+    async def aclose(self) -> None:
+        """The in-memory store has no external connection to close."""
+
 
 EventBus = MemoryEventBus
 
@@ -490,8 +497,13 @@ class RedisPubSubEventBus:
         pubsub = self._redis.pubsub()
         try:
             await pubsub.subscribe(channel)
-        except RedisError:
-            logger.exception("Failed to subscribe to realtime Redis channel")
+        except BaseException as exc:
+            if isinstance(exc, RedisError):
+                logger.exception("Failed to subscribe to realtime Redis channel")
+            try:
+                await asyncio.shield(pubsub.aclose())
+            except RedisError:
+                logger.warning("Failed to close an incomplete Redis subscription")
             raise
         return RedisSubscription(self, roadmap_id, pubsub, channel)
 
@@ -553,6 +565,9 @@ class RedisPubSubEventBus:
             return None
         return Event(roadmap_id=roadmap_id, action=action, payload=payload)
 
+    async def aclose(self) -> None:
+        await self._redis.aclose()
+
 
 class RedisSubscription:
     def __init__(
@@ -575,8 +590,10 @@ class RedisSubscription:
 
     async def close(self) -> None:
         try:
-            await self._pubsub.unsubscribe(self._channel)
-            await self._pubsub.aclose()
+            try:
+                await self._pubsub.unsubscribe(self._channel)
+            finally:
+                await self._pubsub.aclose()
         except RedisError:
             logger.warning("Failed to clean up realtime Redis subscription")
 

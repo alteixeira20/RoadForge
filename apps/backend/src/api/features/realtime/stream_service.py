@@ -1,5 +1,6 @@
+import asyncio
 import logging
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class AuthorizedEventStream:
     stream_chunks: Callable[[], AsyncIterator[str]]
+    aclose: Callable[[], Awaitable[None]]
 
 
 async def resolve_realtime_revocation(
@@ -95,54 +97,52 @@ async def prepare_event_stream(
     if not event_ticket:
         raise HTTPException(status_code=401, detail="Invalid or expired event ticket")
 
-    try:
-        if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
-            raise HTTPException(status_code=401, detail="Session revoked")
+    stream_lease = None
+    subscription = None
+    cleanup: asyncio.Task[None] | None = None
 
+    async def release_resources() -> None:
         try:
-            stream_lease = await realtime_stream_registry.acquire(
-                roadmap_id, event_ticket.participant_id
-            )
-        except RealtimeStreamLimitUnavailableError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Realtime stream limit temporarily unavailable",
-            ) from exc
-        if stream_lease is None:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many active realtime streams for this participant",
-            )
-
-        lease_released = False
-
-        async def _safe_release_lease() -> None:
-            nonlocal lease_released
-            if not lease_released:
-                lease_released = True
+            if subscription is not None:
+                await subscription.close()
+        finally:
+            if stream_lease is not None:
                 await stream_lease.release()
 
-        subscription_closed = False
+    async def close() -> None:
+        nonlocal cleanup
+        if cleanup is None:
+            cleanup = asyncio.create_task(release_resources())
+        await asyncio.shield(cleanup)
 
-        async def _safe_close_subscription() -> None:
-            nonlocal subscription_closed
-            if not subscription_closed and subscription is not None:
-                subscription_closed = True
-                await subscription.close()
-
-        subscription = None
-        setup_successful = False
+    try:
         try:
+            if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
+                raise HTTPException(status_code=401, detail="Session revoked")
+
+            try:
+                stream_lease = await realtime_stream_registry.acquire(
+                    roadmap_id, event_ticket.participant_id
+                )
+            except RealtimeStreamLimitUnavailableError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Realtime stream limit temporarily unavailable",
+                ) from exc
+            if stream_lease is None:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Too many active realtime streams for this participant",
+                )
+
             subscription = await event_bus.open_subscription(roadmap_id)
             if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
                 raise HTTPException(status_code=401, detail="Session revoked")
-            setup_successful = True
         finally:
-            if not setup_successful:
-                await _safe_close_subscription()
-                await _safe_release_lease()
-    finally:
-        await db.close()
+            await db.close()
+    except BaseException:
+        await close()
+        raise
 
     async def _is_still_authorized() -> bool:
         if not await stream_lease.refresh():
@@ -165,10 +165,10 @@ async def prepare_event_stream(
                 close_at=event_ticket.session_expires_at,
                 is_still_authorized=_is_still_authorized,
                 is_participant_revoked_now=_is_revoked_fast,
+                close_subscription=False,
             ):
                 yield chunk
         finally:
-            await _safe_close_subscription()
-            await _safe_release_lease()
+            await close()
 
-    return AuthorizedEventStream(stream_chunks=_bounded_stream)
+    return AuthorizedEventStream(stream_chunks=_bounded_stream, aclose=close)

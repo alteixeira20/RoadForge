@@ -56,6 +56,8 @@ class RateLimiter(Protocol):
         self, action: str, key: str, limit: int, window_seconds: int
     ) -> RateLimitResult: ...
 
+    async def aclose(self) -> None: ...
+
 
 class MemoryRateLimiter:
     """Small single-process fixed-window limiter for the current one-worker API."""
@@ -117,6 +119,9 @@ class MemoryRateLimiter:
 
         for key in expired:
             self._buckets.pop(key, None)
+
+    async def aclose(self) -> None:
+        """The in-memory store has no external connection to close."""
 
 
 class RedisRateLimiter:
@@ -186,6 +191,9 @@ class RedisRateLimiter:
     def _bucket_key(self, action: str, key: str) -> str:
         key_hash = hashlib.sha256(key.encode("utf-8")).hexdigest()
         return f"{self._key_prefix}:rate:{action}:{key_hash}"
+
+    async def aclose(self) -> None:
+        await self._redis.aclose()
 
 
 InMemoryRateLimiter = MemoryRateLimiter

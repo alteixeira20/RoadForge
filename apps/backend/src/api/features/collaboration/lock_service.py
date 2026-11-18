@@ -75,6 +75,8 @@ class EditLockStore(Protocol):
 
     async def get_locks_for_roadmap(self, roadmap_id: str) -> list[Lock]: ...
 
+    async def aclose(self) -> None: ...
+
 
 class MemoryLockService:
     def __init__(self, ttl: int = _LOCK_TTL_SECONDS):
@@ -156,6 +158,9 @@ class MemoryLockService:
             del self._locks[k]
 
         return [lk for k, lk in self._locks.items() if k[0] == roadmap_id]
+
+    async def aclose(self) -> None:
+        """The in-memory store has no external connection to close."""
 
 
 class RedisLockService:
@@ -308,6 +313,9 @@ class RedisLockService:
                 "display_name": lock.display_name,
             }
         ))
+
+    async def aclose(self) -> None:
+        await self._redis.aclose()
 
 
 LockService = MemoryLockService

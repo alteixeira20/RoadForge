@@ -71,6 +71,8 @@ class RealtimeStreamRegistry(Protocol):
 
     async def release(self, lease: RealtimeStreamLease) -> None: ...
 
+    async def aclose(self) -> None: ...
+
 
 @dataclass(frozen=True, slots=True)
 class RealtimeStreamLease:
@@ -140,6 +142,9 @@ class MemoryRealtimeStreamRegistry:
     def _prune(leases: dict[str, float], now: float) -> None:
         for lease_id in [lease_id for lease_id, expiry in leases.items() if expiry <= now]:
             leases.pop(lease_id, None)
+
+    async def aclose(self) -> None:
+        """The in-memory store has no external connection to close."""
 
 
 class RedisRealtimeStreamRegistry:
@@ -223,6 +228,9 @@ class RedisRealtimeStreamRegistry:
 
     def _key(self, roadmap_id: str, participant_id: str) -> str:
         return f"{self._key_prefix}:streams:{roadmap_id}:{participant_id}"
+
+    async def aclose(self) -> None:
+        await self._redis.aclose()
 
 
 def _build_realtime_stream_registry() -> RealtimeStreamRegistry:

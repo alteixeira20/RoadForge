@@ -3,15 +3,71 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime, timezone
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
 import api.features.collaboration.lock_service as lock_module
-from api.shared.realtime.event_bus import Event, MemoryEventBus, RedisPubSubEventBus
+import api.main as main
 from api.features.collaboration.lock_service import MemoryLockService, RedisLockService
 from api.features.realtime.ticket_service import MemoryTicketService, RedisTicketService
+from api.shared.realtime.event_bus import Event, MemoryEventBus, RedisPubSubEventBus
 
 pytestmark = pytest.mark.asyncio
+
+
+@pytest.mark.parametrize('failure', [None, 'startup', 'rate_limiter'])
+async def test_lifespan_closes_every_owner_and_disposes_engine(monkeypatch, failure):
+    calls = []
+    owners = [
+        'event_bus', 'rate_limiter', 'lock_service', 'ticket_service', 'realtime_stream_registry',
+    ]
+
+    def recorder(name):
+        async def record(*_):
+            calls.append(name)
+            if name == failure:
+                raise RuntimeError(name)
+
+        return record
+
+    for owner in owners:
+        monkeypatch.setattr(main, owner, SimpleNamespace(aclose=recorder(owner)))
+    monkeypatch.setattr(main, 'engine', SimpleNamespace(dispose=recorder('engine')))
+    monkeypatch.setattr(main, 'validate_realtime_connectivity', recorder('startup'))
+
+    async def run_lifespan():
+        async with main._lifespan(main.app):
+            calls.append('running')
+
+    expected = ['startup']
+    if failure != 'startup':
+        expected.append('running')
+    expected.extend(reversed(owners))
+    expected.append('engine')
+
+    if failure:
+        with pytest.raises(RuntimeError, match=failure):
+            await run_lifespan()
+        assert calls == expected
+    else:
+        await run_lifespan()
+        await run_lifespan()
+        assert calls == expected * 2
+
+
+async def test_event_bus_closes_its_client_shared_with_revocation_registry(monkeypatch):
+    client = SimpleNamespace(aclose=AsyncMock())
+    monkeypatch.setattr('redis.asyncio.Redis.from_url', lambda *args, **kwargs: client)
+    bus = RedisPubSubEventBus(
+        redis_url='redis://localhost', key_prefix='test',
+        connect_timeout_seconds=1, socket_timeout_seconds=1,
+    )
+
+    assert bus.revocations._redis is client
+    await bus.aclose()
+    client.aclose.assert_awaited_once_with()
 
 
 class RecordingEventBus:

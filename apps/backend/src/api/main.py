@@ -1,8 +1,12 @@
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 
 from fastapi import FastAPI
 
 from api.config import get_settings
+from api.database import engine
+from api.features.collaboration.lock_service import lock_service
+from api.features.realtime.stream_limit import realtime_stream_registry
+from api.features.realtime.ticket_service import ticket_service
 from api.middleware.access_log import add_safe_access_log
 from api.middleware.body_limit import add_body_limit
 from api.middleware.browser_session import add_browser_session_auth
@@ -11,13 +15,21 @@ from api.middleware.security_headers import add_security_headers
 from api.routers import roadmaps
 from api.shared.auth import browser_session_router as browser_sessions
 from api.shared.health import router as health
+from api.shared.realtime.event_bus import event_bus
 from api.shared.realtime.startup import validate_realtime_connectivity
+from api.shared.security.rate_limit_service import rate_limiter
 
 
 @asynccontextmanager
 async def _lifespan(_: FastAPI):
-    await validate_realtime_connectivity(get_settings())
-    yield
+    async with AsyncExitStack() as resources:
+        resources.push_async_callback(engine.dispose)
+        for owner in (
+            event_bus, rate_limiter, lock_service, ticket_service, realtime_stream_registry,
+        ):
+            resources.push_async_callback(owner.aclose)
+        await validate_realtime_connectivity(get_settings())
+        yield
 
 
 def create_app() -> FastAPI:
