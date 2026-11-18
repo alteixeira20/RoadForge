@@ -126,7 +126,7 @@ feature is implemented.
 The actual bundled first-run template is implemented in:
 
 ```text
-apps/frontend/src/data/roadforge-template.ts
+apps/frontend/src/features/roadmaps/data/roadforge-template.ts
 ```
 
 and covered by its unit/browser tests.

@@ -522,6 +522,10 @@ async def test_stale_active_session_renews_expiry(
     participant.last_seen_at = now - timedelta(minutes=2)
     participant.session_expires_at = now + timedelta(days=1)
     await db_session.commit()
+    identity = (
+        participant.id, participant.display_name, participant.role,
+        participant.session_token_hash, participant.revoked_at,
+    )
 
     resp = await client.get(
         f"/api/roadmaps/{body['id']}",
@@ -531,3 +535,7 @@ async def test_stale_active_session_renews_expiry(
     assert resp.status_code == 200
     assert participant.last_seen_at >= now
     assert participant.session_expires_at >= now + timedelta(days=29)
+    assert (
+        participant.id, participant.display_name, participant.role,
+        participant.session_token_hash, participant.revoked_at,
+    ) == identity

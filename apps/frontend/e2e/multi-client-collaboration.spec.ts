@@ -1,8 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
-import { resolve } from 'node:path'
 import { createRoadmap } from './helpers'
-
-const screenshotDir = resolve(process.cwd(), '../../docs/agent-handoffs/screenshots')
 
 interface SharedRoadmapFixture {
   ownerContext: BrowserContext
@@ -110,7 +107,7 @@ async function setupSharedRoadmap(browser: Browser): Promise<SharedRoadmapFixtur
 }
 
 test.describe('Real Multi-Client Browser Collaboration', () => {
-  test('Case E (1 & 3 & 9): one collaborator completes task while another edits unrelated task with focus retention and quiet UI', async ({ browser }) => {
+  test('Case E (1 & 3 & 9): one collaborator completes task while another edits unrelated task with focus retention and quiet UI', async ({ browser }, testInfo) => {
     const { ownerContext, ownerPage, editorContext, editorPage } = await setupSharedRoadmap(browser)
 
     try {
@@ -161,7 +158,7 @@ test.describe('Real Multi-Client Browser Collaboration', () => {
       await expect(errorToasts).toHaveCount(0)
 
       await editorPage.screenshot({
-        path: `${screenshotDir}/multi-client-unrelated-edit.png`,
+        path: testInfo.outputPath('multi-client-unrelated-edit.png'),
         fullPage: false,
       })
     } finally {
@@ -170,7 +167,7 @@ test.describe('Real Multi-Client Browser Collaboration', () => {
     }
   })
 
-  test('2: same-field concurrent edit detects conflict, preserves both versions, and resolves explicitly', async ({ browser }) => {
+  test('2: same-field concurrent edit detects conflict, preserves both versions, and resolves explicitly', async ({ browser }, testInfo) => {
     const { ownerContext, ownerPage, editorContext, editorPage } = await setupSharedRoadmap(browser)
 
 
@@ -240,7 +237,7 @@ test.describe('Real Multi-Client Browser Collaboration', () => {
       await expect(editorDesc).toHaveValue('Editor draft conflicting notes')
 
       await editorPage.screenshot({
-        path: `${screenshotDir}/multi-client-same-field-conflict.png`,
+        path: testInfo.outputPath('multi-client-same-field-conflict.png'),
         fullPage: false,
       })
     } finally {
@@ -249,7 +246,7 @@ test.describe('Real Multi-Client Browser Collaboration', () => {
     }
   })
 
-  test('4 & 8: phase creation POST succeeds, SSE propagates to second client, survives reload, create/delete/reorder all work', async ({ browser }) => {
+  test('4 & 8: phase creation POST succeeds, SSE propagates to second client, survives reload, create/delete/reorder all work', async ({ browser }, testInfo) => {
     const { ownerContext, ownerPage, editorContext, editorPage } = await setupSharedRoadmap(browser)
 
     try {
@@ -338,7 +335,7 @@ test.describe('Real Multi-Client Browser Collaboration', () => {
       await expect(ownerPage.locator('.phase.expanded')).toHaveCount(0, { timeout: 3_000 })
 
       await ownerPage.screenshot({
-        path: `${screenshotDir}/multi-client-collapsed-phases.png`,
+        path: testInfo.outputPath('multi-client-collapsed-phases.png'),
         fullPage: false,
       })
     } finally {
@@ -348,7 +345,7 @@ test.describe('Real Multi-Client Browser Collaboration', () => {
   })
 
 
-  test('10: session revocation terminates realtime stream cleanly while preserving local draft', async ({ browser }) => {
+  test('10: session revocation terminates realtime stream cleanly while preserving local draft', async ({ browser }, testInfo) => {
     const { ownerContext, ownerPage, editorContext, editorPage } = await setupSharedRoadmap(browser)
 
     try {
@@ -386,7 +383,7 @@ test.describe('Real Multi-Client Browser Collaboration', () => {
       await expect(titleInput).toHaveValue('Important unsaved work before revocation')
 
       await editorPage.screenshot({
-        path: `${screenshotDir}/multi-client-session-revoked.png`,
+        path: testInfo.outputPath('multi-client-session-revoked.png'),
         fullPage: false,
       })
     } finally {

@@ -10,7 +10,7 @@ contracts versus design/history records.
 - Node.js **24** (`.nvmrc`)
 - pnpm **9.15.9** (root `packageManager`)
 - Python **3.12**
-- `uv` for a direct Python development environment
+- `uv` at the version in `apps/backend/UV_VERSION`
 - Docker + Docker Compose for the standard PostgreSQL/Redis-backed paths
 
 The JavaScript manifests currently accept Node `>=22 <27`; Node 24 is the reference
@@ -23,15 +23,14 @@ explicitly testing compatibility.
 git clone https://github.com/alteixeira20/RoadForge.git
 cd RoadForge
 corepack enable
-pnpm install --frozen-lockfile
+corepack pnpm install --frozen-lockfile
 ```
 
 For direct API development:
 
 ```bash
 cd apps/backend
-uv venv --python 3.12
-uv pip install --python .venv/bin/python3 -e ".[dev,test,audit]"
+uvx --from "uv==$(cat UV_VERSION)" uv sync --python 3.12 --frozen --extra dev --extra test --extra audit
 cd ../..
 ```
 
@@ -99,17 +98,17 @@ Start architectural work with:
 | Area | Primary implementation boundary |
 | --- | --- |
 | Route/page composition | `apps/frontend/src/app/` |
-| Workspace/feature UI | `apps/frontend/src/components/` |
-| Client state and mutation orchestration | `apps/frontend/src/hooks/`, `apps/frontend/src/context/` |
-| Portable roadmap parsing/repair | `apps/frontend/src/lib/roadmap-validation.ts`, `roadmap-upgrade.ts` |
-| Browser persistence | `apps/frontend/src/lib/storage.ts` |
-| Browser/API calls | `apps/frontend/src/services/` |
+| Workspace and feature UI | `apps/frontend/src/features/<feature>/components/` |
+| Active roadmap state, hydration, and realtime | `apps/frontend/src/features/synchronization/` |
+| Portable roadmap parsing/repair | `apps/frontend/src/features/roadmaps/lib/` |
+| Browser persistence and context slices | `apps/frontend/src/shared/storage/`, `apps/frontend/src/shared/context/` |
+| Domain API calls and shared HTTP transport | `apps/frontend/src/features/<feature>/services/`, `apps/frontend/src/shared/http/` |
 | API transport and schemas | `apps/backend/src/api/routers/`, `schemas/` |
-| API domain/authorization behavior | `apps/backend/src/api/services/` |
+| API domain behavior and authorization | `apps/backend/src/api/features/`, `apps/backend/src/api/shared/auth/` |
 | Database mapping | `apps/backend/src/api/models/` |
 | Schema evolution | `apps/backend/alembic/versions/` |
 | Production/self-hosting | `deploy/`, `docker-compose.yml`, operational docs |
-| First-run starter example | `apps/frontend/src/data/roadforge-template.ts` |
+| First-run starter example | `apps/frontend/src/features/roadmaps/data/roadforge-template.ts` |
 | RoadForge project-planning snapshot | `docs/roadforge-roadmap.json` - planning only, **not** the starter template |
 
 Keep API routers thin. Keep unrelated behavior out of `Workspace`. Components/hooks
@@ -120,7 +119,7 @@ should consume service modules rather than creating ad-hoc fetch calls.
 The real browser import contract is owned by:
 
 ```text
-apps/frontend/src/lib/roadmap-validation.ts
+apps/frontend/src/features/roadmaps/lib/roadmap-validation.ts
 ```
 
 with historical normalization/upgrade behavior in the relevant upgrade helpers and
@@ -181,9 +180,22 @@ pnpm --dir apps/frontend build
 Browser tests:
 
 ```bash
-pnpm --dir apps/frontend test:browser
-pnpm --dir apps/frontend test:browser:production
+corepack pnpm --dir apps/frontend exec playwright install chromium
+make test-e2e
+make test-runtime
 ```
+
+Use the browser-suite [API configuration](backend-smoke-tests.md#automated-browser-suite)
+to align the API origin, invite URLs, and development server port.
+
+| Command | Coverage |
+|---|---|
+| `make test-unit` | Frontend unit and hero viewport checks, MCP, DB-free backend tests |
+| `make test-integration` | PostgreSQL integration suites and Alembic drift check |
+| `make test-runtime` | Redis revocation, PostgreSQL reorder concurrency, production standalone browser suite |
+| `make test-security` | API security suites, browser CSP, MCP transport, runtime dependency audits |
+| `make test-performance` | CPU and production browser benchmarks |
+| `make test-e2e` | Development browser suite with the configured API |
 
 API:
 

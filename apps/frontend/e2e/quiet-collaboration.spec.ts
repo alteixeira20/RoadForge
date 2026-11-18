@@ -1,10 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { resolve } from 'node:path'
 import { createRoadmap } from './helpers'
 
-const screenshotDir = resolve(process.cwd(), '../../docs/agent-handoffs/screenshots')
-
-test('preserves collapsed phases across remote updates and page reloads', async ({ page }) => {
+test('preserves collapsed phases across remote updates and page reloads', async ({ page }, testInfo) => {
   await createRoadmap(page, {
     title: 'Quiet Collaboration Roadmap',
     startingPoint: 'template',
@@ -27,7 +24,7 @@ test('preserves collapsed phases across remote updates and page reloads', async 
 
   // Take screenshot of collapsed state
   await page.screenshot({
-    path: `${screenshotDir}/phases-collapsed.png`,
+    path: testInfo.outputPath('phases-collapsed.png'),
     fullPage: false,
   })
 
@@ -39,12 +36,12 @@ test('preserves collapsed phases across remote updates and page reloads', async 
 
   // Take screenshot verifying stability after reload
   await page.screenshot({
-    path: `${screenshotDir}/phases-collapsed-after-reload.png`,
+    path: testInfo.outputPath('phases-collapsed-after-reload.png'),
     fullPage: false,
   })
 })
 
-test('keeps active task editor focused and retains uncommitted edits during updates', async ({ page }) => {
+test('keeps active task editor focused and retains uncommitted edits during updates', async ({ page }, testInfo) => {
   await createRoadmap(page, {
     title: 'Editor Stability Roadmap',
     startingPoint: 'template',
@@ -77,7 +74,7 @@ test('keeps active task editor focused and retains uncommitted edits during upda
 
   // Take screenshot of active editor with draft
   await page.screenshot({
-    path: `${screenshotDir}/active-task-editor-before-update.png`,
+    path: testInfo.outputPath('active-task-editor-before-update.png'),
     fullPage: false,
   })
 
@@ -91,12 +88,12 @@ test('keeps active task editor focused and retains uncommitted edits during upda
   await expect(titleInput).toHaveValue('In-progress collaborative draft text')
 
   await page.screenshot({
-    path: `${screenshotDir}/active-task-editor-after-update.png`,
+    path: testInfo.outputPath('active-task-editor-after-update.png'),
     fullPage: false,
   })
 })
 
-test('maintains visual silence with quiet sync status indicator on desktop and mobile', async ({ page }) => {
+test('maintains visual silence with quiet sync status indicator on desktop and mobile', async ({ page }, testInfo) => {
   await createRoadmap(page, {
     title: 'Visual Silence Roadmap',
     startingPoint: 'template',
@@ -114,7 +111,7 @@ test('maintains visual silence with quiet sync status indicator on desktop and m
   expect(desktopBox!.y + desktopBox!.height).toBeLessThanOrEqual(800)
 
   await page.screenshot({
-    path: `${screenshotDir}/desktop-workspace.png`,
+    path: testInfo.outputPath('desktop-workspace.png'),
     fullPage: false,
   })
 
@@ -127,7 +124,7 @@ test('maintains visual silence with quiet sync status indicator on desktop and m
   expect(mobileBox!.y + mobileBox!.height).toBeLessThanOrEqual(844)
 
   await page.screenshot({
-    path: `${screenshotDir}/mobile-workspace.png`,
+    path: testInfo.outputPath('mobile-workspace.png'),
     fullPage: false,
   })
 })

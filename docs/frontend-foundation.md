@@ -16,9 +16,10 @@ browser cache, bearer participant session, optimistic concurrency, and SSE refre
 
 ## State and persistence
 
-`RoadmapContext` owns the active roadmap, participant/session metadata, tag registry,
-locks, save state, and local cache coordination. Browser persistence goes through
-`src/lib/storage.ts`; components must not call `localStorage` directly.
+`features/synchronization/components/RoadmapProvider.tsx` owns the active roadmap,
+participant metadata, tag registry, locks, save state, and cache coordination. It
+provides three state slices from `shared/context/roadmap-context.ts`. Browser
+persistence goes through `shared/storage/storage.ts`.
 
 Current keys:
 
@@ -41,7 +42,7 @@ Canonical construction and validation boundaries:
 - `roadmap-validation.ts` and `parseImportedRoadmapJson` are the canonical
   browser import/parser path. Upgrade and repair behavior delegates to that path
   rather than maintaining a second template validator.
-- `ActivityAction` in `types/roadmap.ts` is the current mutation vocabulary, and
+- `ActivityAction` in `shared/types/roadmap.ts` is the current mutation vocabulary, and
   `activity-changes.ts` owns batching/deduplication. `roadmap.phases_reordered`
   remains read-compatible legacy vocabulary; new phase reorder writes use
   `phase.reordered`.
@@ -54,9 +55,8 @@ Canonical construction and validation boundaries:
   structural mutation callbacks and filtered disclosure data remain referentially
   stable until their roadmap inputs change, so unrelated toast or panel state does
   not rerender active editors.
-- `TaskRow` and task-claim behavior subscribe to the roadmap data/session slices
-  they use rather than the combined compatibility context, so lifecycle-only
-  updates do not invalidate active task editors.
+- `TaskRow` and task-claim behavior subscribe to roadmap data and session slices.
+  Lifecycle-only updates leave active task editors alone.
 - `useAutoSync` handles exceptional aggregate saves (creation, imports, restores); ordinary
   task, phase, claim, and tag mutations use focused service calls and do not trigger whole-roadmap PUTs.
 - `useRoadmapRealtime` obtains a short-lived ticket and reconciles SSE events silently without
@@ -84,16 +84,15 @@ Canonical construction and validation boundaries:
 
 ## Service boundary
 
-Only modules under `src/services/` call `fetch()`:
+Shared request and error handling lives in `shared/http/roadmap-http.ts`. It owns
+the frontend's `fetch()` call. Feature services own their endpoint paths, payloads,
+and response mapping. Roadmaps owns creation, join, and loading. Sharing owns invite
+and password management. Collaboration owns locks. Synchronization owns event tickets
+and EventSource setup. Components and hooks call their domain service.
 
-- `roadmap-crud.service.ts` - roadmap CRUD, versions, task state, tags, and canonical JSON export;
-- `roadmap-sharing.service.ts` - join, share links, password management, and participants;
-- `roadmap-locks.service.ts` - lock acquire/release/list;
-- `roadmap-realtime.service.ts` - event tickets and SSE setup;
-- `roadmap-http.ts` - shared request/error handling;
-- `roadmap.service.ts` - compatibility barrel for existing imports.
-
-Components and hooks consume these services rather than calling the API directly.
+The import checker validates both file cycles and the feature dependency allowlist.
+Shared modules depend on other shared modules. Workspace and route entry points
+compose features. Domain features consume the shared state slices directly.
 
 ## Import and export
 
@@ -102,7 +101,7 @@ shapes, previews replace/merge effects, and never requires a backend endpoint. I
 accepts current `roadforge.*` and legacy `anvilary.*` schema IDs. Exports retain the
 legacy `anvilary.roadmap.export` ID so older RoadForge deployments can read new files.
 
-Markdown export is produced by `src/lib/roadmap-markdown.ts` as a deterministic
+Markdown export is produced by `features/data-transfer/lib/roadmap-markdown.ts` as a deterministic
 client-side presentation format. It preserves phase/task order and user-authored task
 descriptions, includes planning metadata, omits session and volatile claim state, and
 cannot be imported. PDF export is deferred and has no control in the current UI.

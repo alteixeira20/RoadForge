@@ -1,4 +1,5 @@
 .PHONY: help install dev diff api-up api-down api-reset api-migrate api-health api-check api-check-fast api-check-prepare api-lock api-lint api-test api-test-prepare api-test-fast api-test-real-redis api-audit api-backfill-projection web-start web-stop web-status web-test start reset stop restart status logs logs-api logs-db logs-web audit audit-prod check release-check deploy update migrate ps down doctor deploy-check deploy-hints ensure-pnpm ensure-deps
+.PHONY: web-unit test-unit test-integration test-runtime test-security test-performance test-e2e
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -27,6 +28,12 @@ help:
 	@echo "  make dev           Run Next.js frontend in the foreground"
 	@echo "  make check         Run linting, typechecking, and production build"
 	@echo "  make release-check Run the full local pre-release validation gate"
+	@echo "  make test-unit        Run frontend, MCP, and backend unit checks"
+	@echo "  make test-integration Run PostgreSQL integration tests and migration drift check"
+	@echo "  make test-runtime     Exercise Redis, concurrent reorder, and the standalone frontend"
+	@echo "  make test-security    Test session, limits, CSP, and MCP security and audit dependencies"
+	@echo "  make test-performance Run CPU and Chromium roadmap benchmarks"
+	@echo "  make test-e2e         Run Playwright against the configured development API"
 	@echo "  make diff          Show full diff and copy it to clipboard when possible"
 	@echo "  make audit         Run JS dependency security audit"
 	@echo "  make audit-prod    Run JS dependency security audit (production only, high+)"
@@ -130,17 +137,50 @@ dev: ensure-deps
 check: ensure-deps
 	pnpm check:copy && pnpm check:cycles && pnpm check:contracts && pnpm check:docs && pnpm check:issues && pnpm lint && pnpm typecheck && pnpm build
 
-web-test: ensure-deps
+web-unit: ensure-deps
 	pnpm --dir apps/frontend test
 
+web-test: web-unit
+	pnpm --dir apps/frontend build
+	pnpm --dir apps/frontend test:hero-viewport
+
 release-check:
-	$(MAKE) web-test
 	$(MAKE) check
+	$(MAKE) web-unit
+	pnpm --dir apps/frontend test:hero-viewport
 	$(MAKE) api-lock
 	$(MAKE) api-lint
 	$(MAKE) api-test
 	$(MAKE) api-check
 	git diff --check
+
+test-unit: web-test
+	cd packages/roadforge-mcp && npm test
+	cd apps/backend && bash scripts/sync-locked-env.sh test && uv run --no-sync pytest -q unit_tests
+
+test-integration: api-test-prepare
+	cd apps/backend && bash scripts/sync-locked-env.sh test && uv run --no-sync pytest -q tests
+	$(MAKE) api-check
+
+test-runtime: ensure-deps api-test-real-redis
+	cd apps/backend && uv run --no-sync pytest -q tests/test_task_structure_concurrency.py
+	pnpm --dir apps/frontend test:browser:production
+
+test-security: ensure-deps api-test-prepare
+	$(MAKE) audit
+	$(MAKE) api-audit
+	cd packages/roadforge-mcp && npm run check
+	cd apps/backend && bash scripts/sync-locked-env.sh test && uv run --no-sync pytest -q \
+		tests/test_phase1_security.py tests/test_security_hardening.py tests/test_security_resource_limits.py \
+		tests/test_browser_session_security.py tests/test_rate_limits.py tests/test_body_limit.py \
+		tests/test_auth_and_share_links.py
+	pnpm --dir apps/frontend test:browser:production e2e/csp.spec.ts
+
+test-performance: ensure-deps
+	pnpm --dir apps/frontend benchmark:roadmap
+
+test-e2e: ensure-deps
+	pnpm --dir apps/frontend test:browser
 
 diff:
 	@mkdir -p "$$(dirname "$(DIFF_OUT)")"
@@ -314,16 +354,17 @@ api-test-fast:
 # proves the fast-path revocation registry mark/read/clear behavior holds
 # across two independent RedisPubSubEventBus instances sharing one Redis
 # (standing in for two API workers), not just against the in-process fakes.
-# Uses its own container on a non-default port so it never touches the
-# repository's own docker-compose `redis` service or REDIS_URL.
+# Uses a disposable loopback listener unless a test Redis URL is supplied.
 api-test-real-redis: api-test-prepare
-	@echo "Starting disposable Redis container for the real-Redis revocation suite..."
-	docker rm -f roadforge-test-redis >/dev/null 2>&1 || true
-	docker run -d --name roadforge-test-redis -p 6390:6379 redis:7-alpine >/dev/null
-	@trap 'docker rm -f roadforge-test-redis >/dev/null 2>&1 || true' EXIT; \
+	@set -eu; \
+	if [ -z "$${REAL_REDIS_TEST_URL:-}" ]; then \
+		container=$$(docker run --rm -d -p 127.0.0.1::6379 redis:7-alpine); \
+		trap 'docker stop "$$container" >/dev/null 2>&1 || true' EXIT; \
+		address=$$(docker port "$$container" 6379/tcp); \
+		export REAL_REDIS_TEST_URL="redis://$$address/0"; \
+	fi; \
 	cd apps/backend && bash scripts/sync-locked-env.sh test && \
 		TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+asyncpg://roadforge:roadforge_dev@localhost:5433/roadforge_test} \
-		REAL_REDIS_TEST_URL=redis://localhost:6390/0 \
 		uv run --no-sync python3 -m pytest -q tests/test_realtime_revocation.py
 
 api-reset: api-down
@@ -430,6 +471,7 @@ deploy-check:
 	@test -f "$(ENV_FILE)" || (echo "Missing $(ENV_FILE). Copy deploy/self-hosted/.env.example to $(ENV_FILE) and set POSTGRES_PASSWORD." && exit 1)
 	@test -f "apps/frontend/Dockerfile" || (echo "Missing apps/frontend/Dockerfile" && exit 1)
 	@test -f "apps/backend/Dockerfile" || (echo "Missing apps/backend/Dockerfile" && exit 1)
+	$(DEPLOY_COMPOSE) config -q
 
 deploy: deploy-check
 	@mkdir -p "$(DATA_ROOT)/postgres"

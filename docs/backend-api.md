@@ -315,7 +315,7 @@ uses its dedicated no-cache/no-store behavior.
 The authoritative shared API limits live in:
 
 ```text
-apps/backend/src/api/schemas/limits.py
+apps/backend/src/api/features/roadmaps/limit_schemas.py
 ```
 
 The supported roadmap request ceiling is **5 MiB** and is aligned with the maintained
@@ -323,7 +323,7 @@ browser import and nginx limits. The ASGI body limiter counts actual streamed by
 missing or dishonest `Content-Length` cannot bypass the limit.
 
 Frontend import validation mirrors the relevant roadmap shape limits in
-`apps/frontend/src/lib/roadmap-validation.ts`. When changing a shared limit, update both
+`apps/frontend/src/features/roadmaps/lib/roadmap-validation.ts`. When changing a shared limit, update both
 sides and add contract tests rather than relying on prose.
 
 ## Error details

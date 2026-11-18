@@ -8,13 +8,13 @@ current product behavior first.
 
 RoadForge currently stores the editable roadmap body as a full JSONB snapshot on
 `roadmaps.snapshot_json`. The shape is `{"phases": [...]}` and mirrors the API
-DTOs in `apps/backend/src/api/schemas/roadmap.py`: phases contain task arrays, and
+DTOs in `apps/backend/src/api/features/roadmaps/snapshot_schemas.py`: phases contain task arrays, and
 tasks contain fields such as `id`, `title`, `done`, `next`, `est`, `assignees`,
 `tags`, `deps`, `desc`, and `parentId`.
 
 The main write path is `PUT /api/roadmaps/{id}` in
 `apps/backend/src/api/routers/roadmaps.py`, implemented by `update_roadmap()` in
-`apps/backend/src/api/services/roadmap_service.py`. It replaces the whole `phases`
+`apps/backend/src/api/features/roadmaps/service.py`. It replaces the whole `phases`
 snapshot when `payload.phases` is present, writes one activity row, optionally
 writes a version row, commits, and broadcasts a `roadmap.updated` SSE event.
 
@@ -291,9 +291,9 @@ Risk:
 
 Likely files touched:
 
-- `apps/backend/src/api/services/roadmap_service.py`.
+- `apps/backend/src/api/features/roadmaps/service.py`.
 - `apps/backend/src/api/models/roadmap.py`.
-- `apps/backend/src/api/services/roadmap_projection_service.py`.
+- `apps/backend/src/api/features/roadmaps/projection/`.
 
 Validation:
 
@@ -320,8 +320,8 @@ Risk:
 
 Likely files touched:
 
-- `apps/backend/src/api/services/roadmap_service.py`.
-- `apps/backend/src/api/schemas/roadmap.py` only if response helpers need internal
+- `apps/backend/src/api/features/roadmaps/service.py`.
+- `apps/backend/src/api/features/roadmaps/snapshot_schemas.py` only if response helpers need internal
   schema helpers; public response shape should stay stable.
 
 Validation:
@@ -349,9 +349,9 @@ Risk:
 Likely files touched:
 
 - `apps/backend/src/api/routers/roadmaps.py` for new partial endpoints.
-- `apps/backend/src/api/services/roadmap_service.py` or new task/phase service
+- `apps/backend/src/api/features/roadmaps/service.py` or new task/phase service
   modules (proposed).
-- `apps/backend/src/api/schemas/roadmap.py` for partial request/response DTOs.
+- `apps/backend/src/api/features/roadmaps/snapshot_schemas.py` for partial request/response DTOs.
 - `docs/backend-api.md` after behavior changes.
 
 Validation:

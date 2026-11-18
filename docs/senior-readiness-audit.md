@@ -10,10 +10,10 @@ accepted only because the product is explicitly pre-release.
 1. Read this document and [`architecture/overview.md`](architecture/overview.md).
 2. Review the access and threat model in [`access-model.md`](access-model.md) and
    [`public-deployment-security.md`](public-deployment-security.md).
-3. Inspect canonical writes in `apps/backend/src/api/services/roadmap_service.py`,
+3. Inspect canonical writes in `apps/backend/src/api/features/roadmaps/service.py`,
    task writes in `roadmap_task_service.py`, and compare-and-swap enforcement in
    `roadmap_concurrency.py`.
-4. Inspect browser hydration/persistence in `apps/frontend/src/lib/storage.ts`,
+4. Inspect browser hydration/persistence in `apps/frontend/src/shared/storage/storage.ts`,
    `useRoadmapHydration.ts`, and `RoadmapContext.tsx`.
 5. Review projection parity and backfill logic before enabling projection reads.
 6. Review the bounded MCP surface in `packages/roadforge-mcp`.

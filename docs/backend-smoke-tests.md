@@ -4,6 +4,29 @@ Manual smoke guide for verifying the backend API after a fresh stack start, migr
 
 ---
 
+## Automated browser suite
+
+Playwright's development server uses `http://127.0.0.1:4173`. Start the
+development API with the same web URL for invite links and allowed origins.
+
+```bash
+ROADFORGE_WEB_BASE_URL=http://127.0.0.1:4173 \
+ROADFORGE_CORS_ORIGINS=http://127.0.0.1:4173,http://localhost:4173 \
+ROADFORGE_REALTIME_BACKEND=redis \
+ROADFORGE_MAX_ROADMAPS_PER_HOUR=1000 \
+docker compose up --build -d postgres redis api
+docker compose exec -T api alembic upgrade head
+curl -fsS http://127.0.0.1:7878/api/health/ready
+NEXT_PUBLIC_API_URL=http://127.0.0.1:7878 make test-e2e
+```
+
+Keep those browser-specific CORS and rate settings scoped to the API process.
+Backend integration fixtures exercise the application defaults. Use
+`make test-integration` for PostgreSQL tests with migrations applied, and
+`make test-runtime` for real Redis revocation and standalone Chromium coverage.
+
+---
+
 ## Prerequisites
 
 The Docker Compose stack must be running with migrations applied:
