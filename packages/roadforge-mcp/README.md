@@ -38,6 +38,8 @@ Existing environment-based configuration remains supported and overrides stored 
 - `ROADFORGE_ROADMAP_ID` - configured roadmap;
 - `ROADFORGE_SESSION_TOKEN` - participant session token.
 
+Set `ROADFORGE_API_URL` to the final API URL, including any reverse-proxy base path. The client rejects redirects and URLs containing a username or password. HTTPS is required for non-loopback hosts. Plain HTTP works on loopback and can be explicitly enabled for a trusted private self-hosted endpoint with `ROADFORGE_ALLOW_INSECURE_HTTP=1`.
+
 Invite-based process-local compatibility remains available through `ROADFORGE_INVITE_TOKEN` or `ROADFORGE_INVITE_URL`, plus optional `ROADFORGE_DISPLAY_NAME` and `ROADFORGE_PASSWORD`. Fragment-token invite links are canonical; legacy `?token=` links are accepted only as a migration fallback.
 
 For non-interactive hosts, inject `ROADFORGE_SESSION_TOKEN` through the host environment or secret mechanism rather than shell arguments. Interactive setup intentionally requires a TTY for hidden token entry.

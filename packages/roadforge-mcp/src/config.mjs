@@ -8,6 +8,27 @@ function nonEmpty(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
+function validateApiUrl(value, env) {
+  let url
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error('RoadForge API URL must be a valid HTTP or HTTPS URL.')
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error('RoadForge API URL must be a valid HTTP or HTTPS URL.')
+  }
+  if (url.username || url.password) {
+    throw new Error('RoadForge API URL cannot contain embedded credentials.')
+  }
+  const loopback = url.hostname === 'localhost' || url.hostname === '[::1]'
+    || /^127(?:\.\d{1,3}){3}$/.test(url.hostname)
+  if (url.protocol === 'http:' && !loopback && env.ROADFORGE_ALLOW_INSECURE_HTTP !== '1') {
+    throw new Error('RoadForge API URL must use HTTPS outside loopback. Set ROADFORGE_ALLOW_INSECURE_HTTP=1 for an intentional private HTTP connection.')
+  }
+  return value
+}
+
 export function configPath(env = process.env, platform = process.platform) {
   if (nonEmpty(env.ROADFORGE_MCP_CONFIG)) return path.resolve(env.ROADFORGE_MCP_CONFIG.trim())
   if (platform === 'win32') {
@@ -74,7 +95,7 @@ export async function saveStoredConfig(
   if (await insideRepository(target, cwd)) {
     throw new Error('Refusing to write RoadForge credentials inside a Git repository. Use the default user config location or ROADFORGE_MCP_CONFIG outside the repository.')
   }
-  const apiUrl = nonEmpty(config.apiUrl) || DEFAULT_API_URL
+  const apiUrl = validateApiUrl(nonEmpty(config.apiUrl) || DEFAULT_API_URL, env)
   const roadmapId = nonEmpty(config.roadmapId)
   const sessionToken = nonEmpty(config.sessionToken)
   if (!roadmapId) throw new Error('Roadmap ID is required.')
@@ -93,9 +114,10 @@ export async function saveStoredConfig(
 
 export async function runtimeConfig({ env = process.env, pathOverride } = {}) {
   const stored = await loadStoredConfig({ env, pathOverride })
+  const apiUrl = nonEmpty(env.ROADFORGE_API_URL) || stored.config.apiUrl || DEFAULT_API_URL
   return {
     configPath: stored.path,
-    apiUrl: nonEmpty(env.ROADFORGE_API_URL) || stored.config.apiUrl || DEFAULT_API_URL,
+    apiUrl: validateApiUrl(apiUrl, env),
     roadmapId: nonEmpty(env.ROADFORGE_ROADMAP_ID) || stored.config.roadmapId,
     sessionToken: nonEmpty(env.ROADFORGE_SESSION_TOKEN) || stored.config.sessionToken,
   }

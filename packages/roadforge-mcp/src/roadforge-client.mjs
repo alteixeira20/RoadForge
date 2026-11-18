@@ -190,6 +190,7 @@ export function createRoadForgeClient({
       const baseUrl = (runtime.apiUrl || DEFAULT_API_URL).replace(/\/+$/, '')
       response = await fetchImpl(`${baseUrl}${path}`, {
         method,
+        redirect: 'manual',
         headers: {
           Accept: 'application/json',
           ...(authorization ? { Authorization: `Bearer ${authorization}` } : {}),
@@ -206,6 +207,14 @@ export function createRoadForgeClient({
       throw new RoadForgeApiError(`Could not reach the RoadForge API: ${error.message}`)
     } finally {
       clearTimeout(timeout)
+    }
+
+    if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel().catch(() => {})
+      throw new RoadForgeApiError(
+        `RoadForge API returned an HTTP redirect (${response.status}); set ROADFORGE_API_URL to the final API URL.`,
+        { status: response.status },
+      )
     }
 
     const text = await response.text()

@@ -6,6 +6,8 @@ RoadForge includes a publishable stdio Model Context Protocol server in [`packag
 
 The API origin defaults to `http://localhost:7878`.
 
+For a self-hosted deployment, configure the final API URL directly. The MCP client rejects HTTP redirects and embedded URL credentials. Use HTTPS for non-loopback endpoints, or set `ROADFORGE_ALLOW_INSECURE_HTTP=1` for a trusted private endpoint intentionally served over HTTP.
+
 For local use, configure the package interactively:
 
 ```bash

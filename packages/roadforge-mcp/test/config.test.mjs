@@ -97,6 +97,31 @@ test('environment variables remain compatible and override stored configuration'
   assert.match(configPath({}, 'linux'), /roadforge[\\/]mcp\.json$/)
 })
 
+test('API URLs require HTTP(S), omit embedded credentials, and default to HTTPS outside loopback', async (t) => {
+  const pathOverride = path.join(await tempDir(t), 'mcp.json')
+  const resolveUrl = (apiUrl, allowInsecureHttp) => runtimeConfig({
+    pathOverride,
+    env: { ROADFORGE_API_URL: apiUrl, ROADFORGE_ALLOW_INSECURE_HTTP: allowInsecureHttp },
+  })
+
+  for (const apiUrl of [
+    'http://localhost:7878', 'http://127.0.0.1:7878', 'http://127.1.2.3:7878',
+    'http://[::1]:7878', 'https://roadforge.example/internal',
+  ]) {
+    assert.equal((await resolveUrl(apiUrl)).apiUrl, apiUrl)
+  }
+  assert.equal((await resolveUrl('http://roadforge-api:7878', '1')).apiUrl, 'http://roadforge-api:7878')
+  await assert.rejects(resolveUrl('http://roadforge-api:7878', 'true'), /must use HTTPS/)
+  await assert.rejects(resolveUrl('http://localhost.example:7878'), /must use HTTPS/)
+  await assert.rejects(resolveUrl('ftp://localhost'), /valid HTTP or HTTPS/)
+  await assert.rejects(resolveUrl('/relative'), /valid HTTP or HTTPS/)
+  await assert.rejects(resolveUrl('https://user:secret@roadforge.example', '1'), /embedded credentials/)
+
+  await fs.writeFile(pathOverride, JSON.stringify({ apiUrl: 'http://roadforge-api:7878' }))
+  await assert.rejects(resolveUrl(), /must use HTTPS/)
+  assert.equal((await resolveUrl(undefined, '1')).apiUrl, 'http://roadforge-api:7878')
+})
+
 test('doctor uses only the lightweight revision endpoint and never prints credentials', async () => {
   const requests = []
   const fetchImpl = async (url, options = {}) => {

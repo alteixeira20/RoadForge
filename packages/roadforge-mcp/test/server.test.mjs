@@ -1,11 +1,65 @@
 import assert from 'node:assert/strict'
+import { once } from 'node:events'
+import { createServer } from 'node:http'
 import test from 'node:test'
 
+import { createRoadForgeClient, RoadForgeApiError } from '../src/roadforge-client.mjs'
 import { TOOLS, createToolHandler } from '../src/server.mjs'
 
 const UPDATED_AT = '2026-09-01T12:00:00Z'
 const NEXT_UPDATED_AT = '2026-09-01T12:01:00Z'
 const FULL_PATH = '/api/roadmaps/rm_test'
+
+async function listen(t, handler) {
+  const server = createServer(handler).listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  t.after(() => new Promise((resolve) => server.close(resolve)))
+  return `http://127.0.0.1:${server.address().port}`
+}
+
+test('refuses redirects for invite and authenticated requests without contacting the destination', async (t) => {
+  const requests = []
+  let forwardedRequests = 0
+  const destination = await listen(t, (_request, response) => {
+    forwardedRequests += 1
+    response.writeHead(204).end()
+  })
+  const origin = await listen(t, async (request, response) => {
+    const chunks = []
+    for await (const chunk of request) chunks.push(chunk)
+    const body = Buffer.concat(chunks).toString()
+    requests.push({ url: request.url, authorization: request.headers.authorization, body })
+    const status = request.method === 'POST' ? 307 : 308
+    response.writeHead(status, { Location: destination }).end()
+  })
+
+  const inviteClient = createRoadForgeClient({ env: {
+    ROADFORGE_API_URL: origin,
+    ROADFORGE_INVITE_TOKEN: 'test-invite',
+    ROADFORGE_PASSWORD: 'test-password',
+  } })
+  const bearerClient = createRoadForgeClient({ env: {
+    ROADFORGE_API_URL: origin,
+    ROADFORGE_ROADMAP_ID: 'rm_test',
+    ROADFORGE_SESSION_TOKEN: 'test-session',
+  } })
+
+  for (const [client, status] of [[inviteClient, 307], [bearerClient, 308]]) {
+    await assert.rejects(client.getRevision(), (error) => {
+      assert.ok(error instanceof RoadForgeApiError)
+      assert.equal(error.status, status)
+      assert.match(error.message, /set ROADFORGE_API_URL to the final API URL/)
+      return true
+    })
+  }
+  assert.equal(forwardedRequests, 0)
+  assert.equal(requests[0].url, '/api/roadmaps/join')
+  assert.deepEqual(JSON.parse(requests[0].body), {
+    token: 'test-invite', display_name: 'RoadForge Agent', password: 'test-password',
+  })
+  assert.equal(requests[1].url, `${FULL_PATH}/revision`)
+  assert.equal(requests[1].authorization, 'Bearer test-session')
+})
 
 const fullRoadmap = {
   id: 'rm_test',
