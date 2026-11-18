@@ -121,18 +121,26 @@ def recompute_phase_progress(phase: PhaseDict) -> PhaseDict:
 
 
 def remove_dependencies_on_tasks(
-    phases: list[PhaseDict],
+    phases: list[dict[str, Any]],
     deleted_task_ids: set[str],
-) -> tuple[list[PhaseDict], int]:
+) -> tuple[list[dict[str, Any]], int]:
     if not deleted_task_ids:
         return phases, 0
 
     removed_count = 0
-    next_phases: list[PhaseDict] = []
+    next_phases: list[dict[str, Any]] = []
     for phase in phases:
+        tasks = phase.get("tasks")
+        if not isinstance(tasks, list):
+            next_phases.append(phase)
+            continue
+
         changed_phase = False
-        next_tasks: list[TaskDict] = []
-        for task in phase["tasks"]:
+        next_tasks: list[Any] = []
+        for task in tasks:
+            if not isinstance(task, dict):
+                next_tasks.append(task)
+                continue
             deps = task.get("deps")
             if not isinstance(deps, list):
                 next_tasks.append(task)
@@ -144,7 +152,9 @@ def remove_dependencies_on_tasks(
                 continue
             changed_phase = True
             next_tasks.append({**task, "deps": filtered})
+
         next_phases.append({**phase, "tasks": next_tasks} if changed_phase else phase)
+
     return next_phases, removed_count
 
 

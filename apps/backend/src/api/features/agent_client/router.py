@@ -9,6 +9,10 @@ from api.features.agent_client.compact_response_service import (
     build_compact_conflict_response,
     build_compact_mutation_response,
 )
+from api.features.agent_client.schemas import (
+    CompactMutationResponse,
+    CompactRoadmapConflictResponse,
+)
 from api.features.phases.patch_service import patch_phase, patch_roadmap_name
 from api.features.phases.schemas import (
     CreatePhaseRequest,
@@ -16,26 +20,19 @@ from api.features.phases.schemas import (
     PatchRoadmapNameRequest,
 )
 from api.features.phases.structure_service import create_phase, delete_phase
-from api.features.roadmaps.focused_schemas import (
-    CompactMutationResponse,
-    CompactRoadmapConflictResponse,
-)
-from api.features.roadmaps.service import RoadmapConflictError
+from api.features.roadmaps.conflicts import RoadmapConflictError
+from api.features.tags.schemas import CreateTagRequest
 from api.features.tags.service import create_tag
 from api.features.tasks.service import patch_task, patch_task_done
 from api.features.tasks.structure_schemas import CreateTaskStructureRequest
 from api.features.tasks.structure_service import create_task, delete_task, set_task_dependency
-from api.schemas.roadmap import CreateTagRequest, PatchTaskDoneRequest, PatchTaskRequest
+from api.features.tasks.task_schemas import PatchTaskDoneRequest, PatchTaskRequest
 from api.shared.auth.auth_service import require_participant
-from api.shared.security.rate_limit_service import rate_limiter
+from api.shared.auth.session_policy import OWNER_EDITOR
+from api.shared.security.rate_limit_service import enforce_rate_limit, participant_rate_key
 
 router = APIRouter(tags=["roadmaps"])
-_OWNER_EDITOR = {"owner", "editor"}
 _COMPACT_CONFLICT = {409: {"model": CompactRoadmapConflictResponse}}
-
-
-def _participant_rate_key(participant_id: str, roadmap_id: str) -> str:
-    return f"{participant_id}:{roadmap_id}"
 
 
 def _compact_conflict(exc: RoadmapConflictError) -> JSONResponse:
@@ -55,13 +52,8 @@ async def patch_client_task(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse | JSONResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.update.patch",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.update.patch", participant_rate_key(participant.id, roadmap_id))
     try:
         roadmap = await patch_task(db, roadmap_id, task_id, payload, participant)
     except RoadmapConflictError as exc:
@@ -81,13 +73,8 @@ async def patch_client_task_done(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse | JSONResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.done.patch",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.done.patch", participant_rate_key(participant.id, roadmap_id))
     try:
         roadmap = await patch_task_done(db, roadmap_id, task_id, payload, participant)
     except RoadmapConflictError as exc:
@@ -107,13 +94,8 @@ async def create_client_task(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.create.post",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.create.post", participant_rate_key(participant.id, roadmap_id))
     roadmap = await create_task(db, roadmap_id, phase_id, payload, participant)
     return build_compact_mutation_response(
         roadmap,
@@ -132,13 +114,8 @@ async def delete_client_task(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.delete",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.delete", participant_rate_key(participant.id, roadmap_id))
     roadmap = await delete_task(db, roadmap_id, task_id, participant)
     return build_compact_mutation_response(
         roadmap,
@@ -159,12 +136,9 @@ async def link_client_task_dependency(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.dependency.put",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=180,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit(
+          "task.dependency.put", participant_rate_key(participant.id, roadmap_id),
     )
     roadmap = await set_task_dependency(
         db,
@@ -194,12 +168,9 @@ async def unlink_client_task_dependency(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.dependency.delete",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=180,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit(
+          "task.dependency.delete", participant_rate_key(participant.id, roadmap_id),
     )
     roadmap = await set_task_dependency(
         db,
@@ -230,13 +201,8 @@ async def create_client_phase(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "phase.create.post",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=60,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("phase.create.post", participant_rate_key(participant.id, roadmap_id))
     roadmap = await create_phase(db, roadmap_id, payload, participant)
     return build_compact_mutation_response(
         roadmap,
@@ -256,12 +222,9 @@ async def patch_client_phase(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "phase.update.patch",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=180,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit(
+          "phase.update.patch", participant_rate_key(participant.id, roadmap_id),
     )
     roadmap = await patch_phase(db, roadmap_id, phase_id, payload, participant)
     return build_compact_mutation_response(
@@ -281,13 +244,8 @@ async def delete_client_phase(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "phase.delete",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("phase.delete", participant_rate_key(participant.id, roadmap_id))
     roadmap = await delete_phase(db, roadmap_id, phase_id, participant)
     return build_compact_mutation_response(
         roadmap,
@@ -307,12 +265,9 @@ async def patch_client_name(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "roadmap.name.patch",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit(
+          "roadmap.name.patch", participant_rate_key(participant.id, roadmap_id),
     )
     roadmap = await patch_roadmap_name(db, roadmap_id, payload, participant)
     return build_compact_mutation_response(
@@ -334,13 +289,8 @@ async def create_client_tag(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CompactMutationResponse | JSONResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "tag.create",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=60,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("tag.create", participant_rate_key(participant.id, roadmap_id))
     try:
         roadmap = await create_tag(db, roadmap_id, payload, participant)
     except RoadmapConflictError as exc:

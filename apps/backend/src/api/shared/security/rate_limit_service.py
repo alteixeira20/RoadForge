@@ -206,3 +206,71 @@ def _build_rate_limiter() -> RateLimiter:
 
 
 rate_limiter = _build_rate_limiter()
+
+
+# Keyed by the published action names to preserve the shared Redis buckets.
+RATE_LIMIT_POLICIES: dict[str, tuple[int | None, int]] = {
+    "activity.read": (120, 60),
+    "events.ticket.ip": (60, 60),
+    "events.ticket.participant": (10, 60),
+    "join.ip": (20, 60),
+    "join.password_failure.ip_share": (5, 600),
+    "join.password_failure.share": (30, 3600),
+    "join.share_link": (30, 600),
+    "locks.acquire": (120, 60),
+    "locks.read": (120, 60),
+    "locks.release": (120, 60),
+    "participants.read": (120, 60),
+    "participants.revoke": (10, 60),
+    "phase.create.post": (60, 60),
+    "phase.delete": (120, 60),
+    "phase.reorder.put": (120, 60),
+    "phase.update.patch": (180, 60),
+    "roadmap.context.read": (120, 60),
+    "roadmap.create.ip": (None, 3600),
+    "roadmap.delete": (10, 60),
+    "roadmap.name.patch": (120, 60),
+    "roadmap.password.update": (10, 60),
+    "roadmap.read": (240, 60),
+    "roadmap.revision.read": (300, 60),
+    "roadmap.summary.read": (240, 60),
+    "roadmap.update": (60, 60),
+    "share_link.revoke": (10, 60),
+    "share_link.rotate": (5, 60),
+    "share_links.read": (60, 60),
+    "subtask.reorder.put": (180, 60),
+    "tag.create": (60, 60),
+    "tag.delete": (60, 60),
+    "tag.read": (120, 60),
+    "tag.reorder": (60, 60),
+    "tag.update": (60, 60),
+    "task.claim.delete": (120, 60),
+    "task.claim.patch": (120, 60),
+    "task.create.post": (120, 60),
+    "task.delete": (120, 60),
+    "task.dependency.delete": (180, 60),
+    "task.dependency.put": (180, 60),
+    "task.detail.read": (240, 60),
+    "task.done.patch": (120, 60),
+    "task.reorder.put": (180, 60),
+    "task.search.read": (120, 60),
+    "task.update.patch": (120, 60),
+    "version.read": (120, 60),
+    "versions.checkpoint": (10, 60),
+    "versions.read": (120, 60),
+    "versions.restore": (10, 60),
+}
+
+
+def participant_rate_key(participant_id: str, roadmap_id: str) -> str:
+    return f"{participant_id}:{roadmap_id}"
+
+
+async def enforce_rate_limit(
+    action: str, key: str, *, limit: int | None = None
+) -> RateLimitResult:
+    default_limit, window_seconds = RATE_LIMIT_POLICIES[action]
+    effective_limit = default_limit if limit is None else limit
+    if effective_limit is None:
+        raise ValueError(f"Rate limit {action} requires a configured capacity")
+    return await rate_limiter.enforce(action, key, effective_limit, window_seconds)

@@ -16,7 +16,6 @@ from api.routers import roadmaps
 
 _CORE_ROUTES = {
     ("POST", ""),
-    ("POST", "/join"),
     ("GET", "/{roadmap_id}"),
     ("PUT", "/{roadmap_id}"),
     ("DELETE", "/{roadmap_id}"),
@@ -105,6 +104,7 @@ _DOMAIN_CONTRACTS = (
     (roadmap_task_structure.router, _TASK_STRUCTURE_ROUTES),
     (roadmap_locks.router, _LOCK_ROUTES),
     (roadmap_sharing.router, _SHARING_ROUTES),
+    (roadmap_sharing.join_router, {("POST", "/join")}),
     (roadmap_realtime.router, _REALTIME_ROUTES),
     (roadmap_tags.router, _TAG_ROUTES),
 )

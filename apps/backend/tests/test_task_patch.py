@@ -12,12 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import api.features.tasks.service as task_service
 from api.models.roadmap import ActivityLog, Roadmap, RoadmapVersion
-from api.schemas.roadmap import PatchTaskRequest, TaskDTO
+from api.features.roadmaps.snapshot_schemas import TaskDTO
+from api.features.tasks.task_schemas import PatchTaskRequest
 from api.features.roadmaps.projection import (
     serialize_projection_to_snapshot,
     validate_projection_parity,
 )
-from api.features.roadmaps.roadmap_helpers import _patch_task_fields_in_snapshot
+from api.features.tasks.snapshot_patch import patch_task_fields_in_snapshot
 from tests.helpers_projection import PHASES_WITH_TASKS, auth, create_with_phases
 
 
@@ -74,7 +75,7 @@ def _patched_task(result) -> dict:
     ],
 )
 def test_snapshot_helper_updates_each_supported_field(updates, field, expected):
-    result = _patch_task_fields_in_snapshot(_snapshot(), "tk_a1", _updates(**updates))
+    result = patch_task_fields_in_snapshot(_snapshot(), "tk_a1", _updates(**updates))
 
     assert result is not None
     assert _patched_task(result)[field] == expected
@@ -82,7 +83,7 @@ def test_snapshot_helper_updates_each_supported_field(updates, field, expected):
 
 
 def test_snapshot_helper_clears_optional_scalar():
-    result = _patch_task_fields_in_snapshot(_snapshot(), "tk_a1", _updates(est="  "))
+    result = patch_task_fields_in_snapshot(_snapshot(), "tk_a1", _updates(est="  "))
 
     assert result is not None
     assert "est" not in _patched_task(result)
@@ -99,7 +100,7 @@ def test_snapshot_helper_applies_multiple_fields_in_stable_order():
         title="New title",
     )
 
-    result = _patch_task_fields_in_snapshot(_snapshot(), "tk_a1", updates)
+    result = patch_task_fields_in_snapshot(_snapshot(), "tk_a1", updates)
 
     assert result is not None
     assert result.changed_fields == ["title", "desc", "est", "complexity", "assignees", "tags"]
@@ -115,7 +116,7 @@ def test_snapshot_helper_applies_multiple_fields_in_stable_order():
 def test_snapshot_helper_normalized_noop_returns_original_snapshot():
     snapshot = _snapshot()
 
-    result = _patch_task_fields_in_snapshot(
+    result = patch_task_fields_in_snapshot(
         snapshot,
         "tk_a1",
         _updates(title="  Alpha task one  ", desc=" First task description "),
@@ -132,7 +133,7 @@ def test_snapshot_helper_treats_missing_null_and_empty_optional_values_as_equal(
     task = snapshot["phases"][1]["tasks"][0]
     assert "assignees" not in task and "est" not in task
 
-    result = _patch_task_fields_in_snapshot(
+    result = patch_task_fields_in_snapshot(
         snapshot,
         "tk_b1",
         _updates(assignees=[], est=None),
@@ -156,7 +157,7 @@ def test_snapshot_helper_same_links_are_a_noop():
     }])["links"]
     snapshot["phases"][0]["tasks"][0]["links"] = links
 
-    result = _patch_task_fields_in_snapshot(snapshot, "tk_a1", _updates(links=links))
+    result = patch_task_fields_in_snapshot(snapshot, "tk_a1", _updates(links=links))
 
     assert result is not None
     assert result.changed_fields == []
@@ -165,7 +166,7 @@ def test_snapshot_helper_same_links_are_a_noop():
 
 def test_snapshot_helper_missing_task_returns_none():
     assert (
-        _patch_task_fields_in_snapshot(_snapshot(), "missing", _updates(title="New title"))
+        patch_task_fields_in_snapshot(_snapshot(), "missing", _updates(title="New title"))
         is None
     )
 
@@ -174,7 +175,7 @@ def test_snapshot_helper_preserves_unrelated_fields_and_inputs():
     snapshot = _snapshot()
     original = deepcopy(snapshot)
 
-    result = _patch_task_fields_in_snapshot(snapshot, "tk_a1", _updates(title="New title"))
+    result = patch_task_fields_in_snapshot(snapshot, "tk_a1", _updates(title="New title"))
 
     assert result is not None
     task = _patched_task(result)
@@ -212,7 +213,7 @@ def test_snapshot_helper_clears_links_without_removing_unrelated_fields():
     }])["links"]
     original_title = task["title"]
 
-    result = _patch_task_fields_in_snapshot(snapshot, "tk_a1", _updates(links=[]))
+    result = patch_task_fields_in_snapshot(snapshot, "tk_a1", _updates(links=[]))
 
     assert result is not None
     assert _patched_task(result)["links"] == []

@@ -15,23 +15,19 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
+from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.roadmaps.projection import sync_task_projection_best_effort
 from api.features.roadmaps.queries import fetch_active_roadmap_for_update
-from api.features.roadmaps.roadmap_helpers import (
-    _patch_task_claim_snapshot,
-    _patch_task_done_snapshot,
-    _patch_task_fields_in_snapshot,
-    _phases_from_snapshot,
-    _roadmap_response,
-)
+from api.features.roadmaps.snapshot import phases_from_snapshot, roadmap_response
+from api.features.roadmaps.tag_schemas import TagDefinitionDTO
 from api.features.roadmaps.validation import validate_roadmap_domain
-from api.models.roadmap import ActivityLog, Participant, Roadmap
-from api.schemas.roadmap import (
-    PatchTaskDoneRequest,
-    PatchTaskRequest,
-    RoadmapResponse,
-    TagDefinitionDTO,
+from api.features.tasks.snapshot_patch import (
+    patch_task_claim_snapshot,
+    patch_task_done_snapshot,
+    patch_task_fields_in_snapshot,
 )
+from api.features.tasks.task_schemas import PatchTaskDoneRequest, PatchTaskRequest
+from api.models.roadmap import ActivityLog, Participant, Roadmap
 from api.shared.ids import generate_id
 from api.shared.realtime.event_bus import Event, event_bus
 
@@ -44,7 +40,7 @@ def _validate_snapshot(roadmap: Roadmap, snapshot_json: dict) -> None:
         if roadmap.tag_registry_json is None
         else [TagDefinitionDTO.model_validate(tag) for tag in roadmap.tag_registry_json]
     )
-    validate_roadmap_domain(_phases_from_snapshot(snapshot_json), tag_registry)
+    validate_roadmap_domain(phases_from_snapshot(snapshot_json), tag_registry)
 
 
 async def patch_task(
@@ -60,11 +56,11 @@ async def patch_task(
         exclude={"last_updated_at"},
         exclude_unset=True,
     )
-    patched = _patch_task_fields_in_snapshot(roadmap.snapshot_json, task_id, updates)
+    patched = patch_task_fields_in_snapshot(roadmap.snapshot_json, task_id, updates)
     if patched is None:
         raise HTTPException(status_code=404, detail="Task not found")
     if not patched.changed_fields:
-        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+        return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
     _validate_snapshot(roadmap, patched.snapshot_json)
     before_json = {
@@ -113,7 +109,7 @@ async def patch_task(
         },
     ))
 
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
 
 async def patch_task_done(
@@ -125,14 +121,14 @@ async def patch_task_done(
 ) -> RoadmapResponse:
     roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
 
-    patched = _patch_task_done_snapshot(roadmap.snapshot_json, task_id, payload.done)
+    patched = patch_task_done_snapshot(roadmap.snapshot_json, task_id, payload.done)
     if patched is None:
         raise HTTPException(status_code=404, detail="Task not found")
 
     snapshot_json, phase, task = patched
     before_done = bool(task.get("done", False))
     if before_done == payload.done:
-        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+        return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
     _validate_snapshot(roadmap, snapshot_json)
     action = "task.completed" if payload.done else "task.reopened"
@@ -172,7 +168,7 @@ async def patch_task_done(
         }
     ))
 
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
 
 async def patch_task_claim(
@@ -186,7 +182,7 @@ async def patch_task_claim(
     roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     now = datetime.now(timezone.utc)
 
-    patched = _patch_task_claim_snapshot(
+    patched = patch_task_claim_snapshot(
         roadmap.snapshot_json,
         task_id,
         participant.display_name,
@@ -252,7 +248,7 @@ async def patch_task_claim(
         }
     ))
 
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
 
 async def delete_task_claim(
@@ -266,7 +262,7 @@ async def delete_task_claim(
     roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     now = datetime.now(timezone.utc)
 
-    patched = _patch_task_claim_snapshot(
+    patched = patch_task_claim_snapshot(
         roadmap.snapshot_json,
         task_id,
         None,
@@ -281,7 +277,7 @@ async def delete_task_claim(
     before_claimed_by_id = task.get("claimedById")
 
     if not before_claimed_by:
-        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+        return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
     is_own_claim = (
         before_claimed_by_id == participant.id
@@ -331,4 +327,4 @@ async def delete_task_claim(
         }
     ))
 
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))

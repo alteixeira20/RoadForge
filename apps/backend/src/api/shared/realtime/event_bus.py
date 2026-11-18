@@ -234,7 +234,7 @@ class RevocationMark(Enum):
     an in-flight revocation whose database commit has not landed yet, and
     an abandoned one whose owning process crashed before promoting or
     clearing the mark. Both require a PostgreSQL lookup to resolve - see
-    `sharing_service.resolve_realtime_revocation`.
+    `stream_service.resolve_realtime_revocation`.
     """
 
     ACTIVE = "active"
@@ -597,3 +597,12 @@ def _build_event_bus() -> RealtimeEventBus:
 
 # Global event bus instance
 event_bus = _build_event_bus()
+
+
+async def log_revocation_failure(coro, message: str) -> None:
+    """Await `coro`, logging (not raising) on failure - for steps that must
+    never abort an already-authoritative revocation."""
+    try:
+        await coro
+    except Exception:
+        logger.exception(message)

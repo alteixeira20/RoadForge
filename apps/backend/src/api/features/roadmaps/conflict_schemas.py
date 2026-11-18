@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from api.features.tasks.task_schemas import PhaseDTO
+from api.features.roadmaps.snapshot_schemas import PhaseDTO
 
 
 class RoadmapConflictServerSnapshot(BaseModel):

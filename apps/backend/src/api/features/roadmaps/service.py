@@ -6,45 +6,39 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Re-exports from extracted service modules (backward compat). _MAX_ROADMAP_VERSIONS
-# and _trim_old_versions are unused here but imported by tests via this module.
-from api.features.history.version_service import (  # noqa: F401
-    _MAX_ROADMAP_VERSIONS,
-    _create_roadmap_version,
-    _should_create_version,
-    _trim_old_versions,
-)
 from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
 from api.features.roadmaps.concurrency import ensure_roadmap_is_current
+from api.features.roadmaps.conflicts import change_summary_fields
+from api.features.roadmaps.core_schemas import (
+    CreateRoadmapRequest,
+    CreateRoadmapResponse,
+    RoadmapResponse,
+    UpdateRoadmapRequest,
+)
 from api.features.roadmaps.projection import sync_roadmap_projection_best_effort
 from api.features.roadmaps.queries import (
     fetch_active_roadmap,
     fetch_active_roadmap_for_update,
 )
-from api.features.roadmaps.roadmap_helpers import (
-    RoadmapConflictError,  # noqa: F401 - compatibility re-export for routers/tests
-    _change_summary_fields,
-    _phases_for_read,
-    _phases_from_snapshot,
-    _roadmap_response,
-    _snapshot_from_phases,
+from api.features.roadmaps.snapshot import (
+    phases_for_read,
+    phases_from_snapshot,
+    roadmap_response,
+    snapshot_from_phases,
 )
+from api.features.roadmaps.tag_schemas import TagDefinitionDTO
 from api.features.roadmaps.validation import validate_roadmap_domain
-from api.features.sharing.join_service import join_roadmap  # noqa: F401
-from api.features.sharing.service import _ROLE_LABELS, _ROLE_ORDER, _SHARE_PREFIXES  # noqa: F401
-from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
-from api.schemas.roadmap import (
-    ActivityLogListResponse,
-    ActivityLogResponse,
-    CreateRoadmapRequest,
-    CreateRoadmapResponse,
-    RoadmapResponse,
-    ShareLinkResponse,
-    TagDefinitionDTO,
-    UpdateRoadmapRequest,
+
+# Re-exports from extracted service modules (backward compat). _MAX_ROADMAP_VERSIONS
+# and trim_old_versions are unused here but imported by tests via this module.
+from api.features.roadmaps.version_writer import (
+    create_roadmap_version,
+    should_create_version,
 )
+from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
 from api.shared.auth.password_service import hash_password
-from api.shared.auth.session_policy import session_expires_at
+from api.shared.auth.session_policy import SHARE_PREFIXES, session_expires_at
+from api.shared.auth.share_schemas import ShareLinkResponse
 from api.shared.auth.token_service import generate_token, hash_token
 from api.shared.auth.token_service import token_prefix as make_token_prefix
 from api.shared.ids import generate_id
@@ -95,7 +89,7 @@ async def create_roadmap(
         id=roadmap_id,
         name=payload.name,
         owner_display_name=payload.owner_display_name,
-        snapshot_json=_snapshot_from_phases(payload.phases),
+        snapshot_json=snapshot_from_phases(payload.phases),
         schema_version="1.0",
         is_password_enabled=bool(payload.password),
         password_hash=hash_password(payload.password) if payload.password else None,
@@ -117,7 +111,7 @@ async def create_roadmap(
 
     raw_tokens: dict[str, str] = {}
     share_link_rows: list[ShareLink] = []
-    for role, prefix in _SHARE_PREFIXES.items():
+    for role, prefix in SHARE_PREFIXES.items():
         raw = generate_token(prefix)
         raw_tokens[role] = raw
         share_link = ShareLink(
@@ -130,7 +124,7 @@ async def create_roadmap(
         db.add(share_link)
         share_link_rows.append(share_link)
 
-    action, entity_type, entity_id, metadata_json = _change_summary_fields(
+    action, entity_type, entity_id, metadata_json = change_summary_fields(
         payload.change_summary,
         default_action="roadmap.created",
         default_entity_type="roadmap",
@@ -148,7 +142,7 @@ async def create_roadmap(
         after_json={"name": payload.name},
         metadata_json=metadata_json,
     ))
-    await _create_roadmap_version(db, roadmap, participant, "roadmap.created", metadata_json)
+    await create_roadmap_version(db, roadmap, participant, "roadmap.created", metadata_json)
 
     # Seed the derivative projection once for operators that later run parity
     # checks. Normal edits intentionally update only the canonical snapshot; a
@@ -189,7 +183,7 @@ async def create_roadmap(
 
 async def get_roadmap(db: AsyncSession, roadmap_id: str) -> RoadmapResponse:
     roadmap = await fetch_active_roadmap(db, roadmap_id)
-    return _roadmap_response(roadmap, await _phases_for_read(db, roadmap))
+    return roadmap_response(roadmap, await phases_for_read(db, roadmap))
 
 
 async def update_roadmap(
@@ -207,7 +201,7 @@ async def update_roadmap(
     next_phases = (
         payload.phases
         if payload.phases is not None
-        else _phases_from_snapshot(roadmap.snapshot_json)
+        else phases_from_snapshot(roadmap.snapshot_json)
     )
     next_tag_registry = (
         payload.tag_registry
@@ -229,14 +223,14 @@ async def update_roadmap(
     if payload.phases is not None:
         before_json["phase_count"] = len(roadmap.snapshot_json.get("phases", []))
         after_json["phase_count"] = len(payload.phases)
-        roadmap.snapshot_json = _snapshot_from_phases(payload.phases)
+        roadmap.snapshot_json = snapshot_from_phases(payload.phases)
 
     if payload.tag_registry is not None:
         roadmap.tag_registry_json = [
             tag.model_dump(exclude_none=True) for tag in payload.tag_registry
         ]
 
-    action, entity_type, entity_id, metadata_json = _change_summary_fields(
+    action, entity_type, entity_id, metadata_json = change_summary_fields(
         payload.change_summary,
         default_action="roadmap.updated",
         default_entity_type="roadmap",
@@ -255,8 +249,8 @@ async def update_roadmap(
         after_json=after_json or None,
         metadata_json=metadata_json,
     ))
-    if _should_create_version(action, metadata_json):
-        await _create_roadmap_version(db, roadmap, participant, action, metadata_json)
+    if should_create_version(action, metadata_json):
+        await create_roadmap_version(db, roadmap, participant, action, metadata_json)
 
     # Full snapshot replacements can move, add, or remove arbitrary phases and
     # tasks, so they require one full derivative projection rebuild. Ordinary
@@ -277,7 +271,7 @@ async def update_roadmap(
         },
     ))
 
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
 
 async def delete_roadmap(
@@ -323,46 +317,3 @@ async def delete_roadmap(
     ))
 
     return {"ok": True}
-
-
-async def get_activity_logs(
-    db: AsyncSession,
-    roadmap_id: str,
-    limit: int = 100,
-    offset: int = 0,
-) -> ActivityLogListResponse:
-    await fetch_active_roadmap(db, roadmap_id)
-
-    safe_limit = min(limit, 200)
-    stmt = (
-        select(ActivityLog)
-        .where(ActivityLog.roadmap_id == roadmap_id)
-        .order_by(ActivityLog.created_at.desc())
-        .limit(safe_limit + 1)
-        .offset(offset)
-    )
-    result = await db.execute(stmt)
-    logs = result.scalars().all()
-
-    has_more = len(logs) > safe_limit
-    return_logs = logs[:safe_limit]
-
-    return ActivityLogListResponse(
-        logs=[
-            ActivityLogResponse(
-                id=activity.id,
-                roadmap_id=activity.roadmap_id,
-                participant_id=activity.participant_id,
-                actor_name=activity.actor_name,
-                action=activity.action,
-                entity_type=activity.entity_type,
-                entity_id=activity.entity_id,
-                before_json=activity.before_json,
-                after_json=activity.after_json,
-                metadata_json=activity.metadata_json,
-                created_at=activity.created_at,
-            )
-            for activity in return_logs
-        ],
-        has_more=has_more,
-    )

@@ -16,10 +16,10 @@ from api.features.roadmaps.limit_schemas import (
     TAG_REGISTRY_MAX,
 )
 from api.features.roadmaps.shared_schemas import validate_change_summary
+from api.features.roadmaps.snapshot_schemas import PhaseDTO
+from api.features.roadmaps.tag_schemas import TagDefinitionDTO, validate_tag_registry_uniqueness
 from api.features.roadmaps.validator_schemas import clean_required_text
-from api.features.sharing.sharing_schemas import ShareLinkResponse
-from api.features.tags.schemas import TagDefinitionDTO, validate_tag_registry_uniqueness
-from api.features.tasks.task_schemas import PhaseDTO
+from api.shared.auth.share_schemas import ShareLinkResponse
 
 
 class CreateRoadmapRequest(BaseModel):

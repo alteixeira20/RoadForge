@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.database import get_db
 from api.shared.auth.auth_service import get_bearer_token, require_participant
 from api.shared.auth.browser_session import set_browser_session_cookie
+from api.shared.auth.session_policy import ALL_ROLES
 
 router = APIRouter()
 
@@ -26,7 +27,7 @@ async def establish_browser_session(
         db,
         roadmap_id,
         authorization,
-        {"owner", "editor", "viewer"},
+        ALL_ROLES,
     )
     raw_token = get_bearer_token(authorization)
     if not raw_token:

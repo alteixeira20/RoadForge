@@ -6,9 +6,10 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from api.schemas.roadmap import PhaseDTO, TagDefinitionDTO, TaskDTO
+from api.features.roadmaps.snapshot_schemas import PhaseDTO, TaskDTO
+from api.features.roadmaps.tag_schemas import TagDefinitionDTO
 from api.features.roadmaps.concurrency import ensure_roadmap_is_current
-from api.features.roadmaps.roadmap_helpers import RoadmapConflictError
+from api.features.roadmaps.conflicts import RoadmapConflictError
 from api.features.roadmaps.validation import validate_roadmap_domain
 
 

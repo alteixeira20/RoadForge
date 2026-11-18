@@ -17,13 +17,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
 from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
+from api.features.sharing.join_schemas import JoinRoadmapRequest, JoinRoadmapResponse
 from api.models.roadmap import ActivityLog, Participant, Roadmap, ShareLink
-from api.schemas.roadmap import JoinRoadmapRequest, JoinRoadmapResponse
 from api.shared.auth.password_service import verify_password
 from api.shared.auth.session_policy import session_expires_at
 from api.shared.auth.token_service import generate_token, hash_token
 from api.shared.ids import generate_id
-from api.shared.security.rate_limit_service import rate_limiter
+from api.shared.security.rate_limit_service import enforce_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ async def join_roadmap(
     if share_link is None:
         raise HTTPException(status_code=401, detail="Invalid or expired invite token")
 
-    await rate_limiter.enforce("join.share_link", share_link.id, limit=30, window_seconds=600)
+    await enforce_rate_limit("join.share_link", share_link.id)
 
     # Verify the linked roadmap is not soft-deleted.
     rm_result = await db.execute(
@@ -64,18 +64,10 @@ async def join_roadmap(
         pw = payload.password
         ph = roadmap.password_hash
         if not pw or not ph or not verify_password(pw, ph):
-            await rate_limiter.enforce(
-                "join.password_failure.ip_share",
-                f"{client_ip}:{share_link.id}",
-                limit=5,
-                window_seconds=600,
+            await enforce_rate_limit(
+                  "join.password_failure.ip_share", f'{client_ip}:{share_link.id}',
             )
-            await rate_limiter.enforce(
-                "join.password_failure.share",
-                share_link.id,
-                limit=30,
-                window_seconds=3600,
-            )
+            await enforce_rate_limit("join.password_failure.share", share_link.id)
             raise HTTPException(status_code=401, detail="Invalid invite token or password")
 
     # Serialize joins for this invite before applying the active-session cap.

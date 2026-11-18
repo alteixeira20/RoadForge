@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from api.features.roadmaps.roadmap_helpers import RoadmapConflictError, _roadmap_conflict_response
+from api.features.roadmaps.conflicts import RoadmapConflictError, roadmap_conflict_response
+from api.features.roadmaps.snapshot_schemas import PhaseDTO
 from api.models.roadmap import Roadmap
-from api.schemas.roadmap import PhaseDTO
 from api.shared.auth.session_policy import ensure_aware_utc
 
 
@@ -26,6 +26,6 @@ def ensure_roadmap_is_current(
     server_ts = ensure_aware_utc(roadmap.updated_at)
     if server_ts != client_ts:
         raise RoadmapConflictError(
-            _roadmap_conflict_response(roadmap, client_ts, client_phases)
+            roadmap_conflict_response(roadmap, client_ts, client_phases)
         )
     return client_ts

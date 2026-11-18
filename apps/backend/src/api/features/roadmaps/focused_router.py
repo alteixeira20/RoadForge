@@ -19,14 +19,10 @@ from api.features.roadmaps.focused_schemas import (
     TaskSearchResponse,
 )
 from api.shared.auth.auth_service import require_participant
-from api.shared.security.rate_limit_service import rate_limiter
+from api.shared.auth.session_policy import ALL_ROLES
+from api.shared.security.rate_limit_service import enforce_rate_limit, participant_rate_key
 
 router = APIRouter(tags=["roadmaps"])
-_READ_ROLES = {"owner", "editor", "viewer"}
-
-
-def _participant_rate_key(participant_id: str, roadmap_id: str) -> str:
-    return f"{participant_id}:{roadmap_id}"
 
 
 async def _focused_reader(
@@ -34,16 +30,9 @@ async def _focused_reader(
     roadmap_id: str,
     authorization: str | None,
     action: str,
-    *,
-    limit: int,
 ):
-    participant = await require_participant(db, roadmap_id, authorization, _READ_ROLES)
-    await rate_limiter.enforce(
-        action,
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=limit,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, ALL_ROLES)
+    await enforce_rate_limit(action, participant_rate_key(participant.id, roadmap_id))
 
 
 @router.get("/{roadmap_id}/summary", response_model=RoadmapSummaryResponse)
@@ -53,7 +42,7 @@ async def fetch_roadmap_summary(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapSummaryResponse:
-    await _focused_reader(db, roadmap_id, authorization, "roadmap.summary.read", limit=240)
+    await _focused_reader(db, roadmap_id, authorization, "roadmap.summary.read")
     return await get_roadmap_summary(db, roadmap_id, max_next=max_next)
 
 
@@ -63,7 +52,7 @@ async def fetch_roadmap_revision(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapRevisionResponse:
-    await _focused_reader(db, roadmap_id, authorization, "roadmap.revision.read", limit=300)
+    await _focused_reader(db, roadmap_id, authorization, "roadmap.revision.read")
     return await get_roadmap_revision(db, roadmap_id)
 
 
@@ -76,7 +65,7 @@ async def fetch_task_search(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> TaskSearchResponse:
-    await _focused_reader(db, roadmap_id, authorization, "task.search.read", limit=120)
+    await _focused_reader(db, roadmap_id, authorization, "task.search.read")
     return await search_roadmap_tasks(
         db,
         roadmap_id,
@@ -93,7 +82,7 @@ async def fetch_task_detail(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> TaskDetailResponse:
-    await _focused_reader(db, roadmap_id, authorization, "task.detail.read", limit=240)
+    await _focused_reader(db, roadmap_id, authorization, "task.detail.read")
     return await get_roadmap_task(db, roadmap_id, task_id)
 
 
@@ -113,7 +102,7 @@ async def fetch_roadmap_context(
         raise HTTPException(status_code=422, detail="At most 50 phase_id filters are allowed")
     if len(task_id) > 100:
         raise HTTPException(status_code=422, detail="At most 100 task_id filters are allowed")
-    await _focused_reader(db, roadmap_id, authorization, "roadmap.context.read", limit=120)
+    await _focused_reader(db, roadmap_id, authorization, "roadmap.context.read")
     return await get_roadmap_context(
         db,
         roadmap_id,

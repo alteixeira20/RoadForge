@@ -34,19 +34,10 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 from sqlalchemy.pool import NullPool  # noqa: E402
 
-import api.features.history.activity_router as _roadmap_activity_module  # noqa: E402
-import api.features.agent_client.router as _roadmap_client_module  # noqa: E402
-import api.features.roadmaps.router as _roadmap_core_module  # noqa: E402
-import api.features.roadmaps.focused_router as _roadmap_focused_module  # noqa: E402
-import api.features.collaboration.router as _roadmap_locks_module  # noqa: E402
-import api.features.realtime.router as _roadmap_realtime_module  # noqa: E402
-import api.features.sharing.router as _roadmap_sharing_module  # noqa: E402
-import api.features.tags.router as _roadmap_tags_module  # noqa: E402
-import api.features.tasks.router as _roadmap_tasks_module  # noqa: E402
-import api.features.history.versions_router as _roadmap_versions_module  # noqa: E402
 from api.database import get_db  # noqa: E402
 from api.main import create_app  # noqa: E402
 from api.models.base import Base  # noqa: E402
+from api.shared.security import rate_limit_service  # noqa: E402
 from api.shared.security.rate_limit_service import MemoryRateLimiter  # noqa: E402
 
 # ── 4. Engine for the test database ───────────────────────────────────────────
@@ -86,7 +77,7 @@ async def db_session():
 
 # ── 7. Override get_db with the per-test session ──────────────────────────────
 @pytest_asyncio.fixture
-async def client(db_session: AsyncSession):
+async def client(db_session: AsyncSession, monkeypatch):
     """AsyncClient with get_db overridden and rate limiter reset."""
 
     async def _override_get_db():
@@ -102,19 +93,7 @@ async def client(db_session: AsyncSession):
     async def _test_openapi_schema() -> dict:
         return app.openapi()
 
-    # All roadmap route modules share one fresh limiter per test so endpoint
-    # budgets preserve the pre-decomposition behavior without cross-test bleed.
-    limiter = MemoryRateLimiter()
-    _roadmap_activity_module.rate_limiter = limiter
-    _roadmap_client_module.rate_limiter = limiter
-    _roadmap_core_module.rate_limiter = limiter
-    _roadmap_focused_module.rate_limiter = limiter
-    _roadmap_locks_module.rate_limiter = limiter
-    _roadmap_realtime_module.rate_limiter = limiter
-    _roadmap_sharing_module.rate_limiter = limiter
-    _roadmap_tags_module.rate_limiter = limiter
-    _roadmap_tasks_module.rate_limiter = limiter
-    _roadmap_versions_module.rate_limiter = limiter
+    monkeypatch.setattr(rate_limit_service, "rate_limiter", MemoryRateLimiter())
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

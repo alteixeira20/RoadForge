@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
 from api.database import get_db
+from api.features.sharing.join_schemas import JoinRoadmapRequest, JoinRoadmapResponse
+from api.features.sharing.join_service import join_roadmap
 from api.features.sharing.service import (
     get_participants,
     get_participants_summary,
@@ -12,25 +14,21 @@ from api.features.sharing.service import (
     rotate_share_link,
     update_roadmap_password,
 )
-from api.schemas.roadmap import (
+from api.features.sharing.sharing_schemas import (
     ParticipantResponse,
     ParticipantSummaryResponse,
     RoadmapPasswordResponse,
-    ShareLinkResponse,
-    ShareRole,
     UpdatePasswordRequest,
 )
 from api.shared.auth.auth_service import require_participant
+from api.shared.auth.session_policy import OWNER_EDITOR, OWNER_ONLY
+from api.shared.auth.share_schemas import ShareLinkResponse, ShareRole
 from api.shared.realtime.event_bus import RevocationRegistryUnavailableError
-from api.shared.security.rate_limit_service import rate_limiter
+from api.shared.security.client_ip_service import extract_client_ip
+from api.shared.security.rate_limit_service import enforce_rate_limit, participant_rate_key
 
 router = APIRouter(tags=["roadmaps"])
-_OWNER_EDITOR = {"owner", "editor"}
-_OWNER_ONLY = {"owner"}
-
-
-def _participant_rate_key(participant_id: str, roadmap_id: str) -> str:
-    return f"{participant_id}:{roadmap_id}"
+join_router = APIRouter(tags=["roadmaps"])
 
 
 @router.get("/{roadmap_id}/share-links", response_model=list[ShareLinkResponse])
@@ -39,13 +37,8 @@ async def fetch_share_links(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> list[ShareLinkResponse]:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
-    await rate_limiter.enforce(
-        "share_links.read",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=60,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_ONLY)
+    await enforce_rate_limit("share_links.read", participant_rate_key(participant.id, roadmap_id))
     settings = get_settings()
     return await get_share_links(db, roadmap_id, settings.web_base_url)
 
@@ -60,13 +53,8 @@ async def post_rotate_share_link(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> ShareLinkResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
-    await rate_limiter.enforce(
-        "share_link.rotate",
-        f"{participant.id}:{roadmap_id}:{role}",
-        limit=5,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_ONLY)
+    await enforce_rate_limit("share_link.rotate", f'{participant.id}:{roadmap_id}:{role}')
     settings = get_settings()
     return await rotate_share_link(db, roadmap_id, role, settings.web_base_url, participant)
 
@@ -78,13 +66,8 @@ async def delete_share_link(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> Response:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
-    await rate_limiter.enforce(
-        "share_link.revoke",
-        f"{participant.id}:{roadmap_id}:{role}",
-        limit=10,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_ONLY)
+    await enforce_rate_limit("share_link.revoke", f'{participant.id}:{roadmap_id}:{role}')
     await revoke_share_link(db, roadmap_id, role, participant)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -99,12 +82,9 @@ async def put_roadmap_password(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapPasswordResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
-    await rate_limiter.enforce(
-        "roadmap.password.update",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=10,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_ONLY)
+    await enforce_rate_limit(
+          "roadmap.password.update", participant_rate_key(participant.id, roadmap_id),
     )
     enabled = await update_roadmap_password(db, roadmap_id, payload.password, participant)
     return RoadmapPasswordResponse(is_password_enabled=enabled)
@@ -119,13 +99,8 @@ async def fetch_participants(
     # Owners see the full participant listing (timestamps, link linkage).
     # Editors see a reduced projection - just enough for assignee suggestions.
     # Viewers remain forbidden.
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "participants.read",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("participants.read", participant_rate_key(participant.id, roadmap_id))
     if participant.role == "owner":
         return await get_participants(db, roadmap_id, participant)
     return await get_participants_summary(db, roadmap_id, participant)
@@ -141,12 +116,9 @@ async def post_revoke_participant(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> Response:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
-    await rate_limiter.enforce(
-        "participants.revoke",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=10,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_ONLY)
+    await enforce_rate_limit(
+          "participants.revoke", participant_rate_key(participant.id, roadmap_id),
     )
     try:
         await revoke_participant(db, roadmap_id, participant_id, participant)
@@ -156,3 +128,14 @@ async def post_revoke_participant(
             detail="Revocation registry temporarily unavailable; please retry",
         ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@join_router.post("/join", response_model=JoinRoadmapResponse)
+async def post_join(
+    request: Request,
+    payload: JoinRoadmapRequest,
+    db: AsyncSession = Depends(get_db),
+) -> JoinRoadmapResponse:
+    client_ip = extract_client_ip(request)
+    await enforce_rate_limit("join.ip", client_ip)
+    return await join_roadmap(db, payload, client_ip)

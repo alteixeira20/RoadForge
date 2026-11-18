@@ -33,3 +33,6 @@ _DOMAIN_ROUTERS = (
 router = APIRouter()
 for _domain_router in _DOMAIN_ROUTERS:
     router.routes.extend(_domain_router.routes)
+
+# Join originally followed create, before the parameterized roadmap paths.
+router.routes[1:1] = roadmap_sharing.join_router.routes

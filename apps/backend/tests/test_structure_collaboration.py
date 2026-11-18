@@ -10,6 +10,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
 
 import api.features.phases.router as structure_router
+from api.shared.security import rate_limit_service
 from api.database import get_db
 from api.main import create_app
 from api.models.roadmap import ActivityLog, Roadmap
@@ -274,7 +275,7 @@ async def test_concurrent_phase_field_operations_both_survive_row_lock(
     monkeypatch: pytest.MonkeyPatch,
 ):
     roadmap_name = "Concurrent phase collaboration"
-    monkeypatch.setattr(structure_router, "rate_limiter", MemoryRateLimiter())
+    monkeypatch.setattr(rate_limit_service, "rate_limiter", MemoryRateLimiter())
     original_patch_phase = structure_router.patch_phase
     monkeypatch.setattr(
         structure_router,
@@ -330,7 +331,7 @@ async def test_concurrent_rename_and_phase_update_both_survive_row_lock(
 ):
     initial_name = "Concurrent rename collaboration"
     roadmap_id: str | None = None
-    monkeypatch.setattr(structure_router, "rate_limiter", MemoryRateLimiter())
+    monkeypatch.setattr(rate_limit_service, "rate_limiter", MemoryRateLimiter())
     synchronized_name, synchronized_phase = _shared_barrier_wrappers(
         structure_router.patch_roadmap_name,
         structure_router.patch_phase,

@@ -10,6 +10,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
 
 import api.features.phases.router as structure_router
+from api.shared.security import rate_limit_service
 from api.database import get_db
 from api.main import create_app
 from api.models.roadmap import ActivityLog, Roadmap
@@ -260,7 +261,7 @@ async def test_concurrent_create_and_reorder_both_survive_with_deterministic_mer
 ):
     roadmap_name = "Concurrent phase structure merge"
     roadmap_id: str | None = None
-    monkeypatch.setattr(structure_router, "rate_limiter", MemoryRateLimiter())
+    monkeypatch.setattr(rate_limit_service, "rate_limiter", MemoryRateLimiter())
     synchronized_create, synchronized_reorder = _shared_barrier_wrappers(
         structure_router.create_phase,
         structure_router.reorder_phases,

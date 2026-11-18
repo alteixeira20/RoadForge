@@ -7,20 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from api.features.roadmaps.limit_schemas import PASSWORD_MAX, PASSWORD_MIN
-from api.features.roadmaps.shared_schemas import ShareRole
-
-
-class ShareLinkResponse(BaseModel):
-    id: str | None
-    role: ShareRole
-    # Readable prefix shown in UI; not the secret token.
-    token_prefix: str | None = None
-    # Full fragment-based join URL with the raw token embedded.
-    # Every role is reveal-once: URLs are returned only on create/rotate.
-    url: str | None = None
-    is_active: bool
-    created_at: datetime | None = None
-    rotated_at: datetime | None = None
+from api.shared.auth.share_schemas import ShareRole
 
 
 class ParticipantResponse(BaseModel):

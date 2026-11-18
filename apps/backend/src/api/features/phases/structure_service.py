@@ -10,13 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.features.phases.schemas import CreatePhaseRequest, ReorderPhasesRequest
 from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
+from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.roadmaps.limit_schemas import PHASES_MAX
 from api.features.roadmaps.projection import sync_roadmap_projection_best_effort
 from api.features.roadmaps.queries import fetch_active_roadmap_for_update
-from api.features.roadmaps.roadmap_helpers import _phases_from_snapshot, _roadmap_response
+from api.features.roadmaps.snapshot import phases_from_snapshot, roadmap_response
+from api.features.roadmaps.tag_schemas import TagDefinitionDTO
 from api.features.roadmaps.validation import validate_roadmap_domain
+from api.features.tasks.structure_helpers import remove_dependencies_on_tasks
 from api.models.roadmap import ActivityLog, Participant, Roadmap
-from api.schemas.roadmap import RoadmapResponse, TagDefinitionDTO
 from api.shared.ids import generate_id
 from api.shared.realtime.event_bus import Event, event_bus
 
@@ -57,44 +59,6 @@ def _phase_summary(phase: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _remove_dependencies_on_tasks(
-    phases: list[dict[str, Any]],
-    deleted_task_ids: set[str],
-) -> tuple[list[dict[str, Any]], int]:
-    if not deleted_task_ids:
-        return phases, 0
-
-    removed_count = 0
-    next_phases: list[dict[str, Any]] = []
-    for phase in phases:
-        tasks = phase.get("tasks")
-        if not isinstance(tasks, list):
-            next_phases.append(phase)
-            continue
-
-        changed_phase = False
-        next_tasks: list[Any] = []
-        for task in tasks:
-            if not isinstance(task, dict):
-                next_tasks.append(task)
-                continue
-            deps = task.get("deps")
-            if not isinstance(deps, list):
-                next_tasks.append(task)
-                continue
-            filtered = [dep for dep in deps if dep not in deleted_task_ids]
-            removed_count += len(deps) - len(filtered)
-            if filtered == deps:
-                next_tasks.append(task)
-                continue
-            changed_phase = True
-            next_tasks.append({**task, "deps": filtered})
-
-        next_phases.append({**phase, "tasks": next_tasks} if changed_phase else phase)
-
-    return next_phases, removed_count
-
-
 async def _persist_phase_structure_change(
     db: AsyncSession,
     roadmap: Roadmap,
@@ -105,7 +69,7 @@ async def _persist_phase_structure_change(
     activity: ActivityLog,
     event_payload: dict[str, Any],
 ) -> RoadmapResponse:
-    phases = _phases_from_snapshot(snapshot_json)
+    phases = phases_from_snapshot(snapshot_json)
     validate_roadmap_domain(phases, _stored_tag_registry(roadmap))
 
     roadmap.snapshot_json = snapshot_json
@@ -129,7 +93,7 @@ async def _persist_phase_structure_change(
             },
         )
     )
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
 
 async def create_phase(
@@ -206,7 +170,7 @@ async def delete_phase(
     } if isinstance(deleted_tasks, list) else set()
 
     remaining = [phase for phase in phases if phase.get("id") != phase_id]
-    dependency_cleaned, removed_dependency_count = _remove_dependencies_on_tasks(
+    dependency_cleaned, removed_dependency_count = remove_dependencies_on_tasks(
         remaining,
         deleted_task_ids,
     )
@@ -264,7 +228,7 @@ async def reorder_phases(
     before_ids = [phase.get("id") for phase in phases]
     after_ids = [phase.get("id") for phase in renumbered]
     if before_ids == after_ids:
-        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+        return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
     snapshot_json = _with_phases(roadmap.snapshot_json, renumbered)
     activity = ActivityLog(

@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import Participant, Roadmap, RoadmapVersion
 from api.shared.ids import generate_id
-from api.features.roadmaps.service import _MAX_ROADMAP_VERSIONS, _trim_old_versions
+from api.features.roadmaps.version_writer import _MAX_ROADMAP_VERSIONS, trim_old_versions
 from tests.conftest import create_roadmap
 
 pytestmark = pytest.mark.asyncio
@@ -790,7 +790,7 @@ async def test_import_replace_has_distinct_activity_and_version(client: AsyncCli
 
 
 async def test_version_trim_removes_oldest_beyond_cap(db_session: AsyncSession):
-    """_trim_old_versions keeps the newest _MAX_ROADMAP_VERSIONS and deletes older ones."""
+    """trim_old_versions keeps the newest _MAX_ROADMAP_VERSIONS and deletes older ones."""
     roadmap = Roadmap(
         id=generate_id("rm_"),
         name="Trim Boundary",
@@ -814,7 +814,7 @@ async def test_version_trim_removes_oldest_beyond_cap(db_session: AsyncSession):
         ))
     await db_session.flush()
 
-    await _trim_old_versions(db_session, roadmap.id)
+    await trim_old_versions(db_session, roadmap.id)
 
     count_result = await db_session.execute(
         select(func.count()).where(RoadmapVersion.roadmap_id == roadmap.id)

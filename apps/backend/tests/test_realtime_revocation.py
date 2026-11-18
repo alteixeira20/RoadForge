@@ -32,7 +32,8 @@ from api.shared.realtime.event_bus import (
     RevocationRegistryUnavailableError,
     forward_subscription,
 )
-from api.features.sharing.service import resolve_realtime_revocation, revoke_participant
+from api.features.realtime.stream_service import resolve_realtime_revocation
+from api.features.sharing.service import revoke_participant
 from tests.conftest import create_roadmap
 from tests.test_auth_and_share_links import _auth, _join, _rotate_link
 

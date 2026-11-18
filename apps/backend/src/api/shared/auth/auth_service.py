@@ -1,3 +1,4 @@
+from collections.abc import Set
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
@@ -63,7 +64,7 @@ async def require_participant(
     db: AsyncSession,
     roadmap_id: str,
     authorization: str | None,
-    allowed_roles: set[str],
+    allowed_roles: Set[str],
 ) -> Participant:
     """Resolve the session participant and assert role authorization.
 

@@ -12,16 +12,12 @@ from api.features.phases.schemas import (
     ReorderPhasesRequest,
 )
 from api.features.phases.structure_service import create_phase, delete_phase, reorder_phases
-from api.schemas.roadmap import RoadmapResponse
+from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.shared.auth.auth_service import require_participant
-from api.shared.security.rate_limit_service import rate_limiter
+from api.shared.auth.session_policy import OWNER_EDITOR
+from api.shared.security.rate_limit_service import enforce_rate_limit, participant_rate_key
 
 router = APIRouter(tags=["roadmaps"])
-_OWNER_EDITOR = {"owner", "editor"}
-
-
-def _participant_rate_key(participant_id: str, roadmap_id: str) -> str:
-    return f"{participant_id}:{roadmap_id}"
 
 
 @router.patch("/{roadmap_id}/name", response_model=RoadmapResponse)
@@ -31,12 +27,9 @@ async def patch_name(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "roadmap.name.patch",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit(
+          "roadmap.name.patch", participant_rate_key(participant.id, roadmap_id),
     )
     return await patch_roadmap_name(db, roadmap_id, payload, participant)
 
@@ -52,13 +45,8 @@ async def create_roadmap_phase(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "phase.create.post",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=60,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("phase.create.post", participant_rate_key(participant.id, roadmap_id))
     return await create_phase(db, roadmap_id, payload, participant)
 
 
@@ -69,13 +57,8 @@ async def reorder_roadmap_phases(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "phase.reorder.put",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("phase.reorder.put", participant_rate_key(participant.id, roadmap_id))
     return await reorder_phases(db, roadmap_id, payload, participant)
 
 
@@ -87,12 +70,9 @@ async def patch_roadmap_phase(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "phase.update.patch",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=180,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit(
+          "phase.update.patch", participant_rate_key(participant.id, roadmap_id),
     )
     return await patch_phase(db, roadmap_id, phase_id, payload, participant)
 
@@ -104,11 +84,6 @@ async def delete_roadmap_phase(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "phase.delete",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("phase.delete", participant_rate_key(participant.id, roadmap_id))
     return await delete_phase(db, roadmap_id, phase_id, participant)

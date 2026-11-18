@@ -5,7 +5,15 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
-from api.features.roadmaps.service import RoadmapConflictError
+from api.features.roadmaps.conflict_schemas import RoadmapConflictResponse
+from api.features.roadmaps.conflicts import RoadmapConflictError
+from api.features.roadmaps.core_schemas import RoadmapResponse
+from api.features.tags.schemas import (
+    CreateTagRequest,
+    ReorderTagsRequest,
+    TagResponse,
+    UpdateTagRequest,
+)
 from api.features.tags.service import (
     create_tag,
     delete_tag,
@@ -13,23 +21,11 @@ from api.features.tags.service import (
     reorder_tags,
     update_tag,
 )
-from api.schemas.roadmap import (
-    CreateTagRequest,
-    ReorderTagsRequest,
-    RoadmapConflictResponse,
-    RoadmapResponse,
-    TagResponse,
-    UpdateTagRequest,
-)
 from api.shared.auth.auth_service import require_participant
-from api.shared.security.rate_limit_service import rate_limiter
+from api.shared.auth.session_policy import ALL_ROLES, OWNER_EDITOR
+from api.shared.security.rate_limit_service import enforce_rate_limit, participant_rate_key
 
 router = APIRouter(tags=["roadmaps"])
-_OWNER_EDITOR = {"owner", "editor"}
-
-
-def _participant_rate_key(participant_id: str, roadmap_id: str) -> str:
-    return f"{participant_id}:{roadmap_id}"
 
 
 @router.get("/{roadmap_id}/tags", response_model=list[TagResponse])
@@ -42,14 +38,9 @@ async def fetch_tags(
         db,
         roadmap_id,
         authorization,
-        {"owner", "editor", "viewer"},
+        ALL_ROLES,
     )
-    await rate_limiter.enforce(
-        "tag.read",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    await enforce_rate_limit("tag.read", participant_rate_key(participant.id, roadmap_id))
     return await list_tags(db, roadmap_id)
 
 
@@ -65,13 +56,8 @@ async def post_tag(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse | JSONResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "tag.create",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=60,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("tag.create", participant_rate_key(participant.id, roadmap_id))
     try:
         return await create_tag(db, roadmap_id, payload, participant)
     except RoadmapConflictError as exc:
@@ -88,13 +74,8 @@ async def put_reorder_tags(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "tag.reorder",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=60,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("tag.reorder", participant_rate_key(participant.id, roadmap_id))
     return await reorder_tags(db, roadmap_id, payload.tag_ids, participant)
 
 
@@ -110,13 +91,8 @@ async def put_tag(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse | JSONResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "tag.update",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=60,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("tag.update", participant_rate_key(participant.id, roadmap_id))
     try:
         return await update_tag(db, roadmap_id, tag_id, payload, participant)
     except RoadmapConflictError as exc:
@@ -135,13 +111,8 @@ async def remove_tag(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse | JSONResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "tag.delete",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=60,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("tag.delete", participant_rate_key(participant.id, roadmap_id))
     try:
         return await delete_tag(
             db,

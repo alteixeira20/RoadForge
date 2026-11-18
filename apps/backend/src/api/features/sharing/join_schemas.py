@@ -5,8 +5,8 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from api.features.roadmaps.limit_schemas import DISPLAY_NAME_MAX, PASSWORD_MAX, TOKEN_MAX
-from api.features.roadmaps.shared_schemas import ShareRole
 from api.features.roadmaps.validator_schemas import clean_optional_text
+from api.shared.auth.share_schemas import ShareRole
 
 
 class JoinRoadmapRequest(BaseModel):

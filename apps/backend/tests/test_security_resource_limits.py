@@ -10,7 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import api.features.roadmaps.router as roadmaps_router
 import api.features.roadmaps.activity_log_limit as activity_log_limit
 import api.features.sharing.join_service as roadmap_join_service
-import api.features.history.version_service as version_service
+import api.features.roadmaps.version_writer as version_service
+from api.shared.security import rate_limit_service
+from api.features.sharing import router as sharing_router
 from api.database import get_db
 from api.main import create_app
 from api.models.roadmap import ActivityLog, Participant, Roadmap, RoadmapVersion
@@ -111,7 +113,7 @@ async def test_global_server_roadmap_capacity_is_exact_under_concurrent_requests
         "create_roadmap",
         _synchronize_calls(original_create),
     )
-    monkeypatch.setattr(roadmaps_router, "rate_limiter", MemoryRateLimiter())
+    monkeypatch.setattr(rate_limit_service, "rate_limiter", MemoryRateLimiter())
     monkeypatch.setattr(
         roadmaps_router,
         "get_settings",
@@ -192,9 +194,7 @@ async def test_share_link_active_session_cap_is_exact_under_concurrent_joins(
 ) -> None:
     roadmap_name = "Concurrent join capacity"
     router_limiter = MemoryRateLimiter()
-    join_limiter = MemoryRateLimiter()
-    monkeypatch.setattr(roadmaps_router, "rate_limiter", router_limiter)
-    monkeypatch.setattr(roadmap_join_service, "rate_limiter", join_limiter)
+    monkeypatch.setattr(rate_limit_service, "rate_limiter", router_limiter)
 
     try:
         async with _committing_client() as concurrent_client:
@@ -218,9 +218,9 @@ async def test_share_link_active_session_cap_is_exact_under_concurrent_joins(
                 "get_settings",
                 lambda: SimpleNamespace(max_active_sessions_per_share_link=1),
             )
-            original_join = roadmaps_router.join_roadmap
+            original_join = sharing_router.join_roadmap
             monkeypatch.setattr(
-                roadmaps_router,
+                sharing_router,
                 "join_roadmap",
                 _synchronize_calls(original_join),
             )
@@ -315,7 +315,7 @@ async def test_version_history_byte_cap_preserves_only_bounded_recent_history(
         "get_settings",
         lambda: SimpleNamespace(max_version_history_bytes_per_roadmap=1),
     )
-    await version_service._trim_old_versions(db_session, roadmap_id)
+    await version_service.trim_old_versions(db_session, roadmap_id)
     await db_session.flush()
 
     versions = (

@@ -1,3 +1,4 @@
+
 """Share-link management and participant administration.
 
 Extracted from roadmap_service.py (Slice 2).
@@ -5,7 +6,6 @@ Extracted from roadmap_service.py (Slice 2).
 
 import logging
 from datetime import datetime, timezone
-from typing import AsyncContextManager, Callable
 
 from fastapi import HTTPException
 from sqlalchemy import or_, select
@@ -13,45 +13,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
 from api.features.roadmaps.queries import fetch_active_roadmap_for_update
+from api.features.sharing.sharing_schemas import ParticipantResponse, ParticipantSummaryResponse
 from api.models.roadmap import ActivityLog, Participant, ShareLink
-from api.schemas.roadmap import (
-    ParticipantResponse,
-    ParticipantSummaryResponse,
-    ShareLinkResponse,
-    ShareRole,
-)
-from api.shared.auth.auth_service import is_participant_revoked
 from api.shared.auth.password_service import hash_password
+from api.shared.auth.session_policy import ROLE_LABELS, ROLE_ORDER, SHARE_PREFIXES
+from api.shared.auth.share_schemas import ShareLinkResponse, ShareRole
 from api.shared.auth.token_service import generate_token, hash_token
 from api.shared.auth.token_service import token_prefix as make_token_prefix
 from api.shared.ids import generate_id
 from api.shared.realtime.event_bus import (
     Event,
-    RevocationMark,
     RevocationRegistryUnavailableError,
     event_bus,
+    log_revocation_failure,
 )
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Constants (moved from roadmap_service.py)
-# ---------------------------------------------------------------------------
-
-_SHARE_PREFIXES: dict[str, str] = {
-    "owner": "ow_",
-    "editor": "ed_",
-    "viewer": "vi_",
-}
-
-_ROLE_ORDER: dict[str, int] = {"owner": 0, "editor": 1, "viewer": 2}
-
-_ROLE_LABELS: dict[str, str] = {
-    "owner": "Owner link",
-    "editor": "Editor link",
-    "viewer": "Viewer link",
-}
-
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -89,7 +66,7 @@ async def get_share_links(
     links_by_role = {sl.role: sl for sl in result.scalars().all()}
 
     responses: list[ShareLinkResponse] = []
-    for role in sorted(_SHARE_PREFIXES.keys(), key=lambda r: _ROLE_ORDER.get(r, 99)):
+    for role in sorted(SHARE_PREFIXES.keys(), key=lambda r: ROLE_ORDER.get(r, 99)):
         sl = links_by_role.get(role)
         if sl is None:
             responses.append(
@@ -139,7 +116,7 @@ async def rotate_share_link(
     share_link = result.scalar_one_or_none()
 
     now = datetime.now(timezone.utc)
-    raw_token = generate_token(_SHARE_PREFIXES[role])
+    raw_token = generate_token(SHARE_PREFIXES[role])
 
     if share_link is None:
         share_link = ShareLink(
@@ -252,7 +229,7 @@ async def get_participants(
                 is_current_participant=participant.id == current_participant.id,
                 share_link_id=participant.share_link_id,
                 joined_via_role=joined_via_role,  # type: ignore[arg-type]
-                access_source_label=_ROLE_LABELS.get(
+                access_source_label=ROLE_LABELS.get(
                     joined_via_role, "Legacy / unknown link"
                 ),
             )
@@ -339,15 +316,6 @@ async def revoke_participant(
     await _commit_revocation(db, roadmap_id, target.id, now)
 
 
-async def _log_failure(coro, message: str) -> None:
-    """Await `coro`, logging (not raising) on failure - for steps that must
-    never abort an already-authoritative revocation."""
-    try:
-        await coro
-    except Exception:
-        logger.exception(message)
-
-
 async def _commit_revocation(
     db: AsyncSession, roadmap_id: str, participant_id: str, revoked_at: datetime
 ) -> None:
@@ -397,18 +365,18 @@ async def _commit_revocation(
         await enforce_activity_log_cap(db, roadmap_id)
         await db.commit()
     except Exception:
-        await _log_failure(
+        await log_revocation_failure(
             event_bus.revocations.clear(roadmap_id, participant_id),
             "Failed to clear fast-path revocation registry mark after commit failure",
         )
         raise
 
-    await _log_failure(
+    await log_revocation_failure(
         event_bus.revocations.promote_committed(roadmap_id, participant_id),
         "Failed to promote fast-path revocation registry mark to committed",
     )
 
-    await _log_failure(
+    await log_revocation_failure(
         event_bus.publish(Event(
             roadmap_id=roadmap_id,
             action="participant.revoked",
@@ -420,62 +388,6 @@ async def _commit_revocation(
         )),
         "Failed to publish participant.revoked control event",
     )
-
-
-async def resolve_realtime_revocation(
-    db_session_factory: Callable[[], AsyncContextManager[AsyncSession]],
-    roadmap_id: str,
-    participant_id: str,
-) -> bool | None:
-    """
-    Per-event authorization check for `forward_subscription`
-    (`is_participant_revoked_now`).
-
-    Only a `COMMITTED` fast-path mark is trusted directly - it is written
-    by `_commit_revocation` only after the PostgreSQL commit lands, so it
-    can never be stale in the direction that matters (a participant it
-    calls revoked really is). Every other mark, including `ACTIVE` (no
-    mark at all), falls back to the authoritative PostgreSQL check:
-    `ACTIVE` is ambiguous between "never revoked" and "revoked, but the
-    registry lost the mark" (e.g. a Redis restart with no persistence), so
-    trusting it directly would let a lost mark silently restore visibility
-    to a revoked participant. `PENDING` (in-flight or abandoned) and
-    `UNKNOWN` (a failed registry read) are equally untrusted on their own.
-    A `PENDING` mark is opportunistically reconciled once the PostgreSQL
-    fallback resolves it, clearing an abandoned mark or promoting one
-    whose commit had already landed.
-
-    Returns `True` (suppress the event), `False` (forward it), or `None`
-    when neither the registry nor PostgreSQL can answer - callers must
-    treat `None` as fail-closed, never as "not revoked".
-    """
-    mark = await event_bus.revocations.get_mark(roadmap_id, participant_id)
-    if mark is RevocationMark.COMMITTED:
-        return True
-
-    try:
-        async with db_session_factory() as db:
-            revoked = await is_participant_revoked(db, roadmap_id, participant_id)
-    except Exception:
-        logger.exception(
-            "Failed to resolve participant revocation state against PostgreSQL"
-        )
-        return None
-
-    if revoked:
-        if mark is RevocationMark.PENDING:
-            await _log_failure(
-                event_bus.revocations.promote_committed(roadmap_id, participant_id),
-                "Failed to promote fast-path revocation registry mark to committed",
-            )
-        return True
-
-    if mark is RevocationMark.PENDING:
-        await _log_failure(
-            event_bus.revocations.clear(roadmap_id, participant_id),
-            "Failed to clear abandoned fast-path revocation registry mark",
-        )
-    return False
 
 
 async def update_roadmap_password(

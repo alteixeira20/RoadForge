@@ -1,25 +1,21 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_settings
-from api.database import async_session_factory, get_db
-from api.features.realtime.stream_limit import (
-    RealtimeStreamLimitUnavailableError,
-    realtime_stream_registry,
-)
+from api.database import get_db
+from api.features.realtime.schemas import EventTicketResponse
+from api.features.realtime.stream_service import prepare_event_stream
 from api.features.realtime.ticket_service import (
     EVENT_TICKET_COOKIE_NAME,
     EVENT_TICKET_TTL_SECONDS,
     event_ticket_cookie_path,
     ticket_service,
 )
-from api.features.sharing.service import resolve_realtime_revocation
-from api.schemas.roadmap import EventTicketResponse
-from api.shared.auth.auth_service import is_participant_revoked, require_participant
-from api.shared.realtime.event_bus import event_bus, forward_subscription
+from api.shared.auth.auth_service import require_participant
+from api.shared.auth.session_policy import ALL_ROLES
 from api.shared.security.client_ip_service import extract_client_ip
-from api.shared.security.rate_limit_service import rate_limiter
+from api.shared.security.rate_limit_service import enforce_rate_limit
 
 router = APIRouter(tags=["roadmaps"])
 
@@ -33,20 +29,10 @@ async def post_event_ticket(
     authorization: str | None = Header(default=None),
 ) -> EventTicketResponse:
     participant = await require_participant(
-        db, roadmap_id, authorization, {"owner", "editor", "viewer"}
+        db, roadmap_id, authorization, ALL_ROLES
     )
-    await rate_limiter.enforce(
-        "events.ticket.participant",
-        f"{participant.id}:{roadmap_id}",
-        limit=10,
-        window_seconds=60,
-    )
-    await rate_limiter.enforce(
-        "events.ticket.ip",
-        f"{extract_client_ip(request)}:{roadmap_id}",
-        limit=60,
-        window_seconds=60,
-    )
+    await enforce_rate_limit("events.ticket.participant", f'{participant.id}:{roadmap_id}')
+    await enforce_rate_limit("events.ticket.ip", f'{extract_client_ip(request)}:{roadmap_id}')
     ticket = await ticket_service.create_ticket(
         roadmap_id, participant.id, participant.session_expires_at
     )
@@ -71,92 +57,10 @@ async def get_events(
     db: AsyncSession = Depends(get_db),
 ):
     ticket = request.cookies.get(EVENT_TICKET_COOKIE_NAME)
-    event_ticket = (
-        await ticket_service.consume_ticket(ticket, roadmap_id)
-        if ticket
-        else None
-    )
-    if not event_ticket:
-        raise HTTPException(status_code=401, detail="Invalid or expired event ticket")
-
-    try:
-        if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
-            raise HTTPException(status_code=401, detail="Session revoked")
-
-        try:
-            stream_lease = await realtime_stream_registry.acquire(
-                roadmap_id, event_ticket.participant_id
-            )
-        except RealtimeStreamLimitUnavailableError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Realtime stream limit temporarily unavailable",
-            ) from exc
-        if stream_lease is None:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many active realtime streams for this participant",
-            )
-
-        lease_released = False
-
-        async def _safe_release_lease() -> None:
-            nonlocal lease_released
-            if not lease_released:
-                lease_released = True
-                await stream_lease.release()
-
-        subscription_closed = False
-
-        async def _safe_close_subscription() -> None:
-            nonlocal subscription_closed
-            if not subscription_closed and subscription is not None:
-                subscription_closed = True
-                await subscription.close()
-
-        subscription = None
-        setup_successful = False
-        try:
-            subscription = await event_bus.open_subscription(roadmap_id)
-            if await is_participant_revoked(db, roadmap_id, event_ticket.participant_id):
-                raise HTTPException(status_code=401, detail="Session revoked")
-            setup_successful = True
-        finally:
-            if not setup_successful:
-                await _safe_close_subscription()
-                await _safe_release_lease()
-    finally:
-        await db.close()
-
-    async def _is_still_authorized() -> bool:
-        if not await stream_lease.refresh():
-            return False
-        async with async_session_factory() as session:
-            return not await is_participant_revoked(
-                session, roadmap_id, event_ticket.participant_id
-            )
-
-    async def _is_revoked_fast() -> bool | None:
-        return await resolve_realtime_revocation(
-            async_session_factory, roadmap_id, event_ticket.participant_id
-        )
-
-    async def _bounded_stream():
-        try:
-            async for chunk in forward_subscription(
-                subscription,
-                participant_id=event_ticket.participant_id,
-                close_at=event_ticket.session_expires_at,
-                is_still_authorized=_is_still_authorized,
-                is_participant_revoked_now=_is_revoked_fast,
-            ):
-                yield chunk
-        finally:
-            await _safe_close_subscription()
-            await _safe_release_lease()
+    stream = await prepare_event_stream(db, roadmap_id, ticket)
 
     stream_response = StreamingResponse(
-        _bounded_stream(),
+        stream.stream_chunks(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache, no-store",

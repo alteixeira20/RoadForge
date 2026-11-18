@@ -10,12 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.features.phases.schemas import PatchPhaseRequest, PatchRoadmapNameRequest
 from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
+from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.roadmaps.projection import sync_roadmap_projection_best_effort
 from api.features.roadmaps.queries import fetch_active_roadmap_for_update
-from api.features.roadmaps.roadmap_helpers import _phases_from_snapshot, _roadmap_response
+from api.features.roadmaps.snapshot import phases_from_snapshot, roadmap_response
+from api.features.roadmaps.tag_schemas import TagDefinitionDTO
 from api.features.roadmaps.validation import validate_roadmap_domain
 from api.models.roadmap import ActivityLog, Participant, Roadmap
-from api.schemas.roadmap import RoadmapResponse, TagDefinitionDTO
 from api.shared.ids import generate_id
 from api.shared.realtime.event_bus import Event, event_bus
 
@@ -34,7 +35,7 @@ async def patch_roadmap_name(
 ) -> RoadmapResponse:
     roadmap = await fetch_active_roadmap_for_update(db, roadmap_id)
     if roadmap.name == payload.name:
-        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+        return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
     previous_name = roadmap.name
     roadmap.name = payload.name
@@ -72,7 +73,7 @@ async def patch_roadmap_name(
         )
     )
 
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
 
 def _patch_phase_snapshot(
@@ -123,9 +124,9 @@ async def patch_phase(
 
     snapshot_json, before_phase, after_phase, changed_fields = patched
     if not changed_fields:
-        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+        return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
-    phases = _phases_from_snapshot(snapshot_json)
+    phases = phases_from_snapshot(snapshot_json)
     validate_roadmap_domain(phases, _stored_tag_registry(roadmap))
 
     roadmap.snapshot_json = snapshot_json
@@ -170,4 +171,4 @@ async def patch_phase(
         )
     )
 
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))

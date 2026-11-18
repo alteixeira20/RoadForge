@@ -3,28 +3,21 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
-from api.features.roadmaps.service import RoadmapConflictError
+from api.features.roadmaps.conflict_schemas import RoadmapConflictResponse
+from api.features.roadmaps.conflicts import RoadmapConflictError
+from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.tasks.service import (
     delete_task_claim,
     patch_task,
     patch_task_claim,
     patch_task_done,
 )
-from api.schemas.roadmap import (
-    PatchTaskDoneRequest,
-    PatchTaskRequest,
-    RoadmapConflictResponse,
-    RoadmapResponse,
-)
+from api.features.tasks.task_schemas import PatchTaskDoneRequest, PatchTaskRequest
 from api.shared.auth.auth_service import require_participant
-from api.shared.security.rate_limit_service import rate_limiter
+from api.shared.auth.session_policy import OWNER_EDITOR
+from api.shared.security.rate_limit_service import enforce_rate_limit, participant_rate_key
 
 router = APIRouter(tags=["roadmaps"])
-_OWNER_EDITOR = {"owner", "editor"}
-
-
-def _participant_rate_key(participant_id: str, roadmap_id: str) -> str:
-    return f"{participant_id}:{roadmap_id}"
 
 
 @router.patch(
@@ -39,13 +32,8 @@ async def patch_roadmap_task(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse | JSONResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.update.patch",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.update.patch", participant_rate_key(participant.id, roadmap_id))
     try:
         return await patch_task(db, roadmap_id, task_id, payload, participant)
     except RoadmapConflictError as exc:
@@ -64,13 +52,8 @@ async def patch_roadmap_task_done(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse | JSONResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.done.patch",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.done.patch", participant_rate_key(participant.id, roadmap_id))
     try:
         return await patch_task_done(db, roadmap_id, task_id, payload, participant)
     except RoadmapConflictError as exc:
@@ -88,13 +71,8 @@ async def patch_roadmap_task_claim(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.claim.patch",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.claim.patch", participant_rate_key(participant.id, roadmap_id))
     return await patch_task_claim(db, roadmap_id, task_id, participant, override=override)
 
 
@@ -109,11 +87,6 @@ async def delete_roadmap_task_claim(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.claim.delete",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.claim.delete", participant_rate_key(participant.id, roadmap_id))
     return await delete_task_claim(db, roadmap_id, task_id, participant, override=override)

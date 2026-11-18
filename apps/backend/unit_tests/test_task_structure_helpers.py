@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from api.features.tasks.structure_helpers import (
     phase_dicts,
     recompute_phase_progress,
+    remove_dependencies_on_tasks,
     reorder_direct_children,
     reorder_top_level_tasks,
     task_subtree_block,
@@ -107,3 +108,15 @@ def test_phase_dicts_fails_closed_on_malformed_stored_task_array() -> None:
 
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Stored roadmap task snapshot is invalid"
+
+
+def test_dependency_cleanup_preserves_unrelated_and_malformed_entries() -> None:
+    legacy_phase = {"id": "legacy", "tasks": None}
+    phases = [legacy_phase, {"id": "active", "tasks": [None, {"deps": ["gone", "kept"]}]}]
+
+    updated, count = remove_dependencies_on_tasks(phases, {"gone"})
+
+    assert count == 1
+    assert updated[0] is legacy_phase
+    assert updated[1]["tasks"] == [None, {"deps": ["kept"]}]
+    assert phases[1]["tasks"] == [None, {"deps": ["gone", "kept"]}]

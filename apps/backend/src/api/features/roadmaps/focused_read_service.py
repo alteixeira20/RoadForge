@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.roadmaps.focused_schemas import (
     FocusedContextResult,
     FocusedContextTask,
@@ -21,7 +22,6 @@ from api.features.roadmaps.focused_schemas import (
 )
 from api.features.roadmaps.queries import fetch_active_roadmap
 from api.features.roadmaps.service import get_roadmap
-from api.schemas.roadmap import RoadmapResponse
 
 
 def _phase_context(phase) -> FocusedPhaseContext:

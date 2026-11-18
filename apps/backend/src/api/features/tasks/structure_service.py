@@ -9,10 +9,12 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
+from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.roadmaps.limit_schemas import TASKS_PER_PHASE_MAX
 from api.features.roadmaps.projection import sync_roadmap_projection_best_effort
 from api.features.roadmaps.queries import fetch_active_roadmap_for_update
-from api.features.roadmaps.roadmap_helpers import _phases_from_snapshot, _roadmap_response
+from api.features.roadmaps.snapshot import phases_from_snapshot, roadmap_response
+from api.features.roadmaps.tag_schemas import TagDefinitionDTO
 from api.features.roadmaps.validation import validate_roadmap_domain
 from api.features.tasks.structure_helpers import (
     all_task_ids,
@@ -33,7 +35,6 @@ from api.features.tasks.structure_schemas import (
     ReorderTaskStructureRequest,
 )
 from api.models.roadmap import ActivityLog, Participant, Roadmap
-from api.schemas.roadmap import RoadmapResponse, TagDefinitionDTO
 from api.shared.ids import generate_id
 from api.shared.realtime.event_bus import Event, event_bus
 
@@ -45,7 +46,7 @@ def _stored_tag_registry(roadmap: Roadmap) -> list[TagDefinitionDTO] | None:
 
 
 def _validate_current_snapshot(roadmap: Roadmap) -> None:
-    phases = _phases_from_snapshot(roadmap.snapshot_json)
+    phases = phases_from_snapshot(roadmap.snapshot_json)
     validate_roadmap_domain(phases, _stored_tag_registry(roadmap))
 
 
@@ -59,7 +60,7 @@ async def _persist_task_structure_change(
     activity: ActivityLog,
     event_payload: dict[str, Any],
 ) -> RoadmapResponse:
-    phases = _phases_from_snapshot(snapshot_json)
+    phases = phases_from_snapshot(snapshot_json)
     validate_roadmap_domain(phases, _stored_tag_registry(roadmap))
 
     roadmap.snapshot_json = snapshot_json
@@ -83,7 +84,7 @@ async def _persist_task_structure_change(
             },
         )
     )
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
 
 async def create_task(
@@ -263,7 +264,7 @@ async def reorder_top_level_tasks(
         phase["tasks"], payload.task_ids
     )
     if before_ids == after_ids:
-        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+        return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
     next_phases = [*phases]
     next_phases[phase_index] = {**phase, "tasks": next_tasks}
@@ -318,7 +319,7 @@ async def reorder_subtasks(
         phase["tasks"], parent_id, payload.task_ids
     )
     if before_ids == after_ids:
-        return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+        return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
     next_phases = [*phases]
     next_phases[phase_index] = {**phase, "tasks": next_tasks}
@@ -382,12 +383,12 @@ async def set_task_dependency(
     current_deps = list(task.get("deps") or [])
     if linked:
         if dependency_id in current_deps:
-            return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+            return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
         next_deps = [*current_deps, dependency_id]
         action = "task.dependency.linked"
     else:
         if dependency_id not in current_deps:
-            return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+            return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
         next_deps = [dep for dep in current_deps if dep != dependency_id]
         action = "task.dependency.unlinked"
 

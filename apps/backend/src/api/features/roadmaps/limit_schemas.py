@@ -7,7 +7,6 @@ configuration can use one documented roadmap payload ceiling.
 
 # Matches the browser import limit. Five MiB is large enough for the supported
 # roadmap shape while still bounding JSON parsing and validation work.
-REQUEST_BODY_MAX_BYTES = 5 * 1024 * 1024
 
 ROADMAP_NAME_MAX = 120
 DISPLAY_NAME_MAX = 128

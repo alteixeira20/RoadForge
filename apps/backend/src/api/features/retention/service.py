@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from api.features.roadmaps.roadmap_helpers import _patch_task_claim_snapshot
+from api.features.tasks.snapshot_patch import patch_task_claim_snapshot
 from api.models.roadmap import (
     ActivityLog,
     Participant,
@@ -440,7 +440,7 @@ async def _clear_task_claims(
             if current_participant_id not in selected_participants:
                 continue
 
-            patched = _patch_task_claim_snapshot(
+            patched = patch_task_claim_snapshot(
                 snapshot,
                 task.client_task_id,
                 None,

@@ -27,7 +27,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import api.database as db_module
-import api.features.realtime.router as rr_module
+import api.features.realtime.stream_service as rr_module
+from api.shared.security import rate_limit_service
 from api.database import get_db
 from api.main import create_app
 from api.models.base import Base
@@ -96,7 +97,7 @@ async def test_idle_sse_connections_do_not_exhaust_database_pool():
     app.dependency_overrides[get_db] = _override_get_db
     rr_module.async_session_factory = pooled_session_factory
     db_module.async_session_factory = pooled_session_factory
-    rr_module.rate_limiter = MemoryRateLimiter()
+    rate_limit_service.rate_limiter = MemoryRateLimiter()
 
     # Use a free port for a real uvicorn HTTP server to avoid in-memory
     # ASGITransport disconnect deadlocks

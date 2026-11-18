@@ -10,6 +10,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 
 import api.features.tasks.structure_router as task_structure_router
+from api.shared.security import rate_limit_service
 from api.database import get_db
 from api.main import create_app
 from api.models.roadmap import Roadmap
@@ -61,7 +62,7 @@ async def test_concurrent_task_create_and_reorder_both_survive_deterministically
 ):
     roadmap_name = "Concurrent task create reorder"
     roadmap_id: str | None = None
-    monkeypatch.setattr(task_structure_router, "rate_limiter", MemoryRateLimiter())
+    monkeypatch.setattr(rate_limit_service, "rate_limiter", MemoryRateLimiter())
     synchronized_create, synchronized_reorder = _shared_barrier_wrappers(
         task_structure_router.create_task,
         task_structure_router.reorder_top_level_tasks,
@@ -121,7 +122,7 @@ async def test_concurrent_dependency_links_both_survive_row_lock(
 ):
     roadmap_name = "Concurrent dependency links"
     roadmap_id: str | None = None
-    monkeypatch.setattr(task_structure_router, "rate_limiter", MemoryRateLimiter())
+    monkeypatch.setattr(rate_limit_service, "rate_limiter", MemoryRateLimiter())
     synchronized_first, synchronized_second = _shared_barrier_wrappers(
         task_structure_router.set_task_dependency,
         task_structure_router.set_task_dependency,

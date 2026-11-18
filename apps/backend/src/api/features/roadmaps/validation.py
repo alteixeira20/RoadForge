@@ -11,7 +11,8 @@ from collections.abc import Iterable
 
 from fastapi import HTTPException
 
-from api.schemas.roadmap import PhaseDTO, TagDefinitionDTO
+from api.features.roadmaps.snapshot_schemas import PhaseDTO
+from api.features.roadmaps.tag_schemas import TagDefinitionDTO
 
 _MAX_REPORTED_ERRORS = 8
 

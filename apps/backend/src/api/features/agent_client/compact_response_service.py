@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from api.features.roadmaps.focused_schemas import (
+from api.features.agent_client.schemas import (
     CompactMutationResponse,
     CompactPhaseState,
     CompactRoadmapConflictMetadata,
@@ -10,7 +10,8 @@ from api.features.roadmaps.focused_schemas import (
     CompactTagState,
     CompactTaskState,
 )
-from api.schemas.roadmap import RoadmapConflictResponse, RoadmapResponse
+from api.features.roadmaps.conflict_schemas import RoadmapConflictResponse
+from api.features.roadmaps.core_schemas import RoadmapResponse
 
 
 def _compact_phase(phase) -> CompactPhaseState:

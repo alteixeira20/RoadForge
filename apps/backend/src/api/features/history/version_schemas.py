@@ -7,8 +7,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from api.features.tags.schemas import TagDefinitionDTO
-from api.features.tasks.task_schemas import PhaseDTO
+from api.features.roadmaps.snapshot_schemas import PhaseDTO
+from api.features.roadmaps.tag_schemas import TagDefinitionDTO
 
 
 class RoadmapVersionSummaryResponse(BaseModel):

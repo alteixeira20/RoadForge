@@ -15,22 +15,15 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.features.roadmaps.activity_log_limit import enforce_activity_log_cap
+from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.roadmaps.limit_schemas import TAG_REGISTRY_MAX
 from api.features.roadmaps.queries import (
     fetch_active_roadmap,
     fetch_active_roadmap_for_update,
 )
-from api.features.roadmaps.roadmap_helpers import (
-    _phases_from_snapshot,
-    _roadmap_response,
-)
+from api.features.roadmaps.snapshot import phases_from_snapshot, roadmap_response
+from api.features.tags.schemas import CreateTagRequest, TagResponse, UpdateTagRequest
 from api.models.roadmap import ActivityLog, Participant, Roadmap
-from api.schemas.roadmap import (
-    CreateTagRequest,
-    RoadmapResponse,
-    TagResponse,
-    UpdateTagRequest,
-)
 from api.shared.ids import generate_id
 from api.shared.realtime.event_bus import Event, event_bus
 
@@ -120,7 +113,7 @@ async def _commit_tag_mutation(
             "action": action,
         },
     ))
-    return _roadmap_response(roadmap, _phases_from_snapshot(roadmap.snapshot_json))
+    return roadmap_response(roadmap, phases_from_snapshot(roadmap.snapshot_json))
 
 
 def _tag_id_in_snapshot(snapshot_json: dict, tag_id: str) -> bool:

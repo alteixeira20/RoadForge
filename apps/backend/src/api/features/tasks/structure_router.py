@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
+from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.features.tasks.structure_schemas import (
     CreateTaskStructureRequest,
     ReorderTaskStructureRequest,
@@ -15,16 +16,11 @@ from api.features.tasks.structure_service import (
     reorder_top_level_tasks,
     set_task_dependency,
 )
-from api.schemas.roadmap import RoadmapResponse
 from api.shared.auth.auth_service import require_participant
-from api.shared.security.rate_limit_service import rate_limiter
+from api.shared.auth.session_policy import OWNER_EDITOR
+from api.shared.security.rate_limit_service import enforce_rate_limit, participant_rate_key
 
 router = APIRouter(tags=["roadmaps"])
-_OWNER_EDITOR = {"owner", "editor"}
-
-
-def _participant_rate_key(participant_id: str, roadmap_id: str) -> str:
-    return f"{participant_id}:{roadmap_id}"
 
 
 @router.post(
@@ -39,13 +35,8 @@ async def create_roadmap_task(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.create.post",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.create.post", participant_rate_key(participant.id, roadmap_id))
     return await create_task(db, roadmap_id, phase_id, payload, participant)
 
 
@@ -56,13 +47,8 @@ async def delete_roadmap_task(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.delete",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.delete", participant_rate_key(participant.id, roadmap_id))
     return await delete_task(db, roadmap_id, task_id, participant)
 
 
@@ -77,13 +63,8 @@ async def reorder_roadmap_tasks(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.reorder.put",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=180,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("task.reorder.put", participant_rate_key(participant.id, roadmap_id))
     return await reorder_top_level_tasks(db, roadmap_id, phase_id, payload, participant)
 
 
@@ -98,12 +79,9 @@ async def reorder_roadmap_subtasks(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "subtask.reorder.put",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=180,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit(
+          "subtask.reorder.put", participant_rate_key(participant.id, roadmap_id),
     )
     return await reorder_subtasks(db, roadmap_id, parent_id, payload, participant)
 
@@ -119,12 +97,9 @@ async def link_task_dependency(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.dependency.put",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=180,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit(
+          "task.dependency.put", participant_rate_key(participant.id, roadmap_id),
     )
     return await set_task_dependency(
         db,
@@ -147,12 +122,9 @@ async def unlink_task_dependency(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "task.dependency.delete",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=180,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit(
+          "task.dependency.delete", participant_rate_key(participant.id, roadmap_id),
     )
     return await set_task_dependency(
         db,

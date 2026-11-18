@@ -3,31 +3,26 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
+from api.features.history.version_schemas import (
+    CheckpointResponse,
+    RestoreRoadmapVersionRequest,
+    RoadmapVersionDetailResponse,
+    RoadmapVersionSummaryResponse,
+)
 from api.features.history.version_service import (
     create_roadmap_checkpoint,
     get_roadmap_version,
     get_roadmap_versions,
     restore_roadmap_version,
 )
-from api.features.roadmaps.service import RoadmapConflictError
-from api.schemas.roadmap import (
-    CheckpointResponse,
-    RestoreRoadmapVersionRequest,
-    RoadmapConflictResponse,
-    RoadmapResponse,
-    RoadmapVersionDetailResponse,
-    RoadmapVersionSummaryResponse,
-)
+from api.features.roadmaps.conflict_schemas import RoadmapConflictResponse
+from api.features.roadmaps.conflicts import RoadmapConflictError
+from api.features.roadmaps.core_schemas import RoadmapResponse
 from api.shared.auth.auth_service import require_participant
-from api.shared.security.rate_limit_service import rate_limiter
+from api.shared.auth.session_policy import OWNER_EDITOR, OWNER_ONLY
+from api.shared.security.rate_limit_service import enforce_rate_limit, participant_rate_key
 
 router = APIRouter(tags=["roadmaps"])
-_OWNER_EDITOR = {"owner", "editor"}
-_OWNER_ONLY = {"owner"}
-
-
-def _participant_rate_key(participant_id: str, roadmap_id: str) -> str:
-    return f"{participant_id}:{roadmap_id}"
 
 
 @router.get("/{roadmap_id}/versions", response_model=list[RoadmapVersionSummaryResponse])
@@ -36,13 +31,8 @@ async def fetch_roadmap_versions(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> list[RoadmapVersionSummaryResponse]:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "versions.read",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("versions.read", participant_rate_key(participant.id, roadmap_id))
     return await get_roadmap_versions(db, roadmap_id)
 
 
@@ -52,12 +42,9 @@ async def post_checkpoint(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> CheckpointResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "versions.checkpoint",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=10,
-        window_seconds=60,
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit(
+          "versions.checkpoint", participant_rate_key(participant.id, roadmap_id),
     )
     created, version = await create_roadmap_checkpoint(db, roadmap_id, participant)
     return CheckpointResponse(created=created, version=version)
@@ -70,13 +57,8 @@ async def fetch_roadmap_version(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapVersionDetailResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_EDITOR)
-    await rate_limiter.enforce(
-        "version.read",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=120,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_EDITOR)
+    await enforce_rate_limit("version.read", participant_rate_key(participant.id, roadmap_id))
     return await get_roadmap_version(db, roadmap_id, version_id)
 
 
@@ -92,13 +74,8 @@ async def post_restore_roadmap_version(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None),
 ) -> RoadmapResponse | JSONResponse:
-    participant = await require_participant(db, roadmap_id, authorization, _OWNER_ONLY)
-    await rate_limiter.enforce(
-        "versions.restore",
-        _participant_rate_key(participant.id, roadmap_id),
-        limit=10,
-        window_seconds=60,
-    )
+    participant = await require_participant(db, roadmap_id, authorization, OWNER_ONLY)
+    await enforce_rate_limit("versions.restore", participant_rate_key(participant.id, roadmap_id))
     try:
         return await restore_roadmap_version(
             db,

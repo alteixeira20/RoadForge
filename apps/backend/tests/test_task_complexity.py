@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-from api.schemas.roadmap import PhaseDTO
+from api.features.roadmaps.snapshot_schemas import PhaseDTO
 from api.features.roadmaps.validation import validate_roadmap_domain
 
 

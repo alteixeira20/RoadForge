@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from api.features.roadmaps.roadmap_helpers import (
-    _patch_task_claim_snapshot,
-    _patch_task_done_snapshot,
-)
+from api.features.tasks.snapshot_patch import patch_task_claim_snapshot, patch_task_done_snapshot
 
 
 def _snapshot() -> dict:
@@ -37,7 +34,7 @@ def _snapshot() -> dict:
 def test_done_patch_preserves_root_extensions_and_recalculates_progress() -> None:
     original = _snapshot()
 
-    patched = _patch_task_done_snapshot(original, "task-1", True)
+    patched = patch_task_done_snapshot(original, "task-1", True)
 
     assert patched is not None
     snapshot, _phase, _before = patched
@@ -54,7 +51,7 @@ def test_done_patch_preserves_root_extensions_and_recalculates_progress() -> Non
 def test_claim_patch_preserves_extensions_and_deduplicates_assignee() -> None:
     original = _snapshot()
 
-    patched = _patch_task_claim_snapshot(
+    patched = patch_task_claim_snapshot(
         original,
         "task-1",
         "Alice",
@@ -73,7 +70,7 @@ def test_claim_patch_preserves_extensions_and_deduplicates_assignee() -> None:
 def test_unclaim_preserves_assignment_and_root_extensions() -> None:
     original = _snapshot()
 
-    patched = _patch_task_claim_snapshot(original, "task-1", None, None, None)
+    patched = patch_task_claim_snapshot(original, "task-1", None, None, None)
 
     assert patched is not None
     snapshot, _phase, _before = patched
