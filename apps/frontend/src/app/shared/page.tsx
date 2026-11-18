@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Workspace } from '@/components/roadmap/Workspace'
+import { Workspace } from '@/features/workspace/components/Workspace'
 
 export default function SharedPage() {
   const router = useRouter()

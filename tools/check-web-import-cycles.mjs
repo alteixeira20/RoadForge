@@ -7,6 +7,36 @@ const repositoryRoot = process.cwd()
 const sourceRoot = resolve(repositoryRoot, 'apps/frontend/src')
 const sourceExtensions = new Set(['.ts', '.tsx'])
 
+// Each feature lists the lower-level modules it may use.
+const dependencies = {
+  shared: [],
+  tags: ['shared'],
+  roadmaps: ['tags', 'shared'],
+  sharing: ['roadmaps', 'shared'],
+  history: ['roadmaps', 'shared'],
+  marketing: ['roadmaps', 'shared'],
+  collaboration: ['sharing', 'shared'],
+  'data-transfer': ['history', 'roadmaps', 'tags', 'shared'],
+  tasks: ['collaboration', 'history', 'tags', 'shared'],
+  phases: ['tasks', 'collaboration', 'roadmaps', 'shared'],
+  synchronization: ['phases', 'tasks', 'collaboration', 'history', 'roadmaps', 'tags', 'shared'],
+  workspace: [
+    'synchronization', 'phases', 'tasks', 'collaboration', 'data-transfer',
+    'sharing', 'history', 'roadmaps', 'tags', 'shared',
+  ],
+  app: ['workspace', 'synchronization', 'marketing', 'sharing', 'roadmaps', 'shared'],
+  'middleware.ts': ['shared'],
+}
+
+function owner(file) {
+  const [directory, feature] = relative(sourceRoot, file).split(sep)
+  return directory === 'features' ? feature : directory
+}
+
+function isTest(file) {
+  return file.split(sep).includes('__tests__') || /\.test\.tsx?$/.test(file)
+}
+
 async function collectSourceFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true })
   const nested = await Promise.all(entries.map(async (entry) => {
@@ -47,9 +77,15 @@ const files = (await collectSourceFiles(sourceRoot)).sort()
 const fileSet = new Set(files)
 const graph = new Map(files.map((file) => [file, []]))
 const unresolved = []
+const boundaryViolations = []
 
 for (const file of files) {
   const source = await readFile(file, 'utf8')
+  const importerOwner = owner(file)
+  const test = isTest(file)
+  if (!test && !Object.hasOwn(dependencies, importerOwner)) {
+    boundaryViolations.push(`${displayPath(file)} has no architecture owner`)
+  }
   const imports = ts.preProcessFile(source, true, true).importedFiles
   for (const imported of imports) {
     const base = importBase(file, imported.fileName)
@@ -59,6 +95,13 @@ for (const file of files) {
     const target = candidates.find((candidate) => fileSet.has(candidate))
     if (target) {
       graph.get(file).push(target)
+      const targetOwner = owner(target)
+      if (!test && (
+        isTest(target)
+        || (targetOwner !== importerOwner && !dependencies[importerOwner]?.includes(targetOwner))
+      )) {
+        boundaryViolations.push(`${displayPath(file)} -> ${displayPath(target)}`)
+      }
     } else {
       unresolved.push(`${displayPath(file)} -> ${imported.fileName}`)
     }
@@ -67,6 +110,11 @@ for (const file of files) {
 
 if (unresolved.length > 0) {
   console.error(`Web import validation found unresolved internal imports:\n${unresolved.join('\n')}`)
+  process.exit(1)
+}
+
+if (boundaryViolations.length > 0) {
+  console.error(`Web architecture boundary violations:\n${boundaryViolations.join('\n')}`)
   process.exit(1)
 }
 
@@ -99,4 +147,4 @@ if (cycle) {
 }
 
 const edgeCount = [...graph.values()].reduce((total, targets) => total + targets.length, 0)
-console.log(`Web import validation passed for ${files.length} files and ${edgeCount} internal imports.`)
+console.log(`Web import and architecture validation passed for ${files.length} files and ${edgeCount} internal imports.`)

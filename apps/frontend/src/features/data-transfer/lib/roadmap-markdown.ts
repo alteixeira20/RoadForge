@@ -1,0 +1,181 @@
+import { computeTaskDisplayNumbers } from '@/shared/domain/task-display'
+import { getTaskComplexityLabel } from '@/shared/domain/task-complexity'
+import type {
+  Phase,
+  TagDefinition,
+  Task,
+  TaskExternalLink,
+} from '@/shared/types/roadmap'
+
+interface RoadmapMarkdownInput {
+  roadmapName?: string
+  phases: Phase[]
+  tagRegistry?: TagDefinition[]
+}
+
+const MAX_FILENAME_STEM_LENGTH = 80
+const WINDOWS_RESERVED_STEMS = new Set([
+  'con', 'prn', 'aux', 'nul',
+  'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
+  'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9',
+])
+
+const INLINE_MARKDOWN_CHARACTERS = new Set([
+  '\\', '`', '*', '_', '[', ']', '<', '>', '#', '!', '|',
+])
+
+const PHASE_STATUS_LABELS: Record<Phase['status'], string> = {
+  done: 'done',
+  active: 'active',
+  next: 'next',
+  future: 'future',
+}
+
+function toSingleLine(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function escapeInlineMarkdown(value: string): string {
+  return Array.from(toSingleLine(value), (character) => (
+    INLINE_MARKDOWN_CHARACTERS.has(character) ? `\\${character}` : character
+  )).join('')
+}
+
+function formatInlineCode(value: string): string {
+  const content = toSingleLine(value)
+  const backtickRuns = content.match(/`+/g) ?? []
+  const longestRun = backtickRuns.reduce(
+    (longest, run) => Math.max(longest, run.length),
+    0,
+  )
+  const fence = '`'.repeat(longestRun + 1)
+  const needsPadding = content.startsWith('`') || content.endsWith('`')
+  const padding = needsPadding ? ' ' : ''
+
+  return `${fence}${padding}${content}${padding}${fence}`
+}
+
+function linkLabel(link: TaskExternalLink): string {
+  if (link.label?.trim()) return escapeInlineMarkdown(link.label)
+  if (link.provider === 'url') return 'External link'
+
+  const labels: Record<TaskExternalLink['kind'], string> = {
+    issue: 'GitHub issue',
+    pull: 'GitHub pull request',
+    discussion: 'GitHub discussion',
+    commit: 'GitHub commit',
+    release: 'GitHub release',
+    url: 'External link',
+  }
+  return labels[link.kind]
+}
+
+function indentBlock(value: string, indent: string): string[] {
+  return value.split(/\r?\n/).map((line) => `${indent}${line}`)
+}
+
+function displayRef(taskId: string, taskNumbers: ReadonlyMap<string, string>): string {
+  return taskNumbers.get(taskId) ?? '?'
+}
+
+function formatTask(
+  task: Task,
+  tagLabels: ReadonlyMap<string, string>,
+  taskNumbers: ReadonlyMap<string, string>,
+): string[] {
+  const indent = task.parentId ? '  ' : ''
+  const checkbox = task.done ? '[x]' : '[ ]'
+  const metadata: string[] = []
+
+  if (task.next === true) metadata.push('recommended')
+  metadata.push(`complexity:${getTaskComplexityLabel(task)}`)
+  if (task.parentId) metadata.push(`parent:${formatInlineCode(displayRef(task.parentId, taskNumbers))}`)
+  if (task.est) metadata.push(`est:${escapeInlineMarkdown(task.est)}`)
+  if (task.assignees?.length) {
+    metadata.push(`assignees:${task.assignees.map(escapeInlineMarkdown).join(', ')}`)
+  }
+  if (task.tags?.length) {
+    const tags = task.tags.map((tagId) => tagLabels.get(tagId) ?? tagId)
+    metadata.push(`tags:${tags.map(escapeInlineMarkdown).join(', ')}`)
+  }
+  if (task.deps?.length) {
+    metadata.push(`deps:${task.deps.map((id) => formatInlineCode(displayRef(id, taskNumbers))).join(', ')}`)
+  }
+
+  const suffix = metadata.length > 0 ? ` | ${metadata.join('; ')}` : ''
+  const lines = [
+    `${indent}- ${checkbox} ${formatInlineCode(displayRef(task.id, taskNumbers))} ${escapeInlineMarkdown(task.title)}${suffix}`,
+  ]
+  const detailIndent = `${indent}  `
+
+  if (task.desc) {
+    lines.push(...indentBlock(task.desc, detailIndent))
+  }
+  if (task.links?.length) {
+    const links = task.links
+      .map((link) => `${linkLabel(link)} <${link.url}>`)
+      .join('; ')
+    lines.push(`${detailIndent}links: ${links}`)
+  }
+
+  return lines
+}
+
+function formatPhase(
+  phase: Phase,
+  tagLabels: ReadonlyMap<string, string>,
+  taskNumbers: ReadonlyMap<string, string>,
+): string[] {
+  const status = PHASE_STATUS_LABELS[phase.status]
+  const lines = [
+    `## ${escapeInlineMarkdown(phase.num)} ${escapeInlineMarkdown(phase.name)} | ${status} | ${phase.progress}%`,
+  ]
+
+  if (phase.tasks.length === 0) {
+    lines.push('_No tasks._')
+    return lines
+  }
+
+  for (const task of phase.tasks) {
+    lines.push(...formatTask(task, tagLabels, taskNumbers))
+  }
+  return lines
+}
+
+export function formatRoadmapMarkdown({
+  roadmapName,
+  phases,
+  tagRegistry = [],
+}: RoadmapMarkdownInput): string {
+  const title = roadmapName?.trim() || 'Untitled Roadmap'
+  const tagLabels = new Map(tagRegistry.map((tag) => [tag.id, tag.label]))
+  const taskNumbers = computeTaskDisplayNumbers(phases)
+  const lines = [`# ${escapeInlineMarkdown(title)}`]
+
+  if (phases.length === 0) {
+    lines.push('', '_No phases._')
+  } else {
+    for (const phase of phases) {
+      lines.push('', ...formatPhase(phase, tagLabels, taskNumbers))
+    }
+  }
+
+  return `${lines.join('\n')}\n`
+}
+
+export function createMarkdownExportFilename(roadmapName: string): string {
+  let stem = roadmapName
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, MAX_FILENAME_STEM_LENGTH)
+    .replace(/-+$/g, '')
+
+  if (!stem) stem = 'roadmap'
+  if (WINDOWS_RESERVED_STEMS.has(stem)) stem = `roadmap-${stem}`
+
+  return `${stem}.roadforge.md`
+}

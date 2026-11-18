@@ -1,0 +1,42 @@
+import { getTaskAssignees, getVisibleTaskTags } from '@/shared/domain/task-assignment'
+import { getTaskComplexity } from '@/shared/domain/task-complexity'
+import type { Task, TaskComplexity } from '@/shared/types/roadmap'
+
+export interface TaskEditDraft {
+  title: string
+  est: string
+  complexity: TaskComplexity
+  desc: string
+  assignees: string[]
+  tags: string[]
+}
+
+export function createTaskEditDraft(task: Task): TaskEditDraft {
+  return {
+    title: task.title,
+    est: task.est ?? '',
+    complexity: getTaskComplexity(task),
+    desc: task.desc ?? '',
+    assignees: getTaskAssignees(task),
+    tags: getVisibleTaskTags(task),
+  }
+}
+
+export function itemsMatch(left: string[], right: string[]): boolean {
+  return left.length === right.length
+    && left.every((item, index) => item === right[index])
+}
+
+export function isTaskEditDraftDirty(draft: TaskEditDraft, task: Task): boolean {
+  const initial = createTaskEditDraft(task)
+  return draft.title !== initial.title
+    || draft.est !== initial.est
+    || draft.complexity !== initial.complexity
+    || draft.desc !== initial.desc
+    || !itemsMatch(draft.assignees, initial.assignees)
+    || !itemsMatch(draft.tags, initial.tags)
+}
+
+export function isTaskDescriptionDirty(value: string, draft: string): boolean {
+  return draft !== value
+}

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { filterTasks, DEFAULT_FILTER_STATE } from '@/lib/task-filters'
-import { formatRoadmapMarkdown } from '@/lib/roadmap-markdown'
-import { computeTaskDisplayNumbers } from '@/lib/task-display'
-import { upgradeRoadmapSnapshot } from '@/lib/roadmap-upgrade'
-import { parseImportedRoadmapJson } from '@/lib/roadmap-validation'
-import { exportRoadmap } from '@/services/roadmap-crud.service'
+import { filterTasks, DEFAULT_FILTER_STATE } from '@/features/tasks/lib/task-filters'
+import { formatRoadmapMarkdown } from '@/features/data-transfer/lib/roadmap-markdown'
+import { computeTaskDisplayNumbers } from '@/shared/domain/task-display'
+import { upgradeRoadmapSnapshot } from '@/features/roadmaps/lib/roadmap-upgrade'
+import { parseImportedRoadmapJson } from '@/features/roadmaps/lib/roadmap-validation'
+import { exportRoadmap } from '@/features/data-transfer/services/data-transfer.service'
 import {
   autosyncPayload,
   importPayload,

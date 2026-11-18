@@ -2,8 +2,8 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Homepage } from '@/components/home/Homepage'
-import { CreateWizard } from '@/components/wizard/CreateWizard'
+import { Homepage } from '@/features/marketing/components/Homepage'
+import { CreateWizard } from '@/features/roadmaps/components/CreateWizard'
 
 function HomePageContent() {
   const router = useRouter()

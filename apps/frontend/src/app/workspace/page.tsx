@@ -1,4 +1,4 @@
-import { Workspace } from '@/components/roadmap/Workspace'
+import { Workspace } from '@/features/workspace/components/Workspace'
 
 export default function WorkspacePage() {
   return <Workspace mode="owner" />

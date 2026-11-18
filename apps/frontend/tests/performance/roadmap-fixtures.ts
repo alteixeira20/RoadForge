@@ -1,4 +1,4 @@
-import type { Phase, TagDefinition, Task } from '@/types/roadmap'
+import type { Phase, TagDefinition, Task } from '@/shared/types/roadmap'
 
 export interface PerformanceRoadmapFixture {
   name: 'small' | 'medium' | 'large'

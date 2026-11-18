@@ -1,0 +1,183 @@
+// ─── HTTP helpers ───────────────────────────────────────────────────────────────
+// Shared request infrastructure used by all domain service files.
+// No business logic lives here - only transport concerns.
+
+import type { RoadmapConflictMetadata } from '@/shared/types/roadmap'
+
+// Non-secret marker persisted by the web client after a raw Bearer session has
+// been exchanged for a path-scoped HttpOnly cookie. It must never be serialized
+// into an Authorization header.
+export const BROWSER_SESSION_TOKEN = '__roadforge_http_only_session__'
+
+// ─── API configuration ─────────────────────────────────────────────────────────
+
+export const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:7878'
+).replace(/\/$/, '')
+
+export function getApiBaseUrl(): string {
+  if (API_BASE_URL !== 'http://localhost:7878') {
+    return API_BASE_URL
+  }
+  if (typeof window !== 'undefined' && window.location.hostname === '127.0.0.1') {
+    return 'http://127.0.0.1:7878'
+  }
+  return API_BASE_URL
+}
+
+// ─── Connection error ──────────────────────────────────────────────────────────
+
+export class ApiConnectionError extends Error {
+  constructor() {
+    super('Could not reach the RoadForge API.')
+    this.name = 'ApiConnectionError'
+  }
+}
+
+export function isApiConnectionError(error: unknown): error is ApiConnectionError {
+  return error instanceof ApiConnectionError || (
+    error instanceof Error && error.name === 'ApiConnectionError'
+  )
+}
+
+export interface ApiValidationDetail {
+  loc: (string | number)[]
+  msg: string
+  type: string
+}
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly detail: string,
+    public readonly code?: string,
+    public readonly conflict?: RoadmapConflictMetadata,
+    public readonly validationErrors?: ApiValidationDetail[],
+  ) {
+    super(`API ${status}: ${detail}`)
+    this.name = 'ApiError'
+  }
+}
+
+export function isApiError(error: unknown, status?: number, detail?: string): error is ApiError {
+  if (!(error instanceof ApiError)) return false
+  if (status !== undefined && error.status !== status) return false
+  if (detail !== undefined && error.detail !== detail) return false
+  return true
+}
+
+export function isSessionExpiredError(error: unknown): boolean {
+  return isApiError(error, 401, 'Session expired') || isApiError(error, 401, 'Session revoked')
+}
+
+export function isAuthError(error: unknown): boolean {
+  return isApiError(error, 401) || isApiError(error, 403)
+}
+
+export function isConflictError(error: unknown): boolean {
+  return isApiError(error, 409)
+}
+
+export function getConflictMetadata(error: unknown): RoadmapConflictMetadata | null {
+  if (!(error instanceof ApiError)) return null
+  if (error.status !== 409 || error.code !== 'roadmap_conflict') return null
+  return error.conflict ?? null
+}
+
+// ─── HTTP helper ───────────────────────────────────────────────────────────────
+
+export async function requestJson<T>(
+  path: string,
+  options: RequestInit = {},
+  sessionToken?: string,
+): Promise<T> {
+  const headers: Record<string, string> = {}
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+  }
+  if (sessionToken && sessionToken !== BROWSER_SESSION_TOKEN) {
+    headers['Authorization'] = `Bearer ${sessionToken}`
+  }
+
+  // Only cookie-authenticated browser requests opt into ambient credentials.
+  // Explicit Bearer requests remain isolated from cookies.
+  const credentials = sessionToken === BROWSER_SESSION_TOKEN
+    ? 'include'
+    : options.credentials
+
+  let res: Response
+  try {
+    res = await fetch(getApiBaseUrl() + path, {
+      ...options,
+      ...(credentials ? { credentials } : {}),
+      headers: { ...headers, ...(options.headers as Record<string, string> | undefined) },
+    })
+  } catch {
+    throw new ApiConnectionError()
+  }
+  // 204 No Content - no body to parse
+  if (res.status === 204) return undefined as T
+  if (!res.ok) {
+    let detail = res.statusText
+    let code: string | undefined
+    let conflict: RoadmapConflictMetadata | undefined
+    let validationErrors: ApiValidationDetail[] | undefined
+    try {
+      const body = await res.json() as {
+        detail?: string | { detail?: string; code?: string; conflict?: RoadmapConflictMetadata } | ApiValidationDetail[]
+        code?: string
+        conflict?: RoadmapConflictMetadata
+      }
+      const nestedDetail = (
+        typeof body.detail === 'object' && body.detail !== null && !Array.isArray(body.detail)
+      ) ? body.detail : undefined
+
+      if (typeof body.detail === 'string') detail = body.detail
+      if (Array.isArray(body.detail)) {
+        // FastAPI's own 422 shape: {"detail": [{"loc": [...], "msg": "...", "type": "..."}, ...]}
+        validationErrors = body.detail
+        detail = body.detail[0]?.msg ?? detail
+      } else if (nestedDetail?.detail) {
+        detail = nestedDetail.detail
+      }
+      code = body.code ?? nestedDetail?.code
+      conflict = body.conflict ?? nestedDetail?.conflict
+    } catch {
+      // leave detail as statusText
+    }
+    throw new ApiError(res.status, detail, code, conflict, validationErrors)
+  }
+  return res.json() as Promise<T>
+}
+
+export async function establishBrowserSession(
+  roadmapId: string,
+  bearerToken: string,
+): Promise<void> {
+  await requestJson<void>(
+    `/api/roadmaps/${roadmapId}/session/cookie`,
+    { method: 'POST', credentials: 'include' },
+    bearerToken,
+  )
+}
+
+/**
+ * Prefer the HttpOnly browser session, but never orphan a newly-created/joined
+ * participant if the exchange endpoint or cookie write is temporarily unavailable.
+ * The raw Bearer fallback remains roadmap-scoped and the hydration path retries the
+ * exchange before replacing persisted auth state with the non-secret marker.
+ */
+export async function resolveBrowserSessionToken(
+  roadmapId: string,
+  bearerToken: string,
+): Promise<string> {
+  try {
+    await establishBrowserSession(roadmapId, bearerToken)
+    return BROWSER_SESSION_TOKEN
+  } catch {
+    console.warn(
+      'Browser session exchange failed; retaining the roadmap-scoped Bearer session until a later hydration can migrate it.',
+    )
+    return bearerToken
+  }
+}

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Brand } from '@/components/ui/Brand'
-import { SiteFooter } from '@/components/layout/SiteFooter'
-import { ProblemReportLink } from '@/components/ui/ProblemReportLink'
+import { Brand } from '@/shared/ui/Brand'
+import { SiteFooter } from '@/shared/ui/SiteFooter'
+import { ProblemReportLink } from '@/shared/ui/ProblemReportLink'
 import './help.css'
 
 export const metadata: Metadata = {

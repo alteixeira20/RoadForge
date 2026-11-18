@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
-import { StorageWriteFailureBanner } from '@/components/ui/StorageWriteFailureBanner'
-import { RoadmapProvider } from '@/context/RoadmapContext'
+import { StorageWriteFailureBanner } from '@/shared/ui/StorageWriteFailureBanner'
+import { RoadmapProvider } from '@/features/synchronization/components/RoadmapProvider'
 import './globals.css'
 
 export const metadata: Metadata = {

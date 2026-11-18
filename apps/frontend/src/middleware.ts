@@ -4,7 +4,7 @@ import {
   contentSecurityPolicyHeader,
   resolveApiOrigin,
   resolveContentSecurityPolicyMode,
-} from '@/lib/content-security-policy'
+} from '@/shared/lib/content-security-policy'
 
 function createNonce(): string {
   return btoa(crypto.randomUUID())

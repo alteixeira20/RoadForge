@@ -1,0 +1,290 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Icon } from '@/shared/ui/Icon'
+import { SidePanel } from '@/shared/ui/SidePanel'
+import { getRoadmapActivity } from '@/features/history/services/history.service'
+import { isApiConnectionError } from '@/shared/http/roadmap-http'
+import {
+  getPhaseUpdateLabel,
+  getTaskUpdateFieldSummary,
+  getTaskUpdateLabel,
+} from '@/features/history/lib/activity-changes'
+import type { ActivityLog } from '@/shared/types/roadmap'
+
+interface ActivityPanelProps {
+  roadmapId: string | null
+  sessionToken: string | null
+  onClose: () => void
+  refreshKey?: number
+}
+
+export function ActivityPanel({ roadmapId, sessionToken, onClose, refreshKey }: ActivityPanelProps) {
+  const [logs, setLogs] = useState<ActivityLog[]>([])
+  const [state, setState] = useState<'local' | 'loading' | 'offline' | 'auth' | 'error' | 'ready'>('loading')
+  const isServerBacked = Boolean(roadmapId && sessionToken)
+
+  useEffect(() => {
+    async function load() {
+      setLogs([])
+
+      if (!roadmapId || !sessionToken) {
+        setState('local')
+        return
+      }
+
+      setState('loading')
+      try {
+        const data = await getRoadmapActivity(roadmapId, sessionToken)
+        setLogs(data.logs)
+        setState('ready')
+      } catch (err) {
+        if (isApiConnectionError(err)) {
+          setState('offline')
+        } else if (err instanceof Error && (err.message.includes('401') || err.message.includes('403'))) {
+          setState('auth')
+        } else {
+          setState('error')
+        }
+      }
+    }
+    load()
+  }, [isServerBacked, roadmapId, sessionToken, refreshKey])
+
+  const formatTime = (iso: string) => {
+    const d = new Date(iso)
+    const now = new Date()
+    const diff = now.getTime() - d.getTime()
+    const mins = Math.floor(diff / 60000)
+    const hrs = Math.floor(mins / 60)
+    const days = Math.floor(hrs / 24)
+
+    if (mins < 1) return 'Just now'
+    if (mins < 60) return `${mins}m ago`
+    if (hrs < 24) return `${hrs}h ago`
+    if (days < 7) return `${days}d ago`
+    return d.toLocaleDateString()
+  }
+
+  const getActionLabel = (action: string, metadata: Record<string, unknown> | null) => {
+    switch (action) {
+      case 'roadmap.created': return 'Created roadmap'
+      case 'roadmap.updated': return 'Saved roadmap'
+      case 'roadmap.renamed': return 'Renamed roadmap'
+      case 'roadmap.imported': return 'Imported roadmap'
+      case 'import.replaced': return 'Replaced roadmap from import'
+      case 'roadmap.restored': return 'Restored roadmap'
+      case 'roadmap.batch_changed': {
+        const changes = Array.isArray(metadata?.changes) ? metadata.changes.length : 0
+        return `Saved ${changes || 'multiple'} changes`
+      }
+      case 'phase.created': return 'Added phase'
+      case 'phase.updated': return getPhaseUpdateLabel(metadata)
+      case 'phase.deleted': return 'Deleted phase'
+      case 'phase.reordered': return 'Reordered phases'
+      case 'phase.completed': return 'Completed phase'
+      case 'phase.reopened': return 'Reopened phase'
+      case 'task.created': return 'Added task'
+      case 'task.completed': return 'Completed task'
+      case 'task.reopened': return 'Reopened task'
+      case 'task.updated': return getTaskUpdateLabel(metadata)
+      case 'task.dependency.linked': return 'Linked dependency'
+      case 'task.dependency.unlinked': return 'Unlinked dependency'
+      case 'task.reordered': return 'Reordered tasks'
+      case 'roadmap.phases_reordered': return 'Reordered phases'
+      case 'participant.joined': return `Joined as ${metadata?.role || 'contributor'}`
+      case 'participant.revoked': return 'Revoked participant'
+      case 'share_link.rotated': return `Rotated ${metadata?.role || ''} link`
+      case 'share_link.revoked': return `Revoked ${metadata?.role || ''} link`
+      default: return action
+    }
+  }
+
+  const plural = (count: number, singular: string, pluralLabel = `${singular}s`) => (
+    `${count} ${count === 1 ? singular : pluralLabel}`
+  )
+
+  const getBatchDetails = (metadata: Record<string, unknown> | null) => {
+    const counts = metadata?.counts
+    if (!counts || typeof counts !== 'object') return null
+    const c = counts as Record<string, unknown>
+    const parts: string[] = []
+    const add = (key: string, singular: string, pluralLabel?: string) => {
+      const value = c[key]
+      if (typeof value === 'number' && value > 0) parts.push(plural(value, singular, pluralLabel))
+    }
+    add('tasks_added', 'task added', 'tasks added')
+    add('phases_added', 'phase added', 'phases added')
+    add('phases_updated', 'phase updated', 'phases updated')
+    add('phases_deleted', 'phase deleted', 'phases deleted')
+    add('phases_completed', 'phase completed', 'phases completed')
+    add('phases_reopened', 'phase reopened', 'phases reopened')
+    add('tasks_completed', 'task completed', 'tasks completed')
+    add('tasks_reopened', 'task reopened', 'tasks reopened')
+    add('dependencies_linked', 'dependency linked', 'dependencies linked')
+    add('dependencies_unlinked', 'dependency unlinked', 'dependencies unlinked')
+    add('tasks_updated', 'task updated', 'tasks updated')
+    add('roadmaps_renamed', 'roadmap renamed', 'roadmaps renamed')
+    add('tasks_reordered', 'task reorder', 'task reorders')
+    add('phases_reordered', 'phase reorder', 'phase reorders')
+    add('imports', 'import')
+    return parts.length ? parts.join(' · ') : null
+  }
+
+  const getDetails = (log: ActivityLog) => {
+    const { action, before_json, after_json, metadata_json } = log
+    if (action === 'roadmap.created' && after_json?.name) {
+      return <span>&ldquo;{String(after_json.name)}&rdquo;</span>
+    }
+    if (action === 'roadmap.imported' || action === 'import.replaced') {
+      const phaseCount = typeof metadata_json?.phase_count === 'number'
+        ? metadata_json.phase_count
+        : typeof metadata_json?.phaseCount === 'number'
+          ? metadata_json.phaseCount
+          : null
+      const taskCount = typeof metadata_json?.task_count === 'number'
+        ? metadata_json.task_count
+        : typeof metadata_json?.taskCount === 'number'
+          ? metadata_json.taskCount
+          : null
+      if (phaseCount !== null && taskCount !== null) {
+        return <span>{plural(phaseCount, 'phase')} · {plural(taskCount, 'task')}</span>
+      }
+      return <span className="dim">Roadmap snapshot imported</span>
+    }
+    if (action === 'roadmap.restored') {
+      if (typeof metadata_json?.version_number === 'number') {
+        return <span>Version {metadata_json.version_number}</span>
+      }
+      return <span className="dim">Roadmap snapshot restored</span>
+    }
+    if (action === 'roadmap.renamed') {
+      const previousName = metadata_json?.previousRoadmapName
+      const nextName = metadata_json?.nextRoadmapName || metadata_json?.roadmapName
+      if (previousName && nextName) {
+        return <span>&ldquo;{String(previousName)}&rdquo; to &ldquo;{String(nextName)}&rdquo;</span>
+      }
+      if (nextName) return <span>&ldquo;{String(nextName)}&rdquo;</span>
+      return <span className="dim">Roadmap title changed</span>
+    }
+    if (action === 'roadmap.batch_changed') {
+      const details = getBatchDetails(metadata_json)
+      return details ? <span>{details}</span> : <span className="dim">Snapshot saved</span>
+    }
+    if (
+      action === 'phase.created'
+      || action === 'phase.updated'
+      || action === 'phase.deleted'
+      || action === 'phase.completed'
+      || action === 'phase.reopened'
+    ) {
+      if (
+        action === 'phase.updated'
+        && metadata_json?.previousValue
+        && metadata_json?.nextValue
+      ) {
+        const phase = [metadata_json.phaseNum, metadata_json.phaseName]
+          .filter(Boolean)
+          .map(String)
+          .join(' - ')
+        const change = `${String(metadata_json.previousValue)} to ${String(metadata_json.nextValue)}`
+        return <span>{phase}{phase ? ' · ' : ''}{change}</span>
+      }
+      if (metadata_json?.details) return <span>{String(metadata_json.details)}</span>
+      if (metadata_json?.phaseNum || metadata_json?.phaseName) {
+        return <span>{[metadata_json.phaseNum, metadata_json.phaseName].filter(Boolean).map(String).join(' - ')}</span>
+      }
+      return <span>{String(metadata_json?.phaseId || log.entity_id || 'Phase')}</span>
+    }
+    if (action === 'roadmap.updated') {
+      if (before_json?.phase_count !== undefined && after_json?.phase_count !== undefined) {
+        return <span>{String(after_json.phase_count)} phases</span>
+      }
+      return <span className="dim">Snapshot saved</span>
+    }
+    if (action === 'task.completed' || action === 'task.reopened' || action === 'task.created' || action === 'task.updated') {
+      const task = [metadata_json?.taskId, metadata_json?.taskTitle].filter(Boolean).map(String).join(' - ')
+      const phase = metadata_json?.phaseName ? ` · ${String(metadata_json.phaseName)}` : ''
+      const fields = action === 'task.updated'
+        ? getTaskUpdateFieldSummary(metadata_json)
+        : null
+      const fieldDetails = fields ? ` · ${fields}` : ''
+      return <span>{task}{phase}{fieldDetails}</span>
+    }
+    if (action === 'task.dependency.linked' || action === 'task.dependency.unlinked') {
+      return <span>{String(metadata_json?.taskId)} depends on {String(metadata_json?.dependencyId)}</span>
+    }
+    if (action === 'task.reordered') {
+      if (metadata_json?.phaseId) {
+        return <span>Phase {String(metadata_json?.phaseName || metadata_json?.phaseId)}</span>
+      }
+      return <span>{String(metadata_json?.taskId)} - {String(metadata_json?.taskTitle)}</span>
+    }
+    if (action === 'phase.reordered' || action === 'roadmap.phases_reordered') {
+      return metadata_json?.details
+        ? <span>{String(metadata_json.details)}</span>
+        : <span className="dim">Phase order changed</span>
+    }
+    if (action === 'participant.revoked') {
+      const label = [metadata_json?.display_name, metadata_json?.role].filter(Boolean).map(String).join(' · ')
+      return label ? <span>{label}</span> : <span className="dim">Session revoked</span>
+    }
+    return null
+  }
+
+  return (
+    <SidePanel title="Activity" className="activity-panel" onClose={onClose}>
+      <div className="panel-body">
+        {state === 'loading' ? (
+          <div className="state-msg">
+            <span className="spin">
+              <Icon name="spark" size={24} />
+            </span>
+            <p>Loading activity...</p>
+          </div>
+        ) : state === 'local' ? (
+          <div className="state-msg">
+            <Icon name="activity" size={24} />
+            <p>Activity logs become available after saving this roadmap to RoadForge.</p>
+            <small>Local changes are still stored in this browser.</small>
+          </div>
+        ) : state === 'offline' ? (
+          <div className="state-msg offline">
+            <Icon name="activity" size={24} />
+            <p>Activity is unavailable while the RoadForge API is offline. Your cached roadmap is still usable.</p>
+          </div>
+        ) : state === 'auth' ? (
+          <div className="state-msg offline">
+            <Icon name="lock" size={24} />
+            <p>Activity could not be loaded for this session.</p>
+          </div>
+        ) : state === 'error' ? (
+          <div className="state-msg offline">
+            <Icon name="activity" size={24} />
+            <p>Activity could not be loaded right now.</p>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="state-msg">
+            <Icon name="activity" size={24} />
+            <p>No activity yet.</p>
+          </div>
+        ) : (
+          <div className="activity-list">
+            {logs.map((log) => (
+              <div key={log.id} className="activity-row">
+                <div className="row-main">
+                  <span className="actor">{log.actor_name || 'System'}</span>
+                  <span className="action">{getActionLabel(log.action, log.metadata_json)}</span>
+                </div>
+                <div className="row-meta">
+                  <span className="details">{getDetails(log)}</span>
+                  <span className="time">{formatTime(log.created_at)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </SidePanel>
+  )
+}

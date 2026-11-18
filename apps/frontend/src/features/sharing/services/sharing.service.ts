@@ -1,0 +1,173 @@
+import type { ShareLink, ShareRole, Participant } from '@/shared/types/roadmap'
+import { requestJson } from '@/shared/http/roadmap-http'
+
+interface ApiShareLinkResponse {
+  id: string | null
+  role: string
+  token_prefix: string | null
+  url: string | null
+  is_active: boolean
+  created_at: string | null
+  rotated_at: string | null
+}
+
+// Owners receive every field below; editors receive a reduced projection
+// with only id/display_name/role/is_current_participant (see backend
+// ParticipantSummaryResponse) - the rest are absent, not null, for editors.
+interface ApiParticipantResponse {
+  id: string
+  display_name: string
+  role: string
+  is_current_participant: boolean
+  created_at?: string
+  last_seen_at?: string | null
+  session_expires_at?: string | null
+  revoked_at?: string | null
+  share_link_id?: string | null
+  joined_via_role?: string | null
+  access_source_label?: string
+}
+
+const _LINK_META: Record<string, { icon: string; desc: string; recommended?: true }> = {
+  owner:  { icon: 'shield', desc: 'Full control - manage settings, links, and members.' },
+  editor: { icon: 'users',  desc: 'Can edit phases, tasks, and dependencies. Cannot delete the roadmap.', recommended: true },
+  viewer: { icon: 'circle', desc: 'Read-only roadmap access. Treat this invite as a private credential.' },
+}
+
+function toShareLink(r: ApiShareLinkResponse): ShareLink {
+  const meta = _LINK_META[r.role] ?? { icon: 'link', desc: r.role }
+  return {
+    id: r.id,
+    role: r.role as ShareRole,
+    icon: meta.icon,
+    desc: meta.desc,
+    url: r.url ?? '',
+    isActive: r.is_active,
+    tokenPrefix: r.token_prefix,
+    createdAt: r.created_at,
+    rotatedAt: r.rotated_at,
+    ...(meta.recommended ? { recommended: true } : {}),
+  }
+}
+
+function toParticipant(r: ApiParticipantResponse): Participant {
+  return {
+    id: r.id,
+    displayName: r.display_name,
+    role: r.role as ShareRole,
+    isCurrentParticipant: r.is_current_participant,
+    createdAt: r.created_at,
+    lastSeenAt: r.last_seen_at,
+    sessionExpiresAt: r.session_expires_at,
+    revokedAt: r.revoked_at,
+    shareLinkId: r.share_link_id,
+    joinedViaRole: (r.joined_via_role ?? null) as ShareRole | null,
+    accessSourceLabel: r.access_source_label,
+  }
+}
+
+// ─── Share links ───────────────────────────────────────────────────────────────
+
+/**
+ * Fetch share-link states for all roles on a roadmap.
+ * url is empty string when null - raw tokens are not re-exposed after creation.
+ */
+export async function getShareLinks(roadmapId: string, sessionToken: string): Promise<ShareLink[]> {
+  const data = await requestJson<ApiShareLinkResponse[]>(
+    `/api/roadmaps/${roadmapId}/share-links`,
+    {},
+    sessionToken,
+  )
+  return data.map(toShareLink)
+}
+
+/**
+ * Rotate a share link for the given role. Returns the link with the new join URL
+ * (the raw token is only available in this response).
+ */
+export async function regenerateShareLink(
+  roadmapId: string,
+  role: string,
+  sessionToken?: string,
+): Promise<ShareLink> {
+  const data = await requestJson<ApiShareLinkResponse>(
+    `/api/roadmaps/${roadmapId}/share-links/${role}/rotate`,
+    { method: 'POST' },
+    sessionToken,
+  )
+  return toShareLink(data)
+}
+
+/**
+ * Revoke a share link so it can no longer be used to join.
+ */
+export async function revokeShareLink(
+  roadmapId: string,
+  role: string,
+  sessionToken?: string,
+): Promise<void> {
+  await requestJson<void>(
+    `/api/roadmaps/${roadmapId}/share-links/${role}`,
+    { method: 'DELETE' },
+    sessionToken,
+  )
+}
+
+// ─── Participants ──────────────────────────────────────────────────────────────
+
+/**
+ * Fetch joined participant sessions for owner management.
+ */
+export async function getParticipants(
+  roadmapId: string,
+  sessionToken: string,
+): Promise<Participant[]> {
+  const data = await requestJson<ApiParticipantResponse[]>(
+    `/api/roadmaps/${roadmapId}/participants`,
+    {},
+    sessionToken,
+  )
+  return data.map(toParticipant)
+}
+
+/**
+ * Revoke a joined participant session. This does not revoke invite links.
+ */
+export async function revokeParticipant(
+  roadmapId: string,
+  participantId: string,
+  sessionToken: string,
+): Promise<void> {
+  await requestJson<void>(
+    `/api/roadmaps/${roadmapId}/participants/${participantId}/revoke`,
+    { method: 'POST' },
+    sessionToken,
+  )
+}
+
+/**
+ * Accept a share-link invite and join the roadmap. The raw Bearer session is
+ * exchanged for a path-scoped HttpOnly cookie before this function resolves.
+ */
+interface ApiPasswordResponse {
+  is_password_enabled: boolean
+}
+
+/**
+ * Set, change, or remove the roadmap password. Passing null disables protection.
+ */
+export async function updateRoadmapPassword(
+  roadmapId: string,
+  password: string | null,
+  sessionToken: string,
+): Promise<{ isPasswordEnabled: boolean }> {
+  const data = await requestJson<ApiPasswordResponse>(
+    `/api/roadmaps/${roadmapId}/password`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ password }),
+    },
+    sessionToken,
+  )
+  return { isPasswordEnabled: data.is_password_enabled }
+}
