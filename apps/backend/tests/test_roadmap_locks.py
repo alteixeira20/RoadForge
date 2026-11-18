@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-import api.routers.roadmap_locks as locks_router
-import api.routers.roadmap_realtime as realtime_router
-from api.services.lock_service import MemoryLockService
-from api.services.ticket_service import MemoryTicketService
+import api.features.collaboration.router as locks_router
+import api.features.realtime.router as realtime_router
+from api.features.collaboration.lock_service import MemoryLockService
+from api.features.realtime.ticket_service import MemoryTicketService
 from tests.conftest import create_roadmap
 
 pytestmark = pytest.mark.asyncio

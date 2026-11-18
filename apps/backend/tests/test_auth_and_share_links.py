@@ -20,7 +20,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import api.services.sharing_service as sharing_service
+import api.features.sharing.service as sharing_service
 from api.models.roadmap import Participant
 from tests.conftest import create_roadmap
 

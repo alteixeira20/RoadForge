@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-import api.services.roadmap_tag_service as tag_service
+import api.features.tags.service as tag_service
 from tests.conftest import create_roadmap
 from tests.helpers_projection import auth
 

@@ -2,7 +2,7 @@ import pytest
 from fastapi import HTTPException
 
 from api.schemas.roadmap import PhaseDTO
-from api.services.roadmap_validation import validate_roadmap_domain
+from api.features.roadmaps.validation import validate_roadmap_domain
 
 
 def phase(tasks: list[dict]) -> PhaseDTO:

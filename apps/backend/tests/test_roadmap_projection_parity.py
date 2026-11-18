@@ -17,8 +17,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import Roadmap, RoadmapPhase, RoadmapTask
-from api.services.id_service import generate_id
-from api.services.projection import (
+from api.shared.ids import generate_id
+from api.features.roadmaps.projection import (
     backfill_and_report_projection_drift,
     clear_roadmap_projection,
     rebuild_roadmap_projection,

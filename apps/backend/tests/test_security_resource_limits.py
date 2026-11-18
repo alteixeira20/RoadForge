@@ -7,16 +7,16 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import api.routers.roadmap_core as roadmaps_router
-import api.services.activity_log_limit as activity_log_limit
-import api.services.roadmap_join_service as roadmap_join_service
-import api.services.version_service as version_service
+import api.features.roadmaps.router as roadmaps_router
+import api.features.roadmaps.activity_log_limit as activity_log_limit
+import api.features.sharing.join_service as roadmap_join_service
+import api.features.history.version_service as version_service
 from api.database import get_db
 from api.main import create_app
 from api.models.roadmap import ActivityLog, Participant, Roadmap, RoadmapVersion
-from api.services.auth_service import is_participant_revoked
-from api.services.id_service import generate_id
-from api.services.rate_limit_service import MemoryRateLimiter
+from api.shared.auth.auth_service import is_participant_revoked
+from api.shared.ids import generate_id
+from api.shared.security.rate_limit_service import MemoryRateLimiter
 from tests.conftest import _test_session_factory, create_roadmap
 
 pytestmark = pytest.mark.asyncio

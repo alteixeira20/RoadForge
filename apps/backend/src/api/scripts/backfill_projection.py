@@ -19,7 +19,7 @@ import argparse
 import asyncio
 
 from api.database import async_session_factory
-from api.services.projection import (
+from api.features.roadmaps.projection import (
     ProjectionDriftReport,
     backfill_and_report_projection_drift,
     report_projection_drift,

@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient
 from redis.exceptions import RedisError
 
-from api.services.rate_limit_service import RedisRateLimiter
+from api.shared.security.rate_limit_service import RedisRateLimiter
 from tests.conftest import create_roadmap
 
 pytestmark = pytest.mark.asyncio

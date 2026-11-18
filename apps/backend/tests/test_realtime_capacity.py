@@ -27,21 +27,21 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import api.database as db_module
-import api.routers.roadmap_realtime as rr_module
+import api.features.realtime.router as rr_module
 from api.database import get_db
 from api.main import create_app
 from api.models.base import Base
-from api.services import event_bus as event_bus_module
-from api.services.event_bus import (
+from api.shared.realtime import event_bus as event_bus_module
+from api.shared.realtime.event_bus import (
     Event,
     RedisPubSubEventBus,
 )
-from api.services.rate_limit_service import MemoryRateLimiter
-from api.services.realtime_stream_limit import (
+from api.shared.security.rate_limit_service import MemoryRateLimiter
+from api.features.realtime.stream_limit import (
     RedisRealtimeStreamRegistry,
     realtime_stream_registry,
 )
-from api.services.ticket_service import (
+from api.features.realtime.ticket_service import (
     EVENT_TICKET_COOKIE_NAME,
     EVENT_TICKET_TTL_SECONDS,
     RedisTicketService,

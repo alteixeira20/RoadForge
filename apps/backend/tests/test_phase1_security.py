@@ -9,9 +9,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import api.routers.roadmap_realtime as roadmaps_router
+import api.features.realtime.router as roadmaps_router
 from api.models.roadmap import Participant
-from api.services.ticket_service import (
+from api.features.realtime.ticket_service import (
     EVENT_TICKET_COOKIE_NAME,
     EVENT_TICKET_TTL_SECONDS,
     event_ticket_cookie_path,

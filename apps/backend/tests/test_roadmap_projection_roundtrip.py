@@ -13,8 +13,8 @@ from __future__ import annotations
 import pytest
 
 from api.models.roadmap import Roadmap
-from api.services.id_service import generate_id
-from api.services.projection import (
+from api.shared.ids import generate_id
+from api.features.roadmaps.projection import (
     rebuild_roadmap_projection,
     serialize_projection_to_snapshot,
 )

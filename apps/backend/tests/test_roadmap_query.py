@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import delete, select
 
 from api.models.roadmap import Roadmap
-from api.services.roadmap_query import (
+from api.features.roadmaps.queries import (
     fetch_active_roadmap,
     fetch_active_roadmap_for_update,
 )

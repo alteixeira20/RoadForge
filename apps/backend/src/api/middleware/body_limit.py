@@ -23,7 +23,7 @@ from fastapi import FastAPI
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from api.schemas.limits import REQUEST_BODY_MAX_BYTES
+from api.features.roadmaps.limit_schemas import REQUEST_BODY_MAX_BYTES
 
 _TOO_LARGE = JSONResponse({"detail": "Request body too large"}, status_code=413)
 _INVALID_LENGTH = JSONResponse({"detail": "Invalid Content-Length header"}, status_code=400)

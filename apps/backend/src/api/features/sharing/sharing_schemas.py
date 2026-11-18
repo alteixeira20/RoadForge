@@ -1,0 +1,77 @@
+"""Share link & participant schemas."""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from api.features.roadmaps.limit_schemas import PASSWORD_MAX, PASSWORD_MIN
+from api.features.roadmaps.shared_schemas import ShareRole
+
+
+class ShareLinkResponse(BaseModel):
+    id: str | None
+    role: ShareRole
+    # Readable prefix shown in UI; not the secret token.
+    token_prefix: str | None = None
+    # Full fragment-based join URL with the raw token embedded.
+    # Every role is reveal-once: URLs are returned only on create/rotate.
+    url: str | None = None
+    is_active: bool
+    created_at: datetime | None = None
+    rotated_at: datetime | None = None
+
+
+class ParticipantResponse(BaseModel):
+    id: str
+    display_name: str
+    role: ShareRole
+    created_at: datetime
+    last_seen_at: datetime | None = None
+    session_expires_at: datetime | None = None
+    revoked_at: datetime | None = None
+    is_current_participant: bool = False
+    share_link_id: str | None = None
+    joined_via_role: ShareRole | None = None
+    access_source_label: str = "Legacy / unknown link"
+
+
+class ParticipantSummaryResponse(BaseModel):
+    """Reduced participant projection for editors.
+
+    Excludes session/link metadata (last_seen_at, session_expires_at,
+    share_link_id, joined_via_role, access_source_label, revoked_at) that
+    owners can see but editors don't need for assignee suggestions.
+    """
+
+    id: str
+    display_name: str
+    role: ShareRole
+    is_current_participant: bool = False
+
+
+class UpdatePasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password: str | None = None
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def _validate_password(cls, v: object) -> object:
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise ValueError("password must be a string or null")
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("password cannot be blank; use null to disable password protection")
+        if len(stripped) > PASSWORD_MAX:
+            raise ValueError(f"password exceeds {PASSWORD_MAX} characters")
+        if len(stripped) < PASSWORD_MIN:
+            raise ValueError(f"password must be at least {PASSWORD_MIN} characters")
+        return stripped
+
+
+class RoadmapPasswordResponse(BaseModel):
+    is_password_enabled: bool

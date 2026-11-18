@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-from api.services.phase_structure_service import _phase_dicts
+from api.features.phases.structure_service import _phase_dicts
 
 
 def test_phase_structure_snapshot_parser_accepts_only_object_phase_lists() -> None:

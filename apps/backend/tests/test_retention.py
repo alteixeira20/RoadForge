@@ -16,7 +16,7 @@ from api.models.roadmap import (
     RoadmapVersion,
 )
 from api.scripts.purge_retention import _parse_as_of, _run
-from api.services.retention_service import (
+from api.features.retention.service import (
     RetentionPolicy,
     build_retention_plan,
     execute_retention_plan,

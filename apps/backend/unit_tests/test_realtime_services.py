@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-import api.services.lock_service as lock_module
-from api.services.event_bus import Event, MemoryEventBus, RedisPubSubEventBus
-from api.services.lock_service import MemoryLockService, RedisLockService
-from api.services.ticket_service import MemoryTicketService, RedisTicketService
+import api.features.collaboration.lock_service as lock_module
+from api.shared.realtime.event_bus import Event, MemoryEventBus, RedisPubSubEventBus
+from api.features.collaboration.lock_service import MemoryLockService, RedisLockService
+from api.features.realtime.ticket_service import MemoryTicketService, RedisTicketService
 
 pytestmark = pytest.mark.asyncio
 
@@ -60,7 +60,7 @@ async def test_memory_ticket_is_single_use_scoped_and_expiring(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     now = 2_000.0
-    monkeypatch.setattr("api.services.ticket_service.time.time", lambda: now)
+    monkeypatch.setattr("api.features.realtime.ticket_service.time.time", lambda: now)
     store = MemoryTicketService(ttl=30)
     session_expiry = datetime.fromtimestamp(3_000, timezone.utc)
 

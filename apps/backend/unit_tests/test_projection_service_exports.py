@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import api.services.projection as projection
+import api.features.roadmaps.projection as projection
 
 _PUBLIC_EXPORTS = {
     "ProjectionBackfillResult",

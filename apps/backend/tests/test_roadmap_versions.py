@@ -22,8 +22,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import Participant, Roadmap, RoadmapVersion
-from api.services.id_service import generate_id
-from api.services.roadmap_service import _MAX_ROADMAP_VERSIONS, _trim_old_versions
+from api.shared.ids import generate_id
+from api.features.roadmaps.service import _MAX_ROADMAP_VERSIONS, _trim_old_versions
 from tests.conftest import create_roadmap
 
 pytestmark = pytest.mark.asyncio

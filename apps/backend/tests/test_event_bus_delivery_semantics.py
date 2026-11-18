@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from redis.exceptions import RedisError
 
-from api.services.event_bus import (
+from api.shared.realtime.event_bus import (
     Event,
     RedisPubSubEventBus,
     RedisRevocationRegistry,

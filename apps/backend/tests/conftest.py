@@ -34,20 +34,20 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 from sqlalchemy.pool import NullPool  # noqa: E402
 
-import api.routers.roadmap_activity as _roadmap_activity_module  # noqa: E402
-import api.routers.roadmap_client as _roadmap_client_module  # noqa: E402
-import api.routers.roadmap_core as _roadmap_core_module  # noqa: E402
-import api.routers.roadmap_focused as _roadmap_focused_module  # noqa: E402
-import api.routers.roadmap_locks as _roadmap_locks_module  # noqa: E402
-import api.routers.roadmap_realtime as _roadmap_realtime_module  # noqa: E402
-import api.routers.roadmap_sharing as _roadmap_sharing_module  # noqa: E402
-import api.routers.roadmap_tags as _roadmap_tags_module  # noqa: E402
-import api.routers.roadmap_tasks as _roadmap_tasks_module  # noqa: E402
-import api.routers.roadmap_versions as _roadmap_versions_module  # noqa: E402
+import api.features.history.activity_router as _roadmap_activity_module  # noqa: E402
+import api.features.agent_client.router as _roadmap_client_module  # noqa: E402
+import api.features.roadmaps.router as _roadmap_core_module  # noqa: E402
+import api.features.roadmaps.focused_router as _roadmap_focused_module  # noqa: E402
+import api.features.collaboration.router as _roadmap_locks_module  # noqa: E402
+import api.features.realtime.router as _roadmap_realtime_module  # noqa: E402
+import api.features.sharing.router as _roadmap_sharing_module  # noqa: E402
+import api.features.tags.router as _roadmap_tags_module  # noqa: E402
+import api.features.tasks.router as _roadmap_tasks_module  # noqa: E402
+import api.features.history.versions_router as _roadmap_versions_module  # noqa: E402
 from api.database import get_db  # noqa: E402
 from api.main import create_app  # noqa: E402
 from api.models.base import Base  # noqa: E402
-from api.services.rate_limit_service import MemoryRateLimiter  # noqa: E402
+from api.shared.security.rate_limit_service import MemoryRateLimiter  # noqa: E402
 
 # ── 4. Engine for the test database ───────────────────────────────────────────
 # NullPool disables connection pooling so asyncpg never holds loop-bound

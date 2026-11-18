@@ -9,11 +9,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 
-import api.routers.roadmap_task_structure as task_structure_router
+import api.features.tasks.structure_router as task_structure_router
 from api.database import get_db
 from api.main import create_app
 from api.models.roadmap import Roadmap
-from api.services.rate_limit_service import MemoryRateLimiter
+from api.shared.security.rate_limit_service import MemoryRateLimiter
 from tests.conftest import _test_session_factory
 from tests.helpers_projection import PHASES_WITH_TASKS, auth
 

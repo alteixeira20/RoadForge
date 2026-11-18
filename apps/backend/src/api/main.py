@@ -8,8 +8,10 @@ from api.middleware.body_limit import add_body_limit
 from api.middleware.browser_session import add_browser_session_auth
 from api.middleware.cors import add_cors
 from api.middleware.security_headers import add_security_headers
-from api.routers import browser_sessions, health, roadmaps
-from api.services.realtime_startup import validate_realtime_connectivity
+from api.routers import roadmaps
+from api.shared.auth import browser_session_router as browser_sessions
+from api.shared.health import router as health
+from api.shared.realtime.startup import validate_realtime_connectivity
 
 
 @asynccontextmanager

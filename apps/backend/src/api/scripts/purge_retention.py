@@ -19,7 +19,7 @@ import json
 from datetime import datetime, timezone
 
 from api.database import async_session_factory
-from api.services.retention_service import (
+from api.features.retention.service import (
     RetentionPolicy,
     build_retention_plan,
     execute_retention_plan,

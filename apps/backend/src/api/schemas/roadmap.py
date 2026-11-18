@@ -4,43 +4,49 @@ All schema classes live in their domain modules. This module provides a
 single import surface so existing code continues to work unchanged.
 """
 
-from api.schemas.activity import ActivityLogListResponse, ActivityLogResponse
-from api.schemas.collaboration import (
+from api.features.collaboration.schemas import LockRequest, LockResponse
+from api.features.history.activity_schemas import ActivityLogListResponse, ActivityLogResponse
+from api.features.history.version_schemas import (
+    CheckpointResponse,
+    RestoreRoadmapVersionRequest,
+    RoadmapVersionDetailResponse,
+    RoadmapVersionSummaryResponse,
+)
+from api.features.phases.schemas import (
     CreatePhaseRequest,
     PatchPhaseRequest,
     PatchRoadmapNameRequest,
     ReorderPhasesRequest,
 )
-from api.schemas.conflicts import (
+from api.features.realtime.schemas import EventTicketResponse
+from api.features.roadmaps.conflict_schemas import (
     RoadmapConflictMetadata,
     RoadmapConflictResponse,
     RoadmapConflictServerSnapshot,
     RoadmapConflictSummary,
 )
-from api.schemas.events import EventTicketResponse
-from api.schemas.join import JoinRoadmapRequest, JoinRoadmapResponse
-from api.schemas.locks import LockRequest, LockResponse
-from api.schemas.roadmap_core import (
+from api.features.roadmaps.core_schemas import (
     CreateRoadmapRequest,
     CreateRoadmapResponse,
     DeleteRoadmapResponse,
     RoadmapResponse,
     UpdateRoadmapRequest,
 )
-from api.schemas.shared import (
+from api.features.roadmaps.shared_schemas import (
     ALLOWED_CHANGE_SUMMARY_ACTIONS,
     PhaseStatus,
     ShareRole,
     validate_change_summary,
 )
-from api.schemas.sharing import (
+from api.features.sharing.join_schemas import JoinRoadmapRequest, JoinRoadmapResponse
+from api.features.sharing.sharing_schemas import (
     ParticipantResponse,
     ParticipantSummaryResponse,
     RoadmapPasswordResponse,
     ShareLinkResponse,
     UpdatePasswordRequest,
 )
-from api.schemas.tags import (
+from api.features.tags.schemas import (
     CreateTagRequest,
     ReorderTagsRequest,
     TagDefinitionDTO,
@@ -48,20 +54,17 @@ from api.schemas.tags import (
     UpdateTagRequest,
     validate_tag_registry_uniqueness,
 )
-from api.schemas.task_structure import CreateTaskStructureRequest, ReorderTaskStructureRequest
-from api.schemas.tasks import (
+from api.features.tasks.structure_schemas import (
+    CreateTaskStructureRequest,
+    ReorderTaskStructureRequest,
+)
+from api.features.tasks.task_schemas import (
     PatchTaskDoneRequest,
     PatchTaskRequest,
     PhaseDTO,
     RoadmapSnapshotDTO,
     TaskDTO,
     TaskExternalLinkDTO,
-)
-from api.schemas.versions import (
-    CheckpointResponse,
-    RestoreRoadmapVersionRequest,
-    RoadmapVersionDetailResponse,
-    RoadmapVersionSummaryResponse,
 )
 
 __all__ = [

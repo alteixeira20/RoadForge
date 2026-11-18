@@ -21,9 +21,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import Participant
-from api.services import event_bus as event_bus_module
-from api.services.auth_service import is_participant_revoked
-from api.services.event_bus import (
+from api.shared.realtime import event_bus as event_bus_module
+from api.shared.auth.auth_service import is_participant_revoked
+from api.shared.realtime.event_bus import (
     Event,
     MemoryEventBus,
     RedisPubSubEventBus,
@@ -32,7 +32,7 @@ from api.services.event_bus import (
     RevocationRegistryUnavailableError,
     forward_subscription,
 )
-from api.services.sharing_service import resolve_realtime_revocation, revoke_participant
+from api.features.sharing.service import resolve_realtime_revocation, revoke_participant
 from tests.conftest import create_roadmap
 from tests.test_auth_and_share_links import _auth, _join, _rotate_link
 

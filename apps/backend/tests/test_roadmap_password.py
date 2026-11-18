@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.roadmap import ActivityLog, Roadmap
-from api.services.event_bus import event_bus
+from api.shared.realtime.event_bus import event_bus
 from tests.conftest import create_roadmap
 
 pytestmark = pytest.mark.asyncio

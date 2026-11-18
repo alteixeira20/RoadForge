@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-from api.services.task_structure_helpers import (
+from api.features.tasks.structure_helpers import (
     phase_dicts,
     recompute_phase_progress,
     reorder_direct_children,

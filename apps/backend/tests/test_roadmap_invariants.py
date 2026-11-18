@@ -7,9 +7,9 @@ import pytest
 from fastapi import HTTPException
 
 from api.schemas.roadmap import PhaseDTO, TagDefinitionDTO, TaskDTO
-from api.services.roadmap_concurrency import ensure_roadmap_is_current
-from api.services.roadmap_helpers import RoadmapConflictError
-from api.services.roadmap_validation import validate_roadmap_domain
+from api.features.roadmaps.concurrency import ensure_roadmap_is_current
+from api.features.roadmaps.roadmap_helpers import RoadmapConflictError
+from api.features.roadmaps.validation import validate_roadmap_domain
 
 
 def task(

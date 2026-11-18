@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-import api.routers.health as health_module
+import api.shared.health.router as health_module
 
 
 async def test_liveness_does_not_probe_external_dependencies(client, monkeypatch):

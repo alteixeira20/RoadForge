@@ -8,8 +8,8 @@ from redis.exceptions import RedisError
 
 from api.config import Settings, get_settings
 from api.main import create_app
-from api.services import realtime_startup
-from api.services.client_ip_service import extract_client_ip
+from api.shared.realtime import startup as realtime_startup
+from api.shared.security.client_ip_service import extract_client_ip
 
 
 async def test_health_response_is_minimal_and_has_security_headers(client):

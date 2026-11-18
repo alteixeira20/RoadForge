@@ -1,13 +1,13 @@
 import pytest
 
-from api.services.event_bus import (
+from api.shared.realtime.event_bus import (
     _MEMORY_SUBSCRIPTION_QUEUE_MAX,
     Event,
     MemoryEventBus,
     SubscriptionOverflowError,
     forward_subscription,
 )
-from api.services.realtime_stream_limit import MemoryRealtimeStreamRegistry
+from api.features.realtime.stream_limit import MemoryRealtimeStreamRegistry
 
 
 @pytest.mark.asyncio

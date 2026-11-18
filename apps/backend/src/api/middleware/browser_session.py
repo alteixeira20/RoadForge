@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from api.config import get_settings
-from api.services.browser_session import BROWSER_SESSION_COOKIE_NAME
+from api.shared.auth.browser_session import BROWSER_SESSION_COOKIE_NAME
 
 _ROADMAP_PATH = re.compile(r"^/api/roadmaps/([^/]+)(?:/|$)")
 _UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
