@@ -17,6 +17,7 @@ coverage/
 .vercel/
 apps/frontend/playwright-report/
 apps/frontend/test-results/
+.playwright-mcp/
 
 # TypeScript
 *.tsbuildinfo
