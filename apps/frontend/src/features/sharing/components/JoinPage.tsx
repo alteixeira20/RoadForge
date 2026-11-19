@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Brand } from '@/shared/ui/Brand'
 import { Icon } from '@/shared/ui/Icon'
@@ -17,12 +17,15 @@ import type { ShareRole } from '@/shared/types/roadmap'
 export function JoinPage() {
   const router = useRouter()
   const [token, setToken] = useState<string | null | undefined>(undefined)
+  const resolvedTokenRef = useRef<string | null | undefined>(undefined)
 
   useEffect(() => {
+    if (resolvedTokenRef.current !== undefined) return
     const inviteToken = readInviteToken({
       hash: window.location.hash,
       search: window.location.search,
     })
+    resolvedTokenRef.current = inviteToken
     setToken(inviteToken)
     if (inviteToken) scrubInviteTokenFromAddressBar()
   }, [])
