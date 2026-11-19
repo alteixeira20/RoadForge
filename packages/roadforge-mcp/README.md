@@ -98,6 +98,49 @@ It does **not** perform `GET /api/roadmaps/{id}`. Only `roadforge_get(mode="full
 
 Compact 409 conflicts retain the roadmap ID, client/server revisions, and conflict summary needed for recovery without returning the complete server roadmap snapshot.
 
+## Remote MCP and Streamable HTTP
+
+RoadForge MCP supports both local stdio execution and streamable HTTP transports for web agents and hosted environments.
+
+### Starting the HTTP Server
+
+Run the server via CLI:
+
+```bash
+roadforge-mcp serve-http --port 8787 --host 127.0.0.1
+```
+
+Or configure via environment variables:
+
+- `ROADFORGE_MCP_PORT`: HTTP listen port (default: `8787`);
+- `ROADFORGE_MCP_HOST`: HTTP bind host (default: `127.0.0.1`);
+- `ROADFORGE_MCP_MODE`: `'team-gateway'` or `'self-hosted'`;
+- `ROADFORGE_MCP_TEAM_SECRET`: Shared secret for team gateway authentication;
+- `ROADFORGE_MCP_AUTH_TOKEN`: Optional bearer token for self-hosted instances.
+
+### Mode A: Hosted Team Gateway
+
+In Mode A (`ROADFORGE_MCP_MODE=team-gateway` or when `ROADFORGE_MCP_TEAM_SECRET` is set):
+
+- All requests require authentication using `Authorization: Bearer <token>` or header `x-roadforge-team-token: <secret>`.
+- Unauthenticated or invalid requests receive HTTP 401 with standard JSON-RPC error `-32001`.
+- Web agents may pass per-request headers for least-privilege scoping:
+  - `x-roadforge-roadmap-id`: target roadmap ID;
+  - `x-roadforge-session-token`: scoped session token for the target roadmap;
+  - `x-roadforge-api-url`: API origin (must be HTTPS outside loopback).
+- Maximum request payload size is capped at 1 MB to prevent resource exhaustion.
+
+### Mode B: Self-Hosted Transport
+
+In Mode B (`ROADFORGE_MCP_MODE=self-hosted`):
+
+- Useful for running on private local networks, team Kubernetes clusters, or local Docker environments.
+- Optional bearer token protection via `ROADFORGE_MCP_AUTH_TOKEN`.
+- Exposes standard streamable HTTP endpoints:
+  - `POST /mcp` (or `POST /`): JSON-RPC 2.0 tool execution;
+  - `GET /mcp` (or `GET /sse`): Server-Sent Events notification stream;
+  - `GET /health`: lightweight JSON health and mode check.
+
 ## Concurrency
 
 Where RoadForge already requires exact optimistic concurrency, MCP preserves it. Pass `expectedUpdatedAt` from a prior focused read when coordinating multiple writes. If omitted for task/tag writes, MCP obtains a fresh token from `/revision` immediately before the mutation. It never silently retries a 409 or weakens compare-and-swap semantics.
