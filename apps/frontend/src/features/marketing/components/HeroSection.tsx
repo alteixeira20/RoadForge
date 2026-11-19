@@ -1,7 +1,6 @@
 'use client'
 
 import { Icon } from '@/shared/ui/Icon'
-import { MiniPreview } from './MiniPreview'
 
 interface HeroSectionProps {
   onCreate: () => void
@@ -17,7 +16,7 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
         </h1>
         <div className="ctas">
           <button className="btn primary lg" onClick={onCreate}>
-            Try the hosted demo <Icon name="arrow-right" size={16} stroke="#fff" />
+            Try the Hosted demo <Icon name="arrow-right" size={16} stroke="#fff" />
           </button>
           <a
             className="btn lg secondary"
@@ -27,15 +26,6 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           >
             <Icon name="github" size={16} /> Fork / self-host
           </a>
-        </div>
-        <div className="preview-wrap">
-          <div className="preview">
-            <div className="preview-bar">
-              <span className="dots"><i /><i /><i /></span>
-              <span className="url">roadforge.anvilary.tools · Hosted demo</span>
-            </div>
-            <MiniPreview />
-          </div>
         </div>
         <div className="meta-row" aria-label="RoadForge highlights">
           <span><Icon name="lock" size={14} /> No account required</span>

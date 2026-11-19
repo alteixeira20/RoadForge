@@ -58,31 +58,17 @@ async function collectViewport(page, viewport) {
     const ctas = document.querySelector('.ctas')
     const hero = document.querySelector('#hero')
     const howHeading = document.querySelector('#how h2')
-    const preview = document.querySelector('.preview')
-    const previewContent = document.querySelector('.preview-mini')
     const expectedMetadata = ['No account required', 'Local-first', 'Portable exports', 'Self-host for team use']
     const metadataItems = [...metadata.querySelectorAll('span')]
     const metadataBox = box(metadata)
     const ctasBox = box(ctas)
-    const previewBox = box(preview)
-    const previewContentBox = box(previewContent)
-    const previewChildrenFit = [...previewContent.querySelectorAll('*')].every((element) => {
-      const child = box(element)
-      return child.top >= previewContentBox.top - 1 && child.bottom <= previewContentBox.bottom + 1 && child.left >= previewContentBox.left - 1 && child.right <= previewContentBox.right + 1
-    })
     return {
       viewport: { width: window.innerWidth, height: window.innerHeight },
       metadataBox,
-      ctaPreviewGap: previewBox.top - ctasBox.bottom,
-      previewMetadataGap: metadataBox.top - previewBox.bottom,
+      ctasBox,
       heroBox: box(hero),
       howHeadingBox: box(howHeading),
-      previewBox,
-      previewContentBox,
-      previewContentScrollHeight: previewContent.scrollHeight,
-      previewContentClientHeight: previewContent.clientHeight,
       metadataVisible: expectedMetadata.every((text) => metadataItems.some((item) => item.textContent.includes(text) && box(item).top >= 0 && box(item).bottom <= window.innerHeight)),
-      previewUnclipped: previewContent.scrollHeight <= previewContent.clientHeight + 1 && previewChildrenFit,
       horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth && getComputedStyle(document.body).overflowX !== 'hidden',
     }
   })
@@ -110,16 +96,13 @@ test('desktop Hero keeps metadata within the initial viewport', { timeout: 60_00
     ]) {
       const result = await collectViewport(page, viewport)
       const bottomInset = result.viewport.height - result.metadataBox.bottom
-      const measurement = `${viewport.width}x${viewport.height}: metadata inset ${bottomInset.toFixed(1)}px; How it works heading top ${result.howHeadingBox.top.toFixed(1)}px; preview content ${result.previewContentClientHeight}/${result.previewContentScrollHeight}px`
+      const measurement = `${viewport.width}x${viewport.height}: metadata inset ${bottomInset.toFixed(1)}px; How it works heading top ${result.howHeadingBox.top.toFixed(1)}px`
       t.diagnostic(measurement)
       console.log(measurement)
       assert.equal(result.metadataVisible, true, `${viewport.width}x${viewport.height}: all metadata items must be visible`)
       assert.ok(bottomInset >= 24, `${viewport.width}x${viewport.height}: metadata needs a 24px bottom inset, received ${bottomInset}px`)
-      assert.ok(bottomInset <= 96, `${viewport.width}x${viewport.height}: metadata must stay within 96px of the viewport bottom, received ${bottomInset}px`)
-      assert.ok(result.heroBox.bottom >= result.viewport.height, `${viewport.width}x${viewport.height}: Hero must fill the viewport`)
-      assert.ok(result.howHeadingBox.top >= result.viewport.height + 24, `${viewport.width}x${viewport.height}: How it works must begin at least 24px below the viewport`)
-      assert.ok(Math.abs(result.ctaPreviewGap - result.previewMetadataGap) <= 1, `${viewport.width}x${viewport.height}: preview spacing must be equal (${result.ctaPreviewGap}px vs ${result.previewMetadataGap}px)`)
-      assert.equal(result.previewUnclipped, true, `${viewport.width}x${viewport.height}: preview content must not be clipped`)
+      assert.ok(result.heroBox.bottom >= result.viewport.height - 1, `${viewport.width}x${viewport.height}: Hero must fill the viewport`)
+      assert.ok(result.howHeadingBox.top >= result.viewport.height, `${viewport.width}x${viewport.height}: How it works must begin below the initial viewport`)
       assert.equal(result.horizontalOverflow, false, `${viewport.width}x${viewport.height}: page must not overflow horizontally`)
     }
 

@@ -40,13 +40,13 @@ afterEach(() => {
 })
 
 describe('landing page refinement', () => {
-  it('starts the Hero with its heading and renders one metadata row after the preview', () => {
+  it('starts the Hero with its heading, actions, and metadata row', () => {
     act(() => {
       root.render(<HeroSection onCreate={vi.fn()} />)
     })
 
     const hero = container.querySelector('.hero')
-    const preview = hero?.querySelector('.preview-wrap')
+    const ctas = hero?.querySelector('.ctas')
     const metadata = hero?.querySelectorAll('.meta-row')
 
     expect(hero?.id).toBe('hero')
@@ -56,13 +56,13 @@ describe('landing page refinement', () => {
     expect(container.textContent).toContain('Hosted demo')
     expect(container.textContent).toContain('Fork / self-host')
     expect(metadata).toHaveLength(1)
-    if (!preview || !metadata) throw new Error('Hero preview and metadata row should render')
+    if (!ctas || !metadata) throw new Error('Hero CTAs and metadata row should render')
     expect(metadata[0].querySelectorAll('span')).toHaveLength(4)
     expect(metadata[0].textContent?.match(/No account required/g)).toHaveLength(1)
     expect(metadata[0].textContent?.match(/Local-first/g)).toHaveLength(1)
     expect(metadata[0].textContent?.match(/Portable exports/g)).toHaveLength(1)
     expect(metadata[0].textContent?.match(/Self-host for team use/g)).toHaveLength(1)
-    expect(preview.compareDocumentPosition(metadata[0])).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(ctas.compareDocumentPosition(metadata[0])).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('keeps six feature cards with icon-and-heading rows', () => {
@@ -173,23 +173,6 @@ describe('landing page refinement', () => {
     expect(steps.compareDocumentPosition(flowStrips[0])).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
-  it('keeps the preview representative of the workspace', () => {
-    act(() => {
-      root.render(<HeroSection onCreate={vi.fn()} />)
-    })
-
-    const preview = container.querySelector('.preview-mini')
-    expect(preview?.textContent).toContain('ROADMAP')
-    expect(preview?.textContent).toContain('Roadmap')
-    expect(preview?.textContent).toContain('Activity')
-    expect(preview?.textContent).toContain('Search tasks')
-    expect(preview?.textContent).toContain('1 recommended')
-    expect(preview?.querySelectorAll('.phase-mini')).toHaveLength(3)
-    expect(preview?.querySelectorAll('.task-mini.done')).toHaveLength(3)
-    expect(preview?.querySelector('.task-status.recommended')?.textContent).toBe('RECOMMENDED')
-    expect(preview?.querySelector('.preview-progress')).not.toBeNull()
-  })
-
   it('keeps landing sections in normal flow with responsive grids, bottom spacing, and sticky-header offset rules', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/styles/site.css'), 'utf8')
     const baseCss = readFileSync(resolve(process.cwd(), 'src/styles/base.css'), 'utf8')
@@ -203,13 +186,11 @@ describe('landing page refinement', () => {
     expect(css).toContain('grid-template-columns: repeat(2, 1fr)')
     expect(css).toContain('grid-template-columns: 1fr')
     expect(css).toContain('.feature-head')
-    expect(css).toContain('grid-template-rows: minmax(0, 1fr) auto auto auto auto')
-    expect(css).toContain('--hero-preview-gap: clamp(20px, 2.5vh, 30px)')
-    expect(css).toContain('height: clamp(430px, 48svh, 500px)')
-    expect(css).toContain('height: clamp(360px, 48svh, 380px)')
     expect(css).toContain('padding: var(--landing-section-padding-start) 0 var(--landing-section-padding-end)')
     expect(css).toContain('min-height: calc(100svh - var(--site-header-height))')
     expect(css).not.toContain('.hero .eyebrow')
+    expect(css).not.toContain('.preview-wrap')
+    expect(css).not.toContain('.preview-mini')
     expect(baseCss).toContain('section[id] { scroll-margin-top: var(--header-h); }')
   })
 })
