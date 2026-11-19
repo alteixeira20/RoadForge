@@ -13,11 +13,12 @@ export function Brand({ href, className = 'brand' }: BrandProps) {
     <>
       <span className="brand-logo" aria-hidden="true">
         <Image
-          className="brand-logo-white"
-          src="/brand/anvilary-logo-mark-tight-white.png"
+          className="brand-logo-img"
+          src="/brand/roadforge/logo.png"
           alt=""
-          width={24}
+          width={28}
           height={28}
+          priority
         />
       </span>
       <span>RoadForge</span>
