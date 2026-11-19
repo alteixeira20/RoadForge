@@ -574,6 +574,38 @@
 }
 .site-footer a { color: var(--ink-3); }
 .site-footer a:hover { color: var(--ink); }
+.site-footer .anvilary-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 19px;
+  letter-spacing: -0.015em;
+  text-decoration: none;
+  transition: opacity 160ms;
+}
+.site-footer .anvilary-brand:hover {
+  color: var(--ink);
+  opacity: 0.9;
+}
+.site-footer .anvilary-logo {
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+.site-footer .anvilary-logo img,
+.site-footer .anvilary-logo-img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  display: block;
+}
+.site-footer .anvilary-wordmark {
+  white-space: nowrap;
+}
 .site-footer .links { display: flex; gap: 18px; flex-wrap: wrap; }
 .problem-report-privacy {
   max-width: 420px;
@@ -641,6 +673,7 @@
   .closing-cta { padding-block: clamp(48px, 7vh, 64px); }
   .site-footer { padding: 20px 20px; margin-top: 16px; }
   .site-footer .row { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .site-footer .dot-sep { display: none; }
   .site-footer .links { gap: 14px; }
 }
 

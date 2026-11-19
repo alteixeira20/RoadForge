@@ -6,6 +6,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { Brand } from '@/shared/ui/Brand'
+import { SiteFooter } from '@/shared/ui/SiteFooter'
 
 describe('RoadForge visual rebranding and assets', () => {
   it('renders Brand component with the approved RoadForge logo', () => {
@@ -28,14 +29,14 @@ describe('RoadForge visual rebranding and assets', () => {
     })
   })
 
-  it('declares approved RoadForge metadata, favicons, and social cards in layout', () => {
+  it('declares approved Anvilary Tools browser favicons, RoadForge app icons, and social cards in layout', () => {
     const layoutPath = resolve(process.cwd(), 'src/app/layout.tsx')
     const layoutContent = readFileSync(layoutPath, 'utf8')
 
-    expect(layoutContent).toContain("url: '/favicon.ico'")
-    expect(layoutContent).toContain("url: '/favicon-32x32.png'")
-    expect(layoutContent).toContain("url: '/favicon-16x16.png'")
-    expect(layoutContent).toContain("url: '/favicon-48x48.png'")
+    expect(layoutContent).toContain("url: '/brand/anvilary-tools/favicon.ico'")
+    expect(layoutContent).toContain("url: '/brand/anvilary-tools/favicon-32x32.png'")
+    expect(layoutContent).toContain("url: '/brand/anvilary-tools/favicon-16x16.png'")
+    expect(layoutContent).toContain("url: '/brand/anvilary-tools/favicon-48x48.png'")
     expect(layoutContent).toContain("url: '/apple-touch-icon.png'")
     expect(layoutContent).toContain("url: '/brand/roadforge/social-preview.png'")
     expect(layoutContent).toContain("card: 'summary_large_image'")
@@ -90,6 +91,11 @@ describe('RoadForge visual rebranding and assets', () => {
       'brand/roadforge/final/android-chrome-512x512.png',
       'brand/roadforge/final/android-maskable-192x192.png',
       'brand/roadforge/final/android-maskable-512x512.png',
+      'brand/anvilary-tools/logo.png',
+      'brand/anvilary-tools/favicon.ico',
+      'brand/anvilary-tools/favicon-16x16.png',
+      'brand/anvilary-tools/favicon-32x32.png',
+      'brand/anvilary-tools/favicon-48x48.png',
     ]
 
     for (const rel of requiredFiles) {
@@ -97,6 +103,32 @@ describe('RoadForge visual rebranding and assets', () => {
       expect(existsSync(fullPath), `Expected ${rel} to exist`).toBe(true)
       expect(statSync(fullPath).size, `Expected ${rel} to be non-empty`).toBeGreaterThan(0)
     }
+  })
+
+  it('renders SiteFooter with the official Anvilary Tools parent logo and link', () => {
+    const container = document.createElement('div')
+    const root = createRoot(container)
+
+    act(() => {
+      root.render(<SiteFooter />)
+    })
+
+    const brandLink = container.querySelector('a.anvilary-brand')
+    expect(brandLink).not.toBeNull()
+    expect(brandLink?.getAttribute('href')).toBe('https://anvilary.tools/')
+    expect(brandLink?.getAttribute('target')).toBe('_blank')
+    expect(brandLink?.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(brandLink?.textContent).toContain('Anvilary Tools')
+
+    const img = brandLink?.querySelector('img')
+    expect(img).not.toBeNull()
+    expect(decodeURIComponent(img?.getAttribute('src') || '')).toContain('/brand/anvilary-tools/logo.png')
+    expect(img?.getAttribute('width')).toBe('38')
+    expect(img?.getAttribute('height')).toBe('38')
+
+    act(() => {
+      root.unmount()
+    })
   })
 
   it('confirms obsolete branding assets have been removed from public directory', () => {

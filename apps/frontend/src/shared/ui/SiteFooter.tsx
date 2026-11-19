@@ -1,6 +1,6 @@
 'use client'
 
-import { Brand } from '@/shared/ui/Brand'
+import Image from 'next/image'
 import {
   ProblemReportLink,
   PROBLEM_REPORT_PRIVACY_WARNING,
@@ -10,8 +10,24 @@ export function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="row">
-        <Brand />
-        <span style={{ color: 'var(--ink-4)' }}>·</span>
+        <a
+          href="https://anvilary.tools/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="anvilary-brand"
+        >
+          <span className="anvilary-logo" aria-hidden="true">
+            <Image
+              className="anvilary-logo-img"
+              src="/brand/anvilary-tools/logo.png"
+              alt=""
+              width={38}
+              height={38}
+            />
+          </span>
+          <span className="anvilary-wordmark">Anvilary Tools</span>
+        </a>
+        <span className="dot-sep" style={{ color: 'var(--ink-4)' }}>·</span>
         <span>Pre-release · An Anvilary product · Hosted demo</span>
         <span className="flex-1" />
         <span>Non-commercial source available</span>
