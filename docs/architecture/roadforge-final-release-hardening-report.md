@@ -148,8 +148,8 @@ cd /home/alteixeira20/Projects/Anvilary-Tools/RoadForge
 make api-up
 
 # Verify API health check
-curl -s http://localhost:7878/health | jq .
-# Expected output: {"status": "ok", "version": "0.1.0", ...}
+curl -s http://localhost:7878/api/health | jq .
+# Expected output: {"status": "ok", "version": "0.1.0"}
 ```
 
 ### Step 2: Start Frontend Application
