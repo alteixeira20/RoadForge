@@ -6,6 +6,8 @@ node_modules/
 .next/
 **/.next/
 out/
+AGENTS.md
+**/AGENTS.md
 
 # Build output
 dist/

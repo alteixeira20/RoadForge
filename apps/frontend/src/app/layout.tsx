@@ -46,7 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   await headers()
 
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body>
         <StorageWriteFailureBanner />
         <RoadmapProvider>{children}</RoadmapProvider>
