@@ -25,7 +25,6 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "next": "15.5.28",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
@@ -33,20 +32,21 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.12.1",
+    "@axe-core/playwright": "4.12.1",
     "@eslint/eslintrc": "^3.3.6",
     "@playwright/test": "~1.62.1",
-    "@types/node": "^20",
+    "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "autoprefixer": "^10",
+    "autoprefixer": "^10.6.2",
     "eslint": "^9",
-    "eslint-config-next": "15.5.28",
+    "eslint-config-next": "16.4.6",
     "jsdom": "^26.0.0",
+    "next": "16.4.6",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
-    "vitest": "^3.0.0"
+    "vitest": "^5.1.1"
   },
   "license": "PolyForm-Noncommercial-1.0.0"
 }

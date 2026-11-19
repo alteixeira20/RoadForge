@@ -46,7 +46,6 @@ import {
   hasScopedRefresh,
   mergeRefreshRequest,
   refreshRequestFromEvent,
-  taskOrderScopeKey,
   type RealtimeRefreshRequest,
 } from '@/features/synchronization/lib/refresh-request'
 

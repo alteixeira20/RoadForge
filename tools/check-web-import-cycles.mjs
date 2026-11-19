@@ -26,6 +26,7 @@ const dependencies = {
   ],
   app: ['workspace', 'synchronization', 'marketing', 'sharing', 'roadmaps', 'shared'],
   'middleware.ts': ['shared'],
+  'proxy.ts': ['shared'],
 }
 
 function owner(file) {

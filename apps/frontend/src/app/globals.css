@@ -1,13 +1,3 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* ============================================================
-   RoadForge Design System - entry point
-   CSS is split by concern into src/styles/*.css
-   Import order matters for cascade - do not reorder.
-   ============================================================ */
-
 @import '../styles/tokens.css';
 @import '../styles/base.css';
 @import '../styles/primitives/buttons.css';
@@ -47,6 +37,17 @@
 @import '../styles/modals/io-modal.css';
 @import '../styles/modals/password-gate.css';
 @import '../styles/join.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   RoadForge Design System - entry point
+   CSS is split by concern into src/styles/*.css
+   Import order matters for cascade - do not reorder.
+   ============================================================ */
+
 
 /* Global keyboard-only focus visible override */
 *:focus-visible {

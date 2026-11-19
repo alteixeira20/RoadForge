@@ -1,4 +1,4 @@
-import type { Roadmap, Phase, ShareRole, TagDefinition, ExportFormat } from '@/shared/types/roadmap'
+import type { Phase, ShareRole, TagDefinition, ExportFormat } from '@/shared/types/roadmap'
 import { parseImportedRoadmapJson } from '@/features/roadmaps/lib/roadmap-validation'
 import { PORTABLE_ROADMAP_SCHEMA_VERSION, toPortablePhases } from '@/features/roadmaps/lib/portable-roadmap'
 import { normalizePhasesProgress } from '@/shared/domain/phase-progress'

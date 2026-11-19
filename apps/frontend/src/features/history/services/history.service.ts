@@ -1,4 +1,4 @@
-import type { Roadmap, Phase, TagDefinition, RoadmapVersionDetail, RoadmapVersionSummary, Task, ActivityLogList } from '@/shared/types/roadmap'
+import type { Roadmap, Phase, TagDefinition, RoadmapVersionDetail, RoadmapVersionSummary, ActivityLogList } from '@/shared/types/roadmap'
 import { requestJson } from '@/shared/http/roadmap-http'
 import { toRoadmap, type ApiRoadmapResponse } from '@/shared/http/roadmap-response'
 
