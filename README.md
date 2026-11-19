@@ -25,6 +25,17 @@ engineering repository is being prepared for the `0.1.0` baseline independently
 from any future relicensing decision. Forking or self-hosting does not grant commercial use
 outside the current license terms.
 
+## See RoadForge in Action
+
+Watch RoadForge build a 4-phase engineering roadmap from scratch, organize milestones, break down deliverables into subtasks, link prerequisite dependencies, filter active items, track completion progress, and export portable backups:
+
+[![RoadForge Product Demonstration](docs/media/roadforge-demo-preview.gif)](docs/media/roadforge-product-demo.mp4)
+
+> [!TIP]
+> Click the preview animation above to view the full product demonstration video ([`docs/media/roadforge-product-demo.mp4`](docs/media/roadforge-product-demo.mp4)).
+> A high-resolution frame is available in [`docs/media/roadforge-demo-thumbnail.png`](docs/media/roadforge-demo-thumbnail.png).
+> For comprehensive feature walkthroughs, workflows, and keyboard navigation, refer to the [RoadForge User Guide](docs/user-guide.md).
+
 ## Product contract
 
 RoadForge intentionally keeps its core model small:

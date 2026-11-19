@@ -37,6 +37,7 @@ or team-scale SLA.
 | Need | Read |
 | --- | --- |
 | Understand RoadForge quickly | [`../README.md`](../README.md) |
+| Complete product and user guide | [`user-guide.md`](user-guide.md) |
 | Understand hosted demo vs self-hosting | [`hosted-demo-and-self-hosting.md`](hosted-demo-and-self-hosting.md) |
 | Make a contribution | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) and [`contributor-guide.md`](contributor-guide.md) |
 | Understand architecture | [`architecture/overview.md`](architecture/overview.md) |
