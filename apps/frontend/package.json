@@ -32,7 +32,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.12.1",
+    "@axe-core/playwright": "4.14.0",
     "@eslint/eslintrc": "^3.3.6",
     "@playwright/test": "~1.62.1",
     "@types/node": "^24.19.2",
