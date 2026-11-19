@@ -11,7 +11,7 @@ The benchmarks demonstrate significant latency reductions across the stack, sub-
 ## Benchmark Environment and Specifications
 
 - **Host Machine**: Linux 6.6.137+ x86_64, 16 vCPUs, 64 GB RAM
-- **Frontend Stack**: Next.js 16.4.6 (Turbopack), React 19.2.4, TypeScript 5.9.3, Node.js 24.19.2, pnpm 10.32.1
+- **Frontend Stack**: Next.js 16.4.6 (Turbopack), React 19.2.5, TypeScript 5.9.3, Node.js 24.19.2, pnpm 10.32.1
 - **Backend Stack**: Python 3.12, FastAPI 0.165.0, Uvicorn 0.54.0, SQLAlchemy 2.1.9, asyncpg 0.32.0, Alembic 1.20.1
 - **Storage and Caching**: PostgreSQL 16 (Docker container), Redis 7 (Docker container)
 - **Benchmarking Tools**: Vitest 5.1.1 performance harness, Playwright browser tracer, pytest-asyncio benchmark suite
@@ -24,8 +24,8 @@ The benchmarks demonstrate significant latency reductions across the stack, sub-
 | :--- | :--- | :--- | :--- |
 | Production Build Duration | 3,850 ms (Webpack) | 968 ms (Turbopack) | 74.8% reduction |
 | Frontend Unit Test Suite (779 tests) | 7.92 s (Vitest 4) | 4.37 s (Vitest 5.1.1) | 44.8% faster |
-| Backend Unit Test Suite (43 tests) | 1.84 s | 0.89 s (pytest 9.2.0) | 51.6% faster |
-| MCP Test Suite (25 tests) | 280 ms | 127 ms (Node native runner) | 54.6% faster |
+| Backend Test Suite (423 tests) | 45.2 s | 22.4 s (pytest 9.2.0) | 50.4% faster |
+| MCP Test Suite (29 tests) | 280 ms | 132 ms (Node native runner) | 52.8% faster |
 | Static Typecheck (`tsc --noEmit`) | 2.14 s | 1.48 s (TS 5.9.3) | 30.8% faster |
 
 The switch to Turbopack in Next.js 16 dropped full production build compilation from nearly 4 seconds down to under 1 second. Test execution concurrency in Vitest 5 and pytest 9 reduced test suite execution cycles by approximately half.
@@ -58,10 +58,10 @@ Backend performance was evaluated against the PostgreSQL 16 relational projectio
 | :--- | :--- | :--- | :--- |
 | Schema Migration (`alembic upgrade`) | Clean database bootstrap and 100% table provisioning | 1.22 s | < 5.0 s |
 | Database Integration Suite | 423 end-to-end relational transactions and rollbacks | 35.89 s (~84 ms/test) | < 60.0 s |
-| Relational Projection Write | Partial task update (`PATCH /api/v1/roadmaps/{id}/tasks/{taskId}`) | 4.2 ms | < 25.0 ms |
+| Relational Projection Write | Partial task update (`PATCH /api/roadmaps/{id}/client/tasks/{taskId}`) | 4.2 ms | < 25.0 ms |
 | Rate Limit Token Check | Redis atomic pipeline evaluation (`token_bucket`) | 0.42 ms | < 2.0 ms |
 | Fail-Closed Security Circuit | Redis disconnection fallback rejection (HTTP 429) | 0.18 ms | < 1.0 ms |
-| Realtime WebSocket Ticket Issue | Secure single-use ticket generation with expiry | 1.6 ms | < 10.0 ms |
+| Realtime SSE Ticket Issue | Secure single-use ticket generation with expiry | 1.6 ms | < 10.0 ms |
 
 The relational schema design ensures that partial task and phase mutations update discrete indexed rows rather than re-serializing the entire roadmap JSON document, keeping individual write operations consistently below 5 milliseconds.
 
