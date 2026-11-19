@@ -26,7 +26,7 @@ beforeEach(() => {
   document.body.appendChild(container)
   root = createRoot(container)
   intersectionCallback = undefined
-  vi.stubGlobal('IntersectionObserver', vi.fn((callback: IntersectionObserverCallback) => {
+  vi.stubGlobal('IntersectionObserver', vi.fn(function (callback: IntersectionObserverCallback) {
     intersectionCallback = callback
     return { disconnect: vi.fn(), observe: vi.fn(), takeRecords: vi.fn(), unobserve: vi.fn() }
   }))

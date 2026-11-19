@@ -103,7 +103,7 @@ describe('useRoadmapRealtime seamless collaborative editing', () => {
   let container: HTMLDivElement
   let root: Root
   let handlers: RealtimeHandlers
-  let unsubscribeMock: ReturnType<typeof vi.fn>
+  let unsubscribeMock: () => void
 
   beforeEach(() => {
     localStorage.clear()

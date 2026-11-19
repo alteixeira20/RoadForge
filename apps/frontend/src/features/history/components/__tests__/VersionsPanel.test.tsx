@@ -42,9 +42,9 @@ async function flush() {
 describe('VersionsPanel', () => {
   let container: HTMLDivElement
   let root: Root
-  let onRestored: ReturnType<typeof vi.fn>
-  let onToast: ReturnType<typeof vi.fn>
-  let onClose: ReturnType<typeof vi.fn>
+  let onRestored: (roadmap: Roadmap) => void
+  let onToast: (message: string) => void
+  let onClose: () => void
 
   beforeEach(() => {
     onRestored = vi.fn()

@@ -131,7 +131,7 @@ function createDeferred<T>() {
 // never be able to observe or mutate a replacement connection's separate
 // EventSource/handler set, so distinguishing them is the whole point.
 function captureSubscriptions() {
-  const calls: { handlers: RealtimeHandlers; unsubscribe: ReturnType<typeof vi.fn> }[] = []
+  const calls: { handlers: RealtimeHandlers; unsubscribe: () => void }[] = []
   mockedSubscribe.mockReset().mockImplementation((_id, nextHandlers) => {
     const unsub = vi.fn()
     calls.push({ handlers: nextHandlers, unsubscribe: unsub })
@@ -144,7 +144,7 @@ describe('useRoadmapRealtime', () => {
   let container: HTMLDivElement
   let root: Root
   let handlers: RealtimeHandlers
-  let unsubscribe: ReturnType<typeof vi.fn>
+  let unsubscribe: () => void
   let result: UseRoadmapRealtimeReturn
 
   beforeEach(() => {

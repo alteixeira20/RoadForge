@@ -53,8 +53,8 @@ describe('useKeyboardReorderCoordinator (RF-034 single workspace-wide session)',
   let container: HTMLDivElement
   let root: Root
   let rig: Rig | null
-  let onCommitA: ReturnType<typeof vi.fn>
-  let onCommitB: ReturnType<typeof vi.fn>
+  let onCommitA: (ids: string[]) => void
+  let onCommitB: (ids: string[]) => void
 
   const render = () => {
     act(() => {

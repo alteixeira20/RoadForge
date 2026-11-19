@@ -18,7 +18,7 @@ describe('CreateWizard starting point', () => {
   let container: HTMLDivElement
   let root: Root
   let createLocalRoadmap: ReturnType<typeof vi.fn>
-  let onComplete: ReturnType<typeof vi.fn>
+  let onComplete: (roadmapId?: string) => void
 
   beforeEach(() => {
     createLocalRoadmap = vi.fn().mockReturnValue('local_1')

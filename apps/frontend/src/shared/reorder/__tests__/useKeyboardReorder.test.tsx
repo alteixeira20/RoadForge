@@ -26,7 +26,7 @@ describe('useKeyboardReorder (RF-034 preview-then-commit)', () => {
   let container: HTMLDivElement
   let root: Root
   let state: ReorderState | null
-  let onCommit: ReturnType<typeof vi.fn>
+  let onCommit: (orderedIds: string[]) => void
 
   const render = (orderedIds: string[], overrides: Partial<UseKeyboardReorderOptions> = {}) => {
     act(() => {

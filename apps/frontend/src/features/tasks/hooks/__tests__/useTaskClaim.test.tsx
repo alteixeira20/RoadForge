@@ -87,7 +87,7 @@ describe('useTaskClaim', () => {
   let root: Root
   let result: UseTaskClaimResult
   let context: Record<string, unknown>
-  let showToast: ReturnType<typeof vi.fn>
+  let showToast: (message: string) => void
 
   const render = (currentTask = task) => {
     act(() => {
