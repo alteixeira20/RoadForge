@@ -34,7 +34,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
     "@eslint/eslintrc": "^3.3.6",
-    "@playwright/test": "~1.62.1",
+    "@playwright/test": "~1.65.1",
     "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
