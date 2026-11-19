@@ -369,7 +369,7 @@ function errorResponse(id, code, message, data) {
 
 export function createMessageHandler(options = {}) {
   const callTool = createToolHandler(options)
-  let initializeSeen = false
+  let initializeSeen = Boolean(options.initialInitialized)
   return async function handle(message) {
     if (!message || typeof message !== 'object' || Array.isArray(message)) return errorResponse(null, -32600, 'Invalid Request')
     if (message.jsonrpc !== '2.0' || typeof message.method !== 'string') return errorResponse(message.id ?? null, -32600, 'Invalid Request')

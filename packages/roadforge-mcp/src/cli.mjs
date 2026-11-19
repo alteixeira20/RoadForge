@@ -4,6 +4,7 @@ import { stdin as processStdin, stdout as processStdout, stderr as processStderr
 import { DEFAULT_API_URL, loadStoredConfig, saveStoredConfig } from './config.mjs'
 import { createRoadForgeClient } from './roadforge-client.mjs'
 import { SERVER_VERSION, runStdioServer } from './server.mjs'
+import { startHttpServer } from './http-server.mjs'
 
 function valueOrDefault(value, fallback) {
   const trimmed = typeof value === 'string' ? value.trim() : ''
@@ -101,7 +102,7 @@ export async function doctor({
 }
 
 function helpText() {
-  return `RoadForge MCP\n\nUsage:\n  roadforge-mcp              Start the stdio MCP server\n  roadforge-mcp setup        Store local API/roadmap/session configuration outside the repository\n  roadforge-mcp doctor       Verify focused API connectivity and authorization\n  roadforge-mcp --version    Print version\n\nEnvironment overrides:\n  ROADFORGE_API_URL          API origin (default ${DEFAULT_API_URL})\n  ROADFORGE_ROADMAP_ID       Roadmap ID\n  ROADFORGE_SESSION_TOKEN    Session token\n\nInvite variables remain supported for process-local compatibility. Secrets are never accepted as command-line arguments.\n`
+  return `RoadForge MCP\n\nUsage:\n  roadforge-mcp              Start the stdio MCP server\n  roadforge-mcp serve-http   Start the streamable HTTP/SSE MCP server\n  roadforge-mcp setup        Store local API/roadmap/session configuration outside the repository\n  roadforge-mcp doctor       Verify focused API connectivity and authorization\n  roadforge-mcp --version    Print version\n\nHTTP options:\n  --port <port>              HTTP listen port (default 8787 or ROADFORGE_MCP_PORT)\n  --host <host>              HTTP bind address (default 127.0.0.1 or ROADFORGE_MCP_HOST)\n\nEnvironment overrides:\n  ROADFORGE_API_URL          API origin (default ${DEFAULT_API_URL})\n  ROADFORGE_ROADMAP_ID       Roadmap ID\n  ROADFORGE_SESSION_TOKEN    Session token\n  ROADFORGE_MCP_PORT         HTTP port (default 8787)\n  ROADFORGE_MCP_HOST         HTTP host (default 127.0.0.1)\n  ROADFORGE_MCP_MODE         Mode: 'team-gateway' or 'self-hosted'\n  ROADFORGE_MCP_TEAM_SECRET  Shared secret for team gateway authentication\n  ROADFORGE_MCP_AUTH_TOKEN   Token for self-hosted HTTP authentication\n\nInvite variables remain supported for process-local compatibility. Secrets are never accepted as command-line arguments.\n`
 }
 
 export async function runCli({
@@ -113,11 +114,36 @@ export async function runCli({
   setupOptions = {},
   runServer = runStdioServer,
 } = {}) {
-  const [command, ...extra] = argv
-  if (extra.length) {
-    stderr.write(`Unexpected arguments: ${extra.join(' ')}\n`)
-    return 2
+  let command = null
+  let port = null
+  let host = null
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if (arg === '--port') {
+      port = Number(argv[++i])
+      if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+        stderr.write('Invalid port number\n')
+        return 2
+      }
+    } else if (arg.startsWith('--port=')) {
+      port = Number(arg.slice(7))
+      if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+        stderr.write('Invalid port number\n')
+        return 2
+      }
+    } else if (arg === '--host') {
+      host = argv[++i]
+    } else if (arg.startsWith('--host=')) {
+      host = arg.slice(7)
+    } else if (!command) {
+      command = arg
+    } else {
+      stderr.write(`Unexpected argument: ${arg}\n`)
+      return 2
+    }
   }
+
   if (command === '--version' || command === '-v') {
     stdout.write(`${SERVER_VERSION}\n`)
     return 0
@@ -147,8 +173,27 @@ export async function runCli({
       return 1
     }
   }
+  if (command === 'serve-http' || command === '--http') {
+    try {
+      const server = await startHttpServer({
+        env,
+        fetchImpl,
+        configPath: setupOptions.pathOverride,
+        port: port ?? undefined,
+        host: host ?? undefined,
+      })
+      const addr = server.address()
+      const effectiveHost = typeof addr === 'object' && addr ? addr.address : host || '127.0.0.1'
+      const effectivePort = typeof addr === 'object' && addr ? addr.port : port || 8787
+      stdout.write(`RoadForge MCP HTTP listening on http://${effectiveHost}:${effectivePort}/mcp\n`)
+      return 0
+    } catch (error) {
+      stderr.write(`RoadForge MCP HTTP start failed: ${error.message}\n`)
+      return 1
+    }
+  }
   if (command) {
-    stderr.write(`Unknown argument: ${command}\n`)
+    stderr.write(`Unknown command: ${command}\n`)
     return 2
   }
   runServer({ env, fetchImpl, configPath: setupOptions.pathOverride })
