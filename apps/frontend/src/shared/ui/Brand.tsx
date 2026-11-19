@@ -6,9 +6,10 @@ import Link from 'next/link'
 interface BrandProps {
   href?: string
   className?: string
+  logoSize?: number
 }
 
-export function Brand({ href, className = 'brand' }: BrandProps) {
+export function Brand({ href, className = 'brand', logoSize = 28 }: BrandProps) {
   const inner = (
     <>
       <span className="brand-logo" aria-hidden="true">
@@ -16,8 +17,8 @@ export function Brand({ href, className = 'brand' }: BrandProps) {
           className="brand-logo-img"
           src="/brand/roadforge/logo.png"
           alt=""
-          width={28}
-          height={28}
+          width={logoSize}
+          height={logoSize}
           priority
         />
       </span>

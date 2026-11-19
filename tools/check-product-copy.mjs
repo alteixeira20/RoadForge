@@ -126,10 +126,9 @@ const requiredStatements = new Map([
     'not public publishing links',
   ]],
   ['apps/frontend/src/features/marketing/components/HeroSection.tsx', [
-    'Export JSON backups',
     'Hosted demo',
-    'larger-team use',
-    'fork and self-host',
+    'Fork / self-host',
+    'Self-host for team use',
   ]],
   ['apps/frontend/src/features/marketing/components/FeaturesSection.tsx', [
     'Fork and self-host',

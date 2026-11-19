@@ -15,14 +15,6 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           A roadmap tool that{' '}
           <span className="accent">starts local, stays portable.</span>
         </h1>
-        <p className="lede">
-          Plan in phases, track tasks and dependencies, and work entirely on
-          your device. Save to a server later when you need to share. No account
-          required to start. <strong>Hosted demo:</strong> use this instance to
-          evaluate RoadForge and collaborate lightly. Export JSON backups of
-          important work; for sustained or larger-team use, fork and self-host
-          RoadForge on infrastructure you control.
-        </p>
         <div className="ctas">
           <button className="btn primary lg" onClick={onCreate}>
             Try the hosted demo <Icon name="arrow-right" size={16} stroke="#fff" />

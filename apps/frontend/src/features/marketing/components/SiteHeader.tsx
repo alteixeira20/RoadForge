@@ -37,7 +37,7 @@ export function SiteHeader({ onCreate }: SiteHeaderProps) {
         const activeEntry = entries.find((entry) => entry.isIntersecting)
         if (activeEntry) setActiveSection(activeEntry.target.id)
       },
-      { rootMargin: '-76px 0px -55% 0px', threshold: 0 },
+      { rootMargin: '-92px 0px -55% 0px', threshold: 0 },
     )
     sections.forEach((section) => observer.observe(section))
     window.addEventListener('hashchange', syncHash)
@@ -50,8 +50,8 @@ export function SiteHeader({ onCreate }: SiteHeaderProps) {
   }, [])
 
   return (
-    <header className={`site-header ${scrolled ? 'scrolled' : ''}`}>
-      <Brand href="/#hero" />
+    <header className={`site-header container ${scrolled ? 'scrolled' : ''}`}>
+      <Brand href="/#hero" logoSize={44} />
       <nav>
         <a className={activeSection === 'how' ? 'active' : undefined} href="#how" aria-current={activeSection === 'how' ? 'page' : undefined}>
           How it works
