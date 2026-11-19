@@ -115,27 +115,37 @@ Or configure via environment variables:
 - `ROADFORGE_MCP_PORT`: HTTP listen port (default: `8787`);
 - `ROADFORGE_MCP_HOST`: HTTP bind host (default: `127.0.0.1`);
 - `ROADFORGE_MCP_MODE`: `'team-gateway'` or `'self-hosted'`;
-- `ROADFORGE_MCP_TEAM_SECRET`: Shared secret for team gateway authentication;
-- `ROADFORGE_MCP_AUTH_TOKEN`: Optional bearer token for self-hosted instances.
+- `ROADFORGE_MCP_JWT_SECRET`: Signing secret for team gateway JWT verification;
+- `ROADFORGE_MCP_REVOKED_TOKENS`: Comma-separated list of revoked JWT `jti` or user `sub` IDs;
+- `ROADFORGE_MCP_AUTH_TOKEN`: Bearer token for self-hosted instances (required when bound beyond loopback);
+- `ROADFORGE_MCP_ALLOWED_ORIGINS`: Comma-separated list of allowed HTTP Origin values for CORS;
+- `ROADFORGE_MCP_ALLOWED_HOSTS`: Comma-separated list of allowed Host header values for DNS rebinding protection.
 
 ### Mode A: Hosted Team Gateway
 
-In Mode A (`ROADFORGE_MCP_MODE=team-gateway` or when `ROADFORGE_MCP_TEAM_SECRET` is set):
+In Mode A (`ROADFORGE_MCP_MODE=team-gateway` or when `ROADFORGE_MCP_JWT_SECRET` is set):
 
-- All requests require authentication using `Authorization: Bearer <token>` or header `x-roadforge-team-token: <secret>`.
-- Unauthenticated or invalid requests receive HTTP 401 with standard JSON-RPC error `-32001`.
-- Web agents may pass per-request headers for least-privilege scoping:
+- All requests require authentication using `Authorization: Bearer <jwt>`.
+- Tokens must be standards-compliant signed JWTs with verifiable user identity (`sub` or `email`), active lifetime (`exp`/`nbf`), and authorized team membership.
+- Authorization is revocable via `ROADFORGE_MCP_REVOKED_TOKENS`. Single shared secrets are rejected as an incomplete team-membership model.
+- Unauthenticated, revoked, or invalid requests receive HTTP 401 with standard JSON-RPC error `-32001`.
+- The upstream RoadForge API origin is operator-configured via `ROADFORGE_API_URL` and immutable. Client attempts to override the upstream origin via `x-roadforge-api-url` are rejected with HTTP 400.
+- Web agents provide per-request scoping headers for roadmap operations:
   - `x-roadforge-roadmap-id`: target roadmap ID;
-  - `x-roadforge-session-token`: scoped session token for the target roadmap;
-  - `x-roadforge-api-url`: API origin (must be HTTPS outside loopback).
+  - `x-roadforge-session-token`: scoped session token for the target roadmap.
+- Production roadmap master credentials are never exposed to clients; roadmap authorization is enforced independently by the upstream API.
+- Sessions are isolated via `mcp-session-id`. Cross-client protocol initialization leaks are prevented.
 - Maximum request payload size is capped at 1 MB to prevent resource exhaustion.
 
 ### Mode B: Self-Hosted Transport
 
 In Mode B (`ROADFORGE_MCP_MODE=self-hosted`):
 
-- Useful for running on private local networks, team Kubernetes clusters, or local Docker environments.
-- Optional bearer token protection via `ROADFORGE_MCP_AUTH_TOKEN`.
+- Useful for running on private local networks, team Kubernetes clusters, or local developer workstations.
+- Loopback execution (`127.0.0.1`, `localhost`) permits local access without credentials.
+- When bound beyond loopback (`0.0.0.0` or public interface), `ROADFORGE_MCP_AUTH_TOKEN` is strictly required to prevent unauthenticated network exposure.
+- Enforces Host validation to protect against DNS-rebinding attacks.
+- Enforces Content-Type checking (`application/json`) and strict CORS validation without wildcard origins.
 - Exposes standard streamable HTTP endpoints:
   - `POST /mcp` (or `POST /`): JSON-RPC 2.0 tool execution;
   - `GET /mcp` (or `GET /sse`): Server-Sent Events notification stream;
