@@ -412,7 +412,13 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
                 : 'Require a password in addition to invite links to access this roadmap.'}
             </div>
             {showPasswordForm && (
-              <div className="roadmap-password-form">
+              <form
+                className="roadmap-password-form"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSavePassword()
+                }}
+              >
                 <div className="roadmap-password-inputs">
                   <input
                     type="password"
@@ -423,19 +429,12 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
                       setPasswordInput(e.target.value)
                       setPasswordError(null)
                     }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleSavePassword()
-                      }
-                    }}
                     disabled={passwordLoading}
                     autoFocus
                   />
                   <button
-                    type="button"
+                    type="submit"
                     className="mini primary"
-                    onClick={handleSavePassword}
                     disabled={passwordLoading || !passwordInput.trim()}
                   >
                     {passwordLoading ? 'Saving...' : 'Save'}
@@ -456,7 +455,7 @@ export function ShareModal({ open, onClose, onToast }: ShareModalProps) {
                 {passwordError && (
                   <div className="roadmap-password-error">{passwordError}</div>
                 )}
-              </div>
+              </form>
             )}
           </div>
         </>

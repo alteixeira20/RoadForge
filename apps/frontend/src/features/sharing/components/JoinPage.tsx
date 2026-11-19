@@ -131,7 +131,13 @@ export function JoinPage() {
 
   return (
     <div className="join-page">
-      <div className="join-card">
+      <form
+        className="join-card"
+        onSubmit={(e) => {
+          e.preventDefault()
+          handleJoin()
+        }}
+      >
         <div className="top">
           <Brand />
           <span style={{ color: 'var(--ink-4)' }}>·</span>
@@ -154,7 +160,6 @@ export function JoinPage() {
             placeholder="e.g. Jordan M."
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleJoin() }}
           />
           <span className="hint">
             Just a label so others can see who&apos;s editing. No account required.
@@ -171,7 +176,6 @@ export function JoinPage() {
               placeholder="Enter the roadmap password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleJoin() }}
               autoFocus
             />
           </div>
@@ -198,18 +202,18 @@ export function JoinPage() {
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button
+            type="submit"
             className="btn primary lg"
             disabled={joining}
             style={{ flex: 1, opacity: joining ? 0.5 : 1 }}
-            onClick={handleJoin}
           >
             {joining ? 'Joining…' : <>Open roadmap <Icon name="arrow-right" size={15} stroke="#fff" /></>}
           </button>
-          <button className="btn lg" onClick={() => router.push('/')}>
+          <button type="button" className="btn lg" onClick={() => router.push('/')}>
             Create your own
           </button>
         </div>
-      </div>
+      </form>
 
       <EmberBackground />
     </div>

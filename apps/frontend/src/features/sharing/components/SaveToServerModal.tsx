@@ -94,7 +94,13 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
         </span>
       </div>
 
-      <div className="password-section">
+      <form
+        className="password-section"
+        onSubmit={(event) => {
+          event.preventDefault()
+          handleConfirm()
+        }}
+      >
         <label htmlFor="rm-pw" className="password-label">
           Join password (optional)
         </label>
@@ -108,9 +114,6 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
             onChange={(event) => {
               setPassword(event.target.value)
               if (pwError) setPwError('')
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') handleConfirm()
             }}
             maxLength={128}
             autoComplete="new-password"
@@ -132,7 +135,7 @@ export function SaveToServerModal({ open, onClose, onConfirm }: SaveToServerModa
             Everyone joining through a link must also enter this password.
           </span>
         )}
-      </div>
+      </form>
 
       <div className="note-line">
         <span className="ic">
