@@ -118,13 +118,13 @@ describe('RoadForge visual rebranding and assets', () => {
     expect(brandLink?.getAttribute('href')).toBe('https://anvilary.tools/')
     expect(brandLink?.getAttribute('target')).toBe('_blank')
     expect(brandLink?.getAttribute('rel')).toBe('noopener noreferrer')
-    expect(brandLink?.textContent).toContain('Anvilary Tools')
+    expect(brandLink?.textContent).toContain('Anvilary.Tools')
 
     const img = brandLink?.querySelector('img')
     expect(img).not.toBeNull()
     expect(decodeURIComponent(img?.getAttribute('src') || '')).toContain('/brand/anvilary-tools/logo.png')
-    expect(img?.getAttribute('width')).toBe('38')
-    expect(img?.getAttribute('height')).toBe('38')
+    expect(img?.getAttribute('width')).toBe('28')
+    expect(img?.getAttribute('height')).toBe('28')
 
     act(() => {
       root.unmount()

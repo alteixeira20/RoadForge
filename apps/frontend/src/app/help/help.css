@@ -1,5 +1,6 @@
 .help-shell {
   min-height: 100svh;
+  padding-bottom: var(--site-footer-height, 56px);
   background:
     radial-gradient(800px 420px at 90% -10%, var(--lava-glow), transparent 62%),
     var(--bg);

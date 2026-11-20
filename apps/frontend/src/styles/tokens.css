@@ -76,7 +76,31 @@
   --font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 
   --container: 1120px;
-  --header-h: 92px;
+  --header-h: 118px;
+  --site-header-height: 118px;
+  --site-footer-height: 56px;
+
+  /* Shared chrome surface, blur, and orange border glow (Anvilary design language) */
+  --chrome-surface: color-mix(in oklab, var(--bg) 88%, transparent);
+  --chrome-surface-footer: color-mix(in oklab, var(--bg) 93%, transparent);
+  --chrome-blur: 14px;
+  --chrome-border-line: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(184, 88, 42, 0.25) 12%,
+    rgba(184, 88, 42, 0.75) 32%,
+    #b8582a 50%,
+    rgba(184, 88, 42, 0.75) 68%,
+    rgba(184, 88, 42, 0.25) 88%,
+    transparent 100%
+  );
+  --chrome-border-glow: radial-gradient(
+    50% 100% at 50% 50%,
+    rgba(217, 116, 66, 0.55) 0%,
+    rgba(184, 88, 42, 0.3) 45%,
+    transparent 80%
+  );
+
   --workspace-max-width: 1080px;
   --workspace-x-pad: 32px;
   --workspace-y-pad-top: 40px;

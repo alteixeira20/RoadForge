@@ -20,7 +20,7 @@ export function HeroSection({ onCreate }: HeroSectionProps) {
           </button>
           <a
             className="btn lg secondary"
-            href="https://github.com/alteixeira20/RoadForge"
+            href="https://github.com/Anvilary/RoadForge"
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -1,8 +1,14 @@
 /* Brand */
 .brand {
-  display: inline-flex; align-items: center; gap: 10px;
-  font-weight: 600; font-size: 17px;
-  letter-spacing: -0.015em;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .brand-logo {
@@ -16,8 +22,46 @@
 .brand-logo img,
 .brand-logo-img {
   grid-area: 1 / 1;
-  width: 28px;
-  height: 28px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   display: block;
+}
+
+.brand-text {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+.brand-name {
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  background: linear-gradient(180deg, #f5f5f2 0%, #deded9 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-suffix {
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  background: linear-gradient(135deg, #d4773d 0%, #bc5b2b 50%, #a64a23 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-lg {
+  gap: 14px;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.brand-lg .brand-logo {
+  width: 80px;
+  height: 80px;
 }
