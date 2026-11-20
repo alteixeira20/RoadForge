@@ -41,7 +41,10 @@ With RoadForge, you can organize ambitious projects into clear phases, break dow
 
 Visit your RoadForge instance (such as the official reference demo at `roadforge.anvilary.tools` or your self-hosted instance).
 
-From the landing page, click **Create roadmap** in the header or the hero section.
+From the landing page, click **Create roadmap** in the header or **Try the Hosted demo** in the hero section.
+
+> [!TIP]
+> A complete visual walkthrough is available in the product demonstration video ([`media/roadforge-product-demo.mp4`](media/roadforge-product-demo.mp4)) and looping preview animation ([`media/roadforge-demo-preview.gif`](media/roadforge-demo-preview.gif)).
 
 ### 2. The Creation Wizard
 
