@@ -28,6 +28,7 @@ interface PhaseSummaryContentProps {
   onDraftChange: (value: string) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   onBlur: () => void
+  onToggle?: () => void
 }
 
 export function PhaseSummaryContent({
@@ -44,14 +45,16 @@ export function PhaseSummaryContent({
   onDraftChange,
   onKeyDown,
   onBlur,
+  onToggle,
 }: PhaseSummaryContentProps) {
   const progressStyle: ForgeStyle = { '--p': `${progressPercent}%` }
 
   return (
-    <>
-      <span className="chev">
-        <Icon name="chevron-right" size={16} />
-      </span>
+    <div
+      className="phase-summary-body"
+      onClick={onToggle}
+      role="presentation"
+    >
       <span className="num">{num}</span>
       {editing ? (
         <input
@@ -81,6 +84,6 @@ export function PhaseSummaryContent({
       <span className="count">
         {doneCount}/{taskCount}
       </span>
-    </>
+    </div>
   )
 }

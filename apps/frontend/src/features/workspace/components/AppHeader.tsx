@@ -54,7 +54,7 @@ export function AppHeader({
                 className="btn sm header-save-btn"
                 onClick={onSave}
                 title="Enable sharing"
-                aria-label="Enable sharing"
+                aria-label="Share"
               >
                 <Icon name="cloud" size={14} />
                 <span className="header-save-label">Share</span>
@@ -64,7 +64,7 @@ export function AppHeader({
                 className="btn sm header-save-btn"
                 onClick={onReloadServerVersion}
                 title="Load the server version"
-                aria-label="Load the server version"
+                aria-label="Reload"
               >
                 <Icon name="cloud" size={14} />
                 <span className="header-save-label">Reload</span>
@@ -74,7 +74,7 @@ export function AppHeader({
                 className="btn sm header-save-btn"
                 onClick={onSave}
                 title={syncStatus === 'offline' ? 'Retry sync' : 'Review or retry save'}
-                aria-label={syncStatus === 'offline' ? 'Retry sync' : 'Review or retry save'}
+                aria-label={syncStatus === 'offline' ? 'Retry' : 'Review'}
               >
                 <Icon name="cloud" size={14} />
                 <span className="header-save-label">

@@ -32,7 +32,7 @@
     "url": "https://github.com/alteixeira20/RoadForge/issues"
   },
   "devDependencies": {
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.1"
   },
   "pnpm": {
     "comments": {

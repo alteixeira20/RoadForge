@@ -3,6 +3,7 @@
 import { usePhaseNameEditor } from '@/features/phases/hooks/usePhaseNameEditor'
 import { PhaseSummaryContent } from './PhaseSummaryContent'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
+import { Icon } from '@/shared/ui/Icon'
 import type { Phase as PhaseType } from '@/shared/types/roadmap'
 
 interface PhaseNameEditorProps {
@@ -58,21 +59,21 @@ export function PhaseNameEditor({
 
   return (
     <>
-      {editing ? (
-        <div className="phase-toggle-btn" role="presentation">
-          <PhaseSummaryContent {...summaryProps} />
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="phase-toggle-btn"
-          aria-expanded={isOpen}
-          aria-label={`${isOpen ? 'Collapse' : 'Expand'} phase ${name}`}
-          onClick={onPhaseToggle}
-        >
-          <PhaseSummaryContent {...summaryProps} />
-        </button>
-      )}
+      <button
+        type="button"
+        className="phase-toggle-btn"
+        aria-expanded={isOpen}
+        aria-label={`${isOpen ? 'Collapse' : 'Expand'} phase ${name}`}
+        onClick={onPhaseToggle}
+      >
+        <span className="chev">
+          <Icon name="chevron-right" size={16} />
+        </span>
+      </button>
+      <PhaseSummaryContent
+        {...summaryProps}
+        onToggle={editing ? undefined : onPhaseToggle}
+      />
       <ConfirmDialog
         open={confirmDiscard}
         title="Discard unsaved changes?"
