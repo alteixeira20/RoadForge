@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 @import '../styles/tokens.css';
 @import '../styles/base.css';
 @import '../styles/primitives/buttons.css';
@@ -38,16 +40,44 @@
 @import '../styles/modals/password-gate.css';
 @import '../styles/join.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-ember: var(--ember);
+  --color-molten: var(--molten);
+  --color-copper: var(--copper);
+  --color-panel: var(--panel);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-surface: var(--bg);
+  --color-surface-2: var(--bg-2);
+  --color-surface-3: var(--bg-3);
+  --color-surface-inset: var(--bg-inset);
+  --color-forge-border: var(--border);
+  --color-forge-border-strong: var(--border-strong);
+  --color-forge-border-faint: var(--border-faint);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-ember: var(--shadow-ember);
+}
+
+@utility container {
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: 32px;
+}
 
 /* ============================================================
    RoadForge Design System - entry point
    CSS is split by concern into src/styles/*.css
    Import order matters for cascade - do not reorder.
    ============================================================ */
-
 
 /* Global keyboard-only focus visible override */
 *:focus-visible {
