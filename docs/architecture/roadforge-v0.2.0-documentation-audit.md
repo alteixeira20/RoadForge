@@ -92,8 +92,8 @@ Documents describing potential future enhancements outside the core contract:
 - **Destination**: [`../media/roadforge-readme-banner-1920x640.png`](../media/roadforge-readme-banner-1920x640.png)
 - **Image Dimensions**: Exactly 1920 x 640 pixels (RGB PNG format).
 - **Cryptographic Hash Verification**:
-  - Brand Kit Manifest SHA-256: `a55fcf4c1576ad0c8507d670ad8822671facbaba27e07be7e285a958a7658673`
-  - Copied Asset SHA-256: `a55fcf4c1576ad0c8507d670ad8822671facbaba27e07be7e285a958a7658673`
+  - Brand Kit Manifest SHA-256: `5bfc713bdb7379db3dab879f5f170e2aabf4e4a79a35003c9cc7fb0a78955c43` (updated in Brand Kit v1.0 manifest.json and SHA256SUMS.txt; previous revision was `a55fcf4c1576ad0c8507d670ad8822671facbaba27e07be7e285a958a7658673`)
+  - Copied Asset SHA-256: `5bfc713bdb7379db3dab879f5f170e2aabf4e4a79a35003c9cc7fb0a78955c43`
   - Match: Exact byte-for-byte equality confirmed.
 
 ### 2. GitHub Markdown Integration
