@@ -26,10 +26,10 @@
   "homepage": "https://roadforge.anvilary.tools",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/alteixeira20/RoadForge.git"
+    "url": "git+https://github.com/Anvilary/RoadForge.git"
   },
   "bugs": {
-    "url": "https://github.com/alteixeira20/RoadForge/issues"
+    "url": "https://github.com/Anvilary/RoadForge/issues"
   },
   "devDependencies": {
     "yaml": "^2.9.1"

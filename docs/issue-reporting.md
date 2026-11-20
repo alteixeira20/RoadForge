@@ -1,6 +1,6 @@
 # Reporting RoadForge problems
 
-Use the [RoadForge issue chooser](https://github.com/alteixeira20/RoadForge/issues/new/choose)
+Use the [RoadForge issue chooser](https://github.com/Anvilary/RoadForge/issues/new/choose)
 to select the report that matches the outcome you need:
 
 - **Bug report** for reproducible behavior that differs from the intended result.

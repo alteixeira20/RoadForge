@@ -42,6 +42,8 @@ or team-scale SLA.
 | Make a contribution | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) and [`contributor-guide.md`](contributor-guide.md) |
 | Understand architecture | [`architecture/overview.md`](architecture/overview.md) |
 | Review modernization changes and validation | [`architecture/anvilary-modernization-implementation-report.md`](architecture/anvilary-modernization-implementation-report.md) |
+| Review Tailwind CSS 4 migration | [`architecture/roadforge-tailwind4-migration-report.md`](architecture/roadforge-tailwind4-migration-report.md) |
+| Review v0.2.0 documentation audit | [`architecture/roadforge-v0.2.0-documentation-audit.md`](architecture/roadforge-v0.2.0-documentation-audit.md) |
 | Understand canonical data ownership | [`architecture/source-of-truth-rules.md`](architecture/source-of-truth-rules.md) |
 | Understand task complexity and decomposition | [`task-complexity.md`](task-complexity.md) |
 | Understand shared access | [`access-model.md`](access-model.md) |

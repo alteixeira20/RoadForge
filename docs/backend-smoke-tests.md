@@ -42,7 +42,7 @@ Confirm the API is reachable before proceeding:
 
 ```bash
 curl -s http://localhost:7878/api/health
-# → {"status":"ok","version":"0.1.0"}
+# → {"status":"ok","version":"0.2.0"}
 ```
 
 Optional but recommended: install `jq` for readable JSON output and to extract fields inline.
@@ -77,7 +77,7 @@ curl -s http://localhost:7878/api/health | jq .
 
 Expected:
 ```json
-{"status": "ok", "version": "0.1.0"}
+{"status": "ok", "version": "0.2.0"}
 ```
 
 A non-200 response or connection refused means the API process is not ready.

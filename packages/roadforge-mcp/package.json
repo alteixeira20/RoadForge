@@ -31,8 +31,11 @@
   "homepage": "https://roadforge.anvilary.tools",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/alteixeira20/RoadForge.git",
+    "url": "git+https://github.com/Anvilary/RoadForge.git",
     "directory": "packages/roadforge-mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/Anvilary/RoadForge/issues"
   },
   "publishConfig": {
     "access": "public"

@@ -1,6 +1,6 @@
 # RoadForge access model
 
-RoadForge `0.1.0` is accountless. There are no user accounts, global profiles, login
+RoadForge `0.2.0` is accountless. There are no user accounts, global profiles, login
 flow, password reset flow, email identity records, or account dashboard.
 
 Access to a synced roadmap is roadmap-scoped and uses invite links, optional roadmap
@@ -158,7 +158,7 @@ these rules:
 - require Redis-backed coordination for multi-process realtime deployments;
 - treat user-authored imports, labels, descriptions, and links as untrusted input.
 
-## Deliberately absent from `0.1.0`
+## Deliberately absent from `0.2.0`
 
 RoadForge does not currently provide accounts, OAuth/OIDC, email recovery, service accounts,
 generic public API keys, billing, or automatic GitHub-to-roadmap mutation. These are not

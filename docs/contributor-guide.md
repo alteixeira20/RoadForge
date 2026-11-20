@@ -20,7 +20,7 @@ explicitly testing compatibility.
 ## Fresh clone
 
 ```bash
-git clone https://github.com/alteixeira20/RoadForge.git
+git clone https://github.com/Anvilary/RoadForge.git
 cd RoadForge
 corepack enable
 corepack pnpm install --frozen-lockfile

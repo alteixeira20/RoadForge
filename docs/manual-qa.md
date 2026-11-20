@@ -331,7 +331,7 @@ Record:
 
 ```text
 Candidate SHA:
-Version: 0.1.0
+Version: 0.2.0
 Date:
 Automated CI: PASS / FAIL
 Manual local QA: PASS / FAIL

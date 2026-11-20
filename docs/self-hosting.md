@@ -1,6 +1,6 @@
 # Self-hosting RoadForge
 
-This is the supported `0.1.0` self-hosting contract. Exact Compose commands and environment
+This is the supported `0.2.0` self-hosting contract. Exact Compose commands and environment
 examples live in [`deploy/self-hosted/README.md`](../deploy/self-hosted/README.md). Security
 requirements live in [Public deployment security](public-deployment-security.md).
 

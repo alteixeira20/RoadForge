@@ -13,7 +13,7 @@ separate from the contribution workflow described here.
 For most contributions:
 
 ```bash
-git clone https://github.com/alteixeira20/RoadForge.git
+git clone https://github.com/Anvilary/RoadForge.git
 cd RoadForge
 corepack enable
 pnpm install --frozen-lockfile

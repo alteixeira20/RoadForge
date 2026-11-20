@@ -127,20 +127,17 @@ JSON remains the canonical portable and importable format.
 
 ## Styling
 
-CSS is organized under `src/styles/` and imported through `app/globals.css`. Design
-tokens live in `styles/tokens.css`; responsive rules stay with the owning stylesheet.
-The `Brand` component presents the RoadForge product name with Anvilary brand assets.
+CSS is organized under `src/styles/` and imported through `app/globals.css`. The application uses Tailwind CSS 4 (`@tailwindcss/postcss` 4.3.5 and `tailwindcss` 4.3.5) with a CSS-first token configuration. JavaScript-based Tailwind configuration (`tailwind.config.ts`) has been removed in favor of direct `@theme` declarations, while PostCSS delegates vendor prefixing to Lightning CSS without requiring autoprefixer.
 
-The UI is dark-only and inherits the shared Anvilary design language. The
-Anvilary-Website repository is the source of truth for the forge palette, typography
-(Lexend / JetBrains Mono), the dark-orange action gradient, translucent surface
-treatment, and the ambient ember atmosphere. The aligned pieces were copied and
-adapted - not imported - so RoadForge builds independently:
+The custom `.container` layout contract is preserved through two cooperating declarations:
+- An explicit `@utility container` in `app/globals.css` that standardizes utility generation across build modes (`max-width: var(--container); margin-inline: auto; padding-inline: 32px;`).
+- Unlayered CSS rules in `styles/site.css` that ensure `.container` enforces a maximum width of 1120px on desktop viewports and responsive padding (`0 20px`) on narrow screens under 720px width. Because unlayered rules take precedence over layered utility rules in the CSS Cascade, layout geometry remains strictly deterministic.
 
-- `styles/tokens.css` mirrors the Anvilary token set (palette, radii, shadows,
-  action gradient, forge-glow, surface hierarchy).
-- `components/ui/EmberBackground.tsx` and `styles/primitives/atmosphere.css` port
-  the Anvilary ember canvas and glow (fixed decorative layer, particle cap, capped
-  device pixel ratio, pauses when hidden, reduced-motion keeps a static glow).
+Design tokens live in `styles/tokens.css`; responsive rules stay with the owning stylesheet. The `Brand` component presents the RoadForge product name with Anvilary brand assets.
+
+The UI is dark-only and inherits the shared Anvilary design language. The Anvilary-Website repository is the source of truth for the forge palette, typography (Lexend / JetBrains Mono), the dark-orange action gradient, translucent surface treatment, and the ambient ember atmosphere. The aligned pieces were copied and adapted (not imported) so RoadForge builds independently:
+
+- `styles/tokens.css` mirrors the Anvilary token set (palette, radii, shadows, action gradient, forge-glow, surface hierarchy).
+- `components/ui/EmberBackground.tsx` and `styles/primitives/atmosphere.css` port the Anvilary ember canvas and glow (fixed decorative layer, particle cap, capped device pixel ratio, pauses when hidden, reduced-motion keeps a static glow).
 - `styles/primitives/buttons.css` ports the accessible primary button gradient.
 - Brand and favicon assets use the white Anvilary mark for dark surfaces.

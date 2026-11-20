@@ -1,6 +1,6 @@
 # Server data retention and purge
 
-RoadForge `0.1.0` distinguishes browser deletion, server soft deletion, and final server
+RoadForge `0.2.0` distinguishes browser deletion, server soft deletion, and final server
 purge. This document is the operator contract for final cleanup of server-side data.
 
 The Anvilary-hosted instance is a **demo/reference deployment**. Users should keep JSON

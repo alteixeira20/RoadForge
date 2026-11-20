@@ -116,7 +116,7 @@ New invite credentials use URL fragments and are not sent in HTTP request target
 legacy query-token links may still exist until rotated. Treat every copied join URL as
 sensitive regardless of transport form.
 
-RoadForge has no server-side CSP report collector in `0.1.0`; this avoids creating another
+RoadForge has no server-side CSP report collector in `0.2.0`; this avoids creating another
 retention/logging surface for potentially sensitive browser reports.
 
 ## Development policy

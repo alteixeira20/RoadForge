@@ -116,13 +116,13 @@ documents do not override the parser.
 | Layer | Technology |
 | --- | --- |
 | Monorepo | pnpm workspace |
-| Frontend | Next.js App Router, TypeScript, Tailwind CSS |
+| Frontend | Next.js App Router, TypeScript, Tailwind CSS 4 |
 | Client persistence | browser `localStorage` |
 | Backend | FastAPI, Python 3.12 |
 | Database | PostgreSQL 16 |
 | Realtime | Server-Sent Events with memory or Redis coordination |
 | Migrations | Alembic |
-| Agent integration | repository-local stdio MCP package |
+| Agent integration | Local stdio and streamable HTTP MCP server (@anvilary/roadforge-mcp) |
 | Deployment | Docker Compose and nginx |
 
 ## Local development
@@ -138,7 +138,7 @@ The package manifests currently accept Node `>=22 <27`; Node 24 is the canonical
 version used by development and CI.
 
 ```bash
-git clone https://github.com/alteixeira20/RoadForge.git
+git clone https://github.com/Anvilary/RoadForge.git
 cd RoadForge
 corepack enable
 pnpm install --frozen-lockfile
@@ -206,6 +206,7 @@ Start with:
 - [Source-of-truth rules](docs/architecture/source-of-truth-rules.md)
 - [Access model](docs/access-model.md)
 - [Frontend foundation](docs/frontend-foundation.md)
+- [Tailwind CSS 4 migration](docs/architecture/roadforge-tailwind4-migration-report.md)
 - [Backend API](docs/backend-api.md)
 
 ## Health and operations
@@ -227,7 +228,7 @@ Teams depending on the service should also read
 [Hosted demo and self-hosting](docs/hosted-demo-and-self-hosting.md) and establish their own
 capacity, backup, monitoring, and rollback expectations.
 
-## Known `0.1.0` boundaries
+## Known boundaries
 
 These are explicit release boundaries, not hidden guarantees:
 
@@ -272,5 +273,4 @@ See:
 - [Self-hosting](docs/self-hosting.md)
 - [Support](SUPPORT.md)
 
-RoadForge `0.1.0` is intended to be the stable baseline from which future feature work
-can proceed without changing these core data-ownership and collaboration principles.
+RoadForge `0.1.0` established the initial architecture baseline, and `0.2.0` introduces the modernized Tailwind CSS 4 styling pipeline while preserving these core data-ownership and collaboration principles.
