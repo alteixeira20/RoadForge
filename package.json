@@ -20,7 +20,7 @@
     "test:web": "pnpm --dir apps/frontend test",
     "check:em-dash": "node tools/check-no-em-dash.mjs"
   },
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local-first, accountless roadmap planning for individuals and small teams.",
   "license": "PolyForm-Noncommercial-1.0.0",
   "homepage": "https://roadforge.anvilary.tools",

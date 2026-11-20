@@ -49,7 +49,7 @@ async def test_redis_deployment_requires_both_database_and_redis(client, monkeyp
         health_module,
         "get_settings",
         lambda: SimpleNamespace(
-            app_version="0.1.0",
+            app_version="0.2.0",
             realtime_backend="redis",
             redis_url="redis://redis.test:6379/0",
             redis_connect_timeout_seconds=0.1,

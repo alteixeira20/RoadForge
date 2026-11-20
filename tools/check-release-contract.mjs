@@ -25,7 +25,7 @@ expect(typeof productVersion === 'string' && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?
 expect(webPackage.version === productVersion,
   `web package version ${webPackage.version} does not match product version ${productVersion}`)
 expect(mcpPackage.version === productVersion,
-  `MCP package version ${mcpPackage.version} does not match the 0.1.x product baseline ${productVersion}`)
+  `MCP package version ${mcpPackage.version} does not match product version ${productVersion}`)
 
 const apiVersionMatch = apiConfig.match(/app_version:\s*str\s*=\s*"([^"]+)"/)
 expect(Boolean(apiVersionMatch), 'could not find Settings.app_version default in apps/backend/src/api/config.py')

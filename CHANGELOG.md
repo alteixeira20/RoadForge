@@ -5,6 +5,17 @@ Dates use ISO format.
 
 ## Unreleased
 
+## 0.2.0 - 2026-11-20
+
+### Styling infrastructure and dependencies
+
+- Migrate RoadForge web styling pipeline to Tailwind CSS 4 (@tailwindcss/postcss 4.3.5 and tailwindcss 4.3.5).
+- Modernize theme configuration with CSS-first @theme declarations mapping custom brand tokens (--color-ember, --color-molten, --color-copper, --color-panel, surfaces, ink shades, forge borders, typography, and shadows) in apps/frontend/src/app/globals.css.
+- Remove obsolete JavaScript configuration file apps/frontend/tailwind.config.ts.
+- Retain custom container utility contract (max-width: var(--container) at 1120px) via @utility container in globals.css with zero visual regressions across all responsive viewports.
+- Remove redundant PostCSS autoprefixer dependency in favor of native Lightning CSS prefixing.
+- Modernize backend and workspace dependency baselines for Python 3.12+ and Node 24.
+
 Changes after the `0.1.0` baseline belong here.
 
 ### Security hardening

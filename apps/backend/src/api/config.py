@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "RoadForge API"
-    app_version: str = "0.1.0"
+    app_version: str = "0.2.0"
     environment: str = Field(default="development", alias="ROADFORGE_ENVIRONMENT")
     database_url: str = Field(
         default=_DEFAULT_DATABASE_URL,

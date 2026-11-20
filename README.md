@@ -4,7 +4,7 @@ RoadForge by Anvilary is a local-first roadmap tool for individuals and small te
 Create phases, tasks, dependencies, tags, and portable backups without an account.
 Enable server sync only when you deliberately want sharing and realtime collaboration.
 
-**Release target:** `0.1.0`
+**Release target:** `0.2.0`
 
 > [!IMPORTANT]
 > The hosted RoadForge instance at `roadforge.anvilary.tools` is the **official demo/reference

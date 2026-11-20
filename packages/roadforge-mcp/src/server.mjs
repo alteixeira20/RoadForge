@@ -5,7 +5,7 @@ import {
   createRoadForgeClient,
 } from './roadforge-client.mjs'
 
-export const SERVER_VERSION = '0.1.0-alpha.0'
+export const SERVER_VERSION = '0.2.0'
 export const LATEST_PROTOCOL_VERSION = '2025-11-25'
 
 const SUPPORTED_PROTOCOL_VERSIONS = new Set([
